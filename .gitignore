@@ -243,4 +243,4 @@ node_modules/
 .mcp.json
 
 # Task Master (user-specific work tracking)
-.taskmaster/ 
+.taskmaster/
