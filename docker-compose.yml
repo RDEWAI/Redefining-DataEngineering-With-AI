@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  rdewai-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rdewai-dev:latest
+    container_name: rdewai-dev
+    hostname: rdewai-dev
+
+    # Volume mounts
+    volumes:
+      - ./:/workspace
+      - rdewai-data:/data
+      - rdewai-cache:/root/.cache
+
+    # Port mappings
+    ports:
+      - "8088:8088"  # Superset
+      - "4040:4040"  # Spark UI
+      - "8080:8080"  # Additional services
+
+    # Environment variables
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SPARK_HOME=/usr/local/lib/python3.11/site-packages/pyspark
+      - PYSPARK_PYTHON=python3
+      - PYSPARK_DRIVER_PYTHON=python3
+      - JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-arm64
+
+    # Keep container running
+    stdin_open: true
+    tty: true
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Network mode
+    networks:
+      - rdewai-network
+
+volumes:
+  rdewai-data:
+    driver: local
+  rdewai-cache:
+    driver: local
+
+networks:
+  rdewai-network:
+    driver: bridge
