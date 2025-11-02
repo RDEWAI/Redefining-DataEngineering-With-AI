@@ -1,0 +1,28 @@
+{
+  "name": "RDEWAI Development",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "rdewai-dev",
+  "workspaceFolder": "/workspace",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+        "python.formatting.provider": "black"
+      }
+    }
+  },
+
+  "forwardPorts": [8088, 4040, 8080],
+  "postCreateCommand": "echo 'Development environment ready!'",
+
+  "remoteUser": "root"
+}
