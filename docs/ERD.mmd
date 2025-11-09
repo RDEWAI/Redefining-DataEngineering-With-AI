@@ -1,0 +1,350 @@
+erDiagram
+      PATIENTS ||--o{ ENCOUNTERS : has
+      PATIENTS ||--o{ ALLERGIES : has
+      PATIENTS ||--o{ CAREPLANS : has
+      PATIENTS ||--o{ CONDITIONS : has
+      PATIENTS ||--o{ DEVICES : has
+      PATIENTS ||--o{ IMMUNIZATIONS : has
+      PATIENTS ||--o{ MEDICATIONS : has
+      PATIENTS ||--o{ PROCEDURES : has
+      PATIENTS ||--o{ OBSERVATIONS : has
+      PATIENTS ||--o{ IMAGING_STUDIES : has
+      PATIENTS ||--o{ SUPPLIES : has
+      PATIENTS ||--o{ PAYER_TRANSITIONS : has
+      PATIENTS ||--o{ CLAIMS : has
+      PATIENTS ||--o{ CLAIMS_TRANSACTIONS : has
+
+      ORGANIZATIONS ||--o{ ENCOUNTERS : hosts
+      ORGANIZATIONS ||--o{ PROVIDERS : employs
+
+      PROVIDERS ||--o{ ENCOUNTERS : performs
+      PROVIDERS ||--o{ CLAIMS : bills
+      PROVIDERS ||--o{ CLAIMS_TRANSACTIONS : bills
+
+      PAYERS ||--o{ ENCOUNTERS : covers
+      PAYERS ||--o{ MEDICATIONS : covers
+      PAYERS ||--o{ PAYER_TRANSITIONS : primary
+      PAYERS ||--o{ PAYER_TRANSITIONS : secondary
+
+      ENCOUNTERS ||--o{ ALLERGIES : documented_in
+      ENCOUNTERS ||--o{ CAREPLANS : created_in
+      ENCOUNTERS ||--o{ CONDITIONS : diagnosed_in
+      ENCOUNTERS ||--o{ DEVICES : prescribed_in
+      ENCOUNTERS ||--o{ IMMUNIZATIONS : administered_in
+      ENCOUNTERS ||--o{ MEDICATIONS : prescribed_in
+      ENCOUNTERS ||--o{ PROCEDURES : performed_in
+      ENCOUNTERS ||--o{ OBSERVATIONS : recorded_in
+      ENCOUNTERS ||--o{ IMAGING_STUDIES : ordered_in
+      ENCOUNTERS ||--o{ SUPPLIES : used_in
+
+      CLAIMS ||--o{ CLAIMS_TRANSACTIONS : contains
+
+      PATIENTS {
+          string Id PK
+          date BIRTHDATE
+          date DEATHDATE
+          string SSN
+          string DRIVERS
+          string PASSPORT
+          string PREFIX
+          string FIRST
+          string MIDDLE
+          string LAST
+          string SUFFIX
+          string MAIDEN
+          string MARITAL
+          string RACE
+          string ETHNICITY
+          string GENDER
+          string BIRTHPLACE
+          string ADDRESS
+          string CITY
+          string STATE
+          string COUNTY
+          string FIPS
+          string ZIP
+          decimal LAT
+          decimal LON
+          decimal HEALTHCARE_EXPENSES
+          decimal HEALTHCARE_COVERAGE
+          decimal INCOME
+      }
+
+      ENCOUNTERS {
+          string Id PK
+          datetime START
+          datetime STOP
+          string PATIENT FK
+          string ORGANIZATION FK
+          string PROVIDER FK
+          string PAYER FK
+          string ENCOUNTERCLASS
+          string CODE
+          string DESCRIPTION
+          decimal BASE_ENCOUNTER_COST
+          decimal TOTAL_CLAIM_COST
+          decimal PAYER_COVERAGE
+          string REASONCODE
+          string REASONDESCRIPTION
+      }
+
+      ALLERGIES {
+          datetime START
+          datetime STOP
+          string PATIENT FK
+          string ENCOUNTER FK
+          string CODE
+          string SYSTEM
+          string DESCRIPTION
+          string TYPE
+          string CATEGORY
+          string REACTION1
+          string DESCRIPTION1
+          string SEVERITY1
+          string REACTION2
+          string DESCRIPTION2
+          string SEVERITY2
+      }
+
+      CAREPLANS {
+          string Id PK
+          datetime START
+          datetime STOP
+          string PATIENT FK
+          string ENCOUNTER FK
+          string CODE
+          string DESCRIPTION
+          string REASONCODE
+          string REASONDESCRIPTION
+      }
+
+      CONDITIONS {
+          datetime START
+          datetime STOP
+          string PATIENT FK
+          string ENCOUNTER FK
+          string SYSTEM
+          string CODE
+          string DESCRIPTION
+      }
+
+      DEVICES {
+          datetime START
+          datetime STOP
+          string PATIENT FK
+          string ENCOUNTER FK
+          string CODE
+          string DESCRIPTION
+          string UDI
+      }
+
+      IMMUNIZATIONS {
+          date DATE
+          string PATIENT FK
+          string ENCOUNTER FK
+          string CODE
+          string DESCRIPTION
+          decimal BASE_COST
+      }
+
+      MEDICATIONS {
+          datetime START
+          datetime STOP
+          string PATIENT FK
+          string PAYER FK
+          string ENCOUNTER FK
+          string CODE
+          string DESCRIPTION
+          decimal BASE_COST
+          decimal PAYER_COVERAGE
+          int DISPENSES
+          decimal TOTALCOST
+          string REASONCODE
+          string REASONDESCRIPTION
+      }
+
+      PROCEDURES {
+          datetime START
+          datetime STOP
+          string PATIENT FK
+          string ENCOUNTER FK
+          string SYSTEM
+          string CODE
+          string DESCRIPTION
+          decimal BASE_COST
+          string REASONCODE
+          string REASONDESCRIPTION
+      }
+
+      OBSERVATIONS {
+          date DATE
+          string PATIENT FK
+          string ENCOUNTER FK
+          string CATEGORY
+          string CODE
+          string DESCRIPTION
+          string VALUE
+          string UNITS
+          string TYPE
+      }
+
+      IMAGING_STUDIES {
+          string Id PK
+          date DATE
+          string PATIENT FK
+          string ENCOUNTER FK
+          string SERIES_UID
+          string BODYSITE_CODE
+          string BODYSITE_DESCRIPTION
+          string MODALITY_CODE
+          string MODALITY_DESCRIPTION
+          string INSTANCE_UID
+          string SOP_CODE
+          string SOP_DESCRIPTION
+          string PROCEDURE_CODE
+      }
+
+      SUPPLIES {
+          date DATE
+          string PATIENT FK
+          string ENCOUNTER FK
+          string CODE
+          string DESCRIPTION
+          int QUANTITY
+      }
+
+      ORGANIZATIONS {
+          string Id PK
+          string NAME
+          string ADDRESS
+          string CITY
+          string STATE
+          string ZIP
+          decimal LAT
+          decimal LON
+          string PHONE
+          decimal REVENUE
+          int UTILIZATION
+      }
+
+      PROVIDERS {
+          string Id PK
+          string ORGANIZATION FK
+          string NAME
+          string GENDER
+          string SPECIALITY
+          string ADDRESS
+          string CITY
+          string STATE
+          string ZIP
+          decimal LAT
+          decimal LON
+          int ENCOUNTERS
+          int PROCEDURES
+      }
+
+      PAYERS {
+          string Id PK
+          string NAME
+          string OWNERSHIP
+          string ADDRESS
+          string CITY
+          string STATE_HEADQUARTERED
+          string ZIP
+          string PHONE
+          decimal AMOUNT_COVERED
+          decimal AMOUNT_UNCOVERED
+          decimal REVENUE
+          int COVERED_ENCOUNTERS
+          int UNCOVERED_ENCOUNTERS
+          int COVERED_MEDICATIONS
+          int UNCOVERED_MEDICATIONS
+          int COVERED_PROCEDURES
+          int UNCOVERED_PROCEDURES
+          int COVERED_IMMUNIZATIONS
+          int UNCOVERED_IMMUNIZATIONS
+          int UNIQUE_CUSTOMERS
+          decimal QOLS_AVG
+          int MEMBER_MONTHS
+      }
+
+      PAYER_TRANSITIONS {
+          string PATIENT FK
+          string MEMBERID
+          date START_DATE
+          date END_DATE
+          string PAYER FK
+          string SECONDARY_PAYER FK
+          string PLAN_OWNERSHIP
+          string OWNER_NAME
+      }
+
+      CLAIMS {
+          string Id PK
+          string PATIENTID FK
+          string PROVIDERID FK
+          string PRIMARYPATIENTINSURANCEID
+          string SECONDARYPATIENTINSURANCEID
+          string DEPARTMENTID
+          string PATIENTDEPARTMENTID
+          string DIAGNOSIS1
+          string DIAGNOSIS2
+          string DIAGNOSIS3
+          string DIAGNOSIS4
+          string DIAGNOSIS5
+          string DIAGNOSIS6
+          string DIAGNOSIS7
+          string DIAGNOSIS8
+          string REFERRINGPROVIDERID
+          string APPOINTMENTID
+          date CURRENTILLNESSDATE
+          date SERVICEDATE
+          string SUPERVISINGPROVIDERID
+          string STATUS1
+          string STATUS2
+          string STATUSP
+          decimal OUTSTANDING1
+          decimal OUTSTANDING2
+          decimal OUTSTANDINGP
+          date LASTBILLEDDATE1
+          date LASTBILLEDDATE2
+          date LASTBILLEDDATEP
+          string HEALTHCARECLAIMTYPEID1
+          string HEALTHCARECLAIMTYPEID2
+      }
+
+      CLAIMS_TRANSACTIONS {
+          string ID PK
+          string CLAIMID FK
+          string CHARGEID
+          string PATIENTID FK
+          string TYPE
+          decimal AMOUNT
+          string METHOD
+          date FROMDATE
+          date TODATE
+          string PLACEOFSERVICE
+          string PROCEDURECODE
+          string MODIFIER1
+          string MODIFIER2
+          string DIAGNOSISREF1
+          string DIAGNOSISREF2
+          string DIAGNOSISREF3
+          string DIAGNOSISREF4
+          int UNITS
+          string DEPARTMENTID
+          string NOTES
+          decimal UNITAMOUNT
+          string TRANSFEROUTID
+          string TRANSFERTYPE
+          decimal PAYMENTS
+          decimal ADJUSTMENTS
+          decimal TRANSFERS
+          decimal OUTSTANDING
+          string APPOINTMENTID
+          string LINENOTE
+          string PATIENTINSURANCEID
+          string FEESCHEDULEID
+          string PROVIDERID FK
+          string SUPERVISINGPROVIDERID
+      }
