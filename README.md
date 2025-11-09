@@ -20,7 +20,8 @@ cd Redefining-DataEngineering-With-AI
 npm install -g task-master-ai
 task-master init --rules claude
 
-# 3. Start Docker environment
+# 3. Pull pre-built image and start Docker environment
+docker compose pull
 docker compose up -d
 
 # 4. Verify installation
@@ -36,7 +37,7 @@ docker compose exec rdewai-dev bash
 
 ## 💡 What This Project Provides
 
-A containerized data engineering development environment with:
+A pre-built containerized data engineering development environment with:
 
 - **Python 3.11** + **Java 11** runtime
 - **PySpark 3.5.4** for distributed data processing
@@ -44,7 +45,7 @@ A containerized data engineering development environment with:
 - **Apache Superset 4.1.1** for data visualization
 - **Google Cloud SDKs** (BigQuery, Cloud Storage)
 - **Task Master AI** integration for intelligent task management ([learn more](https://www.npmjs.com/package/task-master-ai))
-- **DevContainer** support for VS Code/Cursor
+- **Pre-built Docker image** from GitHub Container Registry
 
 ---
 
@@ -86,19 +87,12 @@ task-master set-status --id=<id> --status=done
 - **RAM**: 8GB minimum, 16GB recommended
 - **Disk Space**: 10GB for images and volumes
 
-### Building the Environment
-
-```bash
-# First-time setup (clean build)
-docker compose build --no-cache
-
-# Subsequent builds (uses cache)
-docker compose build
-```
-
 ### Starting Services
 
 ```bash
+# Pull the pre-built image (first time or to get updates)
+docker compose pull
+
 # Start in background
 docker compose up -d
 
@@ -119,14 +113,6 @@ docker compose exec rdewai-dev bash
 docker compose exec rdewai-dev python --version
 docker compose exec rdewai-dev pyspark
 ```
-
-### Volume Mounts
-
-| Host Path | Container Path | Purpose |
-|-----------|---------------|---------|
-| `./` | `/workspace` | Project files (live sync) |
-| `rdewai-data` | `/data` | Persistent data storage |
-| `rdewai-cache` | `/root/.cache` | Package cache |
 
 ### Exposed Ports
 
@@ -152,10 +138,12 @@ docker compose exec rdewai-dev pyspark
 
 ### VS Code / Cursor DevContainer
 
+The project includes DevContainer configuration, but uses the pre-built Docker image:
+
 1. Install [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 2. Open project folder
 3. `F1` → **"Dev Containers: Reopen in Container"**
-4. Wait for container to build
+4. Container will pull the pre-built image
 
 Auto-installed extensions:
 - Python + Pylance
@@ -192,7 +180,7 @@ Redefining-DataEngineering-With-AI/
 │   └── comprehensive-validation.sh # Full validation suite
 │
 ├── docker-compose.yml             # Container orchestration
-├── Dockerfile                     # Multi-stage image build
+├── Dockerfile                     # Image build (for reference)
 ├── requirements.txt               # Python dependencies
 ├── .env.example                   # API key template
 └── README.md                      # This file
@@ -222,7 +210,8 @@ task-master set-status --id=<id> --status=done
 Standard development workflow:
 
 ```bash
-# 1. Start environment
+# 1. Pull and start environment
+docker compose pull
 docker compose up -d
 
 # 2. Access container
@@ -243,12 +232,12 @@ pytest tests/
 ### Docker Commands
 
 ```bash
+docker compose pull               # Pull latest pre-built image
 docker compose up -d              # Start services
 docker compose down               # Stop services
 docker compose ps                 # Container status
 docker compose logs rdewai-dev    # View logs
 docker compose exec rdewai-dev bash  # Access shell
-docker compose build --no-cache   # Rebuild from scratch
 ```
 
 ### Development Commands (Inside Container)
@@ -280,13 +269,15 @@ lsof -i :8088
 # Clean up Docker system
 docker system prune -a --volumes
 docker compose down -v
-docker compose build --no-cache
+docker compose pull
 docker compose up -d
 ```
 
-**Build cache issues:**
+**Image pull issues:**
 ```bash
-docker compose build --no-cache --pull
+# Pull the latest image manually
+docker pull ghcr.io/rdewai/redefining-dataengineering-with-ai:raw-data
+docker compose up -d
 ```
 
 ### DevContainer Issues
@@ -294,7 +285,8 @@ docker compose build --no-cache --pull
 **Won't connect:**
 1. Install "Dev Containers" extension
 2. Verify Docker Desktop is running
-3. Rebuild: `Cmd/Ctrl+Shift+P` → "Rebuild Container"
+3. Pull image manually: `docker compose pull`
+4. Rebuild: `Cmd/Ctrl+Shift+P` → "Rebuild Container"
 
 ### Task Master Issues
 
