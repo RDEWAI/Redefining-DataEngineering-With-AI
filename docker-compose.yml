@@ -2,18 +2,9 @@ version: '3.8'
 
 services:
   rdewai-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: rdewai-dev:latest
+    image: ghcr.io/rdewai/redefining-dataengineering-with-ai:raw-data
     container_name: rdewai-dev
     hostname: rdewai-dev
-
-    # Volume mounts
-    volumes:
-      - ./:/workspace
-      - rdewai-data:/data
-      - rdewai-cache:/root/.cache
 
     # Port mappings
     ports:

@@ -48,6 +48,6 @@ Thumbs.db
 
 # Data
 data/
-*.csv
+#*.csv
 *.parquet
 *.db
