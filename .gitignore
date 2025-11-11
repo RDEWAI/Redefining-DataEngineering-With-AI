@@ -242,6 +242,3 @@ node_modules/
 
 # MCP configuration (contains API keys - sensitive)
 .mcp.json
-
-# Task Master (user-specific work tracking)
-.taskmaster/
