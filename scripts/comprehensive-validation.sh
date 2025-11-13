@@ -345,8 +345,8 @@ else
 fi
 
 # Generate detailed report
-mkdir -p .taskmaster/docs
-REPORT_FILE=".taskmaster/docs/docker-validation-report.md"
+mkdir -p docs/reports
+REPORT_FILE="docs/reports/docker-validation-report.md"
 
 echo "# Docker Development Environment Validation Report" > "$REPORT_FILE"
 echo "" >> "$REPORT_FILE"

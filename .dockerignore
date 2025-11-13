@@ -28,9 +28,6 @@ build
 *.swo
 *~
 
-# Task Master
-.taskmaster
-
 # Claude
 .claude
 CLAUDE.md

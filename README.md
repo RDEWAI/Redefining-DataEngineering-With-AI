@@ -16,18 +16,14 @@
 git clone <your-repo-url>
 cd Redefining-DataEngineering-With-AI
 
-# 2. Install Task Master AI (optional, for task management)
-npm install -g task-master-ai
-task-master init --rules claude
-
-# 3. Pull pre-built image and start Docker environment
+# 2. Pull pre-built image and start Docker environment
 docker compose pull
 docker compose up -d
 
-# 4. Verify installation
+# 3. Verify installation
 ./scripts/test-environment.sh
 
-# 5. Access the container
+# 4. Access the container
 docker compose exec rdewai-dev bash
 ```
 
@@ -44,38 +40,7 @@ A pre-built containerized data engineering development environment with:
 - **DuckDB** for embedded analytics
 - **Apache Superset 4.1.1** for data visualization
 - **Google Cloud SDKs** (BigQuery, Cloud Storage)
-- **Task Master AI** integration for intelligent task management ([learn more](https://www.npmjs.com/package/task-master-ai))
 - **Pre-built Docker image** from GitHub Container Registry
-
----
-
-## 🤖 Task Master AI Setup (Optional)
-
-Task Master AI helps manage project tasks with AI-powered assistance. While optional, it's integrated throughout this project.
-
-### Installation
-
-```bash
-# Install globally
-npm install -g task-master-ai
-
-# Initialize in project
-task-master init --rules claude
-
-# Configure AI models (requires API key)
-task-master models --setup
-```
-
-### Basic Usage
-
-```bash
-task-master list              # Show all tasks
-task-master next              # Get next available task
-task-master show <id>         # View task details
-task-master set-status --id=<id> --status=done
-```
-
-📖 **Full Documentation**: [Task Master AI](https://www.npmjs.com/package/task-master-ai)
 
 ---
 
@@ -153,11 +118,8 @@ Auto-installed extensions:
 ### Claude Code
 
 ```bash
-# Start Claude Code (auto-loads .taskmaster/CLAUDE.md)
+# Start Claude Code (auto-loads CLAUDE.md)
 claude
-
-# Claude Code will have access to Task Master commands
-# and project context automatically
 ```
 
 ---
@@ -166,12 +128,6 @@ claude
 
 ```
 Redefining-DataEngineering-With-AI/
-├── .taskmaster/                   # Task Master AI files
-│   ├── tasks/tasks.json           # Task database
-│   ├── docs/prd.txt               # Requirements document
-│   ├── CLAUDE.md                  # Claude Code auto-loaded context
-│   └── config.json                # AI model configuration
-│
 ├── .devcontainer/                 # VS Code DevContainer config
 │   └── devcontainer.json
 │
@@ -189,25 +145,6 @@ Redefining-DataEngineering-With-AI/
 ---
 
 ## 🔄 Development Workflow
-
-### With Task Master
-
-```bash
-# Get next task
-task-master next
-
-# Mark in progress
-task-master set-status --id=<id> --status=in-progress
-
-# Implement the task...
-
-# Mark complete
-task-master set-status --id=<id> --status=done
-```
-
-### Without Task Master
-
-Standard development workflow:
 
 ```bash
 # 1. Pull and start environment
@@ -288,19 +225,6 @@ docker compose up -d
 3. Pull image manually: `docker compose pull`
 4. Rebuild: `Cmd/Ctrl+Shift+P` → "Rebuild Container"
 
-### Task Master Issues
-
-**API key errors:**
-- Check `.env` file configuration
-- Verify environment variables are loaded
-
-**Model configuration:**
-```bash
-task-master models --setup
-```
-
-📖 See [Task Master docs](https://www.npmjs.com/package/task-master-ai) for detailed troubleshooting.
-
 ---
 
 ## 🎯 What's Installed
@@ -334,7 +258,6 @@ This project is licensed under the MIT License.
 
 ## 📚 Additional Resources
 
-- [Task Master AI Documentation](https://www.npmjs.com/package/task-master-ai)
 - [Claude Code Documentation](https://docs.claude.com/en/docs/claude-code)
 - [PySpark Documentation](https://spark.apache.org/docs/latest/api/python/)
 - [DuckDB Documentation](https://duckdb.org/docs/)
