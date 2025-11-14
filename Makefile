@@ -23,8 +23,37 @@ help: ## Display this help message
 ##@ Development Environment
 
 dev-setup: ## Set up local development environment with UV (< 5 minutes)
-	@echo "Setting up development environment..."
-	@echo "This target will be implemented in Phase 3"
+	@echo "=== Setting up development environment with UV ==="
+	@echo ""
+	@echo "[1/4] Checking prerequisites..."
+	@if ! command -v uv &> /dev/null; then \
+		echo "ERROR: UV package manager not found."; \
+		echo ""; \
+		echo "Install UV:"; \
+		echo "  curl -LsSf https://astral.sh/uv/install.sh | sh"; \
+		echo ""; \
+		echo "For more information: https://docs.astral.sh/uv/"; \
+		exit 1; \
+	fi
+	@echo "✓ UV found: $$(uv --version)"
+	@echo ""
+	@echo "[2/4] Creating virtual environment with UV (Python 3.12)..."
+	@uv venv --python 3.12 || { echo "ERROR: Failed to create virtual environment"; exit 3; }
+	@echo ""
+	@echo "[3/4] Installing dependencies with UV sync..."
+	@uv sync || { echo "ERROR: Failed to install dependencies"; exit 3; }
+	@echo ""
+	@echo "[4/4] Validating environment..."
+	@if ! .venv/bin/python -c "import duckdb; import sqlmesh; import superset; import pytest; print('✅ All packages successfully installed')"; then \
+		echo "ERROR: Package validation failed"; \
+		exit 3; \
+	fi
+	@echo ""
+	@echo "✅ Development environment setup complete!"
+	@echo ""
+	@echo "To activate the virtual environment:"
+	@echo "  source .venv/bin/activate"
+	@echo ""
 
 ##@ Data Management
 
