@@ -12,7 +12,7 @@ Migrate the project from traditional pip-based requirements.txt to UV package ma
 ## Technical Context
 
 **Language/Version**: Python 3.10-3.12 (aligned with Apache Superset 4.1.1 compatibility)
-**Primary Dependencies**: UV package manager, DuckDB, SQLMesh, Apache Superset 4.1.1, PySpark 3.5.4, pytest 8.3.4
+**Primary Dependencies**: UV package manager, DuckDB, SQLMesh, Apache Superset 4.1.1, pytest 8.3.4
 **Storage**: DuckDB (local columnar database), local filesystem for raw CSV data (Synthea synthetic healthcare data)
 **Testing**: pytest (local execution, NOT Docker-based)
 **Target Platform**: Local development environments (Linux, macOS, Windows WSL)
@@ -120,7 +120,7 @@ Migrate the project from traditional pip-based requirements.txt to UV package ma
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| Docker-first development (Principle V) | Superset, PySpark, and DuckDB work better in native environments; Docker adds complexity for local development; faster iteration cycles | Docker-only development creates friction for data engineers, slower dev cycles, harder debugging, resource overhead |
+| Docker-first development (Principle V) | Superset and DuckDB work better in native environments; Docker adds complexity for local development; faster iteration cycles | Docker-only development creates friction for data engineers, slower dev cycles, harder debugging, resource overhead |
 | Docker-based testing (Principle II) | Tests need to run in the same environment where development occurs (local); testing Docker setup when not using Docker for development is counterproductive | Maintaining parallel Docker and local environments doubles maintenance burden and creates environment drift |
 | Constitution amendment during feature (Principle Governance) | The constitution currently mandates Docker-first, making this feature non-compliant by definition; must update constitution to reflect new architecture | Deferring constitution update would leave project in inconsistent state where feature and constitution conflict |
 
