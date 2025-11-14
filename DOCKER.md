@@ -1,8 +1,27 @@
 # Docker Environment Documentation
 
+> **⚠️ IMPORTANT**: Docker is **only** used for extracting raw Synthea data in this project.
+>
+> **For development**, use the local-first workflow with UV package manager:
+> ```bash
+> make dev-setup       # Set up local development environment
+> make raw-data-copy   # Extract data from Docker image
+> ```
+>
+> See [README.md](README.md) for the primary development workflow.
+
+---
+
+## Purpose
+
+Docker in this project serves a **single, specific purpose**: providing access to pre-generated Synthea healthcare CSV data.
+
+- ✅ **Use Docker for**: Extracting raw data files (`make raw-data-copy`)
+- ❌ **Don't use Docker for**: Development, testing, or running code
+
 ## Architecture
 
-This project uses a multi-stage Docker setup optimized for data engineering workflows.
+The Docker image contains pre-generated Synthea synthetic healthcare data that can be extracted to your local filesystem for analysis.
 
 ### Base Image
 - **Python**: 3.11-slim (Debian-based)

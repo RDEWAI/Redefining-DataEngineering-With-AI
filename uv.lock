@@ -2349,6 +2349,7 @@ dependencies = [
     { name = "apache-superset" },
     { name = "duckdb" },
     { name = "pytest" },
+    { name = "setuptools" },
     { name = "sqlmesh" },
 ]
 
@@ -2362,6 +2363,7 @@ requires-dist = [
     { name = "apache-superset", specifier = "==4.1.1" },
     { name = "duckdb", specifier = "==1.1.3" },
     { name = "pytest", specifier = "==8.3.4" },
+    { name = "setuptools", specifier = ">=65.0.0" },
     { name = "sqlmesh", specifier = ">=0.130.0,<1" },
 ]
 

@@ -58,25 +58,169 @@ dev-setup: ## Set up local development environment with UV (< 5 minutes)
 ##@ Data Management
 
 raw-data-copy: ## Extract Synthea CSV data from Docker image to data/raw/ (< 2 minutes)
-	@echo "Extracting raw data from Docker image..."
-	@echo "This target will be implemented in Phase 4"
+	@echo "=== Extracting Synthea CSV data from Docker image ==="
+	@echo ""
+	@echo "[1/6] Checking Docker prerequisites..."
+	@if ! command -v docker &> /dev/null; then \
+		echo "ERROR: Docker not found."; \
+		echo ""; \
+		echo "Docker is required to extract raw Synthea data from the container image."; \
+		echo ""; \
+		echo "Install Docker:"; \
+		echo "  macOS: https://docs.docker.com/desktop/install/mac-install/"; \
+		echo "  Linux: https://docs.docker.com/engine/install/"; \
+		echo "  Windows: https://docs.docker.com/desktop/install/windows-install/"; \
+		echo ""; \
+		echo "After installation, start Docker and try again."; \
+		exit 1; \
+	fi
+	@echo "✓ Docker found: $$(docker --version)"
+	@if ! docker info &> /dev/null; then \
+		echo "ERROR: Docker daemon is not running."; \
+		echo ""; \
+		echo "Start Docker:"; \
+		echo "  macOS/Windows: Open Docker Desktop"; \
+		echo "  Linux: sudo systemctl start docker"; \
+		echo ""; \
+		echo "Then try again."; \
+		exit 2; \
+	fi
+	@echo "✓ Docker daemon is running"
+	@echo ""
+	@echo "[2/6] Creating data/raw directory..."
+	@mkdir -p data/raw
+	@echo "✓ Directory created"
+	@echo ""
+	@echo "[3/6] Pulling Docker image (ghcr.io/rdewai/redefining-dataengineering-with-ai:raw-data)..."
+	@docker pull ghcr.io/rdewai/redefining-dataengineering-with-ai:raw-data || { echo "ERROR: Failed to pull Docker image"; exit 3; }
+	@echo ""
+	@echo "[4/6] Creating temporary container..."
+	@CONTAINER_ID=$$(docker create ghcr.io/rdewai/redefining-dataengineering-with-ai:raw-data) && \
+	echo "✓ Container created: $$CONTAINER_ID" && \
+	echo "" && \
+	echo "[5/6] Copying CSV files from container to data/raw/..." && \
+	docker cp $$CONTAINER_ID:/workspace/data/synthea/csv/. data/raw/ && \
+	echo "✓ Files copied successfully" && \
+	echo "" && \
+	echo "[6/6] Cleaning up temporary container..." && \
+	docker rm $$CONTAINER_ID > /dev/null && \
+	echo "✓ Container removed" || { echo "ERROR: Failed to copy files or cleanup"; docker rm -f $$CONTAINER_ID 2>/dev/null; exit 3; }
+	@echo ""
+	@echo "✅ Raw data extraction complete!"
+	@echo ""
+	@echo "CSV files are now available in: data/raw/"
+	@echo "Files: $$(ls -1 data/raw/*.csv 2>/dev/null | wc -l | tr -d ' ') CSV files"
+	@echo ""
 
 ##@ Tool Management
 
 superset-init: ## Initialize Apache Superset database and admin user
-	@echo "Initializing Apache Superset..."
-	@echo "This target will be implemented in Phase 5"
+	@echo "=== Initializing Apache Superset ==="
+	@echo ""
+	@echo "[1/4] Checking prerequisites..."
+	@if [ ! -d ".venv" ]; then \
+		echo "ERROR: Development environment not set up."; \
+		echo ""; \
+		echo "Please run 'make dev-setup' first to create the virtual environment."; \
+		exit 1; \
+	fi
+	@echo "✓ Virtual environment exists"
+	@echo ""
+	@echo "[2/4] Initializing Superset database..."
+	@.venv/bin/superset db upgrade || { echo "ERROR: Database upgrade failed"; exit 3; }
+	@echo "✓ Database initialized"
+	@echo ""
+	@echo "[3/4] Creating Superset roles and permissions..."
+	@.venv/bin/superset init || { echo "ERROR: Superset init failed"; exit 3; }
+	@echo "✓ Roles and permissions created"
+	@echo ""
+	@echo "[4/4] Creating admin user..."
+	@echo ""
+	@echo "Please provide admin user details:"
+	@.venv/bin/superset fab create-admin || { echo "ERROR: Admin user creation failed"; exit 3; }
+	@echo ""
+	@echo "✅ Superset initialization complete!"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Run 'make superset-run' to start the web server"
+	@echo "  2. Access Superset at http://localhost:8088"
+	@echo ""
 
 superset-run: ## Start Apache Superset web server on localhost:8088
-	@echo "Starting Apache Superset..."
-	@echo "This target will be implemented in Phase 5"
+	@echo "=== Starting Apache Superset ==="
+	@echo ""
+	@echo "[1/3] Checking prerequisites..."
+	@if [ ! -d ".venv" ]; then \
+		echo "ERROR: Development environment not set up."; \
+		echo ""; \
+		echo "Please run 'make dev-setup' first."; \
+		exit 1; \
+	fi
+	@echo "✓ Virtual environment exists"
+	@echo ""
+	@echo "[2/3] Checking if port 8088 is available..."
+	@if lsof -Pi :8088 -sTCP:LISTEN -t >/dev/null 2>&1; then \
+		echo "ERROR: Port 8088 is already in use."; \
+		echo ""; \
+		echo "Another process is using port 8088:"; \
+		lsof -Pi :8088 -sTCP:LISTEN 2>/dev/null || true; \
+		echo ""; \
+		echo "Stop the process or choose a different port."; \
+		exit 2; \
+	fi
+	@echo "✓ Port 8088 is available"
+	@echo ""
+	@echo "[3/3] Starting Superset web server..."
+	@echo ""
+	@echo "============================================"
+	@echo "  Superset is starting..."
+	@echo "  URL: http://localhost:8088"
+	@echo "  Press Ctrl+C to stop"
+	@echo "============================================"
+	@echo ""
+	@.venv/bin/superset run -h 0.0.0.0 -p 8088 --with-threads --reload --debugger || { echo "ERROR: Superset startup failed"; exit 3; }
 
 ##@ Maintenance
 
 clean: ## Remove generated files (.venv, data/raw, __pycache__, build artifacts)
-	@echo "Cleaning up..."
-	@echo "This target will be implemented in Phase 6"
+	@echo "=== Cleaning up development environment ==="
+	@echo ""
+	@echo "Removing generated files and directories..."
+	@echo ""
+	@if [ -d ".venv" ]; then \
+		echo "  - Removing .venv/"; \
+		rm -rf .venv; \
+	fi
+	@if [ -d "data/raw" ]; then \
+		echo "  - Removing data/raw/"; \
+		rm -rf data/raw; \
+	fi
+	@echo "  - Removing __pycache__/ directories"
+	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@echo "  - Removing .pyc files"
+	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	@echo "  - Removing .pytest_cache/"
+	@rm -rf .pytest_cache 2>/dev/null || true
+	@echo "  - Removing .superset/ (Superset metadata)"
+	@rm -rf .superset superset.db* 2>/dev/null || true
+	@echo ""
+	@echo "✅ Clean complete!"
+	@echo ""
+	@echo "To rebuild the environment, run: make dev-setup"
+	@echo ""
 
 test: ## Run all tests with pytest
-	@echo "Running tests..."
-	@echo "This target will be implemented in Phase 6"
+	@echo "=== Running test suite ==="
+	@echo ""
+	@if [ ! -d ".venv" ]; then \
+		echo "ERROR: Development environment not set up."; \
+		echo ""; \
+		echo "Please run 'make dev-setup' first."; \
+		exit 1; \
+	fi
+	@echo "Running all integration and unit tests..."
+	@echo ""
+	@.venv/bin/pytest tests/ -v --tb=short || { echo ""; echo "❌ Tests failed"; exit 1; }
+	@echo ""
+	@echo "✅ All tests passed!"
+	@echo ""
