@@ -213,13 +213,15 @@ __marimo__/
 superset.db
 superset.db-shm
 superset.db-wal
-superset_config.py  # May contain SECRET_KEY and other sensitive config
+# Note: superset_config.py is tracked in git with development defaults
+# Production deployments should override SECRET_KEY via environment variables
 
 # Project-specific data directories
 # Raw data copied from Docker image (can be regenerated with make raw-data-copy)
 data/raw/
 data/processed/
 data/temp/
+data/duckdb/  # DuckDB database files (can be regenerated)
 *.csv  # Large CSV files should not be committed
 *.parquet  # Large Parquet files should not be committed
 

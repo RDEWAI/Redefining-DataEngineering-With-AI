@@ -97,11 +97,29 @@ make raw-data-copy
 # Initialize Superset (first time only)
 make superset-init
 
+# This will:
+# - Create Superset database and tables
+# - Set up roles and permissions
+# - Create admin user (username: admin, password: admin)
+# - Configure DuckDB as a pre-connected data source
+
 # Start Superset web server
 make superset-run
 
-# Access Superset at http://localhost:8088
+# This will:
+# - Auto-detect available port (8088-8100)
+# - Start Superset with hot-reload enabled
+# - Display URL and login credentials
+
+# Access Superset at the displayed URL (usually http://localhost:8088)
+# Login: admin / admin
 ```
+
+**Pre-configured Data Sources:**
+- **DuckDB Analytics** - Ready to use at `data/duckdb/analytics.db`
+  - Use SQL Lab to query data
+  - Create datasets and charts
+  - Build dashboards
 
 ### Running Tests
 
@@ -148,18 +166,23 @@ Redefining-DataEngineering-With-AI/
 ├── Makefile                       # Development workflow automation
 ├── pyproject.toml                 # UV project configuration
 ├── uv.lock                        # Dependency lock file (committed)
+├── superset_config.py             # Superset configuration (committed)
 ├── .venv/                         # Virtual environment (gitignored)
 │
 ├── data/
-│   └── raw/                       # Synthea CSV data (gitignored)
+│   ├── raw/                       # Synthea CSV data (gitignored)
+│   └── duckdb/                    # DuckDB databases (gitignored)
+│       └── analytics.db           # Pre-configured for Superset
 │
 ├── scripts/
-│   └── validate-environment.sh    # Prerequisite validation
+│   ├── validate-environment.sh    # Prerequisite validation
+│   └── add_duckdb_connection.py   # Auto-configure DuckDB in Superset
 │
 ├── tests/
 │   ├── integration/               # Integration tests
 │   └── unit/                      # Unit tests
 │
+├── .superset/                     # Superset metadata (gitignored)
 ├── docker-compose.yml             # Docker for data extraction only
 ├── Dockerfile                     # Docker for data extraction only
 └── README.md                      # This file
@@ -268,11 +291,10 @@ make dev-setup
 
 **Port 8088 already in use:**
 ```bash
-# Find and kill process
-lsof -i :8088
+# The Makefile automatically detects available ports (8088-8100)
+# Just run make superset-run and it will use the next available port
 
-# Or kill directly
-kill $(lsof -t -i:8088)
+make superset-run
 ```
 
 **Superset won't start:**
@@ -282,6 +304,15 @@ make superset-init
 
 # Then start the server
 make superset-run
+```
+
+**Can't find DuckDB database:**
+```bash
+# The DuckDB Analytics connection is auto-configured during init
+# If it's missing, re-run initialization:
+make clean
+make dev-setup
+make superset-init
 ```
 
 **pkg_resources error:**
@@ -312,8 +343,10 @@ docker pull ghcr.io/rdewai/redefining-dataengineering-with-ai:raw-data
 ### Core Dependencies
 
 - **DuckDB 1.1.3** - Fast analytical database
+- **duckdb-engine** - SQLAlchemy driver for DuckDB
 - **SQLMesh** - SQL-based data transformations
 - **Apache Superset 4.1.1** - Business intelligence platform
+- **marshmallow <4** - Data serialization (pinned for Superset compatibility)
 - **pytest 8.3.4** - Testing framework
 - **setuptools** - Python packaging tools
 

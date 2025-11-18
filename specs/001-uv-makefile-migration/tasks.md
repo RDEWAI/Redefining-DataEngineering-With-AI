@@ -99,19 +99,29 @@
 
 ### Implementation for User Story 3
 
-- [X] T038 [P] [US3] Implement superset-init target in Makefile for database initialization
-- [X] T039 [P] [US3] Add Superset database upgrade command to superset-init target
-- [X] T040 [P] [US3] Add Superset admin user creation to superset-init target (interactive prompts)
-- [X] T041 [US3] Implement superset-run target in Makefile to start web server on localhost:8088
-- [X] T042 [US3] Add port binding and threading configuration to superset-run target
-- [X] T043 [US3] Add error handling for port conflicts to superset-run target
+- [X] T038 [P] [US3] Implement superset-init target in Makefile for database initialization (✅ Enhanced: Added superset_config.py with FLASK_APP setup)
+- [X] T039 [P] [US3] Add Superset database upgrade command to superset-init target (✅ Enhanced: Configured with SUPERSET_CONFIG_PATH and FLASK_APP env vars)
+- [X] T040 [P] [US3] Add Superset admin user creation to superset-init target (✅ Enhanced: Automatic default credentials - admin/admin, no interactive prompts)
+- [X] T041 [US3] Implement superset-run target in Makefile to start web server on localhost:8088 (✅ Enhanced: Auto-detects available ports 8088-8100)
+- [X] T042 [US3] Add port binding and threading configuration to superset-run target (✅ Complete with --with-threads --reload --debugger flags)
+- [X] T043 [US3] Add error handling for port conflicts to superset-run target (✅ Enhanced: Automatic port selection instead of error, tries 8088-8100)
 - [X] T044 [P] [US3] Create integration test in tests/integration/test_tools.py to verify DuckDB import and basic query
 - [X] T045 [P] [US3] Create integration test to verify SQLMesh import and basic operations
 - [X] T046 [P] [US3] Create integration test to verify Superset version command works
 - [X] T047 [P] [US3] Create integration test to verify no dependency conflicts in uv.lock
 - [ ] T048 [US3] Create validation test to verify Superset accessible at localhost:8088 after superset-run (optional, manual test)
 
-**Checkpoint**: User Story 3 complete - all modern data stack tools functional and accessible
+### Enhancements (Post-Initial Implementation)
+
+- [X] T049a [US3] Add duckdb-engine to pyproject.toml dependencies for DuckDB SQLAlchemy support
+- [X] T049b [US3] Pin marshmallow to <4 to prevent version conflicts with Superset 4.1.1
+- [X] T049c [US3] Create scripts/add_duckdb_connection.py to auto-configure DuckDB data source
+- [X] T049d [US3] Update superset_config.py with DuckDB data directory configuration (data/duckdb/)
+- [X] T049e [US3] Update superset-init target to add DuckDB connection automatically (5 steps instead of 4)
+- [X] T049f [US3] Update .gitignore to exclude data/duckdb/ directory
+- [X] T049g [US3] Ensure superset_config.py is tracked in git with safe development defaults
+
+**Checkpoint**: User Story 3 complete - all modern data stack tools functional and accessible, with DuckDB pre-configured as a data source
 
 ---
 

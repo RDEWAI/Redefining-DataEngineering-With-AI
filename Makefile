@@ -117,7 +117,7 @@ raw-data-copy: ## Extract Synthea CSV data from Docker image to data/raw/ (< 2 m
 superset-init: ## Initialize Apache Superset database and admin user
 	@echo "=== Initializing Apache Superset ==="
 	@echo ""
-	@echo "[1/4] Checking prerequisites..."
+	@echo "[1/5] Checking prerequisites..."
 	@if [ ! -d ".venv" ]; then \
 		echo "ERROR: Development environment not set up."; \
 		echo ""; \
@@ -126,24 +126,41 @@ superset-init: ## Initialize Apache Superset database and admin user
 	fi
 	@echo "✓ Virtual environment exists"
 	@echo ""
-	@echo "[2/4] Initializing Superset database..."
-	@.venv/bin/superset db upgrade || { echo "ERROR: Database upgrade failed"; exit 3; }
+	@echo "[2/5] Initializing Superset database..."
+	@export SUPERSET_CONFIG_PATH=$$(pwd)/superset_config.py && export FLASK_APP=superset && .venv/bin/superset db upgrade || { echo "ERROR: Database upgrade failed"; exit 3; }
 	@echo "✓ Database initialized"
 	@echo ""
-	@echo "[3/4] Creating Superset roles and permissions..."
-	@.venv/bin/superset init || { echo "ERROR: Superset init failed"; exit 3; }
+	@echo "[3/5] Creating Superset roles and permissions..."
+	@export SUPERSET_CONFIG_PATH=$$(pwd)/superset_config.py && export FLASK_APP=superset && .venv/bin/superset init || { echo "ERROR: Superset init failed"; exit 3; }
 	@echo "✓ Roles and permissions created"
 	@echo ""
-	@echo "[4/4] Creating admin user..."
+	@echo "[4/5] Creating default admin user..."
+	@export SUPERSET_CONFIG_PATH=$$(pwd)/superset_config.py && export FLASK_APP=superset && \
+	.venv/bin/superset fab create-admin \
+		--username admin \
+		--firstname Admin \
+		--lastname User \
+		--email admin@superset.com \
+		--password admin || { echo "ERROR: Admin user creation failed"; exit 3; }
+	@echo "✓ Admin user created"
 	@echo ""
-	@echo "Please provide admin user details:"
-	@.venv/bin/superset fab create-admin || { echo "ERROR: Admin user creation failed"; exit 3; }
+	@echo "[5/5] Adding DuckDB data source..."
+	@export SUPERSET_CONFIG_PATH=$$(pwd)/superset_config.py && export FLASK_APP=superset && \
+	.venv/bin/python scripts/add_duckdb_connection.py || { echo "ERROR: Failed to add DuckDB connection"; exit 3; }
 	@echo ""
 	@echo "✅ Superset initialization complete!"
 	@echo ""
+	@echo "Default admin credentials:"
+	@echo "  Username: admin"
+	@echo "  Password: admin"
+	@echo ""
+	@echo "Data sources configured:"
+	@echo "  - DuckDB Analytics (duckdb:///data/duckdb/analytics.db)"
+	@echo ""
 	@echo "Next steps:"
 	@echo "  1. Run 'make superset-run' to start the web server"
-	@echo "  2. Access Superset at http://localhost:8088"
+	@echo "  2. Access Superset at the URL shown"
+	@echo "  3. Use DuckDB Analytics to create charts and dashboards"
 	@echo ""
 
 superset-run: ## Start Apache Superset web server on localhost:8088
@@ -158,27 +175,29 @@ superset-run: ## Start Apache Superset web server on localhost:8088
 	fi
 	@echo "✓ Virtual environment exists"
 	@echo ""
-	@echo "[2/3] Checking if port 8088 is available..."
-	@if lsof -Pi :8088 -sTCP:LISTEN -t >/dev/null 2>&1; then \
-		echo "ERROR: Port 8088 is already in use."; \
-		echo ""; \
-		echo "Another process is using port 8088:"; \
-		lsof -Pi :8088 -sTCP:LISTEN 2>/dev/null || true; \
-		echo ""; \
-		echo "Stop the process or choose a different port."; \
-		exit 2; \
-	fi
-	@echo "✓ Port 8088 is available"
-	@echo ""
-	@echo "[3/3] Starting Superset web server..."
-	@echo ""
-	@echo "============================================"
-	@echo "  Superset is starting..."
-	@echo "  URL: http://localhost:8088"
-	@echo "  Press Ctrl+C to stop"
-	@echo "============================================"
-	@echo ""
-	@.venv/bin/superset run -h 0.0.0.0 -p 8088 --with-threads --reload --debugger || { echo "ERROR: Superset startup failed"; exit 3; }
+	@echo "[2/3] Finding available port..."
+	@PORT=8088; \
+	while lsof -Pi :$$PORT -sTCP:LISTEN -t >/dev/null 2>&1; do \
+		echo "  Port $$PORT is in use, trying next port..."; \
+		PORT=$$((PORT + 1)); \
+		if [ $$PORT -gt 8100 ]; then \
+			echo "ERROR: No available ports found between 8088-8100"; \
+			exit 2; \
+		fi; \
+	done; \
+	echo "✓ Using port $$PORT"; \
+	echo ""; \
+	echo "[3/3] Starting Superset web server..."; \
+	echo ""; \
+	echo "============================================"; \
+	echo "  Superset is starting..."; \
+	echo "  URL: http://localhost:$$PORT"; \
+	echo "  Username: admin"; \
+	echo "  Password: admin"; \
+	echo "  Press Ctrl+C to stop"; \
+	echo "============================================"; \
+	echo ""; \
+	export SUPERSET_CONFIG_PATH=$$(pwd)/superset_config.py && export FLASK_APP=superset && .venv/bin/superset run -h 0.0.0.0 -p $$PORT --with-threads --reload --debugger || { echo "ERROR: Superset startup failed"; exit 3; }
 
 ##@ Maintenance
 
