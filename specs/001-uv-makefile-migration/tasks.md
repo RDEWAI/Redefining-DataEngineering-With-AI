@@ -135,9 +135,9 @@
 - [ ] T052 [P] Create specs/001-uv-makefile-migration/quickstart.md from plan.md template (skipped - plan.md already serves as quickstart)
 - [X] T053 Update README.md with UV installation instructions and Makefile usage
 - [X] T054 Update README.md to reflect local-first development model (remove Docker-first language)
-- [ ] T055 Update .specify/memory/constitution.md to reflect local-first development model (FR-015) (deferred - out of scope for current implementation)
-- [ ] T056 Update constitution.md to replace Docker-based testing with local pytest execution (deferred - out of scope for current implementation)
-- [ ] T057 Update constitution.md quality gates to remove Docker build gate, add UV resolution gate (deferred - out of scope for current implementation)
+- [X] T055 Update .specify/memory/constitution.md to reflect local-first development model (FR-015)
+- [X] T056 Update constitution.md to replace Docker-based testing with local pytest execution
+- [X] T057 Update constitution.md quality gates to remove Docker build gate, add UV resolution gate
 - [X] T058 Update DOCKER.md to clarify Docker used only for data extraction, not development environment
 - [X] T059 [P] Deleted requirements.txt (fully migrated to UV/pyproject.toml)
 - [X] T060 Create unit test in tests/unit/test_prerequisite_checks.py for UV detection
@@ -370,6 +370,6 @@ This enables:
 - **Each user story**: Independently completable and testable
 - **Commit strategy**: Commit after each task or logical group of parallel tasks
 - **Validation checkpoints**: Stop at end of each user story phase to validate independently
-- **Constitution amendment**: FR-015 (T055-T057) is critical - project conflicts with Docker-first mandate until updated
+- **Constitution amendment**: FR-015 (T055-T057) - ✅ COMPLETED - constitution updated to local-first UV development model
 - **Requirements.txt deprecation**: T059 keeps file with deprecation notice, allows gradual transition
 - **Avoid**: Vague tasks, same-file conflicts, cross-story dependencies that break independence

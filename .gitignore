@@ -217,13 +217,8 @@ superset.db-wal
 # Production deployments should override SECRET_KEY via environment variables
 
 # Project-specific data directories
-# Raw data copied from Docker image (can be regenerated with make raw-data-copy)
-data/raw/
-data/processed/
-data/temp/
-data/duckdb/  # DuckDB database files (can be regenerated)
-*.csv  # Large CSV files should not be committed
-*.parquet  # Large Parquet files should not be committed
+# All data files can be regenerated with make raw-data-copy
+data/
 
 # Makefile build artifacts
 .venv/.installed  # Touchfile for dependency tracking
