@@ -1,11 +1,12 @@
 # Redefining Data Engineering with AI
 
-> **Docker-based Data Engineering Development Environment**
-> Production-ready containerized environment with Python 3.11, PySpark, DuckDB, Apache Superset, and AI-powered task management.
+> **Modern Local-First Data Engineering Development Environment**
+> Fast, reproducible local development with UV package manager, DuckDB, SQLMesh, and Apache Superset.
 
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue)](https://www.docker.com/)
-[![Python](https://img.shields.io/badge/Python-3.11-green)](https://www.python.org/)
-[![PySpark](https://img.shields.io/badge/PySpark-3.5.4-orange)](https://spark.apache.org/)
+[![UV](https://img.shields.io/badge/UV-Package_Manager-blue)](https://docs.astral.sh/uv/)
+[![Python](https://img.shields.io/badge/Python-3.10_|_3.11_|_3.12-green)](https://www.python.org/)
+[![DuckDB](https://img.shields.io/badge/DuckDB-1.1.3-orange)](https://duckdb.org/)
+[![Superset](https://img.shields.io/badge/Superset-4.1.1-purple)](https://superset.apache.org/)
 
 ---
 
@@ -16,85 +17,119 @@
 git clone <your-repo-url>
 cd Redefining-DataEngineering-With-AI
 
-# 2. Pull pre-built image and start Docker environment
-docker compose pull
-docker compose up -d
+# 2. Set up development environment (< 5 minutes)
+make dev-setup
 
-# 3. Verify installation
-./scripts/test-environment.sh
+# 3. (Optional) Extract raw Synthea data (< 2 minutes)
+make raw-data-copy
 
-# 4. Access the container
-docker compose exec rdewai-dev bash
+# 4. Activate virtual environment
+source .venv/bin/activate
 ```
 
 ✅ **You're ready to start developing!**
+
+### Prerequisites
+
+- **UV Package Manager** - [Install](https://docs.astral.sh/uv/)
+- **Python 3.10, 3.11, or 3.12** - [Download](https://www.python.org/downloads/)
+- **Docker** (only for data extraction) - [Download](https://www.docker.com/)
 
 ---
 
 ## 💡 What This Project Provides
 
-A pre-built containerized data engineering development environment with:
+A modern local-first data engineering development environment with:
 
-- **Python 3.11** + **Java 11** runtime
-- **PySpark 3.5.4** for distributed data processing
-- **DuckDB** for embedded analytics
-- **Apache Superset 4.1.1** for data visualization
-- **Google Cloud SDKs** (BigQuery, Cloud Storage)
-- **Pre-built Docker image** from GitHub Container Registry
+- **UV Package Manager** for fast, reliable Python dependency management
+- **DuckDB 1.1.3** for embedded analytics and fast CSV processing
+- **SQLMesh** for SQL-based data transformations
+- **Apache Superset 4.1.1** for business intelligence and data visualization
+- **Makefile workflow** for standardized development commands
+- **Reproducible builds** with uv.lock for consistent environments
 
 ---
 
-## 🐳 Docker Development Environment
+## 🛠️ Development Workflow
 
-### Prerequisites
-
-- **Docker Desktop** 20.10+ ([download](https://www.docker.com/products/docker-desktop))
-- **RAM**: 8GB minimum, 16GB recommended
-- **Disk Space**: 10GB for images and volumes
-
-### Starting Services
+### Available Make Targets
 
 ```bash
-# Pull the pre-built image (first time or to get updates)
-docker compose pull
-
-# Start in background
-docker compose up -d
-
-# View logs
-docker compose logs -f rdewai-dev
-
-# Check status
-docker compose ps
+make help           # Show all available commands
+make dev-setup      # Set up development environment (< 5 min)
+make raw-data-copy  # Extract Synthea CSV data from Docker (< 2 min)
+make superset-init  # Initialize Superset database and admin user
+make superset-run   # Start Superset web server on localhost:8088
+make test           # Run all tests with pytest
+make clean          # Remove generated files and virtual environment
 ```
 
-### Container Access
+### Initial Setup
 
 ```bash
-# Interactive shell
-docker compose exec rdewai-dev bash
+# 1. Set up development environment
+make dev-setup
 
-# Run commands directly
-docker compose exec rdewai-dev python --version
-docker compose exec rdewai-dev pyspark
+# This will:
+# - Check for UV and Python prerequisites
+# - Create a virtual environment (.venv)
+# - Install all dependencies (DuckDB, SQLMesh, Superset, pytest)
+# - Validate the installation
 ```
 
-### Exposed Ports
-
-| Port | Service | Access |
-|------|---------|--------|
-| 8088 | Apache Superset | http://localhost:8088 |
-| 4040 | Spark UI | http://localhost:4040 |
-| 8080 | Additional Services | http://localhost:8080 |
-
-### Validation
+### Working with Data
 
 ```bash
-# Basic environment test
-./scripts/test-environment.sh
+# Extract raw Synthea healthcare data
+make raw-data-copy
 
-# Comprehensive validation (19 tests)
-./scripts/comprehensive-validation.sh
+# This will:
+# - Pull Docker image with Synthea data
+# - Copy CSV files to data/raw/
+# - Clean up temporary containers
+#
+# Result: 18 CSV files (~4.3GB) in data/raw/
+```
+
+### Using Apache Superset
+
+```bash
+# Initialize Superset (first time only)
+make superset-init
+
+# This will:
+# - Create Superset database and tables
+# - Set up roles and permissions
+# - Create admin user (username: admin, password: admin)
+# - Configure DuckDB as a pre-connected data source
+
+# Start Superset web server
+make superset-run
+
+# This will:
+# - Auto-detect available port (8088-8100)
+# - Start Superset with hot-reload enabled
+# - Display URL and login credentials
+
+# Access Superset at the displayed URL (usually http://localhost:8088)
+# Login: admin / admin
+```
+
+**Pre-configured Data Sources:**
+- **DuckDB Analytics** - Ready to use at `data/duckdb/analytics.db`
+  - Use SQL Lab to query data
+  - Create datasets and charts
+  - Build dashboards
+
+### Running Tests
+
+```bash
+# Run all tests
+make test
+
+# Or activate venv and run pytest directly
+source .venv/bin/activate
+pytest tests/ -v
 ```
 
 ---
@@ -128,121 +163,204 @@ claude
 
 ```
 Redefining-DataEngineering-With-AI/
-├── .devcontainer/                 # VS Code DevContainer config
-│   └── devcontainer.json
+├── Makefile                       # Development workflow automation
+├── pyproject.toml                 # UV project configuration
+├── uv.lock                        # Dependency lock file (committed)
+├── superset_config.py             # Superset configuration (committed)
+├── .venv/                         # Virtual environment (gitignored)
 │
-├── scripts/                       # Utility scripts
-│   ├── test-environment.sh        # Quick environment test
-│   └── comprehensive-validation.sh # Full validation suite
+├── data/
+│   ├── raw/                       # Synthea CSV data (gitignored)
+│   └── duckdb/                    # DuckDB databases (gitignored)
+│       └── analytics.db           # Pre-configured for Superset
 │
-├── docker-compose.yml             # Container orchestration
-├── Dockerfile                     # Image build (for reference)
-├── requirements.txt               # Python dependencies
-├── .env.example                   # API key template
+├── scripts/
+│   ├── validate-environment.sh    # Prerequisite validation
+│   └── add_duckdb_connection.py   # Auto-configure DuckDB in Superset
+│
+├── tests/
+│   ├── integration/               # Integration tests
+│   └── unit/                      # Unit tests
+│
+├── .superset/                     # Superset metadata (gitignored)
+├── docker-compose.yml             # Docker for data extraction only
+├── Dockerfile                     # Docker for data extraction only
 └── README.md                      # This file
 ```
 
 ---
 
-## 🔄 Development Workflow
+## 🔄 Daily Development Workflow
 
 ```bash
-# 1. Pull and start environment
-docker compose pull
-docker compose up -d
+# 1. Activate virtual environment
+source .venv/bin/activate
 
-# 2. Access container
-docker compose exec rdewai-dev bash
+# 2. Work with data
+python your_analysis.py
 
-# 3. Develop and test
-python your_script.py
-pytest tests/
+# 3. Run DuckDB queries
+python -c "import duckdb; conn = duckdb.connect('data.db'); ..."
 
-# 4. Validate
-./scripts/test-environment.sh
+# 4. Test your changes
+pytest tests/ -v
+
+# 5. Start Superset for visualization (if needed)
+make superset-run
 ```
 
 ---
 
 ## 📖 Common Commands
 
-### Docker Commands
+### Makefile Commands (Primary Workflow)
 
 ```bash
-docker compose pull               # Pull latest pre-built image
-docker compose up -d              # Start services
-docker compose down               # Stop services
-docker compose ps                 # Container status
-docker compose logs rdewai-dev    # View logs
-docker compose exec rdewai-dev bash  # Access shell
+make dev-setup      # Set up development environment
+make raw-data-copy  # Extract Synthea data
+make superset-init  # Initialize Superset
+make superset-run   # Start Superset server
+make test           # Run all tests
+make clean          # Clean up generated files
+make help           # Show all available commands
 ```
 
-### Development Commands (Inside Container)
+### UV Package Manager Commands
 
 ```bash
-pyspark                           # Start PySpark shell
-pytest                            # Run tests
-python -m pytest -v               # Verbose test output
-superset db upgrade               # Initialize Superset
-superset run -h 0.0.0.0          # Start Superset server
+uv sync             # Install/update dependencies
+uv add <package>    # Add new dependency
+uv run <command>    # Run command in virtual environment
+uv lock             # Update lock file
+```
+
+### Python Development
+
+```bash
+source .venv/bin/activate  # Activate virtual environment
+python your_script.py      # Run Python scripts
+pytest tests/ -v           # Run tests with verbose output
+```
+
+### Docker (Data Extraction Only)
+
+**Note**: Docker is only used for extracting raw Synthea data. Development happens locally.
+
+```bash
+make raw-data-copy         # Preferred: Use Makefile target
+
+# Manual Docker commands (if needed):
+docker pull ghcr.io/rdewai/redefining-dataengineering-with-ai:raw-data
+docker run --rm -v $(pwd)/data/raw:/data <image> <copy-command>
 ```
 
 ---
 
 ## 🔧 Troubleshooting
 
-### Docker Issues
+### UV / Python Issues
 
-**Port already in use:**
+**UV not found:**
 ```bash
-# Find and kill process
-lsof -i :8088
-# Or change port in docker-compose.yml
+# Install UV
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Restart your shell
+exec $SHELL
 ```
 
-**Container won't start / Memory error:**
+**Wrong Python version:**
 ```bash
-# Increase Docker memory: Settings → Resources → 8GB+
-# Clean up Docker system
-docker system prune -a --volumes
-docker compose down -v
-docker compose pull
-docker compose up -d
+# Check current Python version
+python3 --version
+
+# Install Python 3.12 with UV
+uv python install 3.12
+
+# Or download from python.org
 ```
 
-**Image pull issues:**
+**Dependency conflicts:**
 ```bash
-# Pull the latest image manually
+# Clean and rebuild
+make clean
+make dev-setup
+```
+
+### Superset Issues
+
+**Port 8088 already in use:**
+```bash
+# The Makefile automatically detects available ports (8088-8100)
+# Just run make superset-run and it will use the next available port
+
+make superset-run
+```
+
+**Superset won't start:**
+```bash
+# Make sure you've initialized first
+make superset-init
+
+# Then start the server
+make superset-run
+```
+
+**Can't find DuckDB database:**
+```bash
+# The DuckDB Analytics connection is auto-configured during init
+# If it's missing, re-run initialization:
+make clean
+make dev-setup
+make superset-init
+```
+
+**pkg_resources error:**
+```bash
+# Reinstall dependencies (setuptools should be included)
+make clean
+make dev-setup
+```
+
+### Docker Issues (Data Extraction)
+
+**Docker daemon not running:**
+```bash
+# macOS/Windows: Open Docker Desktop
+# Linux: sudo systemctl start docker
+```
+
+**Image pull fails:**
+```bash
+# Pull manually
 docker pull ghcr.io/rdewai/redefining-dataengineering-with-ai:raw-data
-docker compose up -d
 ```
-
-### DevContainer Issues
-
-**Won't connect:**
-1. Install "Dev Containers" extension
-2. Verify Docker Desktop is running
-3. Pull image manually: `docker compose pull`
-4. Rebuild: `Cmd/Ctrl+Shift+P` → "Rebuild Container"
 
 ---
 
 ## 🎯 What's Installed
 
-### Python Packages
+### Core Dependencies
 
-- **Data Processing**: `pyspark`, `duckdb`, `sqlglot`
-- **Cloud Integration**: `google-cloud-bigquery`, `google-cloud-storage`
-- **Visualization**: `apache-superset`
-- **Testing**: `pytest`
+- **DuckDB 1.1.3** - Fast analytical database
+- **duckdb-engine** - SQLAlchemy driver for DuckDB
+- **SQLMesh** - SQL-based data transformations
+- **Apache Superset 4.1.1** - Business intelligence platform
+- **marshmallow <4** - Data serialization (pinned for Superset compatibility)
+- **pytest 8.3.4** - Testing framework
+- **setuptools** - Python packaging tools
 
-### Runtime Environment
+### Python Version Support
 
-- **Python**: 3.11.13
-- **Java**: OpenJDK 11 (Eclipse Temurin)
-- **PySpark**: 3.5.4
-- **DuckDB**: Latest
-- **Superset**: 4.1.1
+- **Python 3.10** ✅
+- **Python 3.11** ✅
+- **Python 3.12** ✅
+
+### Development Tools
+
+- **UV Package Manager** - Fast Python package installer
+- **Make** - Build automation
+- **Git** - Version control
 
 ---
 
@@ -258,16 +376,23 @@ This project is licensed under the MIT License.
 
 ## 📚 Additional Resources
 
-- [Claude Code Documentation](https://docs.claude.com/en/docs/claude-code)
-- [PySpark Documentation](https://spark.apache.org/docs/latest/api/python/)
-- [DuckDB Documentation](https://duckdb.org/docs/)
-- [Apache Superset Documentation](https://superset.apache.org/docs/intro)
+- [UV Documentation](https://docs.astral.sh/uv/) - UV package manager guide
+- [DuckDB Documentation](https://duckdb.org/docs/) - DuckDB SQL reference
+- [SQLMesh Documentation](https://sqlmesh.readthedocs.io/) - SQLMesh transformation guide
+- [Apache Superset Documentation](https://superset.apache.org/docs/intro) - Superset BI platform
+- [Claude Code Documentation](https://docs.claude.com/en/docs/claude-code) - Claude AI assistant
+
+## 📋 Documentation
+
+- [Makefile API Contract](specs/001-uv-makefile-migration/contracts/makefile-api.md) - Detailed Makefile target documentation
+- [DOCKER.md](DOCKER.md) - Docker setup for data extraction
+- [Quickstart Guide](specs/001-uv-makefile-migration/quickstart.md) - Step-by-step setup guide
 
 ---
 
 <div align="center">
 
-**Built with ❤️ using Docker + AI Development Tools**
+**Built with ❤️ using UV + Modern Data Stack + AI Tools**
 
 [⬆ Back to Top](#redefining-data-engineering-with-ai)
 

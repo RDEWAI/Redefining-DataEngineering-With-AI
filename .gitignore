@@ -99,7 +99,7 @@ ipython_config.py
 #   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
 #   commonly ignored for libraries.
-#uv.lock
+# uv.lock - TRACKED: We track uv.lock for reproducibility (application, not library)
 
 # poetry
 #   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
@@ -206,6 +206,22 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Apache Superset
+# Superset is a BI platform - ignore database, config, and cache directories
+.superset/
+superset.db
+superset.db-shm
+superset.db-wal
+# Note: superset_config.py is tracked in git with development defaults
+# Production deployments should override SECRET_KEY via environment variables
+
+# Project-specific data directories
+# All data files can be regenerated with make raw-data-copy
+data/
+
+# Makefile build artifacts
+.venv/.installed  # Touchfile for dependency tracking
 
 # Logs
 logs

@@ -1,13 +1,12 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version Change: NONE → 1.0.0 (Initial Constitution)
-Modified Principles: N/A (New constitution)
-Added Sections:
-  - Core Principles (5 principles)
-  - Quality Gates
-  - Performance Standards
-  - Governance
+Version Change: 1.0.0 → 1.1.0 (Local-First UV Development Model)
+Modified Principles:
+  - Section V: Reproducibility - Changed from Docker-first to local-first UV development
+  - Testing Standards: Updated to use local pytest execution instead of Docker
+  - Quality Gates: Replaced Docker build gate with UV resolution gate
+Added Sections: N/A
 Removed Sections: N/A
 Templates Requiring Updates:
   ✅ plan-template.md - Constitution Check section aligns with quality gates
@@ -43,8 +42,8 @@ Comprehensive testing ensures data pipelines are reliable, reproducible, and saf
 - **Integration Tests**: MUST verify interactions between components (PySpark jobs, DuckDB queries, external services)
 - **Contract Tests**: MUST validate data schemas and API contracts at pipeline boundaries
 - **Data Quality Tests**: MUST include assertions for data integrity (null checks, range validation, referential integrity)
-- All tests MUST be runnable in the Docker development environment without external dependencies
-- Tests MUST be automated via pytest and executable with `docker compose exec rdewai-dev pytest`
+- All tests MUST be runnable in the local UV-managed virtual environment
+- Tests MUST be automated via pytest and executable with `uv run pytest` or `make test`
 - New features MUST NOT be merged without corresponding tests
 - When TDD is requested: tests MUST be written first, verified to fail, then implemented (Red-Green-Refactor)
 
@@ -86,25 +85,27 @@ Data pipelines MUST be designed for efficiency and scalability from the start.
 All development, testing, and production environments MUST be reproducible and version-controlled.
 
 **Requirements**:
-- **Docker First**: All development MUST occur in the standardized Docker environment (`docker-compose.yml`)
-- **Dependency Pinning**: All Python dependencies MUST specify exact versions in `requirements.txt` or `pyproject.toml`
+- **Local-First with UV**: All development MUST use the UV package manager with `pyproject.toml` and `uv.lock` for dependency management
+- **Dependency Pinning**: All Python dependencies MUST be locked in `uv.lock` with exact versions resolved by UV
 - **Configuration as Code**: Environment settings MUST be codified (no manual setup steps)
 - **Data Versioning**: Input data schemas and sample datasets MUST be version-controlled
 - **Execution Reproducibility**: Pipeline runs MUST be reproducible given the same code version and input data
-- Changes to base images or dependencies MUST be tested across the full pipeline before merge
-- No code may rely on "works on my machine" - if it doesn't work in Docker, it's broken
+- **Environment Setup**: Development environment MUST be reproducible via `make dev-setup` in under 5 minutes
+- Changes to dependencies MUST be tested across the full pipeline before merge
+- No code may rely on "works on my machine" - if it doesn't work with `uv sync`, it's broken
+- **Docker for Data Only**: Docker is used only for data extraction (`make raw-data-copy`), not for development
 
-**Rationale**: Data engineering suffers from environment drift more than most disciplines. Docker-based standardization eliminates "works on my machine" issues and ensures consistent behavior across dev/test/prod.
+**Rationale**: Data engineering suffers from environment drift more than most disciplines. UV-based dependency locking with deterministic resolution eliminates "works on my machine" issues and ensures consistent behavior across dev/test/prod while maintaining fast iteration cycles.
 
 ## Quality Gates
 
 All code changes MUST pass the following automated gates before merge:
 
 1. **Linting & Type Checking**: `pylint`, `flake8`, `mypy` (zero errors)
-2. **Unit Test Suite**: `pytest tests/unit/` (100% pass rate, minimum 80% coverage)
-3. **Integration Test Suite**: `pytest tests/integration/` (100% pass rate)
-4. **Docker Build**: `docker compose build` (successful build)
-5. **Environment Validation**: `./scripts/test-environment.sh` (all checks pass)
+2. **Unit Test Suite**: `uv run pytest tests/unit/` (100% pass rate, minimum 80% coverage)
+3. **Integration Test Suite**: `uv run pytest tests/integration/` (100% pass rate)
+4. **UV Dependency Resolution**: `uv sync` (successful dependency resolution with no conflicts)
+5. **Environment Validation**: `make dev-setup` (all prerequisite checks pass)
 6. **Documentation Updates**: User-facing changes MUST include updated README/docs
 
 ## Performance Standards
@@ -148,4 +149,4 @@ Performance targets are feature-specific but MUST be explicitly documented in ea
 - Template files (spec, plan, tasks) MUST align with constitutional requirements
 - Feature implementations MUST include constitution compliance checklist
 
-**Version**: 1.0.0 | **Ratified**: 2025-11-10 | **Last Amended**: 2025-11-10
+**Version**: 1.1.0 | **Ratified**: 2025-11-10 | **Last Amended**: 2025-11-18
