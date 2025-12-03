@@ -4,7 +4,7 @@
 # This Makefile provides a standardized development workflow using UV package manager.
 # For detailed documentation, see: specs/001-uv-makefile-migration/contracts/makefile-api.md
 
-.PHONY: help dev-setup raw-data-copy clean test superset-init superset-run
+.PHONY: help dev-setup raw-data-copy clean test superset-init superset-run load-raw-data
 
 # Default target: Display help
 .DEFAULT_GOAL := help
@@ -112,6 +112,24 @@ raw-data-copy: ## Extract Synthea CSV data from Docker image to data/raw/ (< 2 m
 	@echo "Files: $$(ls -1 data/raw/*.csv 2>/dev/null | wc -l | tr -d ' ') CSV files"
 	@echo ""
 
+load-raw-data: ## Load Synthea CSV files from data/raw/ into DuckDB tables
+	@echo "=== Loading CSV data into DuckDB ==="
+	@echo ""
+	@if [ ! -d ".venv" ]; then \
+		echo "ERROR: Development environment not set up."; \
+		echo ""; \
+		echo "Please run 'make dev-setup' first."; \
+		exit 1; \
+	fi
+	@if [ ! -d "data/raw" ] || [ -z "$$(ls -A data/raw/*.csv 2>/dev/null)" ]; then \
+		echo "ERROR: No CSV files found in data/raw/"; \
+		echo ""; \
+		echo "Please run 'make raw-data-copy' first."; \
+		exit 1; \
+	fi
+	@.venv/bin/python scripts/load_raw_csv_to_duckdb.py || { echo ""; echo "❌ Data loading failed"; exit 1; }
+	@echo ""
+
 ##@ Tool Management
 
 superset-init: ## Initialize Apache Superset database and admin user
@@ -155,7 +173,7 @@ superset-init: ## Initialize Apache Superset database and admin user
 	@echo "  Password: admin"
 	@echo ""
 	@echo "Data sources configured:"
-	@echo "  - DuckDB Analytics (duckdb:///data/duckdb/analytics.db)"
+	@echo "  - DuckDB Analytics (duckdb:///data/duckdb/raw.db)"
 	@echo ""
 	@echo "Next steps:"
 	@echo "  1. Run 'make superset-run' to start the web server"

@@ -28,7 +28,7 @@ def add_duckdb_database():
         # Get the DuckDB database path from config
         duckdb_path = app.config.get('DUCKDB_DATABASE')
         if not duckdb_path:
-            duckdb_path = PROJECT_ROOT / 'data' / 'duckdb' / 'analytics.db'
+            duckdb_path = PROJECT_ROOT / 'data' / 'duckdb' / 'raw.db'
 
         # SQLAlchemy URI for DuckDB
         sqlalchemy_uri = f"duckdb:///{duckdb_path}"

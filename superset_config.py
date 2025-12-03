@@ -51,7 +51,7 @@ FEATURE_FLAGS = {
 
 # DuckDB data directory (for analytics database)
 DUCKDB_DATA_DIR = BASE_DIR / 'data' / 'duckdb'
-DUCKDB_DATABASE = DUCKDB_DATA_DIR / 'analytics.db'
+DUCKDB_DATABASE = DUCKDB_DATA_DIR / 'raw.db'
 
 # Create directories if they don't exist
 os.makedirs(BASE_DIR / '.superset', exist_ok=True)

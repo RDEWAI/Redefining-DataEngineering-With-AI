@@ -58,6 +58,7 @@ A modern local-first data engineering development environment with:
 make help           # Show all available commands
 make dev-setup      # Set up development environment (< 5 min)
 make raw-data-copy  # Extract Synthea CSV data from Docker (< 2 min)
+make load-raw-data  # Load CSV files into DuckDB tables (< 10 min)
 make superset-init  # Initialize Superset database and admin user
 make superset-run   # Start Superset web server on localhost:8088
 make test           # Run all tests with pytest
@@ -89,6 +90,16 @@ make raw-data-copy
 # - Clean up temporary containers
 #
 # Result: 18 CSV files (~4.3GB) in data/raw/
+
+# Load CSV data into DuckDB
+make load-raw-data
+
+# This will:
+# - Load all 18 CSV files into DuckDB tables
+# - Create tables in the 'synthea' schema
+# - Display progress and row counts
+#
+# Result: DuckDB database at data/duckdb/raw.db with 18 tables
 ```
 
 ### Using Apache Superset
@@ -116,7 +127,7 @@ make superset-run
 ```
 
 **Pre-configured Data Sources:**
-- **DuckDB Analytics** - Ready to use at `data/duckdb/analytics.db`
+- **DuckDB Analytics** - Ready to use at `data/duckdb/raw.db` (synthea schema)
   - Use SQL Lab to query data
   - Create datasets and charts
   - Build dashboards
@@ -172,7 +183,7 @@ Redefining-DataEngineering-With-AI/
 ├── data/
 │   ├── raw/                       # Synthea CSV data (gitignored)
 │   └── duckdb/                    # DuckDB databases (gitignored)
-│       └── analytics.db           # Pre-configured for Superset
+│       └── raw.db                 # Synthea data (synthea schema)
 │
 ├── scripts/
 │   ├── validate-environment.sh    # Prerequisite validation
@@ -218,6 +229,7 @@ make superset-run
 ```bash
 make dev-setup      # Set up development environment
 make raw-data-copy  # Extract Synthea data
+make load-raw-data  # Load CSV data into DuckDB
 make superset-init  # Initialize Superset
 make superset-run   # Start Superset server
 make test           # Run all tests
