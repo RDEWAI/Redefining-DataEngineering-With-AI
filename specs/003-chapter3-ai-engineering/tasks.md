@@ -28,12 +28,12 @@ All paths relative to `chapter-3/` directory:
 
 **Purpose**: Project initialization and directory structure
 
-- [ ] T001 Create `chapter-3/` directory structure per plan.md
-- [ ] T002 Create `chapter-3/pyproject.toml` with UV-managed dependencies (duckdb, fastmcp, openai, sentence-transformers, pandas, numpy, matplotlib, seaborn, pytest)
-- [ ] T003 [P] Create `chapter-3/Makefile` with targets: dev-setup, data-copy, load-data, test, lint
-- [ ] T004 [P] Create `chapter-3/.env.example` with OPENROUTER_API_KEY, LLM_PROVIDER, DB_PATH
-- [ ] T005 [P] Create `chapter-3/README.md` with quickstart and overview
-- [ ] T006 Initialize `chapter-3/src/__init__.py` and all sub-package `__init__.py` files
+- [X] T001 Create `chapter-3/` directory structure per plan.md
+- [X] T002 Create `chapter-3/pyproject.toml` with UV-managed dependencies (duckdb, fastmcp, openai, sentence-transformers, pandas, numpy, matplotlib, seaborn, pytest)
+- [X] T003 [P] Create `chapter-3/Makefile` with targets: dev-setup, data-copy, load-data, test, lint
+- [X] T004 [P] Create `chapter-3/.env.example` with OPENROUTER_API_KEY, LLM_PROVIDER, DB_PATH
+- [X] T005 [P] Create `chapter-3/README.md` with quickstart and overview
+- [X] T006 Initialize `chapter-3/src/__init__.py` and all sub-package `__init__.py` files
 
 ---
 
@@ -43,11 +43,11 @@ All paths relative to `chapter-3/` directory:
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T007 [P] Create `chapter-3/src/library/__init__.py` with package exports
-- [ ] T008 [P] Create `chapter-3/src/llm/__init__.py` with package exports
-- [ ] T009 [P] Create `chapter-3/tests/__init__.py` and test package structure
-- [ ] T010 Create `chapter-3/data/raw/library/` directory and verify CSV is accessible
-- [ ] T011 Create `chapter-3/data/duckdb/` directory for database files
+- [X] T007 [P] Create `chapter-3/src/library/__init__.py` with package exports
+- [X] T008 [P] Create `chapter-3/src/llm/__init__.py` with package exports
+- [X] T009 [P] Create `chapter-3/tests/__init__.py` and test package structure
+- [X] T010 Create `chapter-3/data/raw/library/` directory and verify CSV is accessible
+- [X] T011 Create `chapter-3/data/duckdb/` directory for database files
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
