@@ -4,7 +4,7 @@ Add project-specific instructions for Claude Code here.
 
 ## Active Technologies
 - Python 3.10-3.12 (aligned with existing project) (003-chapter3-ai-engineering)
-- DuckDB at `chapter-3/data/duckdb/library.db` with `library` schema (003-chapter3-ai-engineering)
+- DuckDB at `chapter-3/data/duckdb/chapter3.db` with `library` schema (003-chapter3-ai-engineering)
 
 - **Python 3.10-3.12** with UV package manager for environment management
 - **DuckDB 1.1.3** for embedded analytics database

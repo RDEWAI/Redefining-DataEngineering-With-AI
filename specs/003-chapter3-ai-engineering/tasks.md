@@ -61,60 +61,60 @@ All paths relative to `chapter-3/` directory:
 
 ### Unit Tests for User Story 1
 
-- [ ] T012 [P] [US1] Create `chapter-3/tests/unit/test_domain.py` with tests for Book, Location, Status, Category domain classes
-- [ ] T013 [P] [US1] Create `chapter-3/tests/unit/test_repository.py` with tests for BookRepository (search, filter, stats)
+- [X] T012 [P] [US1] Create `chapter-3/tests/unit/test_domain.py` with tests for Book, Location, Status, Category domain classes
+- [X] T013 [P] [US1] Create `chapter-3/tests/unit/test_repository.py` with tests for BookRepository (search, filter, stats)
 
 ### Integration Tests for User Story 1
 
-- [ ] T014 [P] [US1] Create `chapter-3/tests/integration/test_data_load.py` with end-to-end CSV loading test
+- [X] T014 [P] [US1] Create `chapter-3/tests/integration/test_data_load.py` with end-to-end CSV loading test
 
 ### Domain Layer Implementation
 
-- [ ] T015 [P] [US1] Create `chapter-3/src/library/domain.py` with BookStatus enum (Present, Missing, Checked Out)
-- [ ] T016 [P] [US1] Add Category enum to `chapter-3/src/library/domain.py` (Programming, History, Science, Fiction, Thriller)
-- [ ] T017 [P] [US1] Add Location dataclass to `chapter-3/src/library/domain.py` (cabinet, rack, row)
-- [ ] T018 [US1] Add Book dataclass to `chapter-3/src/library/domain.py` with has_weak_signal and is_available properties
+- [X] T015 [P] [US1] Create `chapter-3/src/library/domain.py` with BookStatus enum (Present, Missing, Checked Out)
+- [X] T016 [P] [US1] Add Category enum to `chapter-3/src/library/domain.py` (Programming, History, Science, Fiction, Thriller)
+- [X] T017 [P] [US1] Add Location dataclass to `chapter-3/src/library/domain.py` (cabinet, rack, row)
+- [X] T018 [US1] Add Book dataclass to `chapter-3/src/library/domain.py` with has_weak_signal and is_available properties
 
 ### Repository Layer Implementation
 
-- [ ] T019 [US1] Create `chapter-3/src/library/repository.py` with BookRepository class and DuckDB connection
-- [ ] T020 [US1] Add search_books(query, category) method to BookRepository
-- [ ] T021 [US1] Add get_book_by_id(book_id) method to BookRepository
-- [ ] T022 [US1] Add list_by_category(category, status) method to BookRepository
-- [ ] T023 [US1] Add list_by_status(status, category) method to BookRepository
-- [ ] T024 [US1] Add get_weak_signal_books(threshold) method to BookRepository
-- [ ] T025 [US1] Add find_books_in_cabinet(cabinet, rack) method to BookRepository
-- [ ] T026 [US1] Add get_library_stats() method to BookRepository
+- [X] T019 [US1] Create `chapter-3/src/library/repository.py` with BookRepository class and DuckDB connection
+- [X] T020 [US1] Add search_books(query, category) method to BookRepository
+- [X] T021 [US1] Add get_book_by_id(book_id) method to BookRepository
+- [X] T022 [US1] Add list_by_category(category, status) method to BookRepository
+- [X] T023 [US1] Add list_by_status(status, category) method to BookRepository
+- [X] T024 [US1] Add get_weak_signal_books(threshold) method to BookRepository
+- [X] T025 [US1] Add find_books_in_cabinet(cabinet, rack) method to BookRepository
+- [X] T026 [US1] Add get_library_stats() method to BookRepository
 
 ### Tool Functions Implementation
 
-- [ ] T027 [US1] Create `chapter-3/src/library/tools.py` with standardized tool functions wrapping repository
-- [ ] T028 [US1] Implement all 8 tool functions in tools.py: search_books, get_book_details, check_availability, list_by_category, list_by_status, locate_book, find_books_in_cabinet, get_weak_signal_books
+- [X] T027 [US1] Create `chapter-3/src/library/tools.py` with standardized tool functions wrapping repository
+- [X] T028 [US1] Implement all 8 tool functions in tools.py: search_books, get_book_details, check_availability, list_by_category, list_by_status, locate_book, find_books_in_cabinet, get_weak_signal_books
 
 ### Data Loading Script
 
-- [ ] T029 [US1] Create `chapter-3/scripts/load_library_csv_to_duckdb.py` following pattern from Feature 002
-- [ ] T030 [US1] Add schema creation with library.books table and all constraints
-- [ ] T031 [US1] Add CSV loading with validation and error handling
-- [ ] T032 [US1] Add user-friendly error messages for data loading failures
+- [X] T029 [US1] Create `chapter-3/scripts/load_library_csv_to_duckdb.py` following pattern from Feature 002
+- [X] T030 [US1] Add schema creation with library.books table and all constraints
+- [X] T031 [US1] Add CSV loading with validation and error handling
+- [X] T032 [US1] Add user-friendly error messages for data loading failures
 
 ### LLM Abstraction Layer
 
-- [ ] T033 [P] [US1] Create `chapter-3/src/llm/base.py` with abstract LLMProvider interface (generate, stream_generate, count_tokens)
-- [ ] T034 [US1] Create `chapter-3/src/llm/openrouter_client.py` implementing LLMProvider for OpenRouter API
-- [ ] T035 [US1] Create `chapter-3/src/llm/ollama_client.py` implementing LLMProvider for local Ollama
-- [ ] T036 [US1] Add token counting implementation to both LLM clients
+- [X] T033 [P] [US1] Create `chapter-3/src/llm/base.py` with abstract LLMProvider interface (generate, stream_generate, count_tokens)
+- [X] T034 [US1] Create `chapter-3/src/llm/openrouter_client.py` implementing LLMProvider for OpenRouter API
+- [X] T035 [US1] Create `chapter-3/src/llm/ollama_client.py` implementing LLMProvider for local Ollama
+- [X] T036 [US1] Add token counting implementation to both LLM clients
 
 ### Makefile Targets for US1
 
-- [ ] T037 [US1] Add `make load-data` target to chapter-3/Makefile
-- [ ] T038 [US1] Add `make verify-data` target to check 200 records loaded
-- [ ] T039 [US1] Add `make test-unit` target for unit tests
+- [X] T037 [US1] Add `make load-data` target to chapter-3/Makefile
+- [X] T038 [US1] Add `make verify-data` target to check 200 records loaded
+- [X] T039 [US1] Add `make test-unit` target for unit tests
 
 ### Documentation for US1
 
-- [ ] T040 [P] [US1] Create `chapter-3/docs/01-data-infrastructure.md` with setup instructions
-- [ ] T041 [P] [US1] Create `chapter-3/docs/02-llm-abstraction.md` with provider configuration
+- [X] T040 [P] [US1] Create `chapter-3/docs/01-data-infrastructure.md` with setup instructions
+- [X] T041 [P] [US1] Create `chapter-3/docs/02-llm-abstraction.md` with provider configuration
 
 **Checkpoint**: User Story 1 complete - data infrastructure works independently
 

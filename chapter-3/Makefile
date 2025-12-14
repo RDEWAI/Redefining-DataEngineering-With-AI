@@ -33,11 +33,10 @@ dev-setup:
 load-data:
 	@echo "Loading CSV data into DuckDB..."
 	uv run python scripts/load_library_csv_to_duckdb.py
-	@echo "✓ Data loaded successfully"
 
 verify-data:
 	@echo "Verifying data load..."
-	@uv run python -c "import duckdb; conn = duckdb.connect('data/duckdb/library.db'); count = conn.execute('SELECT COUNT(*) FROM library.books').fetchone()[0]; print(f'✓ Found {count} books'); assert count == 200, f'Expected 200 books, got {count}'"
+	@uv run python -c "import duckdb; conn = duckdb.connect('data/duckdb/chapter3.db'); count = conn.execute('SELECT COUNT(*) FROM library.books').fetchone()[0]; print(f'✓ Found {count} books'); assert count == 200, f'Expected 200 books, got {count}'"
 
 mcp-server:
 	@echo "Starting MCP server..."
