@@ -1,0 +1,197 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Library MCP Server Tools",
+  "description": "JSON Schema definitions for Library MCP Server tools (003b)",
+  "tools": [
+    {
+      "name": "search_books",
+      "description": "Search books by title, author, or keyword. Returns matching books with availability status.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query to match against title or author"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["Programming", "History", "Science", "Fiction", "Thriller"],
+            "description": "Optional category filter"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 10,
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Maximum number of results to return"
+          }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "get_book_details",
+      "description": "Get complete details for a specific book including location and status.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string",
+            "pattern": "^B\\d+$",
+            "description": "Book ID (e.g., 'B001')"
+          }
+        },
+        "required": ["book_id"]
+      }
+    },
+    {
+      "name": "check_availability",
+      "description": "Check if a book is available and get its current location.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string",
+            "pattern": "^B\\d+$",
+            "description": "Book ID to check"
+          }
+        },
+        "required": ["book_id"]
+      }
+    },
+    {
+      "name": "list_by_category",
+      "description": "List all books in a specific category.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": ["Programming", "History", "Science", "Fiction", "Thriller"],
+            "description": "Category to filter by"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["Present", "Missing", "Checked Out"],
+            "description": "Optional status filter"
+          }
+        },
+        "required": ["category"]
+      }
+    },
+    {
+      "name": "list_by_status",
+      "description": "List all books with a specific availability status.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["Present", "Missing", "Checked Out"],
+            "description": "Status to filter by"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["Programming", "History", "Science", "Fiction", "Thriller"],
+            "description": "Optional category filter"
+          }
+        },
+        "required": ["status"]
+      }
+    },
+    {
+      "name": "locate_book",
+      "description": "Get the physical location of a book (Cabinet, Rack, Row).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string",
+            "pattern": "^B\\d+$",
+            "description": "Book ID to locate"
+          }
+        },
+        "required": ["book_id"]
+      }
+    },
+    {
+      "name": "find_books_in_cabinet",
+      "description": "List all books in a specific cabinet location.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "cabinet": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Cabinet number"
+          },
+          "rack": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Optional rack number within cabinet"
+          }
+        },
+        "required": ["cabinet"]
+      }
+    },
+    {
+      "name": "get_weak_signal_books",
+      "description": "Get books with weak RFID signal strength that may need maintenance.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "threshold": {
+            "type": "number",
+            "default": -55,
+            "description": "Signal strength threshold in dBm (default: -55)"
+          }
+        },
+        "required": []
+      }
+    }
+  ],
+  "resources": [
+    {
+      "uri": "library://stats",
+      "name": "Library Statistics",
+      "description": "Aggregate statistics: book counts by category and status",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "library://missing_books",
+      "name": "Missing Books List",
+      "description": "List of all books with Missing status, ordered by last seen timestamp",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "library://location_map",
+      "name": "Location Map",
+      "description": "Distinct Cabinet/Rack/Row combinations with book counts",
+      "mimeType": "application/json"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "book_search",
+      "description": "Generate a natural language book search query",
+      "arguments": [
+        {
+          "name": "query",
+          "description": "What the user is looking for",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "library_status_report",
+      "description": "Generate a status report for the library",
+      "arguments": [
+        {
+          "name": "focus",
+          "description": "Area to focus on (availability, maintenance, categories)",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

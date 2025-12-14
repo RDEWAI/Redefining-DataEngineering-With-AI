@@ -78,6 +78,21 @@ make dev-setup
 # - Validate the installation
 ```
 
+### Update SpecKit (if needed):
+
+SpecKit is used for feature specification and task management. To update to the latest version:
+
+```bash
+# Back up your constitution first (known issue - it gets overwritten)
+cp .specify/memory/constitution.md .specify/memory/constitution.md.bak
+
+# Run init with --force to update templates
+uvx --from git+https://github.com/github/spec-kit.git specify init --ai claude --here --force
+
+# Restore your constitution
+cp .specify/memory/constitution.md.bak .specify/memory/constitution.md
+```
+
 ### Working with Data
 
 ```bash
