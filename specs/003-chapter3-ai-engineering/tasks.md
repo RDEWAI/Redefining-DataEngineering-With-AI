@@ -128,31 +128,31 @@ All paths relative to `chapter-3/` directory:
 
 ### Unit Tests for User Story 2
 
-- [ ] T042 [P] [US2] Create `chapter-3/tests/unit/test_mcp_tools.py` with tests for MCP tool schema generation
+- [X] T042 [P] [US2] Create `chapter-3/tests/unit/test_mcp_tools.py` with tests for MCP tool schema generation
 
 ### Integration Tests for User Story 2
 
-- [ ] T043 [P] [US2] Create `chapter-3/tests/integration/test_mcp_server.py` with in-memory MCP transport tests
+- [X] T043 [P] [US2] Create `chapter-3/tests/integration/test_mcp_server.py` with in-memory MCP transport tests
 
 ### MCP Server Implementation
 
-- [ ] T044 [US2] Create `chapter-3/src/mcp_servers/__init__.py`
-- [ ] T045 [US2] Create `chapter-3/src/mcp_servers/library_server.py` with FastMCP server initialization
-- [ ] T046 [US2] Add @mcp.tool decorators for all 8 library tools in library_server.py
-- [ ] T047 [US2] Add @mcp.resource decorators for library://stats, library://missing_books, library://location_map
-- [ ] T048 [US2] Add @mcp.prompt decorators for book_search, library_status_report
-- [ ] T049 [US2] Add Context parameter for logging and progress reporting
-- [ ] T050 [US2] Add user-friendly error messages for MCP tool failures
+- [X] T044 [US2] Create `chapter-3/src/mcp_servers/__init__.py`
+- [X] T045 [US2] Create `chapter-3/src/mcp_servers/library_server.py` with FastMCP server initialization
+- [X] T046 [US2] Add @mcp.tool decorators for all 8 library tools in library_server.py
+- [X] T047 [US2] Add @mcp.resource decorators for library://stats, library://missing_books, library://location_map
+- [X] T048 [US2] Add @mcp.prompt decorators for book_search, library_status_report
+- [X] T049 [US2] Add Context parameter for logging and progress reporting
+- [X] T050 [US2] Add user-friendly error messages for MCP tool failures
 
 ### MCP Configuration
 
-- [ ] T051 [US2] Create MCP server configuration JSON for Claude Desktop in docs/
-- [ ] T052 [US2] Add `make mcp-server` target to start FastMCP server
-- [ ] T053 [US2] Add `make mcp-dev` target to start MCP Inspector for debugging
+- [X] T051 [US2] Create MCP server configuration JSON for Claude Desktop in docs/
+- [X] T052 [US2] Add `make mcp-server` target to start FastMCP server
+- [X] T053 [US2] Add `make mcp-dev` target to start MCP Inspector for debugging
 
 ### Documentation for US2
 
-- [ ] T054 [P] [US2] Create `chapter-3/docs/03-mcp-basics.md` with MCP concepts and setup
+- [X] T054 [P] [US2] Create `chapter-3/docs/03-mcp-basics.md` with MCP concepts and setup
 
 **Checkpoint**: User Story 2 complete - MCP server works with Claude Desktop
 
