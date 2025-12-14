@@ -110,6 +110,7 @@ make assistant
 - "What programming books are available?"
 - "Show me books by John Smith"
 - "Which books are missing?"
+- "Show me the books on thriller which are available from the author who has most books"
 
 ### 003d: Code Execution Benchmark
 

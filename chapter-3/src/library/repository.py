@@ -32,12 +32,14 @@ class BookRepository:
         self,
         db_path: str | None = None,
         connection: duckdb.DuckDBPyConnection | None = None,
+        read_only: bool = False,
     ) -> None:
         """Initialize repository with database connection.
 
         Args:
             db_path: Path to DuckDB database file. Used if connection not provided.
             connection: Existing DuckDB connection. Takes precedence over db_path.
+            read_only: If True, open database in read-only mode (allows concurrent access).
 
         Raises:
             ValueError: If neither db_path nor connection is provided.
@@ -46,7 +48,7 @@ class BookRepository:
             self.conn = connection
             self._owns_connection = False
         elif db_path is not None:
-            self.conn = duckdb.connect(db_path)
+            self.conn = duckdb.connect(db_path, read_only=read_only)
             self._owns_connection = True
         else:
             raise ValueError("Either db_path or connection must be provided")
@@ -287,7 +289,7 @@ class BookRepository:
         }
 
 
-def get_repository(db_path: str | None = None) -> BookRepository:
+def get_repository(db_path: str | None = None, read_only: bool = True) -> BookRepository:
     """Get a BookRepository instance.
 
     Factory function that creates a repository with default database path
@@ -295,7 +297,9 @@ def get_repository(db_path: str | None = None) -> BookRepository:
 
     Args:
         db_path: Path to DuckDB database file. Defaults to
-            chapter-3/data/duckdb/library.db relative to project root.
+            chapter-3/data/duckdb/chapter3.db relative to project root.
+        read_only: If True, open database in read-only mode (default True).
+            This allows concurrent access from multiple processes.
 
     Returns:
         BookRepository instance
@@ -305,4 +309,4 @@ def get_repository(db_path: str | None = None) -> BookRepository:
         default_path = Path(__file__).parent.parent.parent / "data" / "duckdb" / "chapter3.db"
         db_path = str(default_path)
 
-    return BookRepository(db_path=db_path)
+    return BookRepository(db_path=db_path, read_only=read_only)

@@ -166,31 +166,31 @@ All paths relative to `chapter-3/` directory:
 
 ### Unit Tests for User Story 3
 
-- [ ] T055 [P] [US3] Create `chapter-3/tests/unit/test_tools.py` with tests for JSON schema tool definitions
+- [X] T055 [P] [US3] Create `chapter-3/tests/unit/test_tools.py` with tests for JSON schema tool definitions
 
 ### Integration Tests for User Story 3
 
-- [ ] T056 [P] [US3] Create `chapter-3/tests/integration/test_assistant.py` with multi-turn conversation tests
+- [X] T056 [P] [US3] Create `chapter-3/tests/integration/test_assistant.py` with multi-turn conversation tests
 
 ### Library Assistant Implementation
 
-- [ ] T057 [US3] Create `chapter-3/src/agents/__init__.py`
-- [ ] T058 [US3] Create `chapter-3/src/agents/library_assistant.py` with LibraryAssistant class
-- [ ] T059 [US3] Implement JSON schema tool definitions matching contracts/llm-tools.json
-- [ ] T060 [US3] Implement tool execution loop with tool_calls handling
-- [ ] T061 [US3] Add multi-turn conversation support with message history
-- [ ] T062 [US3] Add token usage logging per query for baseline measurement
-- [ ] T063 [US3] Add support for both OpenRouter and Ollama backends
-- [ ] T064 [US3] Add user-friendly error messages for tool failures
+- [X] T057 [US3] Create `chapter-3/src/agents/__init__.py`
+- [X] T058 [US3] Create `chapter-3/src/agents/library_assistant.py` with LibraryAssistant class
+- [X] T059 [US3] Implement JSON schema tool definitions matching contracts/llm-tools.json
+- [X] T060 [US3] Implement tool execution loop with tool_calls handling
+- [X] T061 [US3] Add multi-turn conversation support with message history
+- [X] T062 [US3] Add token usage logging per query for baseline measurement
+- [X] T063 [US3] Add support for both OpenRouter and Ollama backends
+- [X] T064 [US3] Add user-friendly error messages for tool failures
 
 ### CLI Interface for US3
 
-- [ ] T065 [US3] Add interactive REPL to library_assistant.py for CLI usage
-- [ ] T066 [US3] Add `make assistant` target to start Library Assistant CLI
+- [X] T065 [US3] Add interactive REPL to library_assistant.py for CLI usage
+- [X] T066 [US3] Add `make assistant` target to start Library Assistant CLI
 
 ### Documentation for US3
 
-- [ ] T067 [P] [US3] Create `chapter-3/docs/04-traditional-tools.md` comparing MCP vs traditional patterns
+- [X] T067 [P] [US3] Create `chapter-3/docs/04-traditional-tools.md` comparing MCP vs traditional patterns
 
 **Checkpoint**: User Story 3 complete - Library Assistant works with token logging
 

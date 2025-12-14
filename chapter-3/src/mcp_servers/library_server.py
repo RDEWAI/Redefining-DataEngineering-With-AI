@@ -26,7 +26,8 @@ mcp = FastMCP("LibraryServer")
 
 # Initialize repository with database path from environment
 DB_PATH = os.getenv('DB_PATH', str(Path(__file__).parent.parent.parent / "data" / "duckdb" / "chapter3.db"))
-repository = BookRepository(DB_PATH)
+# Use read_only=True to allow concurrent access from multiple MCP connections
+repository = BookRepository(DB_PATH, read_only=True)
 
 
 # ============================================================================

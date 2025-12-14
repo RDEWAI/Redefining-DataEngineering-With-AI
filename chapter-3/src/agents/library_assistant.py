@@ -1,0 +1,703 @@
+"""Library Assistant with traditional JSON schema tool use.
+
+This module implements a Library Assistant that uses traditional JSON schema
+tools for baseline token measurement. It supports multi-turn conversations,
+token usage logging, and both OpenRouter and Ollama backends.
+
+The assistant demonstrates the traditional tool use pattern as described
+in the Anthropic tool use documentation, serving as a baseline for
+comparison with code execution patterns.
+"""
+
+import json
+import os
+import sys
+from collections.abc import Callable
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from dotenv import load_dotenv
+
+# Load .env from chapter-3 directory (override=True to replace existing env vars)
+env_path = Path(__file__).parent.parent.parent / ".env"
+load_dotenv(env_path, override=True)
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from library import tools as library_tools
+from llm.base import (
+    LLMProvider,
+    LLMResponse,
+    Message,
+    ToolCall,
+    ToolDefinition,
+)
+
+# System prompt for the Library Assistant
+SYSTEM_PROMPT = """You are a helpful Library Assistant with access to a library management system.
+
+You can help users with:
+- Searching for books by title, author, or keyword
+- Checking book availability and location
+- Getting library statistics
+- Finding books by category or status
+- Locating books in specific cabinets and racks
+- Identifying books with weak RFID signal that may need maintenance
+
+When answering questions, use the available tools to get accurate information.
+Always provide helpful, concise responses based on the tool results.
+
+If a user asks about something you cannot help with (not related to the library),
+politely explain that you're a Library Assistant focused on library-related queries.
+"""
+
+# Tool definitions matching contracts/llm-tools.json
+TOOL_DEFINITIONS: list[ToolDefinition] = [
+    ToolDefinition(
+        name="search_books",
+        description="Search books by title, author, or keyword. Returns matching books with their availability status and location.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Search query to match against title or author",
+                },
+                "category": {
+                    "type": "string",
+                    "enum": ["Programming", "History", "Science", "Fiction", "Thriller"],
+                    "description": "Optional category filter",
+                },
+                "limit": {
+                    "type": "integer",
+                    "default": 10,
+                    "description": "Maximum number of results",
+                },
+            },
+            "required": ["query"],
+        },
+    ),
+    ToolDefinition(
+        name="get_book_details",
+        description="Get complete details for a specific book including physical location, RFID signal strength, and availability status.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "book_id": {
+                    "type": "string",
+                    "description": "Book ID (e.g., 'B001')",
+                },
+            },
+            "required": ["book_id"],
+        },
+    ),
+    ToolDefinition(
+        name="check_availability",
+        description="Check if a book is available for checkout and get its current shelf location.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "book_id": {
+                    "type": "string",
+                    "description": "Book ID to check",
+                },
+            },
+            "required": ["book_id"],
+        },
+    ),
+    ToolDefinition(
+        name="list_by_category",
+        description="List all books in a specific category with optional status filter.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "enum": ["Programming", "History", "Science", "Fiction", "Thriller"],
+                    "description": "Category to filter by",
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["Present", "Missing", "Checked Out"],
+                    "description": "Optional status filter",
+                },
+            },
+            "required": ["category"],
+        },
+    ),
+    ToolDefinition(
+        name="list_by_status",
+        description="List all books with a specific availability status.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": ["Present", "Missing", "Checked Out"],
+                    "description": "Status to filter by",
+                },
+                "category": {
+                    "type": "string",
+                    "enum": ["Programming", "History", "Science", "Fiction", "Thriller"],
+                    "description": "Optional category filter",
+                },
+            },
+            "required": ["status"],
+        },
+    ),
+    ToolDefinition(
+        name="locate_book",
+        description="Get the physical location of a book (Cabinet, Rack, Row number).",
+        parameters={
+            "type": "object",
+            "properties": {
+                "book_id": {
+                    "type": "string",
+                    "description": "Book ID to locate",
+                },
+            },
+            "required": ["book_id"],
+        },
+    ),
+    ToolDefinition(
+        name="find_books_in_cabinet",
+        description="List all books in a specific cabinet, optionally filtered by rack.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "cabinet": {
+                    "type": "integer",
+                    "description": "Cabinet number",
+                },
+                "rack": {
+                    "type": "integer",
+                    "description": "Optional rack number within cabinet",
+                },
+            },
+            "required": ["cabinet"],
+        },
+    ),
+    ToolDefinition(
+        name="get_weak_signal_books",
+        description="Get books with weak RFID signal strength that may need maintenance or relocation.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "threshold": {
+                    "type": "number",
+                    "default": -55,
+                    "description": "Signal strength threshold in dBm (default: -55, weaker signals are below this)",
+                },
+            },
+            "required": [],
+        },
+    ),
+    ToolDefinition(
+        name="get_library_stats",
+        description="Get aggregate statistics about the library: total books, counts by category, counts by status.",
+        parameters={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+]
+
+# Mapping from tool names to implementation functions
+TOOL_FUNCTION_MAP: dict[str, Callable[..., dict[str, Any]]] = {
+    "search_books": library_tools.search_books,
+    "get_book_details": library_tools.get_book_details,
+    "check_availability": library_tools.check_availability,
+    "list_by_category": library_tools.list_by_category,
+    "list_by_status": library_tools.list_by_status,
+    "locate_book": library_tools.locate_book,
+    "find_books_in_cabinet": library_tools.find_books_in_cabinet,
+    "get_weak_signal_books": library_tools.get_weak_signal_books,
+    "get_library_stats": library_tools.get_library_stats,
+}
+
+
+def get_tools_for_llm() -> list[dict[str, Any]]:
+    """Get tool definitions in OpenAI/LLM format.
+
+    Returns:
+        List of tool definitions in the format expected by OpenAI-compatible APIs.
+    """
+    return [tool.to_openai_format() for tool in TOOL_DEFINITIONS]
+
+
+def get_tool_function(name: str) -> Callable[..., dict[str, Any]]:
+    """Get the implementation function for a tool.
+
+    Args:
+        name: Tool name
+
+    Returns:
+        The callable function that implements the tool
+
+    Raises:
+        ValueError: If the tool name is unknown
+    """
+    if name not in TOOL_FUNCTION_MAP:
+        raise ValueError(f"Unknown tool: {name}")
+    return TOOL_FUNCTION_MAP[name]
+
+
+@dataclass
+class TokenUsage:
+    """Track token usage across queries."""
+
+    total_prompt_tokens: int = 0
+    total_completion_tokens: int = 0
+    query_count: int = 0
+    tool_calls_count: int = 0
+
+    def add(self, response: LLMResponse) -> None:
+        """Add tokens from a response."""
+        usage = response.usage or {}
+        self.total_prompt_tokens += usage.get("prompt_tokens", 0)
+        self.total_completion_tokens += usage.get("completion_tokens", 0)
+
+    def add_tool_calls(self, count: int) -> None:
+        """Record tool calls."""
+        self.tool_calls_count += count
+
+    def increment_query(self) -> None:
+        """Increment the query count."""
+        self.query_count += 1
+
+    def to_dict(self) -> dict[str, int]:
+        """Convert to dictionary."""
+        return {
+            "total_prompt_tokens": self.total_prompt_tokens,
+            "total_completion_tokens": self.total_completion_tokens,
+            "total_tokens": self.total_prompt_tokens + self.total_completion_tokens,
+            "query_count": self.query_count,
+            "tool_calls_count": self.tool_calls_count,
+        }
+
+    def reset(self) -> None:
+        """Reset all counters."""
+        self.total_prompt_tokens = 0
+        self.total_completion_tokens = 0
+        self.query_count = 0
+        self.tool_calls_count = 0
+
+
+class LibraryAssistant:
+    """Library Assistant with traditional JSON schema tool use.
+
+    This assistant uses traditional tool calling patterns with JSON schemas
+    for function definitions. It supports multi-turn conversations and
+    tracks token usage for comparison with code execution patterns.
+
+    Args:
+        llm_provider: The LLM provider to use (OpenRouter or Ollama)
+        system_prompt: Custom system prompt (defaults to SYSTEM_PROMPT)
+        max_tool_iterations: Maximum number of tool calling rounds per query
+        verbose: Whether to print debug information
+        show_tool_calls: Whether to display tool calls (educational output, default True)
+
+    Example:
+        >>> from llm.openrouter_client import OpenRouterProvider
+        >>> provider = OpenRouterProvider()
+        >>> assistant = LibraryAssistant(llm_provider=provider)
+        >>> response = assistant.query("What programming books are available?")
+        >>> print(response)
+    """
+
+    def __init__(
+        self,
+        llm_provider: LLMProvider,
+        system_prompt: str | None = None,
+        max_tool_iterations: int = 10,
+        verbose: bool = False,
+        show_tool_calls: bool = True,
+    ) -> None:
+        """Initialize the Library Assistant."""
+        self._provider = llm_provider
+        self._system_prompt = system_prompt or SYSTEM_PROMPT
+        self._max_tool_iterations = max_tool_iterations
+        self._verbose = verbose
+        self._show_tool_calls = show_tool_calls
+        self._token_usage = TokenUsage()
+
+        # Initialize conversation with system message
+        self._conversation_history: list[Message] = [
+            Message(role="system", content=self._system_prompt)
+        ]
+
+    def query(self, user_input: str) -> str:
+        """Process a user query and return a response.
+
+        This method handles the complete query cycle including:
+        - Adding the user message to conversation history
+        - Calling the LLM with tools
+        - Executing any tool calls
+        - Continuing until a final text response is received
+        - Tracking token usage
+
+        Args:
+            user_input: The user's question or request
+
+        Returns:
+            The assistant's response text
+
+        Example:
+            >>> response = assistant.query("Find Python programming books")
+            >>> print(response)
+        """
+        # Add user message to history
+        self._conversation_history.append(Message(role="user", content=user_input))
+        self._token_usage.increment_query()
+
+        # Tool calling loop
+        iterations = 0
+        while iterations < self._max_tool_iterations:
+            iterations += 1
+
+            if self._verbose:
+                print(f"[Iteration {iterations}] Calling LLM...")
+
+            # Show LLM call (educational output)
+            if self._show_tool_calls:
+                model_name = self._provider.default_model
+                if iterations == 1:
+                    print()
+                    print(f"🤖 LLM Call #{iterations} → {model_name}")
+                    print(f"   └─ Analyzing query and deciding on tools...")
+                else:
+                    print(f"🤖 LLM Call #{iterations} → {model_name}")
+                    print(f"   └─ Processing tool results and generating response...")
+
+            # Call the LLM
+            response = self._provider.generate(
+                messages=self._conversation_history,
+                tools=TOOL_DEFINITIONS,
+                tool_choice="auto",
+            )
+
+            # Track token usage
+            self._token_usage.add(response)
+
+            # If no tool calls, we have a final response
+            if not response.has_tool_calls:
+                if self._show_tool_calls:
+                    print(f"   ✓ Response ready (no more tool calls needed)")
+                    print()
+                final_content = response.content or "I apologize, but I couldn't generate a response."
+                self._conversation_history.append(
+                    Message(role="assistant", content=final_content)
+                )
+                return final_content
+
+            # Show tool decision (educational output)
+            if self._show_tool_calls:
+                print(f"   → Decided to call {len(response.tool_calls)} tool(s)")
+                print()
+
+            # Process tool calls
+            if self._verbose:
+                print(f"[Iteration {iterations}] Processing {len(response.tool_calls)} tool call(s)")
+
+            # Show tool calls to user (educational output)
+            if self._show_tool_calls:
+                print(f"🔧 Tool Call{'s' if len(response.tool_calls) > 1 else ''} ({len(response.tool_calls)}):")
+                print("-" * 40)
+
+            # Add assistant message with tool calls
+            tool_calls_dict = [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {
+                        "name": tc.name,
+                        "arguments": tc.arguments,
+                    },
+                }
+                for tc in response.tool_calls
+            ]
+            self._conversation_history.append(
+                Message(
+                    role="assistant",
+                    content=response.content,
+                    tool_calls=tool_calls_dict,
+                )
+            )
+
+            # Execute each tool call and add results
+            for tool_call in response.tool_calls:
+                # Show tool call details (educational)
+                if self._show_tool_calls:
+                    args = json.loads(tool_call.arguments) if tool_call.arguments else {}
+                    print(f"  📞 Calling: {tool_call.name}()")
+                    if args:
+                        for key, value in args.items():
+                            print(f"     └─ {key}: {value}")
+
+                result = self._execute_tool(tool_call)
+
+                # Show tool result summary (educational)
+                if self._show_tool_calls:
+                    if result.get("success", False):
+                        msg = result.get("message", "Success")
+                        print(f"  ✅ Result: {msg}")
+                    else:
+                        msg = result.get("message", "Failed")
+                        print(f"  ❌ Result: {msg}")
+                    print()
+
+                self._conversation_history.append(
+                    Message(
+                        role="tool",
+                        content=json.dumps(result),
+                        tool_call_id=tool_call.id,
+                        name=tool_call.name,
+                    )
+                )
+                self._token_usage.add_tool_calls(1)
+
+        # Max iterations reached
+        return (
+            "I apologize, but I've reached the maximum number of operations. "
+            "Please try rephrasing your question or breaking it into smaller parts."
+        )
+
+    def _execute_tool(self, tool_call: ToolCall) -> dict[str, Any]:
+        """Execute a single tool call.
+
+        Args:
+            tool_call: The tool call to execute
+
+        Returns:
+            The result of the tool execution
+        """
+        tool_name = tool_call.name
+
+        if self._verbose:
+            print(f"  Executing tool: {tool_name}")
+            print(f"  Arguments: {tool_call.arguments}")
+
+        try:
+            # Get the tool function
+            func = get_tool_function(tool_name)
+        except ValueError as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "message": f"Unknown tool '{tool_name}'. Available tools: {', '.join(TOOL_FUNCTION_MAP.keys())}",
+            }
+
+        try:
+            # Parse arguments
+            args = json.loads(tool_call.arguments) if tool_call.arguments else {}
+
+            # Execute the tool
+            result = func(**args)
+
+            if self._verbose:
+                print(f"  Result: {json.dumps(result, indent=2)[:200]}...")
+
+            return result
+
+        except json.JSONDecodeError as e:
+            return {
+                "success": False,
+                "error": f"Invalid JSON arguments: {str(e)}",
+                "message": "The tool arguments could not be parsed. Please provide valid JSON.",
+            }
+        except TypeError as e:
+            return {
+                "success": False,
+                "error": f"Invalid arguments: {str(e)}",
+                "message": f"The tool '{tool_name}' received invalid arguments. Error: {str(e)}",
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "message": f"An error occurred while executing '{tool_name}': {str(e)}",
+            }
+
+    def get_token_usage(self) -> dict[str, int]:
+        """Get the current token usage statistics.
+
+        Returns:
+            Dictionary with token usage counts
+        """
+        return self._token_usage.to_dict()
+
+    def reset_token_usage(self) -> None:
+        """Reset token usage counters to zero."""
+        self._token_usage.reset()
+
+    def clear_conversation(self) -> None:
+        """Clear conversation history, keeping only the system message."""
+        self._conversation_history = [
+            Message(role="system", content=self._system_prompt)
+        ]
+
+    def get_conversation_history(self) -> list[dict[str, Any]]:
+        """Get the current conversation history.
+
+        Returns:
+            List of messages in the conversation
+        """
+        return [msg.to_dict() for msg in self._conversation_history]
+
+
+def create_assistant(
+    provider: str = "openrouter",
+    model: str | None = None,
+    verbose: bool = False,
+) -> LibraryAssistant:
+    """Create a Library Assistant with the specified provider.
+
+    Args:
+        provider: LLM provider to use ("openrouter" or "ollama")
+        model: Model to use (defaults to provider's default)
+        verbose: Whether to print debug information
+
+    Returns:
+        Configured LibraryAssistant instance
+
+    Raises:
+        ValueError: If the provider is not supported
+    """
+    if provider == "openrouter":
+        from llm.openrouter_client import OpenRouterProvider
+
+        llm_provider = OpenRouterProvider(default_model=model)
+    elif provider == "ollama":
+        from llm.ollama_client import OllamaProvider
+
+        llm_provider = OllamaProvider(default_model=model)
+    else:
+        raise ValueError(f"Unsupported provider: {provider}. Use 'openrouter' or 'ollama'.")
+
+    return LibraryAssistant(llm_provider=llm_provider, verbose=verbose)
+
+
+def interactive_repl() -> None:
+    """Run an interactive REPL for the Library Assistant.
+
+    This function starts an interactive session where users can
+    query the Library Assistant and see responses in real-time.
+    """
+    print("Library Assistant - Interactive Mode")
+    print("=" * 50)
+    print()
+
+    # Determine provider from environment
+    provider = os.getenv("LLM_PROVIDER", "openrouter")
+    model = os.getenv("LLM_MODEL")
+
+    print(f"Provider: {provider}")
+    if model:
+        print(f"Model: {model}")
+    print()
+
+    try:
+        assistant = create_assistant(provider=provider, model=model, verbose=False)
+    except ValueError as e:
+        print(f"Error: {e}")
+        print()
+        print("Please ensure your API key is set:")
+        print("  - For OpenRouter: export OPENROUTER_API_KEY=your-key")
+        print("  - For Ollama: ensure Ollama server is running on localhost:11434")
+        sys.exit(1)
+
+    print("Commands:")
+    print("  /help     - Show this help message")
+    print("  /stats    - Show token usage statistics")
+    print("  /tools    - Toggle tool call display (currently: ON)")
+    print("  /clear    - Clear conversation history")
+    print("  /reset    - Reset token usage counters")
+    print("  /quit     - Exit the assistant")
+    print()
+    print("Ask me anything about the library!")
+    print("-" * 50)
+    print()
+
+    while True:
+        try:
+            user_input = input("You: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nGoodbye!")
+            break
+
+        if not user_input:
+            continue
+
+        # Handle commands
+        if user_input.startswith("/"):
+            command = user_input.lower()
+
+            if command == "/help":
+                tools_status = "ON" if assistant._show_tool_calls else "OFF"
+                print()
+                print("Commands:")
+                print("  /help     - Show this help message")
+                print("  /stats    - Show token usage statistics")
+                print(f"  /tools    - Toggle tool call display (currently: {tools_status})")
+                print("  /clear    - Clear conversation history")
+                print("  /reset    - Reset token usage counters")
+                print("  /quit     - Exit the assistant")
+                print()
+                continue
+
+            if command == "/tools":
+                assistant._show_tool_calls = not assistant._show_tool_calls
+                status = "ON" if assistant._show_tool_calls else "OFF"
+                print(f"Tool call display: {status}")
+                print()
+                continue
+
+            if command == "/stats":
+                usage = assistant.get_token_usage()
+                print()
+                print("Token Usage Statistics:")
+                print(f"  Queries: {usage['query_count']}")
+                print(f"  Tool calls: {usage['tool_calls_count']}")
+                print(f"  Prompt tokens: {usage['total_prompt_tokens']}")
+                print(f"  Completion tokens: {usage['total_completion_tokens']}")
+                print(f"  Total tokens: {usage['total_tokens']}")
+                print()
+                continue
+
+            if command == "/clear":
+                assistant.clear_conversation()
+                print("Conversation history cleared.")
+                print()
+                continue
+
+            if command == "/reset":
+                assistant.reset_token_usage()
+                print("Token usage counters reset.")
+                print()
+                continue
+
+            if command in ("/quit", "/exit", "/q"):
+                print("Goodbye!")
+                break
+
+            print(f"Unknown command: {user_input}")
+            print("Type /help for available commands.")
+            print()
+            continue
+
+        # Process query
+        print()
+        try:
+            response = assistant.query(user_input)
+            print(f"A: {response}")
+        except Exception as e:
+            print(f"Error: {e}")
+            print("Please try again or type /help for assistance.")
+        print()
+
+
+if __name__ == "__main__":
+    interactive_repl()
