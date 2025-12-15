@@ -1,5 +1,25 @@
 """Ollama LLM provider implementation.
 
+.. deprecated::
+    This module is deprecated and will be removed in Phase 7.
+    Use UnifiedLLMClient instead, which provides the same functionality
+    with a simpler interface and support for multiple providers.
+
+    Migration example:
+        # Old (deprecated):
+        from src.llm import OllamaProvider
+        provider = OllamaProvider(base_url="http://localhost:11434")
+        response = provider.generate([Message(role="user", content="Hello")])
+
+        # New (recommended):
+        from src.llm import UnifiedLLMClient
+        client = UnifiedLLMClient.from_env()  # or
+        client = UnifiedLLMClient(
+            base_url="http://localhost:11434/v1",
+            model="llama3.2"
+        )
+        response = client.generate([Message(role="user", content="Hello")])
+
 This module implements the LLMProvider interface for local Ollama server,
 enabling the use of local LLM models like Llama, Mistral, and others.
 """

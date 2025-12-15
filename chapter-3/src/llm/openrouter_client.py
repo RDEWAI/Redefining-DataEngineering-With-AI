@@ -1,5 +1,26 @@
 """OpenRouter LLM provider implementation.
 
+.. deprecated::
+    This module is deprecated and will be removed in Phase 7.
+    Use UnifiedLLMClient instead, which provides the same functionality
+    with a simpler interface and support for multiple providers.
+
+    Migration example:
+        # Old (deprecated):
+        from src.llm import OpenRouterProvider
+        provider = OpenRouterProvider(api_key="sk-...")
+        response = provider.generate([Message(role="user", content="Hello")])
+
+        # New (recommended):
+        from src.llm import UnifiedLLMClient
+        client = UnifiedLLMClient.from_env()  # or
+        client = UnifiedLLMClient(
+            base_url="https://openrouter.ai/api/v1",
+            api_key="sk-...",
+            model="openai/gpt-4o-mini"
+        )
+        response = client.generate([Message(role="user", content="Hello")])
+
 This module implements the LLMProvider interface for the OpenRouter API,
 which provides access to various LLM models through a unified interface.
 """

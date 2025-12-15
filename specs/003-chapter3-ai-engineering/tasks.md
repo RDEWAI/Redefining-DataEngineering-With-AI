@@ -237,13 +237,13 @@ All paths relative to `chapter-3/` directory:
 
 **Purpose**: Create OpenAI SDK-based unified client supporting OpenRouter, Ollama, and OpenAI
 
-- [ ] T5.5-011 [P] Create `chapter-3/src/llm/unified_client.py` with UnifiedLLMClient class
-- [ ] T5.5-012 [P] Implement OpenAI SDK initialization with custom `base_url` parameter in `unified_client.py`
-- [ ] T5.5-013 Add `from_env()` class method to load LLM_BASE_URL, LLM_API_KEY, LLM_MODEL from environment
-- [ ] T5.5-014 Implement `generate()` method matching LLMProvider interface from `base.py`
-- [ ] T5.5-015 Add usage tracking via OpenAI SDK `response.usage` (returns prompt_tokens, completion_tokens, total_tokens)
-- [ ] T5.5-016 Add API key validation - required for OpenRouter/OpenAI, optional for Ollama
-- [ ] T5.5-017 Add user-friendly error messages for configuration errors (missing API key, invalid URL)
+- [X] T5.5-011 [P] Create `chapter-3/src/llm/unified_client.py` with UnifiedLLMClient class
+- [X] T5.5-012 [P] Implement OpenAI SDK initialization with custom `base_url` parameter in `unified_client.py`
+- [X] T5.5-013 Add `from_env()` class method to load LLM_BASE_URL, LLM_API_KEY, LLM_MODEL from environment
+- [X] T5.5-014 Implement `generate()` method matching LLMProvider interface from `base.py`
+- [X] T5.5-015 Add usage tracking via OpenAI SDK `response.usage` (returns prompt_tokens, completion_tokens, total_tokens)
+- [X] T5.5-016 Add API key validation - required for OpenRouter/OpenAI, optional for Ollama
+- [X] T5.5-017 Add user-friendly error messages for configuration errors (missing API key, invalid URL)
 
 **Checkpoint**: UnifiedLLMClient works with all three providers via base_url switching
 
@@ -253,13 +253,13 @@ All paths relative to `chapter-3/` directory:
 
 **Purpose**: Test coverage for unified LLM client
 
-- [ ] T5.5-018 [P] Create `chapter-3/tests/unit/test_unified_client.py` with test fixtures
-- [ ] T5.5-019 [P] Add test for OpenRouter initialization (base_url=https://openrouter.ai/api/v1)
-- [ ] T5.5-020 [P] Add test for Ollama initialization (base_url=http://localhost:11434/v1, no API key)
-- [ ] T5.5-021 [P] Add test for OpenAI initialization (base_url=https://api.openai.com/v1)
-- [ ] T5.5-022 Add test for missing API key error when provider requires it
-- [ ] T5.5-023 Add test for usage tracking returns correct fields (prompt_tokens, completion_tokens, total_tokens)
-- [ ] T5.5-024 Add test for `from_env()` loading configuration from environment variables
+- [X] T5.5-018 [P] Create `chapter-3/tests/unit/test_unified_client.py` with test fixtures
+- [X] T5.5-019 [P] Add test for OpenRouter initialization (base_url=https://openrouter.ai/api/v1)
+- [X] T5.5-020 [P] Add test for Ollama initialization (base_url=http://localhost:11434/v1, no API key)
+- [X] T5.5-021 [P] Add test for OpenAI initialization (base_url=https://api.openai.com/v1)
+- [X] T5.5-022 Add test for missing API key error when provider requires it
+- [X] T5.5-023 Add test for usage tracking returns correct fields (prompt_tokens, completion_tokens, total_tokens)
+- [X] T5.5-024 Add test for `from_env()` loading configuration from environment variables
 
 ---
 
@@ -267,14 +267,14 @@ All paths relative to `chapter-3/` directory:
 
 **Purpose**: Update configuration and maintain backward compatibility
 
-- [ ] T5.5-025 Update `chapter-3/.env.example` with unified LLM configuration variables:
+- [X] T5.5-025 Update `chapter-3/.env.example` with unified LLM configuration variables:
   - LLM_BASE_URL (with examples for all 3 providers)
   - LLM_API_KEY (note: optional for Ollama)
   - LLM_MODEL (with model examples)
   - LLM_ENABLE_USAGE_TRACKING (default: true)
-- [ ] T5.5-026 Update `chapter-3/src/llm/__init__.py` to export UnifiedLLMClient
-- [ ] T5.5-027 Add deprecation warning docstrings to `chapter-3/src/llm/openrouter_client.py`
-- [ ] T5.5-028 Add deprecation warning docstrings to `chapter-3/src/llm/ollama_client.py`
+- [X] T5.5-026 Update `chapter-3/src/llm/__init__.py` to export UnifiedLLMClient
+- [X] T5.5-027 Add deprecation warning docstrings to `chapter-3/src/llm/openrouter_client.py`
+- [X] T5.5-028 Add deprecation warning docstrings to `chapter-3/src/llm/ollama_client.py`
 
 **Checkpoint**: Configuration updated, legacy clients deprecated but still functional
 
@@ -284,11 +284,11 @@ All paths relative to `chapter-3/` directory:
 
 **Purpose**: Verify all components work together
 
-- [ ] T5.5-029 Run full verification: `uv run pre-commit run --all-files` passes
-- [ ] T5.5-030 Run full verification: `uv run ruff check chapter-3/src/` passes with zero errors
-- [ ] T5.5-031 Run full verification: `uv run pytest chapter-3/tests/unit/ -v` passes 100%
-- [ ] T5.5-032 Verify git commit triggers pre-commit hooks automatically
-- [ ] T5.5-033 Verify git push triggers pre-push hooks (unit tests) automatically
+- [X] T5.5-029 Run full verification: `uv run pre-commit run --all-files` passes
+- [X] T5.5-030 Run full verification: `uv run ruff check chapter-3/src/` passes with zero errors
+- [X] T5.5-031 Run full verification: `uv run pytest chapter-3/tests/unit/ -v` passes 100%
+- [X] T5.5-032 Verify git commit triggers pre-commit hooks automatically
+- [X] T5.5-033 Verify git push triggers pre-push hooks (unit tests) automatically
 
 **Checkpoint**: Phase 5.5 complete - code quality gates active, unified client ready
 
