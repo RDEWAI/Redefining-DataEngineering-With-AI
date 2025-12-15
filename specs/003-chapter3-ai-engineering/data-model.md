@@ -51,6 +51,7 @@ The primary entity representing a library book with RFID tracking data.
 | `book_id` | VARCHAR | PRIMARY KEY | Unique identifier (e.g., "B001") |
 | `title` | VARCHAR | NOT NULL | Book title |
 | `author` | VARCHAR | NOT NULL | Author name |
+| `description` | VARCHAR | NOT NULL | Book description/summary (50-100 words for RAG embeddings) |
 | `category` | VARCHAR | NOT NULL | Category (Programming, History, Science, Fiction, Thriller) |
 | `cabinet` | INTEGER | NOT NULL, >= 1 | Cabinet number |
 | `rack` | INTEGER | NOT NULL, >= 1 | Rack number within cabinet |
@@ -75,6 +76,7 @@ CREATE TABLE library.books (
     book_id VARCHAR PRIMARY KEY,
     title VARCHAR NOT NULL,
     author VARCHAR NOT NULL,
+    description VARCHAR NOT NULL,
     category VARCHAR NOT NULL CHECK (category IN ('Programming', 'History', 'Science', 'Fiction', 'Thriller')),
     cabinet INTEGER NOT NULL CHECK (cabinet >= 1),
     rack INTEGER NOT NULL CHECK (rack >= 1),
@@ -96,11 +98,13 @@ Vector embeddings for semantic search over book metadata.
 | `book_id` | VARCHAR | PRIMARY KEY, FK → books | Reference to book |
 | `title` | VARCHAR | NOT NULL | Denormalized for search display |
 | `author` | VARCHAR | NOT NULL | Denormalized for search display |
+| `description` | VARCHAR | NOT NULL | Primary content for embedding (50-100 words) |
 | `category` | VARCHAR | NOT NULL | Denormalized for search display |
 | `embedding` | FLOAT[384] | NOT NULL | 384-dimensional embedding vector |
 
 **Embedding Scope**:
-- **Embedded fields**: title, author, category (concatenated for embedding)
+- **Primary embedded field**: description (rich textual content for semantic search)
+- **Secondary embedded fields**: title, author, category (concatenated with description)
 - **Non-embedded fields**: status, location, signal_strength (handled by structured queries)
 
 **SQL Definition**:
@@ -109,6 +113,7 @@ CREATE TABLE library.book_embeddings (
     book_id VARCHAR PRIMARY KEY REFERENCES library.books(book_id),
     title VARCHAR NOT NULL,
     author VARCHAR NOT NULL,
+    description VARCHAR NOT NULL,
     category VARCHAR NOT NULL,
     embedding FLOAT[384] NOT NULL
 );
@@ -186,6 +191,7 @@ class Book:
     book_id: str
     title: str
     author: str
+    description: str  # 50-100 words for RAG embeddings
     category: Category
     location: Location
     signal_strength: float
@@ -208,6 +214,7 @@ class Book:
             "book_id": self.book_id,
             "title": self.title,
             "author": self.author,
+            "description": self.description,
             "category": self.category.value,
             "cabinet": self.location.cabinet,
             "rack": self.location.rack,
@@ -258,6 +265,7 @@ class Tool:
 | Signal Range | signal_strength | Typically -30 to -90 dBm (warning if outside range) |
 | Non-empty Text | title, author | Must not be empty or whitespace-only |
 | Valid Book ID | book_id | Must match pattern: B followed by digits (e.g., B001) |
+| Description Length | description | Must be 50-500 characters (optimal for RAG embeddings) |
 
 ### Tool Validation
 
@@ -355,6 +363,7 @@ WHERE signal_strength < -55;
   "book_id": "B001",
   "title": "Python Programming",
   "author": "John Smith",
+  "description": "Master Python programming through this comprehensive guide covering data structures, algorithms, and best practices. Learn problem-solving with step-by-step tutorials and real-world examples for developers of all skill levels.",
   "category": "Programming",
   "cabinet": 3,
   "rack": 2,

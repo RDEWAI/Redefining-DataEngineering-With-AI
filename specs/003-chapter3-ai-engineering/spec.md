@@ -20,9 +20,10 @@ This epic introduces AI Engineering concepts through progressive, hands-on examp
 
 ### Dataset
 
-- **Source**: Kaggle Library Management dataset with IoT RFID tracking
+- **Source**: Kaggle Library Management dataset with IoT RFID tracking (enhanced with descriptions)
 - **Size**: 200 books
-- **Attributes**: Book_ID, Title, Author, Category, Cabinet, Rack, Row, Signal_Strength, Timestamp, Status
+- **Attributes**: Book_ID, Title, Author, Description, Category, Cabinet, Rack, Row, Signal_Strength, Timestamp, Status
+- **Description**: 50-100 word book summaries for RAG semantic search
 - **Status Values**: Present, Missing, Checked Out
 - **Categories**: Programming, History, Science, Fiction, Thriller
 
@@ -151,7 +152,7 @@ As a learner, I want to see specialized agents (search, analytics, recommendatio
 #### 003a: Library Data Infrastructure
 
 - **FR-001**: System MUST load all 200 book records from the CSV file into a queryable database
-- **FR-002**: System MUST create a schema that preserves all book attributes (Book_ID, Title, Author, Category, Cabinet, Rack, Row, Signal_Strength, Timestamp, Status)
+- **FR-002**: System MUST create a schema that preserves all book attributes (Book_ID, Title, Author, Description, Category, Cabinet, Rack, Row, Signal_Strength, Timestamp, Status)
 - **FR-003**: System MUST provide a repository layer for common queries (search, filter by category, filter by status, location lookup)
 - **FR-004**: System MUST provide an LLM abstraction layer supporting multiple providers (cloud API and local models)
 - **FR-005**: System MUST implement token counting for benchmark comparisons
@@ -195,7 +196,7 @@ As a learner, I want to see specialized agents (search, analytics, recommendatio
 
 ### Key Entities
 
-- **Book**: Library item with ID, title, author, category, physical location (cabinet/rack/row), RFID signal strength, timestamp, and availability status
+- **Book**: Library item with ID, title, author, description (50-100 word summary for RAG), category, physical location (cabinet/rack/row), RFID signal strength, timestamp, and availability status
 - **Location**: Physical position in library defined by Cabinet, Rack, and Row coordinates
 - **Status**: Book availability state (Present, Missing, Checked Out)
 - **Tool**: Registered operation with name, description, input schema, and capability tags

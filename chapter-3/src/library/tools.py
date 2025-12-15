@@ -95,11 +95,13 @@ def search_books(
         }
 
 
-def get_book_details(book_id: str) -> dict[str, Any]:
+def get_book_details(book_id: str, include_description: bool = True) -> dict[str, Any]:
     """Get complete details for a specific book.
 
     Args:
         book_id: Book ID (e.g., "B001")
+        include_description: If True (default), include the book description.
+                            Set to False for token-efficient responses.
 
     Returns:
         Dictionary with:
@@ -119,7 +121,7 @@ def get_book_details(book_id: str) -> dict[str, Any]:
         if book:
             return {
                 "success": True,
-                "book": book.to_dict(),
+                "book": book.to_dict(include_description=include_description),
                 "message": f"Found book: {book.title} by {book.author}",
             }
         else:

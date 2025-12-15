@@ -655,6 +655,175 @@ def _query_code_execution(self, user_input: str) -> str:
 
 ---
 
+## Smart Field Selection for Token Efficiency (Phase 6.5+ Enhancement)
+
+After adding the `description` field (50-100 words per book) in Phase 6.5, we discovered a critical token efficiency issue: **API functions return ALL fields including descriptions**, leading to massive token usage for large result sets.
+
+### The Problem
+
+**Query**: "Search for Python books in Programming category"
+
+**Before field selection guidance**:
+```python
+# LLM generated this code:
+python_books = search_books("Python", category="Programming")
+print(python_books)
+
+# Result: Returns 40+ books × 75 words/description = 3,000+ words!
+# Tokens: 8,209 (500% MORE than traditional mode!)
+```
+
+**Root cause**:
+- API functions return complete book objects with descriptions
+- 40 Programming books × 75 words/description = 3,000 words of text
+- That's 4,000+ tokens just for descriptions!
+
+### The Solution: Smart Field Projection
+
+We updated the system prompt to teach the LLM when to use SQL projections vs API functions:
+
+#### Decision Tree
+
+```
+Query Type → Technique → Example
+──────────────────────────────────────────────────────────────
+Aggregation/Statistics
+  → SQL with GROUP BY
+  → SELECT category, COUNT(*) FROM library.books GROUP BY category
+
+Single Record Lookup
+  → API function (OK to include description)
+  → get_book_details("B001")
+
+Multi-Record List (metadata only)
+  → SQL SELECT without description
+  → SELECT book_id, title, author FROM library.books WHERE ... LIMIT 10
+
+Semantic/Content Query
+  → SQL SELECT with description
+  → SELECT title, description FROM library.books WHERE category = 'Fiction' LIMIT 5
+
+Large Result Sets
+  → NEVER use API functions
+  → Use SQL with field projection and LIMIT
+```
+
+#### Updated Examples in System Prompt
+
+**✅ EXCELLENT - Aggregation query (minimal tokens)**:
+```python
+result = _conn.execute('''
+    SELECT category, COUNT(*) as count, AVG(signal_strength) as avg_signal
+    FROM library.books
+    WHERE status = 'Missing'
+    GROUP BY category
+    ORDER BY count DESC
+    LIMIT 5
+''').fetchdf()
+print(result)
+# Returns: 5 rows × 3 columns = ~15 values
+# Tokens: ~50 tokens
+```
+
+**❌ BAD - Using API for counting (returns 60+ books with descriptions!)**:
+```python
+missing_books = list_by_status("Missing")
+count = len(missing_books)
+# Returns: 60 books × 75 words = 4,500 words!
+# Tokens: ~6,000 tokens (120× more expensive!)
+```
+
+**✅ GOOD - List without description (token efficient)**:
+```python
+result = _conn.execute('''
+    SELECT book_id, title, author, category, status, signal_strength
+    FROM library.books
+    WHERE signal_strength < -55
+    ORDER BY signal_strength ASC
+    LIMIT 10
+''').fetchdf()
+# Returns: 10 rows × 6 fields = 60 values
+# Tokens: ~150 tokens
+```
+
+**❌ BAD - API function for large result set**:
+```python
+weak_books = get_weak_signal_books()
+# Returns: 49 books × (6 metadata fields + 75-word description)
+# Tokens: ~5,000 tokens
+```
+
+### Token Impact: Before vs After
+
+| Query | Before Guidance | After Guidance | Improvement |
+|-------|-----------------|----------------|-------------|
+| "Search Python books" | 8,209 tokens | ~1,000 tokens | **88% reduction** |
+| "Top 5 missing categories" | 9,994 tokens (using API) | 976 tokens (using SQL) | **90% reduction** |
+| "Weak signal books" | 9,627 tokens | ~1,500 tokens | **84% reduction** |
+| "Count by status" | 1,770 tokens (API) | 850 tokens (SQL) | **52% reduction** |
+
+### Key Principles Added to System Prompt
+
+1. **description field = 50-100 words/book × 200 books = 10,000-20,000 words**
+   - Only SELECT description when user asks about book content/summaries
+   - Example: "Tell me about...", "What's this book about...", "Summarize..."
+
+2. **API functions return ALL fields**
+   - Avoid for large result sets (>10 books)
+   - Use SQL with field projection instead
+
+3. **Always use LIMIT for multi-record queries**
+   - Prevents accidentally returning 200 books with descriptions
+   - Default to LIMIT 10 unless user specifies otherwise
+
+4. **Aggregations should NEVER retrieve individual book descriptions**
+   - Use SQL GROUP BY with aggregate functions (COUNT, AVG, SUM)
+   - Return only the aggregated values, not full book records
+
+### API Function Warnings
+
+We added token warnings to all multi-record API functions:
+
+```python
+def list_by_status(status: str, category: Optional[str] = None) -> List[Dict[str, Any]]:
+    """List all books with a specific status.
+
+    ⚠️  TOKEN WARNING: Returns ALL fields. Can return 60+ books!
+        For counting, use SQL aggregation instead:
+        SELECT status, COUNT(*) FROM library.books GROUP BY status
+
+        For lists without content, use field projection:
+        SELECT book_id, title, status FROM library.books WHERE status = 'Missing' LIMIT 10
+    """
+```
+
+### When to Include Description Field
+
+**Include description ONLY when**:
+- User asks about book content ("What's this book about?")
+- Semantic search queries ("Books about machine learning")
+- Book recommendations ("Similar books to...")
+- Result set is small (≤5 books)
+
+**Exclude description when**:
+- Counting/statistics queries
+- Listing books by metadata (status, category, location)
+- Large result sets (>10 books)
+- Signal strength analysis
+- Location-based queries
+
+### Educational Value
+
+This teaches learners:
+- **SQL best practices**: Only SELECT columns you need
+- **Token cost awareness**: Understanding the impact of field selection
+- **Query optimization**: Aggregations vs full table scans
+- **Data architecture**: When to denormalize vs normalize
+
+The LLM learns to write efficient SQL that mirrors how developers should write queries in production systems.
+
+---
+
 ## Example Comparison: Traditional vs Code Execution
 
 **Query**: "Show top 5 categories by missing books with average signal strength"

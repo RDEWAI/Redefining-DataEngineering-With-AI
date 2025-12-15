@@ -18,6 +18,7 @@ dependencies = [
 
     # LLM Integration
     "openai>=1.0.0",  # OpenAI SDK for OpenRouter
+    "httpx>=0.27.0",  # HTTP client for Ollama
 
     # Embeddings (optional - installed on demand for Phase 5)
     # "sentence-transformers>=2.2.0",

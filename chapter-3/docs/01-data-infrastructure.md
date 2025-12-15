@@ -38,6 +38,7 @@ CREATE TABLE library.books (
     book_id VARCHAR PRIMARY KEY,
     title VARCHAR NOT NULL,
     author VARCHAR NOT NULL,
+    description VARCHAR NOT NULL,  -- 50-100 word book summary for RAG
     category VARCHAR NOT NULL,
     cabinet INTEGER NOT NULL,
     rack INTEGER NOT NULL,
@@ -60,6 +61,7 @@ book = Book(
     book_id="B001",
     title="Python Programming",
     author="John Smith",
+    description="Master Python programming through this comprehensive guide covering data structures, algorithms, and best practices.",
     category=Category.PROGRAMMING,
     location=Location(cabinet=3, rack=2, row=5),
     signal_strength=-45.2,
@@ -194,6 +196,7 @@ The source CSV file (`data/raw/library/library_dataset_random.csv`) has the foll
 | Book_ID | string | Unique identifier (B001, B002, ...) |
 | Title | string | Book title |
 | Author | string | Author name |
+| Description | string | Book summary (50-100 words for RAG embeddings) |
 | Category | string | One of: Programming, History, Science, Fiction, Thriller |
 | Cabinet | int | Cabinet number (≥1) |
 | Rack | int | Rack within cabinet (≥1) |

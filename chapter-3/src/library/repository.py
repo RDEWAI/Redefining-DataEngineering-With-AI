@@ -94,7 +94,7 @@ class BookRepository:
             >>> books = repo.search_books("Python", category=Category.PROGRAMMING)
         """
         sql = """
-            SELECT book_id, title, author, category, cabinet, rack, row,
+            SELECT book_id, title, author, description, category, cabinet, rack, row,
                    signal_strength, timestamp, status
             FROM library.books
             WHERE (LOWER(title) LIKE LOWER('%' || ? || '%')
@@ -122,7 +122,7 @@ class BookRepository:
             Book instance if found, None otherwise
         """
         sql = """
-            SELECT book_id, title, author, category, cabinet, rack, row,
+            SELECT book_id, title, author, description, category, cabinet, rack, row,
                    signal_strength, timestamp, status
             FROM library.books
             WHERE book_id = ?
@@ -147,7 +147,7 @@ class BookRepository:
             List of Book instances in the category
         """
         sql = """
-            SELECT book_id, title, author, category, cabinet, rack, row,
+            SELECT book_id, title, author, description, category, cabinet, rack, row,
                    signal_strength, timestamp, status
             FROM library.books
             WHERE category = ?
@@ -177,7 +177,7 @@ class BookRepository:
             List of Book instances with the status
         """
         sql = """
-            SELECT book_id, title, author, category, cabinet, rack, row,
+            SELECT book_id, title, author, description, category, cabinet, rack, row,
                    signal_strength, timestamp, status
             FROM library.books
             WHERE status = ?
@@ -205,7 +205,7 @@ class BookRepository:
             List of Book instances with weak signal, ordered by signal strength
         """
         sql = """
-            SELECT book_id, title, author, category, cabinet, rack, row,
+            SELECT book_id, title, author, description, category, cabinet, rack, row,
                    signal_strength, timestamp, status
             FROM library.books
             WHERE signal_strength < ?
@@ -229,7 +229,7 @@ class BookRepository:
             List of Book instances in the cabinet
         """
         sql = """
-            SELECT book_id, title, author, category, cabinet, rack, row,
+            SELECT book_id, title, author, description, category, cabinet, rack, row,
                    signal_strength, timestamp, status
             FROM library.books
             WHERE cabinet = ?

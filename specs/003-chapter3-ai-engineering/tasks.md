@@ -390,6 +390,94 @@ Task: T5.5-021 [P] Test OpenAI initialization
 
 ---
 
+## Phase 6.5: Pre-Phase 7 - Dataset Enhancement with Description Column
+
+**Goal**: Add Description column to library dataset and update all dependent code before starting RAG implementation
+
+**Why**: RAG needs rich textual content for effective semantic search. The current dataset has only structured metadata (Title, Author, Category, Location). Adding 50-100 word book descriptions enables meaningful semantic embeddings and natural language queries.
+
+**Impact**: Updates required across 7 source files, 5 test files, and 3 documentation files
+
+**Independent Test**: Load enhanced CSV with description column, verify all 200 books have descriptions, all existing tests pass
+
+**Dependencies**: Requires US4 (Phase 6) complete. Blocks US5 (Phase 7 RAG) until complete.
+
+### Description Generation
+
+- [X] T094 [P] Create `chapter-3/scripts/generate_descriptions.py` with hybrid template + LLM approach
+- [X] T095 Implement category-specific description templates (Programming, Fiction, Thriller, Science, History)
+- [X] T096 Generate 200 unique descriptions (50-100 words each) based on book titles and categories
+- [X] T097 Write enhanced CSV with Description column (position 4, after Author) to `chapter-3/data/raw/library/library_dataset_random.csv`
+- [X] T098 Validate: 200 books processed, no data loss, descriptions non-empty and semantically diverse
+
+### Domain Model Updates
+
+- [X] T099 [P] Update `chapter-3/src/library/domain.py` Book dataclass - add `description: str` field after `author`
+- [X] T100 Update `Book.to_dict()` method in `domain.py` to include `"description": self.description`
+- [X] T101 Update `Book.from_row()` classmethod in `domain.py` to unpack description from tuple (position 3)
+- [X] T102 Update `Book.from_dict()` classmethod in `domain.py` to handle `description` key
+
+### Database Schema & Loader Updates
+
+- [X] T103 [P] Update `chapter-3/scripts/load_library_csv_to_duckdb.py` - add `description VARCHAR NOT NULL` to CREATE TABLE statement (after author)
+- [X] T104 Update INSERT statement in `load_library_csv_to_duckdb.py` to map CSV `Description` column to database `description` field
+- [X] T105 Add "description" to NULL value checks in `validate_data()` function in `load_library_csv_to_duckdb.py`
+- [X] T106 Add length validation for descriptions (50-300 characters) in `validate_data()` function
+
+### Repository Query Updates
+
+- [X] T107 Update `chapter-3/src/library/repository.py` `search_books()` - add `description` to SELECT statement (line ~97)
+- [X] T108 Update `chapter-3/src/library/repository.py` `get_book_by_id()` - add `description` to SELECT statement (line ~125)
+- [X] T109 Update `chapter-3/src/library/repository.py` `list_by_category()` - add `description` to SELECT statement (line ~150)
+- [X] T110 Update `chapter-3/src/library/repository.py` `list_by_status()` - add `description` to SELECT statement (line ~180)
+- [X] T111 Update `chapter-3/src/library/repository.py` `get_weak_signal_books()` - add `description` to SELECT statement (line ~208)
+- [X] T112 Update `chapter-3/src/library/repository.py` `find_books_in_cabinet()` - add `description` to SELECT statement (line ~232)
+
+### Test Updates
+
+- [X] T113 [P] Update `chapter-3/tests/unit/test_domain.py` - add description field to all Book test fixtures
+- [X] T114 [P] Update `chapter-3/tests/unit/test_repository.py` - add description to test data and assertions
+- [X] T115 [P] Update `chapter-3/tests/unit/test_tools.py` - add assertions for description in tool responses
+- [X] T116 Update `chapter-3/tests/integration/test_data_load.py` - add description column existence validation
+- [X] T117 Add description NULL check validation to `test_data_load.py`
+- [X] T118 Add description length constraint checks (50-300 chars) to `test_data_load.py`
+
+### Documentation Updates
+
+- [X] T119 [P] Update `specs/003-chapter3-ai-engineering/data-model.md` - add Description field to Book entity schema
+- [X] T120 [P] Update `specs/003-chapter3-ai-engineering/spec.md` FR-002 - add Description to list of book attributes
+- [X] T121 [P] Update `chapter-3/docs/01-data-infrastructure.md` - update code examples to show Description field
+
+### End-to-End Validation
+
+- [X] T122 Delete existing database: `rm chapter-3/data/duckdb/chapter3.db`
+- [X] T123 Run enhanced CSV loader: `python chapter-3/scripts/load_library_csv_to_duckdb.py`
+- [X] T124 Run all unit tests: `uv run pytest chapter-3/tests/unit/ -v` - verify 100% pass
+- [X] T125 Run all integration tests: `uv run pytest chapter-3/tests/integration/ -v` - verify 100% pass
+- [X] T126 Verify 200 books loaded with descriptions: `SELECT COUNT(*), COUNT(description) FROM library.books`
+- [X] T127 Spot-check sample descriptions for quality and semantic diversity
+
+**Checkpoint**: Description column integrated into all phases - RAG implementation can begin with rich textual data
+
+**Parallel Opportunities**:
+```bash
+# After T094-T098 (descriptions generated):
+Task: T099 [P] Update Book dataclass
+Task: T103 [P] Update CSV loader schema
+Task: T113 [P] Update test_domain.py fixtures
+Task: T114 [P] Update test_repository.py fixtures
+Task: T115 [P] Update test_tools.py assertions
+Task: T119 [P] Update data-model.md
+Task: T120 [P] Update spec.md FR-002
+Task: T121 [P] Update docs
+
+# After T102 (domain complete):
+# Run repository updates T107-T112 sequentially (same file)
+# Run test updates T116-T118 sequentially (same file)
+```
+
+---
+
 ## Phase 7: User Story 5 - Semantic Search with RAG (Priority: P5)
 
 **Goal**: Implement RAG with DuckDB VSS for semantic book search (Sub-feature 003e)
@@ -398,52 +486,52 @@ Task: T5.5-021 [P] Test OpenAI initialization
 
 ### Unit Tests for User Story 5
 
-- [ ] T085 [P] [US5] Create `chapter-3/tests/unit/test_embeddings.py` with embedding generation tests
-- [ ] T086 [P] [US5] Create `chapter-3/tests/unit/test_tool_registry.py` with tool registry tests
+- [ ] T128 [P] [US5] Create `chapter-3/tests/unit/test_embeddings.py` with embedding generation tests
+- [ ] T129 [P] [US5] Create `chapter-3/tests/unit/test_tool_registry.py` with tool registry tests
 
 ### Integration Tests for User Story 5
 
-- [ ] T087 [P] [US5] Create `chapter-3/tests/integration/test_semantic_search.py` with retrieval accuracy tests
+- [ ] T130 [P] [US5] Create `chapter-3/tests/integration/test_semantic_search.py` with retrieval accuracy tests
 
 ### RAG Implementation
 
-- [ ] T088 [US5] Create `chapter-3/src/rag/__init__.py`
-- [ ] T089 [US5] Create `chapter-3/src/rag/embeddings.py` with EmbeddingGenerator class using sentence-transformers
-- [ ] T090 [US5] Implement embed_text(text) and embed_books(books) methods
-- [ ] T091 [US5] Create `chapter-3/src/rag/vector_store.py` with DuckDBVectorStore class
-- [ ] T092 [US5] Implement VSS extension setup and book_embeddings table creation
-- [ ] T093 [US5] Implement semantic_search(query, top_k) using array_cosine_distance
-- [ ] T094 [US5] Add HNSW index creation after data population
-- [ ] T095 [US5] Add user-friendly error messages for empty search results
+- [ ] T131 [US5] Create `chapter-3/src/rag/__init__.py`
+- [ ] T132 [US5] Create `chapter-3/src/rag/embeddings.py` with EmbeddingGenerator class using sentence-transformers
+- [ ] T133 [US5] Implement embed_text(text) and embed_books(books) methods
+- [ ] T134 [US5] Create `chapter-3/src/rag/vector_store.py` with DuckDBVectorStore class
+- [ ] T178 [US5] Implement VSS extension setup and book_embeddings table creation
+- [ ] T179 [US5] Implement semantic_search(query, top_k) using array_cosine_distance
+- [ ] T180 [US5] Add HNSW index creation after data population
+- [ ] T181 [US5] Add user-friendly error messages for empty search results
 
 ### Tool Registry Implementation
 
-- [ ] T096 [US5] Create `chapter-3/src/tools/__init__.py`
-- [ ] T097 [US5] Create `chapter-3/src/tools/tool_registry.py` with ToolRegistry class
-- [ ] T098 [US5] Implement register_tool(tool) with metadata (name, description, schema, capabilities)
-- [ ] T099 [US5] Implement get_tool(name) for direct lookup
-- [ ] T100 [US5] Implement list_tools(capability) for capability-based filtering
+- [ ] T182 [US5] Create `chapter-3/src/tools/__init__.py`
+- [ ] T183 [US5] Create `chapter-3/src/tools/tool_registry.py` with ToolRegistry class
+- [ ] T141 [US5] Implement register_tool(tool) with metadata (name, description, schema, capabilities)
+- [ ] T142 [US5] Implement get_tool(name) for direct lookup
+- [ ] T143 [US5] Implement list_tools(capability) for capability-based filtering
 
 ### Tool Search Implementation
 
-- [ ] T101 [US5] Create `chapter-3/src/tools/tool_search.py` with ToolSearch class
-- [ ] T102 [US5] Implement search_by_name(query) for name-based lookup
-- [ ] T103 [US5] Implement search_by_description(query) using embedding similarity
+- [ ] T144 [US5] Create `chapter-3/src/tools/tool_search.py` with ToolSearch class
+- [ ] T145 [US5] Implement search_by_name(query) for name-based lookup
+- [ ] T146 [US5] Implement search_by_description(query) using embedding similarity
 
 ### Data Analysis Agent
 
-- [ ] T104 [US5] Create `chapter-3/src/agents/data_analysis_agent.py` with DataAnalysisAgent class
-- [ ] T105 [US5] Integrate code execution for complex analytics
-- [ ] T106 [US5] Integrate semantic search for book discovery
+- [ ] T147 [US5] Create `chapter-3/src/agents/data_analysis_agent.py` with DataAnalysisAgent class
+- [ ] T148 [US5] Integrate code execution for complex analytics
+- [ ] T149 [US5] Integrate semantic search for book discovery
 
 ### CLI and Makefile for US5
 
-- [ ] T107 [US5] Add `make generate-embeddings` target to generate book embeddings
-- [ ] T108 [US5] Add `make semantic-search` target for interactive semantic search
+- [ ] T150 [US5] Add `make generate-embeddings` target to generate book embeddings
+- [ ] T151 [US5] Add `make semantic-search` target for interactive semantic search
 
 ### Documentation for US5
 
-- [ ] T109 [P] [US5] Create `chapter-3/docs/06-advanced-tools-rag.md` explaining RAG scope decisions
+- [ ] T152 [P] [US5] Create `chapter-3/docs/06-advanced-tools-rag.md` explaining RAG scope decisions
 
 **Checkpoint**: User Story 5 complete - semantic search works with 70%+ top-3 precision
 
@@ -457,46 +545,46 @@ Task: T5.5-021 [P] Test OpenAI initialization
 
 ### Unit Tests for User Story 6
 
-- [ ] T110 [P] [US6] Create `chapter-3/tests/unit/test_agents.py` with tests for each agent type
-- [ ] T111 [P] [US6] Create `chapter-3/tests/unit/test_protocol.py` with A2A message protocol tests
+- [ ] T153 [P] [US6] Create `chapter-3/tests/unit/test_agents.py` with tests for each agent type
+- [ ] T154 [P] [US6] Create `chapter-3/tests/unit/test_protocol.py` with A2A message protocol tests
 
 ### Integration Tests for User Story 6
 
-- [ ] T112 [P] [US6] Create `chapter-3/tests/integration/test_multi_agent.py` with end-to-end multi-step query tests
+- [ ] T155 [P] [US6] Create `chapter-3/tests/integration/test_multi_agent.py` with end-to-end multi-step query tests
 
 ### A2A Protocol Implementation
 
-- [ ] T113 [US6] Create `chapter-3/src/a2a/__init__.py`
-- [ ] T114 [US6] Create `chapter-3/src/a2a/protocol.py` with QueryType enum and AgentMessage dataclass
-- [ ] T115 [US6] Create `chapter-3/src/a2a/server.py` with in-process message routing
+- [ ] T156 [US6] Create `chapter-3/src/a2a/__init__.py`
+- [ ] T157 [US6] Create `chapter-3/src/a2a/protocol.py` with QueryType enum and AgentMessage dataclass
+- [ ] T158 [US6] Create `chapter-3/src/a2a/server.py` with in-process message routing
 
 ### Specialized Agents Implementation
 
-- [ ] T116 [US6] Create `chapter-3/src/agents/search_agent.py` with SearchAgent class
-- [ ] T117 [US6] Implement search_agent with tools: search_books, get_book_details, locate_book, semantic_search
-- [ ] T118 [US6] Create `chapter-3/src/agents/analytics_agent.py` with AnalyticsAgent class
-- [ ] T119 [US6] Implement analytics_agent with tools: get_library_stats, list_by_category, list_by_status, execute_analytics
-- [ ] T120 [US6] Create `chapter-3/src/agents/recommendation_agent.py` with RecommendationAgent class
-- [ ] T121 [US6] Implement recommendation_agent with signal strength consideration ("avoid weak signal books")
+- [ ] T159 [US6] Create `chapter-3/src/agents/search_agent.py` with SearchAgent class
+- [ ] T160 [US6] Implement search_agent with tools: search_books, get_book_details, locate_book, semantic_search
+- [ ] T161 [US6] Create `chapter-3/src/agents/analytics_agent.py` with AnalyticsAgent class
+- [ ] T162 [US6] Implement analytics_agent with tools: get_library_stats, list_by_category, list_by_status, execute_analytics
+- [ ] T163 [US6] Create `chapter-3/src/agents/recommendation_agent.py` with RecommendationAgent class
+- [ ] T164 [US6] Implement recommendation_agent with signal strength consideration ("avoid weak signal books")
 
 ### Orchestrator Implementation
 
-- [ ] T122 [US6] Create `chapter-3/src/agents/orchestrator_agent.py` with OrchestratorAgent class
-- [ ] T123 [US6] Implement query classification (search / analytics / multi-step)
-- [ ] T124 [US6] Implement agent discovery and routing
-- [ ] T125 [US6] Implement result aggregation from multiple agents
-- [ ] T126 [US6] Add routing decision display for transparency
-- [ ] T127 [US6] Add user-friendly error messages for agent failures
+- [ ] T165 [US6] Create `chapter-3/src/agents/orchestrator_agent.py` with OrchestratorAgent class
+- [ ] T166 [US6] Implement query classification (search / analytics / multi-step)
+- [ ] T167 [US6] Implement agent discovery and routing
+- [ ] T168 [US6] Implement result aggregation from multiple agents
+- [ ] T169 [US6] Add routing decision display for transparency
+- [ ] T170 [US6] Add user-friendly error messages for agent failures
 
 ### CLI and Makefile for US6
 
-- [ ] T128 [US6] Add unified multi-agent CLI to orchestrator_agent.py
-- [ ] T129 [US6] Add `make multi-agent` target to start multi-agent system
-- [ ] T130 [US6] Add routing visualization in CLI output
+- [ ] T171 [US6] Add unified multi-agent CLI to orchestrator_agent.py
+- [ ] T172 [US6] Add `make multi-agent` target to start multi-agent system
+- [ ] T173 [US6] Add routing visualization in CLI output
 
 ### Documentation for US6
 
-- [ ] T131 [P] [US6] Create `chapter-3/docs/07-a2a-multi-agent.md` tying to Google A2A concepts
+- [ ] T174 [P] [US6] Create `chapter-3/docs/07-a2a-multi-agent.md` tying to Google A2A concepts
 
 **Checkpoint**: User Story 6 complete - multi-agent system routes queries at 85%+ accuracy
 
@@ -506,15 +594,15 @@ Task: T5.5-021 [P] Test OpenAI initialization
 
 **Purpose**: Final quality improvements affecting all user stories
 
-- [ ] T132 [P] Run ruff linting on all chapter-3/ Python files and fix issues
-- [ ] T133 [P] Run mypy type checking on all chapter-3/ Python files and fix issues
-- [ ] T134 [P] Verify all docstrings follow Google style
-- [ ] T135 Add structured logging (JSON) across all modules
-- [ ] T136 Verify all edge cases have user-friendly error messages
-- [ ] T137 Run `make test` and ensure 80%+ unit test coverage
-- [ ] T138 Run quickstart.md validation - execute all steps and verify
-- [ ] T139 Update chapter-3/README.md with final instructions
-- [ ] T140 Create sample queries document for each sub-feature
+- [ ] T175 [P] Run ruff linting on all chapter-3/ Python files and fix issues
+- [ ] T176 [P] Run mypy type checking on all chapter-3/ Python files and fix issues
+- [ ] T177 [P] Verify all docstrings follow Google style
+- [ ] T178 Add structured logging (JSON) across all modules
+- [ ] T179 Verify all edge cases have user-friendly error messages
+- [ ] T180 Run `make test` and ensure 80%+ unit test coverage
+- [ ] T181 Run quickstart.md validation - execute all steps and verify
+- [ ] T182 Update chapter-3/README.md with final instructions
+- [ ] T183 Create sample queries document for each sub-feature
 
 ---
 
@@ -532,12 +620,16 @@ Phase 1 (Setup) ───► Phase 2 (Foundational) ───► User Stories
               003a: Data                       003b: MCP
                      │                                │
                      ▼                                ▼
-              US3 (P3) ──────────────────────► Phase 5.5 (NEW)
+              US3 (P3) ──────────────────────► Phase 5.5
               003c: Tools                      Code Quality
                                                       │
                                                       ▼
               US4 (P4) ◄───────────────────── Phase 5.5 Done
               003d: Code Exec
+                     │
+                     ▼
+              Phase 6.5 ◄──────────────────── US4 Done
+              Dataset Enhancement              (Add Description)
                      │
                      ▼
               US5 (P5) ──────────────────────► US6 (P6)
@@ -556,10 +648,13 @@ Phase 1 (Setup) ───► Phase 2 (Foundational) ───► User Stories
 | US3 (003c) | US2 (same tool functions) | None |
 | **Phase 5.5** | **US3 (003c) complete** | **None** |
 | US4 (003d) | **Phase 5.5 complete** | None |
-| US5 (003e) | US4 (code execution pattern) | None |
+| **Phase 6.5** | **US4 (003d) complete** | **None** |
+| US5 (003e) | **Phase 6.5 complete** (needs Description for RAG) | None |
 | US6 (003f) | US5 (RAG + tool patterns) | None |
 
-**Note**: Phase 5.5 is a code quality phase inserted between US3 and US4. It adds git hooks and unified LLM client that US4+ will use.
+**Notes**:
+- Phase 5.5 is a code quality phase inserted between US3 and US4. It adds git hooks and unified LLM client that US4+ will use.
+- Phase 6.5 is a dataset enhancement phase inserted before US5 (RAG). It adds the Description column to enable rich textual content for semantic search.
 
 ### Within Each User Story
 
@@ -647,17 +742,19 @@ Task: "Add Location dataclass to domain.py"
 
 | Metric | Count |
 |--------|-------|
-| **Total Tasks** | 140 |
+| **Total Tasks** | 183 |
 | **Setup (Phase 1)** | 6 |
 | **Foundational (Phase 2)** | 5 |
 | **US1 Tasks** | 30 |
 | **US2 Tasks** | 13 |
 | **US3 Tasks** | 13 |
+| **Phase 5.5 (Code Quality)** | 33 |
 | **US4 Tasks** | 17 |
+| **Phase 6.5 (Dataset Enhancement)** | 34 |
 | **US5 Tasks** | 25 |
 | **US6 Tasks** | 22 |
 | **Polish (Phase 9)** | 9 |
-| **Parallelizable Tasks** | 47 |
+| **Parallelizable Tasks** | 58 |
 
 ---
 

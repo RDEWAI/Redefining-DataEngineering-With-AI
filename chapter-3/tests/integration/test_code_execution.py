@@ -44,8 +44,9 @@ class TestCodeExecutionIntegration:
     @pytest.fixture
     def tool_api_generator(self, db_path):
         """Create tool API generator with repository."""
-        repo = BookRepository(db_path=db_path)
-        return ToolAPIGenerator(repo)
+        repo = BookRepository(db_path=db_path, read_only=True)
+        yield ToolAPIGenerator(repo)
+        repo.close()
 
     def test_tool_api_generation(self, tool_api_generator):
         """Test that tool API code can be generated."""
@@ -55,7 +56,7 @@ class TestCodeExecutionIntegration:
         assert "def get_book_details" in api_code
         assert "def list_by_category" in api_code
         assert "import duckdb" in api_code
-        assert "BookRepository" in api_code
+        assert "description" in api_code  # Verify description field is included
 
     def test_simple_query_execution(self, sandbox, db_path):
         """Test execution of a simple database query."""
@@ -277,12 +278,12 @@ if results:
         assert "timeout" in result
 
     @pytest.mark.skipif(
-        not os.path.exists("chapter-3/data/duckdb/chapter3.db"),
+        not os.path.exists("data/duckdb/chapter3.db"),
         reason="Test database not available",
     )
     def test_real_database_query(self, sandbox):
         """Test query against real library database."""
-        db_path = "chapter-3/data/duckdb/chapter3.db"
+        db_path = "data/duckdb/chapter3.db"
         code = f"""
 import duckdb
 

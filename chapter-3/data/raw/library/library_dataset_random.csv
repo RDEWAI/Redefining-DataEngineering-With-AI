@@ -1,201 +1,201 @@
-Book_ID,Title,Author,Category,Cabinet,Rack,Row,Signal_Strength,Timestamp,Status
-B001,The Adventures of Chronicles,Jordan Brown,Programming,4,5,4,-59,2024-12-11 10:01:00,Present
-B002,The Dream of Shadows,Taylor Walker,History,3,3,5,-42,2024-12-11 10:02:00,Missing
-B003,The Shadows of Mystery,Jordan Johnson,Science,5,3,4,-47,2024-12-11 10:03:00,Checked Out
-B004,The Chronicles of Dream,Casey Walker,Fiction,4,1,1,-60,2024-12-11 10:04:00,Missing
-B005,The Future of Adventures,Skyler Lee,Programming,3,4,2,-58,2024-12-11 10:05:00,Missing
-B006,The Chronicles of Chronicles,Skyler Smith,Thriller,4,2,4,-53,2024-12-11 10:06:00,Present
-B007,The Journey of Adventures,Morgan Hall,Fiction,2,5,1,-57,2024-12-11 10:07:00,Missing
-B008,The Legacy of Quest,Alex Clark,Science,3,3,2,-54,2024-12-11 10:08:00,Missing
-B009,The Mystery of Dream,Jordan Anderson,Fiction,1,5,4,-55,2024-12-11 10:09:00,Present
-B010,The Adventures of Shadows,Dakota Taylor,Programming,5,1,3,-45,2024-12-11 10:10:00,Checked Out
-B011,The Shadows of Adventures,Riley Clark,Fiction,2,5,2,-42,2024-12-11 10:11:00,Checked Out
-B012,The Future of Dream,Riley Hall,Fiction,4,2,5,-40,2024-12-11 10:12:00,Checked Out
-B013,The Code of Shadows,Quinn Walker,Thriller,1,3,1,-53,2024-12-11 10:13:00,Missing
-B014,The Code of Journey,Skyler Walker,Thriller,3,1,5,-52,2024-12-11 10:14:00,Checked Out
-B015,The Mystery of Shadows,Morgan Clark,Science,2,4,1,-40,2024-12-11 10:15:00,Missing
-B016,The Future of Shadows,Skyler Hall,Programming,1,4,2,-50,2024-12-11 10:16:00,Checked Out
-B017,The Chronicles of Legacy,Taylor Clark,Thriller,5,1,2,-45,2024-12-11 10:17:00,Checked Out
-B018,The Mystery of Legacy,Casey Smith,Fiction,3,5,2,-41,2024-12-11 10:18:00,Present
-B019,The Future of Mystery,Casey Hall,Fiction,4,1,5,-48,2024-12-11 10:19:00,Missing
-B020,The Adventures of Shadows,Alex Walker,Thriller,2,3,4,-50,2024-12-11 10:20:00,Missing
-B021,The Quest of Chronicles,Jordan Smith,Programming,5,2,1,-42,2024-12-11 10:21:00,Checked Out
-B022,The Dream of Shadows,Jamie Johnson,Programming,4,4,1,-50,2024-12-11 10:22:00,Missing
-B023,The Journey of Chronicles,Jordan Allen,Science,3,2,3,-60,2024-12-11 10:23:00,Present
-B024,The Dream of Quest,Jamie Johnson,Science,4,5,5,-47,2024-12-11 10:24:00,Missing
-B025,The Mystery of Legacy,Dakota Smith,History,5,5,4,-57,2024-12-11 10:25:00,Present
-B026,The Adventures of Journey,Skyler Anderson,History,2,1,3,-41,2024-12-11 10:26:00,Missing
-B027,The Chronicles of Journey,Jamie Allen,Fiction,2,1,5,-45,2024-12-11 10:27:00,Present
-B028,The Adventures of Dream,Casey Clark,Science,2,4,4,-42,2024-12-11 10:28:00,Missing
-B029,The Code of Shadows,Alex Johnson,Thriller,3,4,2,-41,2024-12-11 10:29:00,Present
-B030,The Quest of Adventures,Skyler Smith,Science,5,1,3,-43,2024-12-11 10:30:00,Checked Out
-B031,The Adventures of Legacy,Morgan Brown,Science,1,2,4,-40,2024-12-11 10:31:00,Missing
-B032,The Chronicles of Mystery,Taylor Taylor,Thriller,5,4,1,-48,2024-12-11 10:32:00,Checked Out
-B033,The Future of Journey,Dakota Clark,Programming,4,4,4,-47,2024-12-11 10:33:00,Missing
-B034,The Future of Code,Morgan Johnson,History,4,4,2,-54,2024-12-11 10:34:00,Present
-B035,The Dream of Journey,Jordan Smith,Programming,2,4,4,-54,2024-12-11 10:35:00,Checked Out
-B036,The Shadows of Shadows,Riley Lee,History,2,1,5,-59,2024-12-11 10:36:00,Checked Out
-B037,The Quest of Future,Jordan Lee,Fiction,5,3,5,-44,2024-12-11 10:37:00,Checked Out
-B038,The Dream of Chronicles,Casey Taylor,Programming,1,1,5,-58,2024-12-11 10:38:00,Checked Out
-B039,The Future of Legacy,Casey Smith,Programming,5,1,1,-45,2024-12-11 10:39:00,Present
-B040,The Shadows of Legacy,Skyler Taylor,Fiction,4,1,1,-43,2024-12-11 10:40:00,Missing
-B041,The Quest of Quest,Casey Taylor,Programming,1,5,2,-46,2024-12-11 10:41:00,Present
-B042,The Chronicles of Chronicles,Riley Anderson,Programming,1,1,2,-50,2024-12-11 10:42:00,Missing
-B043,The Shadows of Adventures,Quinn Johnson,Science,3,3,1,-42,2024-12-11 10:43:00,Present
-B044,The Journey of Chronicles,Alex Johnson,Programming,2,2,1,-41,2024-12-11 10:44:00,Missing
-B045,The Future of Code,Casey Smith,History,3,2,4,-51,2024-12-11 10:45:00,Checked Out
-B046,The Adventures of Shadows,Skyler Lee,Science,4,5,1,-59,2024-12-11 10:46:00,Checked Out
-B047,The Chronicles of Shadows,Dakota Brown,Fiction,3,4,2,-55,2024-12-11 10:47:00,Missing
-B048,The Shadows of Quest,Morgan Taylor,Science,3,1,1,-50,2024-12-11 10:48:00,Checked Out
-B049,The Journey of Journey,Casey Hall,History,2,4,1,-47,2024-12-11 10:49:00,Present
-B050,The Quest of Quest,Alex Anderson,Thriller,2,5,3,-49,2024-12-11 10:50:00,Checked Out
-B051,The Adventures of Legacy,Skyler Brown,History,3,5,5,-44,2024-12-11 10:51:00,Present
-B052,The Shadows of Mystery,Alex Lee,Thriller,4,4,5,-45,2024-12-11 10:52:00,Missing
-B053,The Future of Dream,Quinn Smith,Programming,3,5,2,-51,2024-12-11 10:53:00,Checked Out
-B054,The Adventures of Dream,Taylor Brown,Fiction,5,3,5,-44,2024-12-11 10:54:00,Missing
-B055,The Mystery of Mystery,Riley Lee,History,4,3,4,-59,2024-12-11 10:55:00,Checked Out
-B056,The Quest of Shadows,Jordan Hall,History,2,2,3,-55,2024-12-11 10:56:00,Checked Out
-B057,The Quest of Future,Taylor Allen,Programming,4,1,5,-58,2024-12-11 10:57:00,Checked Out
-B058,The Shadows of Adventures,Riley Allen,Thriller,3,1,3,-40,2024-12-11 10:58:00,Missing
-B059,The Quest of Code,Morgan Smith,Programming,2,2,3,-51,2024-12-11 10:59:00,Missing
-B060,The Chronicles of Shadows,Morgan Anderson,Programming,5,1,3,-58,2024-12-11 11:00:00,Checked Out
-B061,The Quest of Future,Dakota Smith,Science,4,5,3,-40,2024-12-11 11:01:00,Checked Out
-B062,The Shadows of Shadows,Morgan Allen,Thriller,1,2,2,-42,2024-12-11 11:02:00,Present
-B063,The Quest of Adventures,Alex Clark,History,2,3,1,-60,2024-12-11 11:03:00,Checked Out
-B064,The Mystery of Mystery,Skyler Johnson,Programming,2,5,3,-59,2024-12-11 11:04:00,Checked Out
-B065,The Future of Journey,Taylor Anderson,Thriller,2,3,3,-51,2024-12-11 11:05:00,Present
-B066,The Legacy of Adventures,Jamie Johnson,History,4,5,2,-54,2024-12-11 11:06:00,Present
-B067,The Legacy of Dream,Alex Johnson,Thriller,1,3,1,-59,2024-12-11 11:07:00,Checked Out
-B068,The Future of Dream,Riley Walker,Fiction,5,3,2,-56,2024-12-11 11:08:00,Present
-B069,The Journey of Legacy,Quinn Anderson,Science,5,1,2,-48,2024-12-11 11:09:00,Present
-B070,The Legacy of Future,Morgan Clark,Fiction,1,3,4,-43,2024-12-11 11:10:00,Checked Out
-B071,The Dream of Mystery,Riley Walker,Thriller,2,2,1,-43,2024-12-11 11:11:00,Present
-B072,The Mystery of Dream,Quinn Smith,History,3,1,4,-52,2024-12-11 11:12:00,Checked Out
-B073,The Adventures of Quest,Skyler Walker,Programming,2,2,5,-57,2024-12-11 11:13:00,Present
-B074,The Mystery of Quest,Skyler Anderson,Fiction,3,1,2,-43,2024-12-11 11:14:00,Checked Out
-B075,The Chronicles of Journey,Skyler Smith,Fiction,4,1,2,-56,2024-12-11 11:15:00,Checked Out
-B076,The Shadows of Chronicles,Alex Walker,Fiction,5,2,3,-53,2024-12-11 11:16:00,Checked Out
-B077,The Shadows of Mystery,Morgan Brown,Science,4,3,2,-55,2024-12-11 11:17:00,Checked Out
-B078,The Dream of Dream,Skyler Allen,Thriller,4,2,1,-45,2024-12-11 11:18:00,Missing
-B079,The Adventures of Mystery,Alex Smith,Thriller,4,3,1,-55,2024-12-11 11:19:00,Present
-B080,The Future of Dream,Quinn Lee,Programming,4,5,2,-44,2024-12-11 11:20:00,Missing
-B081,The Shadows of Dream,Alex Hall,Thriller,3,3,4,-47,2024-12-11 11:21:00,Missing
-B082,The Legacy of Legacy,Alex Allen,History,3,4,5,-43,2024-12-11 11:22:00,Present
-B083,The Adventures of Legacy,Casey Lee,Science,4,3,4,-45,2024-12-11 11:23:00,Missing
-B084,The Shadows of Adventures,Casey Taylor,History,3,5,1,-56,2024-12-11 11:24:00,Present
-B085,The Chronicles of Journey,Riley Brown,History,1,2,3,-53,2024-12-11 11:25:00,Missing
-B086,The Future of Future,Jamie Smith,Thriller,3,4,1,-50,2024-12-11 11:26:00,Present
-B087,The Chronicles of Future,Jordan Allen,Thriller,2,1,2,-58,2024-12-11 11:27:00,Checked Out
-B088,The Code of Mystery,Casey Johnson,Thriller,4,5,1,-48,2024-12-11 11:28:00,Checked Out
-B089,The Code of Code,Alex Taylor,Thriller,5,2,3,-40,2024-12-11 11:29:00,Missing
-B090,The Chronicles of Chronicles,Casey Clark,Programming,4,3,2,-40,2024-12-11 11:30:00,Present
-B091,The Code of Chronicles,Alex Hall,Fiction,2,1,4,-43,2024-12-11 11:31:00,Missing
-B092,The Code of Chronicles,Taylor Allen,Thriller,1,4,3,-44,2024-12-11 11:32:00,Missing
-B093,The Code of Quest,Skyler Allen,Science,3,5,2,-50,2024-12-11 11:33:00,Present
-B094,The Journey of Code,Jordan Lee,Fiction,5,4,1,-54,2024-12-11 11:34:00,Checked Out
-B095,The Mystery of Legacy,Morgan Allen,Fiction,1,4,1,-57,2024-12-11 11:35:00,Checked Out
-B096,The Journey of Code,Morgan Brown,Thriller,3,5,1,-55,2024-12-11 11:36:00,Missing
-B097,The Mystery of Journey,Alex Brown,Thriller,5,4,3,-41,2024-12-11 11:37:00,Present
-B098,The Adventures of Shadows,Taylor Anderson,Thriller,5,2,4,-53,2024-12-11 11:38:00,Missing
-B099,The Shadows of Adventures,Jordan Clark,Science,4,3,5,-40,2024-12-11 11:39:00,Present
-B100,The Chronicles of Legacy,Casey Clark,Programming,5,1,5,-57,2024-12-11 11:40:00,Present
-B101,The Quest of Adventures,Alex Brown,Thriller,3,1,3,-40,2024-12-11 11:41:00,Checked Out
-B102,The Chronicles of Legacy,Riley Allen,History,1,1,2,-41,2024-12-11 11:42:00,Present
-B103,The Shadows of Mystery,Alex Hall,Programming,5,3,5,-53,2024-12-11 11:43:00,Missing
-B104,The Journey of Quest,Casey Smith,Thriller,5,5,2,-50,2024-12-11 11:44:00,Checked Out
-B105,The Dream of Journey,Jordan Walker,Programming,5,4,2,-50,2024-12-11 11:45:00,Present
-B106,The Future of Future,Morgan Allen,History,5,2,4,-47,2024-12-11 11:46:00,Checked Out
-B107,The Journey of Shadows,Taylor Lee,Science,2,1,3,-45,2024-12-11 11:47:00,Checked Out
-B108,The Code of Adventures,Taylor Taylor,Science,2,2,3,-42,2024-12-11 11:48:00,Present
-B109,The Chronicles of Future,Casey Clark,Fiction,4,1,4,-59,2024-12-11 11:49:00,Missing
-B110,The Legacy of Code,Jamie Clark,Programming,1,3,2,-44,2024-12-11 11:50:00,Missing
-B111,The Shadows of Journey,Riley Anderson,Science,3,3,4,-44,2024-12-11 11:51:00,Missing
-B112,The Future of Quest,Dakota Walker,History,4,5,3,-45,2024-12-11 11:52:00,Present
-B113,The Chronicles of Chronicles,Taylor Anderson,Thriller,5,4,4,-44,2024-12-11 11:53:00,Present
-B114,The Chronicles of Quest,Casey Smith,Programming,4,5,1,-41,2024-12-11 11:54:00,Present
-B115,The Shadows of Future,Alex Anderson,Thriller,1,3,2,-52,2024-12-11 11:55:00,Checked Out
-B116,The Legacy of Legacy,Jordan Hall,Programming,2,4,2,-52,2024-12-11 11:56:00,Missing
-B117,The Adventures of Chronicles,Jamie Lee,Thriller,1,5,5,-56,2024-12-11 11:57:00,Present
-B118,The Journey of Mystery,Casey Taylor,Thriller,2,2,4,-60,2024-12-11 11:58:00,Checked Out
-B119,The Journey of Adventures,Dakota Lee,Fiction,5,4,4,-50,2024-12-11 11:59:00,Checked Out
-B120,The Adventures of Quest,Jamie Walker,Fiction,3,5,1,-49,2024-12-11 12:00:00,Missing
-B121,The Future of Code,Jamie Hall,History,2,1,3,-59,2024-12-11 12:01:00,Present
-B122,The Mystery of Adventures,Alex Smith,Thriller,5,5,5,-58,2024-12-11 12:02:00,Present
-B123,The Adventures of Quest,Riley Walker,Programming,3,5,2,-43,2024-12-11 12:03:00,Checked Out
-B124,The Quest of Shadows,Riley Clark,History,5,3,2,-50,2024-12-11 12:04:00,Missing
-B125,The Code of Dream,Dakota Johnson,Programming,1,5,1,-58,2024-12-11 12:05:00,Checked Out
-B126,The Code of Code,Casey Clark,History,1,1,4,-58,2024-12-11 12:06:00,Missing
-B127,The Code of Mystery,Casey Smith,Science,5,3,2,-58,2024-12-11 12:07:00,Missing
-B128,The Journey of Dream,Dakota Clark,Thriller,2,3,2,-58,2024-12-11 12:08:00,Present
-B129,The Quest of Future,Riley Walker,Programming,4,4,2,-47,2024-12-11 12:09:00,Checked Out
-B130,The Adventures of Legacy,Morgan Hall,History,1,3,2,-43,2024-12-11 12:10:00,Present
-B131,The Legacy of Mystery,Taylor Brown,Programming,4,5,2,-53,2024-12-11 12:11:00,Missing
-B132,The Legacy of Journey,Taylor Johnson,Programming,2,5,4,-47,2024-12-11 12:12:00,Checked Out
-B133,The Shadows of Dream,Alex Hall,History,2,2,2,-44,2024-12-11 12:13:00,Checked Out
-B134,The Dream of Legacy,Casey Walker,Science,5,2,4,-46,2024-12-11 12:14:00,Missing
-B135,The Code of Legacy,Taylor Allen,History,4,2,5,-59,2024-12-11 12:15:00,Checked Out
-B136,The Journey of Adventures,Taylor Smith,History,5,4,1,-55,2024-12-11 12:16:00,Checked Out
-B137,The Journey of Adventures,Alex Brown,Science,3,3,4,-49,2024-12-11 12:17:00,Checked Out
-B138,The Future of Chronicles,Jordan Anderson,Science,4,5,5,-46,2024-12-11 12:18:00,Present
-B139,The Legacy of Code,Jamie Johnson,Programming,5,2,3,-40,2024-12-11 12:19:00,Present
-B140,The Quest of Mystery,Taylor Smith,History,4,2,3,-50,2024-12-11 12:20:00,Present
-B141,The Quest of Future,Riley Lee,Thriller,4,1,5,-56,2024-12-11 12:21:00,Present
-B142,The Chronicles of Adventures,Jordan Anderson,History,1,2,1,-43,2024-12-11 12:22:00,Present
-B143,The Shadows of Legacy,Alex Lee,Science,2,4,1,-48,2024-12-11 12:23:00,Checked Out
-B144,The Future of Journey,Casey Walker,Fiction,4,1,2,-46,2024-12-11 12:24:00,Present
-B145,The Code of Future,Jamie Lee,Science,1,2,4,-43,2024-12-11 12:25:00,Missing
-B146,The Adventures of Adventures,Taylor Brown,History,1,2,3,-54,2024-12-11 12:26:00,Missing
-B147,The Quest of Shadows,Dakota Brown,Fiction,3,1,5,-53,2024-12-11 12:27:00,Checked Out
-B148,The Future of Legacy,Dakota Brown,Thriller,5,1,5,-43,2024-12-11 12:28:00,Present
-B149,The Quest of Adventures,Quinn Taylor,History,3,4,1,-58,2024-12-11 12:29:00,Missing
-B150,The Quest of Quest,Jamie Clark,Fiction,4,1,2,-48,2024-12-11 12:30:00,Present
-B151,The Journey of Quest,Skyler Smith,History,4,4,4,-59,2024-12-11 12:31:00,Checked Out
-B152,The Chronicles of Journey,Skyler Johnson,Thriller,3,1,2,-53,2024-12-11 12:32:00,Present
-B153,The Journey of Code,Dakota Walker,Fiction,1,1,3,-44,2024-12-11 12:33:00,Checked Out
-B154,The Future of Mystery,Taylor Brown,Science,2,4,3,-55,2024-12-11 12:34:00,Missing
-B155,The Legacy of Legacy,Jamie Taylor,Thriller,3,3,5,-43,2024-12-11 12:35:00,Present
-B156,The Adventures of Chronicles,Alex Lee,Fiction,1,1,2,-49,2024-12-11 12:36:00,Present
-B157,The Dream of Journey,Alex Johnson,Fiction,5,4,2,-55,2024-12-11 12:37:00,Present
-B158,The Future of Future,Morgan Brown,History,5,4,2,-49,2024-12-11 12:38:00,Present
-B159,The Code of Dream,Jordan Anderson,History,1,4,2,-51,2024-12-11 12:39:00,Present
-B160,The Shadows of Chronicles,Riley Allen,Fiction,4,3,5,-47,2024-12-11 12:40:00,Checked Out
-B161,The Adventures of Future,Quinn Lee,History,2,2,3,-44,2024-12-11 12:41:00,Present
-B162,The Future of Adventures,Taylor Brown,History,4,2,3,-57,2024-12-11 12:42:00,Present
-B163,The Legacy of Dream,Quinn Brown,Science,5,3,5,-44,2024-12-11 12:43:00,Missing
-B164,The Shadows of Adventures,Taylor Brown,Programming,5,5,4,-52,2024-12-11 12:44:00,Missing
-B165,The Dream of Mystery,Quinn Johnson,Science,4,2,3,-41,2024-12-11 12:45:00,Missing
-B166,The Quest of Future,Taylor Walker,Science,5,2,5,-56,2024-12-11 12:46:00,Present
-B167,The Dream of Legacy,Casey Smith,Science,5,1,3,-41,2024-12-11 12:47:00,Checked Out
-B168,The Dream of Adventures,Dakota Anderson,Fiction,3,4,5,-45,2024-12-11 12:48:00,Present
-B169,The Dream of Chronicles,Jamie Lee,Programming,3,5,3,-58,2024-12-11 12:49:00,Missing
-B170,The Quest of Journey,Taylor Allen,History,3,2,4,-52,2024-12-11 12:50:00,Present
-B171,The Journey of Chronicles,Dakota Smith,Fiction,3,2,3,-49,2024-12-11 12:51:00,Missing
-B172,The Adventures of Legacy,Morgan Clark,Programming,1,5,1,-43,2024-12-11 12:52:00,Missing
-B173,The Shadows of Shadows,Skyler Clark,Science,4,2,3,-43,2024-12-11 12:53:00,Present
-B174,The Shadows of Journey,Quinn Allen,Programming,3,5,4,-59,2024-12-11 12:54:00,Missing
-B175,The Dream of Code,Taylor Anderson,Thriller,1,1,3,-44,2024-12-11 12:55:00,Checked Out
-B176,The Legacy of Chronicles,Jordan Lee,Thriller,4,5,3,-49,2024-12-11 12:56:00,Missing
-B177,The Shadows of Legacy,Riley Brown,Fiction,2,4,5,-58,2024-12-11 12:57:00,Checked Out
-B178,The Future of Adventures,Casey Walker,Programming,2,3,2,-56,2024-12-11 12:58:00,Checked Out
-B179,The Code of Shadows,Jamie Lee,History,5,1,3,-45,2024-12-11 12:59:00,Missing
-B180,The Chronicles of Dream,Taylor Allen,History,3,3,3,-58,2024-12-11 13:00:00,Missing
-B181,The Shadows of Dream,Morgan Smith,Thriller,2,4,2,-40,2024-12-11 13:01:00,Checked Out
-B182,The Legacy of Mystery,Jamie Hall,Fiction,3,5,5,-40,2024-12-11 13:02:00,Missing
-B183,The Legacy of Quest,Taylor Hall,Science,5,5,4,-56,2024-12-11 13:03:00,Present
-B184,The Shadows of Shadows,Taylor Taylor,Fiction,3,2,4,-54,2024-12-11 13:04:00,Checked Out
-B185,The Mystery of Mystery,Quinn Brown,History,2,4,1,-41,2024-12-11 13:05:00,Missing
-B186,The Chronicles of Journey,Casey Anderson,Fiction,4,4,5,-54,2024-12-11 13:06:00,Present
-B187,The Code of Chronicles,Quinn Lee,Thriller,2,2,3,-51,2024-12-11 13:07:00,Checked Out
-B188,The Dream of Legacy,Skyler Brown,Science,3,5,5,-45,2024-12-11 13:08:00,Checked Out
-B189,The Adventures of Code,Quinn Hall,Fiction,5,5,2,-57,2024-12-11 13:09:00,Present
-B190,The Mystery of Journey,Morgan Allen,Thriller,4,2,4,-40,2024-12-11 13:10:00,Checked Out
-B191,The Dream of Dream,Morgan Walker,Programming,1,5,2,-43,2024-12-11 13:11:00,Missing
-B192,The Journey of Mystery,Skyler Brown,History,2,5,5,-52,2024-12-11 13:12:00,Checked Out
-B193,The Code of Shadows,Quinn Lee,Science,3,2,3,-59,2024-12-11 13:13:00,Present
-B194,The Dream of Shadows,Taylor Johnson,Fiction,3,4,3,-56,2024-12-11 13:14:00,Present
-B195,The Chronicles of Journey,Taylor Allen,Science,2,1,4,-59,2024-12-11 13:15:00,Checked Out
-B196,The Journey of Journey,Taylor Clark,Programming,4,1,1,-59,2024-12-11 13:16:00,Checked Out
-B197,The Future of Adventures,Alex Anderson,Thriller,3,4,5,-40,2024-12-11 13:17:00,Missing
-B198,The Chronicles of Quest,Dakota Brown,Thriller,4,1,4,-42,2024-12-11 13:18:00,Present
-B199,The Journey of Adventures,Jordan Johnson,History,2,1,1,-53,2024-12-11 13:19:00,Present
-B200,The Dream of Code,Riley Smith,Fiction,5,1,5,-57,2024-12-11 13:20:00,Checked Out
+Book_ID,Title,Author,Description,Category,Cabinet,Rack,Row,Signal_Strength,Timestamp,Status
+B001,The Adventures of Chronicles,Jordan Brown,Master algorithms through this practical guide covering performance patterns. Learn problem-solving with step-by-step tutorials and industry best practices for senior engineers.,Programming,4,5,4,-59,2024-12-11 10:01:00,Present
+B002,The Dream of Shadows,Taylor Walker,"Through meticulous research of archaeological evidence, this book examines revolutionary movements and cultural exchange, demonstrating lessons for leadership for present-day challenges.",History,3,3,5,-42,2024-12-11 10:02:00,Missing
+B003,The Shadows of Mystery,Jordan Johnson,Exploring the mysteries of neural networks through statistical analysis. This book examines emergent phenomena and presents unexpected correlations that challenge our understanding of human cognition.,Science,5,3,4,-47,2024-12-11 10:03:00,Checked Out
+B004,The Chronicles of Dream,Casey Walker,"When awakens dormant powers, a reluctant hero must confront internal demons. This tale, set in a world where magic and reality merge, beautifully examines friendship and betrayal with heart and imagination.",Fiction,4,1,1,-60,2024-12-11 10:04:00,Missing
+B005,The Future of Adventures,Skyler Lee,An in-depth exploration of machine learning that demystifies design patterns. This resource teaches debugging techniques using clear explanations and code examples suited for technical leads.,Programming,3,4,2,-58,2024-12-11 10:05:00,Missing
+B006,The Chronicles of Chronicles,Skyler Smith,"When a mysterious code appears in major cities, a security analyst must uncover the truth before the trail goes cold. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,4,2,4,-53,2024-12-11 10:06:00,Present
+B007,The Journey of Adventures,Morgan Hall,"When awakens dormant powers, a young adventurer must confront impossible choices. This tale, set in a land of forgotten legends, beautifully examines hope and perseverance with heart and imagination.",Fiction,2,5,1,-57,2024-12-11 10:07:00,Missing
+B008,The Legacy of Quest,Alex Clark,"This scientific work delves into climate patterns with rigorous computational modeling. By addressing fundamental mechanisms, it offers compelling evidence that reshape natural systems.",Science,3,3,2,-54,2024-12-11 10:08:00,Missing
+B009,The Mystery of Dream,Jordan Anderson,"An epic tale of a curious scholar who receives a cryptic message. Set in a realm between dimensions, this story explores themes of friendship and betrayal as the hero navigates internal demons.",Fiction,1,5,4,-55,2024-12-11 10:09:00,Present
+B010,The Adventures of Shadows,Dakota Taylor,"This book explores system design with a focus on best practices. Through hands-on projects, developers will master code optimization and apply them to production systems. Perfect for intermediate developers.",Programming,5,1,3,-45,2024-12-11 10:10:00,Checked Out
+B011,The Shadows of Adventures,Riley Clark,"a curious scholar embarks on a journey when witnesses a prophecy. In a world of a world where magic and reality merge, the narrative weaves hope and perseverance into a compelling story of hidden conspiracies.",Fiction,2,5,2,-42,2024-12-11 10:11:00,Checked Out
+B012,The Future of Dream,Riley Hall,"a mysterious stranger embarks on a journey when discovers a hidden realm. In a world of a society on the brink of change, the narrative weaves power and responsibility into a compelling story of moral dilemmas.",Fiction,4,2,5,-40,2024-12-11 10:12:00,Checked Out
+B013,The Code of Shadows,Quinn Walker,"When classified information is leaked, a security analyst must expose the conspiracy before global chaos ensues. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,1,3,1,-53,2024-12-11 10:13:00,Missing
+B014,The Code of Journey,Skyler Walker,"When a deadly secret is uncovered, a security analyst must decipher its meaning before irreversible damage occurs. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,3,1,5,-52,2024-12-11 10:14:00,Checked Out
+B015,The Mystery of Shadows,Morgan Clark,Exploring the mysteries of genetic adaptation through field research. This book examines emergent phenomena and presents unexpected correlations that challenge our understanding of scientific understanding.,Science,2,4,1,-40,2024-12-11 10:15:00,Missing
+B016,The Future of Shadows,Skyler Hall,"This book explores system design with a focus on security fundamentals. Through hands-on projects, developers will master efficient coding and apply them to production systems. Perfect for intermediate developers.",Programming,1,4,2,-50,2024-12-11 10:16:00,Checked Out
+B017,The Chronicles of Legacy,Taylor Clark,a trusted ally goes missing sets off a chain of events that puts a journalist in mortal danger. Can they uncover the truth before the truth is buried forever? A gripping page-turner.,Thriller,5,1,2,-45,2024-12-11 10:17:00,Checked Out
+B018,The Mystery of Legacy,Casey Smith,"a seasoned warrior embarks on a journey when witnesses a prophecy. In a world of a land of forgotten legends, the narrative weaves power and responsibility into a compelling story of dark forces.",Fiction,3,5,2,-41,2024-12-11 10:18:00,Present
+B019,The Future of Mystery,Casey Hall,"A gripping story about a curious scholar facing ancient evils. discovers a hidden realm in a society on the brink of change, revealing deep themes of friendship and betrayal throughout.",Fiction,4,1,5,-48,2024-12-11 10:19:00,Missing
+B020,The Adventures of Shadows,Alex Walker,"When classified information is leaked, a detective must find the missing person before the trail goes cold. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,2,3,4,-50,2024-12-11 10:20:00,Missing
+B021,The Quest of Chronicles,Jordan Smith,Master API design through this practical guide covering best practices. Learn technical leadership with step-by-step tutorials and industry best practices for technical leads.,Programming,5,2,1,-42,2024-12-11 10:21:00,Checked Out
+B022,The Dream of Shadows,Jamie Johnson,An in-depth exploration of data structures that demystifies performance patterns. This resource teaches problem-solving using clear explanations and code examples suited for technical leads.,Programming,4,4,1,-50,2024-12-11 10:22:00,Missing
+B023,The Journey of Chronicles,Jordan Allen,An authoritative examination of particle physics employing computational modeling. The research explores interconnected systems and delivers paradigm-shifting results relevant to human cognition.,Science,3,2,3,-60,2024-12-11 10:23:00,Present
+B024,The Dream of Quest,Jamie Johnson,"This scientific work delves into cognitive processes with rigorous computational modeling. By addressing long-term trends, it offers compelling evidence that reshape our physical universe.",Science,4,5,5,-47,2024-12-11 10:24:00,Missing
+B025,The Mystery of Legacy,Dakota Smith,"An insightful analysis of ancient civilizations that highlights technological innovation. Based on historical records, the narrative uncovers how societies evolved and connects it to modern scientific method.",History,5,5,4,-57,2024-12-11 10:25:00,Present
+B026,The Adventures of Journey,Skyler Anderson,"A detailed examination of the Industrial Revolution focusing on economic change. Drawing from historical records, this work illuminates the roots of modern institutions and its lasting impact on contemporary politics.",History,2,1,3,-41,2024-12-11 10:26:00,Missing
+B027,The Chronicles of Journey,Jamie Allen,"When inherits a magical artifact, an unlikely champion must confront ancient evils. This tale, set in a world where magic and reality merge, beautifully examines love and loss with heart and imagination.",Fiction,2,1,5,-45,2024-12-11 10:27:00,Present
+B028,The Adventures of Dream,Casey Clark,"A groundbreaking study of particle physics using field research. The author investigates long-term trends, revealing novel perspectives about technological capabilities.",Science,2,4,4,-42,2024-12-11 10:28:00,Missing
+B029,The Code of Shadows,Alex Johnson,"A heart-pounding thriller where classified information is leaked forces a cryptographer to find the missing person. With more lives are lost approaching, every decision could be fatal.",Thriller,3,4,2,-41,2024-12-11 10:29:00,Present
+B030,The Quest of Adventures,Skyler Smith,Exploring the mysteries of dark matter through observational studies. This book examines emergent phenomena and presents groundbreaking discoveries that challenge our understanding of scientific understanding.,Science,5,1,3,-43,2024-12-11 10:30:00,Checked Out
+B031,The Adventures of Legacy,Morgan Brown,"A groundbreaking study of genetic adaptation using laboratory experiments. The author investigates causation patterns, revealing unexpected correlations about natural systems.",Science,1,2,4,-40,2024-12-11 10:31:00,Missing
+B032,The Chronicles of Mystery,Taylor Taylor,"When classified information is leaked, a detective must find the missing person before more lives are lost. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,5,4,1,-48,2024-12-11 10:32:00,Checked Out
+B033,The Future of Journey,Dakota Clark,A comprehensive guide to cloud architecture covering performance patterns. Readers will learn efficient coding through practical examples and real-world applications. Ideal for full-stack developers.,Programming,4,4,4,-47,2024-12-11 10:33:00,Missing
+B034,The Future of Code,Morgan Johnson,"A detailed examination of the Age of Exploration focusing on social transformation. Drawing from archival materials, this work illuminates lessons for leadership and its lasting impact on present-day challenges.",History,4,4,2,-54,2024-12-11 10:34:00,Present
+B035,The Dream of Journey,Jordan Smith,Master data structures through this practical guide covering design patterns. Learn efficient coding with step-by-step tutorials and industry best practices for full-stack developers.,Programming,2,4,4,-54,2024-12-11 10:35:00,Checked Out
+B036,The Shadows of Shadows,Riley Lee,"Through meticulous research of archaeological evidence, this book examines revolutionary movements and social transformation, demonstrating patterns of human progress for contemporary politics.",History,2,1,5,-59,2024-12-11 10:36:00,Checked Out
+B037,The Quest of Future,Jordan Lee,"When awakens dormant powers, an unlikely champion must confront hidden conspiracies. This tale, set in a realm between dimensions, beautifully examines friendship and betrayal with heart and imagination.",Fiction,5,3,5,-44,2024-12-11 10:37:00,Checked Out
+B038,The Dream of Chronicles,Casey Taylor,An in-depth exploration of data structures that demystifies performance patterns. This resource teaches problem-solving using clear explanations and code examples suited for senior engineers.,Programming,1,1,5,-58,2024-12-11 10:38:00,Checked Out
+B039,The Future of Legacy,Casey Smith,"This book explores machine learning with a focus on design patterns. Through hands-on projects, developers will master architecture planning and apply them to production systems. Perfect for software architects.",Programming,5,1,1,-45,2024-12-11 10:39:00,Present
+B040,The Shadows of Legacy,Skyler Taylor,"a curious scholar embarks on a journey when uncovers an ancient secret. In a world of a realm between dimensions, the narrative weaves friendship and betrayal into a compelling story of dark forces.",Fiction,4,1,1,-43,2024-12-11 10:40:00,Missing
+B041,The Quest of Quest,Casey Taylor,An in-depth exploration of database optimization that demystifies security fundamentals. This resource teaches architecture planning using clear explanations and code examples suited for intermediate developers.,Programming,1,5,2,-46,2024-12-11 10:41:00,Present
+B042,The Chronicles of Chronicles,Riley Anderson,Master web development through this practical guide covering design patterns. Learn debugging techniques with step-by-step tutorials and industry best practices for senior engineers.,Programming,1,1,2,-50,2024-12-11 10:42:00,Missing
+B043,The Shadows of Adventures,Quinn Johnson,Exploring the mysteries of evolutionary biology through observational studies. This book examines underlying principles and presents compelling evidence that challenge our understanding of our physical universe.,Science,3,3,1,-42,2024-12-11 10:43:00,Present
+B044,The Journey of Chronicles,Alex Johnson,Master web development through this practical guide covering best practices. Learn code optimization with step-by-step tutorials and industry best practices for full-stack developers.,Programming,2,2,1,-41,2024-12-11 10:44:00,Missing
+B045,The Future of Code,Casey Smith,"Through meticulous research of archaeological evidence, this book examines the Renaissance and scientific revolution, demonstrating how societies evolved for current social structures.",History,3,2,4,-51,2024-12-11 10:45:00,Checked Out
+B046,The Adventures of Shadows,Skyler Lee,"A groundbreaking study of particle physics using field research. The author investigates underlying principles, revealing surprising insights about our physical universe.",Science,4,5,1,-59,2024-12-11 10:46:00,Checked Out
+B047,The Chronicles of Shadows,Dakota Brown,"When discovers a hidden realm, a curious scholar must confront impossible choices. This tale, set in a land of forgotten legends, beautifully examines power and responsibility with heart and imagination.",Fiction,3,4,2,-55,2024-12-11 10:47:00,Missing
+B048,The Shadows of Quest,Morgan Taylor,An authoritative examination of genetic adaptation employing field research. The research explores emergent phenomena and delivers paradigm-shifting results relevant to human cognition.,Science,3,1,1,-50,2024-12-11 10:48:00,Checked Out
+B049,The Journey of Journey,Casey Hall,"Through meticulous research of contemporary accounts, this book examines revolutionary movements and cultural exchange, demonstrating the roots of modern institutions for present-day challenges.",History,2,4,1,-47,2024-12-11 10:49:00,Present
+B050,The Quest of Quest,Alex Anderson,"a former agent faces a race against time when a mysterious code appears in major cities. To prevent a catastrophe before more lives are lost, they must navigate a dangerous web of deception and suspense.",Thriller,2,5,3,-49,2024-12-11 10:50:00,Checked Out
+B051,The Adventures of Legacy,Skyler Brown,"An insightful analysis of the Age of Exploration that highlights social transformation. Based on primary documents, the narrative uncovers why empires rose and fell and connects it to contemporary politics.",History,3,5,5,-44,2024-12-11 10:51:00,Present
+B052,The Shadows of Mystery,Alex Lee,a mysterious code appears in major cities sets off a chain of events that puts a journalist in mortal danger. Can they expose the conspiracy before the evidence disappears? A gripping page-turner.,Thriller,4,4,5,-45,2024-12-11 10:52:00,Missing
+B053,The Future of Dream,Quinn Smith,An in-depth exploration of API design that demystifies scalability principles. This resource teaches architecture planning using clear explanations and code examples suited for senior engineers.,Programming,3,5,2,-51,2024-12-11 10:53:00,Checked Out
+B054,The Adventures of Dream,Taylor Brown,"When uncovers an ancient secret, a reluctant hero must confront dark forces. This tale, set in a society on the brink of change, beautifully examines power and responsibility with heart and imagination.",Fiction,5,3,5,-44,2024-12-11 10:54:00,Missing
+B055,The Mystery of Mystery,Riley Lee,"An insightful analysis of the Industrial Revolution that highlights technological innovation. Based on historical records, the narrative uncovers the roots of modern institutions and connects it to present-day challenges.",History,4,3,4,-59,2024-12-11 10:55:00,Checked Out
+B056,The Quest of Shadows,Jordan Hall,"Through meticulous research of scholarly research, this book examines the Industrial Revolution and cultural exchange, demonstrating patterns of human progress for contemporary politics.",History,2,2,3,-55,2024-12-11 10:56:00,Checked Out
+B057,The Quest of Future,Taylor Allen,An in-depth exploration of web development that demystifies scalability principles. This resource teaches technical leadership using clear explanations and code examples suited for senior engineers.,Programming,4,1,5,-58,2024-12-11 10:57:00,Checked Out
+B058,The Shadows of Adventures,Riley Allen,"When a trusted ally goes missing, an investigator must find the missing person before global chaos ensues. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,3,1,3,-40,2024-12-11 10:58:00,Missing
+B059,The Quest of Code,Morgan Smith,An in-depth exploration of database optimization that demystifies testing strategies. This resource teaches technical leadership using clear explanations and code examples suited for intermediate developers.,Programming,2,2,3,-51,2024-12-11 10:59:00,Missing
+B060,The Chronicles of Shadows,Morgan Anderson,A comprehensive guide to cloud architecture covering design patterns. Readers will learn technical leadership through practical examples and real-world applications. Ideal for intermediate developers.,Programming,5,1,3,-58,2024-12-11 11:00:00,Checked Out
+B061,The Quest of Future,Dakota Smith,"A groundbreaking study of dark matter using experimental physics. The author investigates interconnected systems, revealing surprising insights about technological capabilities.",Science,4,5,3,-40,2024-12-11 11:01:00,Checked Out
+B062,The Shadows of Shadows,Morgan Allen,"When a mysterious code appears in major cities, an investigator must decipher its meaning before the evidence disappears. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,1,2,2,-42,2024-12-11 11:02:00,Present
+B063,The Quest of Adventures,Alex Clark,"A detailed examination of the Industrial Revolution focusing on technological innovation. Drawing from historical records, this work illuminates the roots of modern institutions and its lasting impact on current social structures.",History,2,3,1,-60,2024-12-11 11:03:00,Checked Out
+B064,The Mystery of Mystery,Skyler Johnson,"This book explores API design with a focus on scalability principles. Through hands-on projects, developers will master architecture planning and apply them to production systems. Perfect for software architects.",Programming,2,5,3,-59,2024-12-11 11:04:00,Checked Out
+B065,The Future of Journey,Taylor Anderson,"When a mysterious code appears in major cities, a security analyst must reveal the plot before irreversible damage occurs. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,2,3,3,-51,2024-12-11 11:05:00,Present
+B066,The Legacy of Adventures,Jamie Johnson,"A detailed examination of the Industrial Revolution focusing on scientific revolution. Drawing from scholarly research, this work illuminates lessons for leadership and its lasting impact on current social structures.",History,4,5,2,-54,2024-12-11 11:06:00,Present
+B067,The Legacy of Dream,Alex Johnson,"A heart-pounding thriller where a witness disappears forces a cryptographer to decipher its meaning. With global chaos ensues approaching, every decision could be fatal.",Thriller,1,3,1,-59,2024-12-11 11:07:00,Checked Out
+B068,The Future of Dream,Riley Walker,"An epic tale of a seasoned warrior who awakens dormant powers. Set in a distant fantasy kingdom, this story explores themes of sacrifice and redemption as the hero navigates ancient evils.",Fiction,5,3,2,-56,2024-12-11 11:08:00,Present
+B069,The Journey of Legacy,Quinn Anderson,Exploring the mysteries of climate patterns through statistical analysis. This book examines fundamental mechanisms and presents surprising insights that challenge our understanding of biological processes.,Science,5,1,2,-48,2024-12-11 11:09:00,Present
+B070,The Legacy of Future,Morgan Clark,"A gripping story about a mysterious stranger facing ancient evils. receives a cryptic message in a society on the brink of change, revealing deep themes of love and loss throughout.",Fiction,1,3,4,-43,2024-12-11 11:10:00,Checked Out
+B071,The Dream of Mystery,Riley Walker,"A heart-pounding thriller where a witness disappears forces a detective to reveal the plot. With irreversible damage occurs approaching, every decision could be fatal.",Thriller,2,2,1,-43,2024-12-11 11:11:00,Present
+B072,The Mystery of Dream,Quinn Smith,"Through meticulous research of scholarly research, this book examines ancient civilizations and economic change, demonstrating how societies evolved for current social structures.",History,3,1,4,-52,2024-12-11 11:12:00,Checked Out
+B073,The Adventures of Quest,Skyler Walker,An in-depth exploration of system design that demystifies scalability principles. This resource teaches technical leadership using clear explanations and code examples suited for intermediate developers.,Programming,2,2,5,-57,2024-12-11 11:13:00,Present
+B074,The Mystery of Quest,Skyler Anderson,"When discovers a hidden realm, an unlikely champion must confront dark forces. This tale, set in a land of forgotten legends, beautifully examines identity and courage with heart and imagination.",Fiction,3,1,2,-43,2024-12-11 11:14:00,Checked Out
+B075,The Chronicles of Journey,Skyler Smith,"When awakens dormant powers, an unlikely champion must confront moral dilemmas. This tale, set in a distant fantasy kingdom, beautifully examines love and loss with heart and imagination.",Fiction,4,1,2,-56,2024-12-11 11:15:00,Checked Out
+B076,The Shadows of Chronicles,Alex Walker,"A gripping story about a young adventurer facing impossible choices. awakens dormant powers in a distant fantasy kingdom, revealing deep themes of love and loss throughout.",Fiction,5,2,3,-53,2024-12-11 11:16:00,Checked Out
+B077,The Shadows of Mystery,Morgan Brown,"A groundbreaking study of evolutionary biology using laboratory experiments. The author investigates emergent phenomena, revealing novel perspectives about our physical universe.",Science,4,3,2,-55,2024-12-11 11:17:00,Checked Out
+B078,The Dream of Dream,Skyler Allen,"a detective faces a race against time when a trusted ally goes missing. To find the missing person before more lives are lost, they must navigate a dangerous web of deception and suspense.",Thriller,4,2,1,-45,2024-12-11 11:18:00,Missing
+B079,The Adventures of Mystery,Alex Smith,"a detective faces a race against time when a conspiracy is revealed. To reveal the plot before the truth is buried forever, they must navigate a dangerous web of deception and suspense.",Thriller,4,3,1,-55,2024-12-11 11:19:00,Present
+B080,The Future of Dream,Quinn Lee,A comprehensive guide to machine learning covering design patterns. Readers will learn code optimization through practical examples and real-world applications. Ideal for full-stack developers.,Programming,4,5,2,-44,2024-12-11 11:20:00,Missing
+B081,The Shadows of Dream,Alex Hall,"A heart-pounding thriller where classified information is leaked forces an investigator to decipher its meaning. With the trail goes cold approaching, every decision could be fatal.",Thriller,3,3,4,-47,2024-12-11 11:21:00,Missing
+B082,The Legacy of Legacy,Alex Allen,"Through meticulous research of scholarly research, this book examines the Renaissance and social transformation, demonstrating the roots of modern institutions for current social structures.",History,3,4,5,-43,2024-12-11 11:22:00,Present
+B083,The Adventures of Legacy,Casey Lee,Exploring the mysteries of dark matter through field research. This book examines long-term trends and presents novel perspectives that challenge our understanding of technological capabilities.,Science,4,3,4,-45,2024-12-11 11:23:00,Missing
+B084,The Shadows of Adventures,Casey Taylor,"This historical study explores colonial empires with emphasis on cultural exchange. Using historical records, it reveals how societies evolved and traces its influence on today's global economy.",History,3,5,1,-56,2024-12-11 11:24:00,Present
+B085,The Chronicles of Journey,Riley Brown,"This historical study explores ancient civilizations with emphasis on political upheaval. Using archival materials, it reveals the roots of modern institutions and traces its influence on present-day challenges.",History,1,2,3,-53,2024-12-11 11:25:00,Missing
+B086,The Future of Future,Jamie Smith,a mysterious code appears in major cities sets off a chain of events that puts an investigator in mortal danger. Can they find the missing person before the evidence disappears? A gripping page-turner.,Thriller,3,4,1,-50,2024-12-11 11:26:00,Present
+B087,The Chronicles of Future,Jordan Allen,"A heart-pounding thriller where classified information is leaked forces a former agent to prevent a catastrophe. With the trail goes cold approaching, every decision could be fatal.",Thriller,2,1,2,-58,2024-12-11 11:27:00,Checked Out
+B088,The Code of Mystery,Casey Johnson,classified information is leaked sets off a chain of events that puts a detective in mortal danger. Can they uncover the truth before the truth is buried forever? A gripping page-turner.,Thriller,4,5,1,-48,2024-12-11 11:28:00,Checked Out
+B089,The Code of Code,Alex Taylor,a witness disappears sets off a chain of events that puts a detective in mortal danger. Can they decipher its meaning before irreversible damage occurs? A gripping page-turner.,Thriller,5,2,3,-40,2024-12-11 11:29:00,Missing
+B090,The Chronicles of Chronicles,Casey Clark,Master database optimization through this practical guide covering best practices. Learn architecture planning with step-by-step tutorials and industry best practices for senior engineers.,Programming,4,3,2,-40,2024-12-11 11:30:00,Present
+B091,The Code of Chronicles,Alex Hall,"When witnesses a prophecy, an unlikely champion must confront impossible choices. This tale, set in a land of forgotten legends, beautifully examines identity and courage with heart and imagination.",Fiction,2,1,4,-43,2024-12-11 11:31:00,Missing
+B092,The Code of Chronicles,Taylor Allen,"When classified information is leaked, a journalist must uncover the truth before irreversible damage occurs. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,1,4,3,-44,2024-12-11 11:32:00,Missing
+B093,The Code of Quest,Skyler Allen,"A groundbreaking study of particle physics using computational modeling. The author investigates causation patterns, revealing unexpected correlations about scientific understanding.",Science,3,5,2,-50,2024-12-11 11:33:00,Present
+B094,The Journey of Code,Jordan Lee,"a reluctant hero embarks on a journey when uncovers an ancient secret. In a world of a realm between dimensions, the narrative weaves identity and courage into a compelling story of hidden conspiracies.",Fiction,5,4,1,-54,2024-12-11 11:34:00,Checked Out
+B095,The Mystery of Legacy,Morgan Allen,"a seasoned warrior embarks on a journey when receives a cryptic message. In a world of a distant fantasy kingdom, the narrative weaves identity and courage into a compelling story of hidden conspiracies.",Fiction,1,4,1,-57,2024-12-11 11:35:00,Checked Out
+B096,The Journey of Code,Morgan Brown,a mysterious code appears in major cities sets off a chain of events that puts a former agent in mortal danger. Can they decipher its meaning before the trail goes cold? A gripping page-turner.,Thriller,3,5,1,-55,2024-12-11 11:36:00,Missing
+B097,The Mystery of Journey,Alex Brown,a trusted ally goes missing sets off a chain of events that puts a former agent in mortal danger. Can they reveal the plot before the truth is buried forever? A gripping page-turner.,Thriller,5,4,3,-41,2024-12-11 11:37:00,Present
+B098,The Adventures of Shadows,Taylor Anderson,"A heart-pounding thriller where a trusted ally goes missing forces a cryptographer to prevent a catastrophe. With the trail goes cold approaching, every decision could be fatal.",Thriller,5,2,4,-53,2024-12-11 11:38:00,Missing
+B099,The Shadows of Adventures,Jordan Clark,Exploring the mysteries of cognitive processes through laboratory experiments. This book examines long-term trends and presents novel perspectives that challenge our understanding of natural systems.,Science,4,3,5,-40,2024-12-11 11:39:00,Present
+B100,The Chronicles of Legacy,Casey Clark,A comprehensive guide to API design covering performance patterns. Readers will learn problem-solving through practical examples and real-world applications. Ideal for intermediate developers.,Programming,5,1,5,-57,2024-12-11 11:40:00,Present
+B101,The Quest of Adventures,Alex Brown,"a former agent faces a race against time when a mysterious code appears in major cities. To decipher its meaning before the evidence disappears, they must navigate a dangerous web of deception and suspense.",Thriller,3,1,3,-40,2024-12-11 11:41:00,Checked Out
+B102,The Chronicles of Legacy,Riley Allen,"An insightful analysis of ancient civilizations that highlights scientific revolution. Based on historical records, the narrative uncovers lessons for leadership and connects it to modern scientific method.",History,1,1,2,-41,2024-12-11 11:42:00,Present
+B103,The Shadows of Mystery,Alex Hall,"This book explores data structures with a focus on best practices. Through hands-on projects, developers will master problem-solving and apply them to production systems. Perfect for beginners.",Programming,5,3,5,-53,2024-12-11 11:43:00,Missing
+B104,The Journey of Quest,Casey Smith,"a former agent faces a race against time when a deadly secret is uncovered. To uncover the truth before the trail goes cold, they must navigate a dangerous web of deception and suspense.",Thriller,5,5,2,-50,2024-12-11 11:44:00,Checked Out
+B105,The Dream of Journey,Jordan Walker,"This book explores data structures with a focus on design patterns. Through hands-on projects, developers will master technical leadership and apply them to production systems. Perfect for senior engineers.",Programming,5,4,2,-50,2024-12-11 11:45:00,Present
+B106,The Future of Future,Morgan Allen,"An insightful analysis of revolutionary movements that highlights scientific revolution. Based on archaeological evidence, the narrative uncovers the roots of modern institutions and connects it to today's global economy.",History,5,2,4,-47,2024-12-11 11:46:00,Checked Out
+B107,The Journey of Shadows,Taylor Lee,Exploring the mysteries of genetic adaptation through laboratory experiments. This book examines causation patterns and presents novel perspectives that challenge our understanding of natural systems.,Science,2,1,3,-45,2024-12-11 11:47:00,Checked Out
+B108,The Code of Adventures,Taylor Taylor,An authoritative examination of climate patterns employing observational studies. The research explores emergent phenomena and delivers paradigm-shifting results relevant to our physical universe.,Science,2,2,3,-42,2024-12-11 11:48:00,Present
+B109,The Chronicles of Future,Casey Clark,"A gripping story about an unlikely champion facing ancient evils. inherits a magical artifact in a realm between dimensions, revealing deep themes of identity and courage throughout.",Fiction,4,1,4,-59,2024-12-11 11:49:00,Missing
+B110,The Legacy of Code,Jamie Clark,A comprehensive guide to database optimization covering performance patterns. Readers will learn debugging techniques through practical examples and real-world applications. Ideal for full-stack developers.,Programming,1,3,2,-44,2024-12-11 11:50:00,Missing
+B111,The Shadows of Journey,Riley Anderson,"A groundbreaking study of dark matter using field research. The author investigates underlying principles, revealing compelling evidence about our physical universe.",Science,3,3,4,-44,2024-12-11 11:51:00,Missing
+B112,The Future of Quest,Dakota Walker,"Through meticulous research of scholarly research, this book examines revolutionary movements and technological innovation, demonstrating patterns of human progress for contemporary politics.",History,4,5,3,-45,2024-12-11 11:52:00,Present
+B113,The Chronicles of Chronicles,Taylor Anderson,"an investigator faces a race against time when a conspiracy is revealed. To uncover the truth before the trail goes cold, they must navigate a dangerous web of deception and suspense.",Thriller,5,4,4,-44,2024-12-11 11:53:00,Present
+B114,The Chronicles of Quest,Casey Smith,Master machine learning through this practical guide covering best practices. Learn problem-solving with step-by-step tutorials and industry best practices for technical leads.,Programming,4,5,1,-41,2024-12-11 11:54:00,Present
+B115,The Shadows of Future,Alex Anderson,"a former agent faces a race against time when a trusted ally goes missing. To reveal the plot before irreversible damage occurs, they must navigate a dangerous web of deception and suspense.",Thriller,1,3,2,-52,2024-12-11 11:55:00,Checked Out
+B116,The Legacy of Legacy,Jordan Hall,"This book explores cloud architecture with a focus on security fundamentals. Through hands-on projects, developers will master efficient coding and apply them to production systems. Perfect for beginners.",Programming,2,4,2,-52,2024-12-11 11:56:00,Missing
+B117,The Adventures of Chronicles,Jamie Lee,"A heart-pounding thriller where classified information is leaked forces a journalist to prevent a catastrophe. With the evidence disappears approaching, every decision could be fatal.",Thriller,1,5,5,-56,2024-12-11 11:57:00,Present
+B118,The Journey of Mystery,Casey Taylor,"When a conspiracy is revealed, a former agent must expose the conspiracy before irreversible damage occurs. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,2,2,4,-60,2024-12-11 11:58:00,Checked Out
+B119,The Journey of Adventures,Dakota Lee,"An epic tale of an unlikely champion who witnesses a prophecy. Set in a world where magic and reality merge, this story explores themes of identity and courage as the hero navigates moral dilemmas.",Fiction,5,4,4,-50,2024-12-11 11:59:00,Checked Out
+B120,The Adventures of Quest,Jamie Walker,"When receives a cryptic message, a mysterious stranger must confront hidden conspiracies. This tale, set in a society on the brink of change, beautifully examines power and responsibility with heart and imagination.",Fiction,3,5,1,-49,2024-12-11 12:00:00,Missing
+B121,The Future of Code,Jamie Hall,"Through meticulous research of primary documents, this book examines revolutionary movements and cultural exchange, demonstrating how societies evolved for current social structures.",History,2,1,3,-59,2024-12-11 12:01:00,Present
+B122,The Mystery of Adventures,Alex Smith,"an investigator faces a race against time when classified information is leaked. To find the missing person before the truth is buried forever, they must navigate a dangerous web of deception and suspense.",Thriller,5,5,5,-58,2024-12-11 12:02:00,Present
+B123,The Adventures of Quest,Riley Walker,An in-depth exploration of database optimization that demystifies design patterns. This resource teaches problem-solving using clear explanations and code examples suited for full-stack developers.,Programming,3,5,2,-43,2024-12-11 12:03:00,Checked Out
+B124,The Quest of Shadows,Riley Clark,"This historical study explores the Renaissance with emphasis on technological innovation. Using archaeological evidence, it reveals why empires rose and fell and traces its influence on current social structures.",History,5,3,2,-50,2024-12-11 12:04:00,Missing
+B125,The Code of Dream,Dakota Johnson,Master database optimization through this practical guide covering security fundamentals. Learn technical leadership with step-by-step tutorials and industry best practices for beginners.,Programming,1,5,1,-58,2024-12-11 12:05:00,Checked Out
+B126,The Code of Code,Casey Clark,"An insightful analysis of the Industrial Revolution that highlights cultural exchange. Based on contemporary accounts, the narrative uncovers the roots of modern institutions and connects it to modern scientific method.",History,1,1,4,-58,2024-12-11 12:06:00,Missing
+B127,The Code of Mystery,Casey Smith,Exploring the mysteries of climate patterns through experimental physics. This book examines interconnected systems and presents novel perspectives that challenge our understanding of technological capabilities.,Science,5,3,2,-58,2024-12-11 12:07:00,Missing
+B128,The Journey of Dream,Dakota Clark,"A heart-pounding thriller where a deadly secret is uncovered forces an investigator to expose the conspiracy. With more lives are lost approaching, every decision could be fatal.",Thriller,2,3,2,-58,2024-12-11 12:08:00,Present
+B129,The Quest of Future,Riley Walker,Master database optimization through this practical guide covering scalability principles. Learn code optimization with step-by-step tutorials and industry best practices for senior engineers.,Programming,4,4,2,-47,2024-12-11 12:09:00,Checked Out
+B130,The Adventures of Legacy,Morgan Hall,"Through meticulous research of archaeological evidence, this book examines ancient civilizations and economic change, demonstrating patterns of human progress for modern scientific method.",History,1,3,2,-43,2024-12-11 12:10:00,Present
+B131,The Legacy of Mystery,Taylor Brown,"This book explores database optimization with a focus on security fundamentals. Through hands-on projects, developers will master code optimization and apply them to production systems. Perfect for software architects.",Programming,4,5,2,-53,2024-12-11 12:11:00,Missing
+B132,The Legacy of Journey,Taylor Johnson,An in-depth exploration of data structures that demystifies scalability principles. This resource teaches efficient coding using clear explanations and code examples suited for software architects.,Programming,2,5,4,-47,2024-12-11 12:12:00,Checked Out
+B133,The Shadows of Dream,Alex Hall,"This historical study explores ancient civilizations with emphasis on cultural exchange. Using archival materials, it reveals patterns of human progress and traces its influence on today's global economy.",History,2,2,2,-44,2024-12-11 12:13:00,Checked Out
+B134,The Dream of Legacy,Casey Walker,"This scientific work delves into climate patterns with rigorous observational studies. By addressing long-term trends, it offers compelling evidence that reshape natural systems.",Science,5,2,4,-46,2024-12-11 12:14:00,Missing
+B135,The Code of Legacy,Taylor Allen,"This historical study explores revolutionary movements with emphasis on social transformation. Using scholarly research, it reveals how societies evolved and traces its influence on modern scientific method.",History,4,2,5,-59,2024-12-11 12:15:00,Checked Out
+B136,The Journey of Adventures,Taylor Smith,"An insightful analysis of the Age of Exploration that highlights technological innovation. Based on historical records, the narrative uncovers how societies evolved and connects it to modern scientific method.",History,5,4,1,-55,2024-12-11 12:16:00,Checked Out
+B137,The Journey of Adventures,Alex Brown,An authoritative examination of evolutionary biology employing observational studies. The research explores underlying principles and delivers compelling evidence relevant to human cognition.,Science,3,3,4,-49,2024-12-11 12:17:00,Checked Out
+B138,The Future of Chronicles,Jordan Anderson,An authoritative examination of quantum entanglement employing laboratory experiments. The research explores emergent phenomena and delivers groundbreaking discoveries relevant to our physical universe.,Science,4,5,5,-46,2024-12-11 12:18:00,Present
+B139,The Legacy of Code,Jamie Johnson,Master machine learning through this practical guide covering design patterns. Learn code optimization with step-by-step tutorials and industry best practices for beginners.,Programming,5,2,3,-40,2024-12-11 12:19:00,Present
+B140,The Quest of Mystery,Taylor Smith,"This historical study explores the Renaissance with emphasis on political upheaval. Using archaeological evidence, it reveals patterns of human progress and traces its influence on contemporary politics.",History,4,2,3,-50,2024-12-11 12:20:00,Present
+B141,The Quest of Future,Riley Lee,"A heart-pounding thriller where a trusted ally goes missing forces a cryptographer to uncover the truth. With irreversible damage occurs approaching, every decision could be fatal.",Thriller,4,1,5,-56,2024-12-11 12:21:00,Present
+B142,The Chronicles of Adventures,Jordan Anderson,"Through meticulous research of archaeological evidence, this book examines ancient civilizations and political upheaval, demonstrating why empires rose and fell for current social structures.",History,1,2,1,-43,2024-12-11 12:22:00,Present
+B143,The Shadows of Legacy,Alex Lee,"This scientific work delves into particle physics with rigorous laboratory experiments. By addressing long-term trends, it offers novel perspectives that reshape biological processes.",Science,2,4,1,-48,2024-12-11 12:23:00,Checked Out
+B144,The Future of Journey,Casey Walker,"An epic tale of a reluctant hero who discovers a hidden realm. Set in a realm between dimensions, this story explores themes of sacrifice and redemption as the hero navigates ancient evils.",Fiction,4,1,2,-46,2024-12-11 12:24:00,Present
+B145,The Code of Future,Jamie Lee,"This scientific work delves into cognitive processes with rigorous experimental physics. By addressing fundamental mechanisms, it offers unexpected correlations that reshape biological processes.",Science,1,2,4,-43,2024-12-11 12:25:00,Missing
+B146,The Adventures of Adventures,Taylor Brown,"An insightful analysis of the Industrial Revolution that highlights social transformation. Based on scholarly research, the narrative uncovers lessons for leadership and connects it to contemporary politics.",History,1,2,3,-54,2024-12-11 12:26:00,Missing
+B147,The Quest of Shadows,Dakota Brown,"When receives a cryptic message, an unlikely champion must confront moral dilemmas. This tale, set in a realm between dimensions, beautifully examines identity and courage with heart and imagination.",Fiction,3,1,5,-53,2024-12-11 12:27:00,Checked Out
+B148,The Future of Legacy,Dakota Brown,"When classified information is leaked, a former agent must find the missing person before global chaos ensues. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,5,1,5,-43,2024-12-11 12:28:00,Present
+B149,The Quest of Adventures,Quinn Taylor,"An insightful analysis of the Industrial Revolution that highlights technological innovation. Based on contemporary accounts, the narrative uncovers how societies evolved and connects it to contemporary politics.",History,3,4,1,-58,2024-12-11 12:29:00,Missing
+B150,The Quest of Quest,Jamie Clark,"An epic tale of a reluctant hero who inherits a magical artifact. Set in a distant fantasy kingdom, this story explores themes of identity and courage as the hero navigates impossible choices.",Fiction,4,1,2,-48,2024-12-11 12:30:00,Present
+B151,The Journey of Quest,Skyler Smith,"A detailed examination of the Industrial Revolution focusing on economic change. Drawing from primary documents, this work illuminates how societies evolved and its lasting impact on present-day challenges.",History,4,4,4,-59,2024-12-11 12:31:00,Checked Out
+B152,The Chronicles of Journey,Skyler Johnson,"a former agent faces a race against time when a trusted ally goes missing. To uncover the truth before irreversible damage occurs, they must navigate a dangerous web of deception and suspense.",Thriller,3,1,2,-53,2024-12-11 12:32:00,Present
+B153,The Journey of Code,Dakota Walker,"When inherits a magical artifact, a young adventurer must confront internal demons. This tale, set in a realm between dimensions, beautifully examines identity and courage with heart and imagination.",Fiction,1,1,3,-44,2024-12-11 12:33:00,Checked Out
+B154,The Future of Mystery,Taylor Brown,An authoritative examination of dark matter employing experimental physics. The research explores causation patterns and delivers compelling evidence relevant to technological capabilities.,Science,2,4,3,-55,2024-12-11 12:34:00,Missing
+B155,The Legacy of Legacy,Jamie Taylor,a deadly secret is uncovered sets off a chain of events that puts a detective in mortal danger. Can they find the missing person before the truth is buried forever? A gripping page-turner.,Thriller,3,3,5,-43,2024-12-11 12:35:00,Present
+B156,The Adventures of Chronicles,Alex Lee,"a seasoned warrior embarks on a journey when witnesses a prophecy. In a world of a society on the brink of change, the narrative weaves power and responsibility into a compelling story of impossible choices.",Fiction,1,1,2,-49,2024-12-11 12:36:00,Present
+B157,The Dream of Journey,Alex Johnson,"When witnesses a prophecy, a reluctant hero must confront dark forces. This tale, set in a land of forgotten legends, beautifully examines sacrifice and redemption with heart and imagination.",Fiction,5,4,2,-55,2024-12-11 12:37:00,Present
+B158,The Future of Future,Morgan Brown,"Through meticulous research of primary documents, this book examines the Industrial Revolution and political upheaval, demonstrating why empires rose and fell for contemporary politics.",History,5,4,2,-49,2024-12-11 12:38:00,Present
+B159,The Code of Dream,Jordan Anderson,"A detailed examination of the Renaissance focusing on economic change. Drawing from primary documents, this work illuminates why empires rose and fell and its lasting impact on current social structures.",History,1,4,2,-51,2024-12-11 12:39:00,Present
+B160,The Shadows of Chronicles,Riley Allen,"When inherits a magical artifact, a reluctant hero must confront dark forces. This tale, set in a land of forgotten legends, beautifully examines friendship and betrayal with heart and imagination.",Fiction,4,3,5,-47,2024-12-11 12:40:00,Checked Out
+B161,The Adventures of Future,Quinn Lee,"Through meticulous research of primary documents, this book examines ancient civilizations and political upheaval, demonstrating patterns of human progress for current social structures.",History,2,2,3,-44,2024-12-11 12:41:00,Present
+B162,The Future of Adventures,Taylor Brown,"This historical study explores the Industrial Revolution with emphasis on social transformation. Using primary documents, it reveals why empires rose and fell and traces its influence on present-day challenges.",History,4,2,3,-57,2024-12-11 12:42:00,Present
+B163,The Legacy of Dream,Quinn Brown,An authoritative examination of dark matter employing field research. The research explores fundamental mechanisms and delivers novel perspectives relevant to biological processes.,Science,5,3,5,-44,2024-12-11 12:43:00,Missing
+B164,The Shadows of Adventures,Taylor Brown,A comprehensive guide to algorithms covering best practices. Readers will learn code optimization through practical examples and real-world applications. Ideal for technical leads.,Programming,5,5,4,-52,2024-12-11 12:44:00,Missing
+B165,The Dream of Mystery,Quinn Johnson,Exploring the mysteries of particle physics through computational modeling. This book examines fundamental mechanisms and presents unexpected correlations that challenge our understanding of technological capabilities.,Science,4,2,3,-41,2024-12-11 12:45:00,Missing
+B166,The Quest of Future,Taylor Walker,Exploring the mysteries of neural networks through field research. This book examines interconnected systems and presents unexpected correlations that challenge our understanding of human cognition.,Science,5,2,5,-56,2024-12-11 12:46:00,Present
+B167,The Dream of Legacy,Casey Smith,Exploring the mysteries of evolutionary biology through observational studies. This book examines long-term trends and presents novel perspectives that challenge our understanding of biological processes.,Science,5,1,3,-41,2024-12-11 12:47:00,Checked Out
+B168,The Dream of Adventures,Dakota Anderson,"When awakens dormant powers, an unlikely champion must confront moral dilemmas. This tale, set in a distant fantasy kingdom, beautifully examines power and responsibility with heart and imagination.",Fiction,3,4,5,-45,2024-12-11 12:48:00,Present
+B169,The Dream of Chronicles,Jamie Lee,Master API design through this practical guide covering security fundamentals. Learn technical leadership with step-by-step tutorials and industry best practices for software architects.,Programming,3,5,3,-58,2024-12-11 12:49:00,Missing
+B170,The Quest of Journey,Taylor Allen,"Through meticulous research of archaeological evidence, this book examines colonial empires and social transformation, demonstrating patterns of human progress for modern scientific method.",History,3,2,4,-52,2024-12-11 12:50:00,Present
+B171,The Journey of Chronicles,Dakota Smith,"When receives a cryptic message, a seasoned warrior must confront ancient evils. This tale, set in a realm between dimensions, beautifully examines identity and courage with heart and imagination.",Fiction,3,2,3,-49,2024-12-11 12:51:00,Missing
+B172,The Adventures of Legacy,Morgan Clark,Master machine learning through this practical guide covering scalability principles. Learn code optimization with step-by-step tutorials and industry best practices for beginners.,Programming,1,5,1,-43,2024-12-11 12:52:00,Missing
+B173,The Shadows of Shadows,Skyler Clark,Exploring the mysteries of climate patterns through computational modeling. This book examines long-term trends and presents groundbreaking discoveries that challenge our understanding of human cognition.,Science,4,2,3,-43,2024-12-11 12:53:00,Present
+B174,The Shadows of Journey,Quinn Allen,Master system design through this practical guide covering security fundamentals. Learn problem-solving with step-by-step tutorials and industry best practices for full-stack developers.,Programming,3,5,4,-59,2024-12-11 12:54:00,Missing
+B175,The Dream of Code,Taylor Anderson,"When a trusted ally goes missing, a journalist must prevent a catastrophe before more lives are lost. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,1,1,3,-44,2024-12-11 12:55:00,Checked Out
+B176,The Legacy of Chronicles,Jordan Lee,"When a witness disappears, an investigator must prevent a catastrophe before the trail goes cold. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,4,5,3,-49,2024-12-11 12:56:00,Missing
+B177,The Shadows of Legacy,Riley Brown,"When awakens dormant powers, a seasoned warrior must confront moral dilemmas. This tale, set in a society on the brink of change, beautifully examines power and responsibility with heart and imagination.",Fiction,2,4,5,-58,2024-12-11 12:57:00,Checked Out
+B178,The Future of Adventures,Casey Walker,Master machine learning through this practical guide covering security fundamentals. Learn debugging techniques with step-by-step tutorials and industry best practices for intermediate developers.,Programming,2,3,2,-56,2024-12-11 12:58:00,Checked Out
+B179,The Code of Shadows,Jamie Lee,"This historical study explores revolutionary movements with emphasis on economic change. Using archaeological evidence, it reveals lessons for leadership and traces its influence on today's global economy.",History,5,1,3,-45,2024-12-11 12:59:00,Missing
+B180,The Chronicles of Dream,Taylor Allen,"This historical study explores revolutionary movements with emphasis on technological innovation. Using archival materials, it reveals the roots of modern institutions and traces its influence on modern scientific method.",History,3,3,3,-58,2024-12-11 13:00:00,Missing
+B181,The Shadows of Dream,Morgan Smith,"When classified information is leaked, a cryptographer must find the missing person before the trail goes cold. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,2,4,2,-40,2024-12-11 13:01:00,Checked Out
+B182,The Legacy of Mystery,Jamie Hall,"An epic tale of a mysterious stranger who awakens dormant powers. Set in a distant fantasy kingdom, this story explores themes of love and loss as the hero navigates impossible choices.",Fiction,3,5,5,-40,2024-12-11 13:02:00,Missing
+B183,The Legacy of Quest,Taylor Hall,"This scientific work delves into quantum entanglement with rigorous experimental physics. By addressing emergent phenomena, it offers surprising insights that reshape scientific understanding.",Science,5,5,4,-56,2024-12-11 13:03:00,Present
+B184,The Shadows of Shadows,Taylor Taylor,"An epic tale of a young adventurer who inherits a magical artifact. Set in a society on the brink of change, this story explores themes of love and loss as the hero navigates dark forces.",Fiction,3,2,4,-54,2024-12-11 13:04:00,Checked Out
+B185,The Mystery of Mystery,Quinn Brown,"A detailed examination of ancient civilizations focusing on technological innovation. Drawing from archaeological evidence, this work illuminates the roots of modern institutions and its lasting impact on today's global economy.",History,2,4,1,-41,2024-12-11 13:05:00,Missing
+B186,The Chronicles of Journey,Casey Anderson,"a mysterious stranger embarks on a journey when discovers a hidden realm. In a world of a world where magic and reality merge, the narrative weaves hope and perseverance into a compelling story of hidden conspiracies.",Fiction,4,4,5,-54,2024-12-11 13:06:00,Present
+B187,The Code of Chronicles,Quinn Lee,"an investigator faces a race against time when a trusted ally goes missing. To uncover the truth before global chaos ensues, they must navigate a dangerous web of deception and suspense.",Thriller,2,2,3,-51,2024-12-11 13:07:00,Checked Out
+B188,The Dream of Legacy,Skyler Brown,Exploring the mysteries of climate patterns through statistical analysis. This book examines emergent phenomena and presents groundbreaking discoveries that challenge our understanding of natural systems.,Science,3,5,5,-45,2024-12-11 13:08:00,Checked Out
+B189,The Adventures of Code,Quinn Hall,"A gripping story about a mysterious stranger facing hidden conspiracies. discovers a hidden realm in a society on the brink of change, revealing deep themes of love and loss throughout.",Fiction,5,5,2,-57,2024-12-11 13:09:00,Present
+B190,The Mystery of Journey,Morgan Allen,a witness disappears sets off a chain of events that puts a journalist in mortal danger. Can they find the missing person before global chaos ensues? A gripping page-turner.,Thriller,4,2,4,-40,2024-12-11 13:10:00,Checked Out
+B191,The Dream of Dream,Morgan Walker,"This book explores cloud architecture with a focus on design patterns. Through hands-on projects, developers will master problem-solving and apply them to production systems. Perfect for software architects.",Programming,1,5,2,-43,2024-12-11 13:11:00,Missing
+B192,The Journey of Mystery,Skyler Brown,"Through meticulous research of contemporary accounts, this book examines the Age of Exploration and political upheaval, demonstrating lessons for leadership for modern scientific method.",History,2,5,5,-52,2024-12-11 13:12:00,Checked Out
+B193,The Code of Shadows,Quinn Lee,"A groundbreaking study of genetic adaptation using field research. The author investigates causation patterns, revealing surprising insights about technological capabilities.",Science,3,2,3,-59,2024-12-11 13:13:00,Present
+B194,The Dream of Shadows,Taylor Johnson,"a seasoned warrior embarks on a journey when receives a cryptic message. In a world of a land of forgotten legends, the narrative weaves identity and courage into a compelling story of ancient evils.",Fiction,3,4,3,-56,2024-12-11 13:14:00,Present
+B195,The Chronicles of Journey,Taylor Allen,Exploring the mysteries of quantum entanglement through statistical analysis. This book examines fundamental mechanisms and presents unexpected correlations that challenge our understanding of scientific understanding.,Science,2,1,4,-59,2024-12-11 13:15:00,Checked Out
+B196,The Journey of Journey,Taylor Clark,"This book explores API design with a focus on security fundamentals. Through hands-on projects, developers will master technical leadership and apply them to production systems. Perfect for intermediate developers.",Programming,4,1,1,-59,2024-12-11 13:16:00,Checked Out
+B197,The Future of Adventures,Alex Anderson,"a former agent faces a race against time when a trusted ally goes missing. To decipher its meaning before more lives are lost, they must navigate a dangerous web of deception and suspense.",Thriller,3,4,5,-40,2024-12-11 13:17:00,Missing
+B198,The Chronicles of Quest,Dakota Brown,"When a trusted ally goes missing, a cryptographer must find the missing person before the trail goes cold. A fast-paced thriller that will keep you on the edge of your seat with unexpected twists and psychological depth.",Thriller,4,1,4,-42,2024-12-11 13:18:00,Present
+B199,The Journey of Adventures,Jordan Johnson,"An insightful analysis of the Age of Exploration that highlights technological innovation. Based on historical records, the narrative uncovers lessons for leadership and connects it to present-day challenges.",History,2,1,1,-53,2024-12-11 13:19:00,Present
+B200,The Dream of Code,Riley Smith,"When discovers a hidden realm, a mysterious stranger must confront impossible choices. This tale, set in a land of forgotten legends, beautifully examines hope and perseverance with heart and imagination.",Fiction,5,1,5,-57,2024-12-11 13:20:00,Checked Out

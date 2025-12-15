@@ -35,6 +35,7 @@ def test_db_path(tmp_path):
             book_id VARCHAR PRIMARY KEY,
             title VARCHAR NOT NULL,
             author VARCHAR NOT NULL,
+            description VARCHAR NOT NULL,
             category VARCHAR NOT NULL,
             cabinet INTEGER NOT NULL,
             rack INTEGER NOT NULL,
@@ -51,6 +52,7 @@ def test_db_path(tmp_path):
             "B001",
             "Python Programming",
             "John Smith",
+            "A comprehensive guide to Python programming covering best practices and design patterns.",
             "Programming",
             1,
             1,
@@ -63,6 +65,7 @@ def test_db_path(tmp_path):
             "B002",
             "Advanced Python",
             "Jane Doe",
+            "Master advanced Python techniques for system design and scalability patterns.",
             "Programming",
             1,
             1,
@@ -75,6 +78,7 @@ def test_db_path(tmp_path):
             "B003",
             "World History",
             "Bob Johnson",
+            "An insightful analysis of major historical periods and their impact on modern society.",
             "History",
             2,
             1,
@@ -87,6 +91,7 @@ def test_db_path(tmp_path):
             "B004",
             "Science 101",
             "Alice Brown",
+            "Exploring the mysteries of science through experimental methods and theoretical frameworks.",
             "Science",
             3,
             2,
@@ -100,7 +105,7 @@ def test_db_path(tmp_path):
     for book in test_books:
         conn.execute(
             """
-            INSERT INTO library.books VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO library.books VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             book,
         )

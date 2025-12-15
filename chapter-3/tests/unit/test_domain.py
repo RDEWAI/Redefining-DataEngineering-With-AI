@@ -95,6 +95,7 @@ class TestBook:
             book_id="B001",
             title="Python Programming",
             author="John Smith",
+            description="A comprehensive guide to Python programming covering best practices and design patterns.",
             category=Category.PROGRAMMING,
             location=Location(cabinet=3, rack=2, row=5),
             signal_strength=-45.2,
@@ -109,6 +110,7 @@ class TestBook:
             book_id="B002",
             title="History of Rome",
             author="Jane Doe",
+            description="A detailed examination of ancient Rome focusing on political and cultural developments.",
             category=Category.HISTORY,
             location=Location(cabinet=1, rack=1, row=1),
             signal_strength=-60.0,
@@ -123,6 +125,7 @@ class TestBook:
             book_id="B003",
             title="Science Basics",
             author="Bob Wilson",
+            description="An introduction to fundamental scientific concepts and the scientific method.",
             category=Category.SCIENCE,
             location=Location(cabinet=2, rack=3, row=4),
             signal_strength=-50.0,
@@ -154,6 +157,7 @@ class TestBook:
             book_id="B099",
             title="Test Book",
             author="Test Author",
+            description="A test book for boundary testing of weak signal detection.",
             category=Category.FICTION,
             location=Location(cabinet=1, rack=1, row=1),
             signal_strength=-55.0,  # Exactly at threshold
@@ -168,6 +172,7 @@ class TestBook:
             book_id="B098",
             title="Test Book 2",
             author="Test Author",
+            description="Another test book for weak signal boundary condition testing.",
             category=Category.FICTION,
             location=Location(cabinet=1, rack=1, row=1),
             signal_strength=-55.1,
@@ -190,6 +195,7 @@ class TestBook:
             book_id="B004",
             title="Missing Book",
             author="Unknown",
+            description="A book that has gone missing from the library shelves.",
             category=Category.THRILLER,
             location=Location(cabinet=1, rack=1, row=1),
             signal_strength=-70.0,
@@ -200,11 +206,13 @@ class TestBook:
 
     def test_to_dict(self, sample_book: Book) -> None:
         """Test converting book to dictionary."""
+        # Test default (without description for token efficiency)
         book_dict = sample_book.to_dict()
 
         assert book_dict["book_id"] == "B001"
         assert book_dict["title"] == "Python Programming"
         assert book_dict["author"] == "John Smith"
+        assert "description" not in book_dict  # Not included by default
         assert book_dict["category"] == "Programming"
         assert book_dict["cabinet"] == 3
         assert book_dict["rack"] == 2
@@ -213,12 +221,20 @@ class TestBook:
         assert book_dict["timestamp"] == "2025-01-15T10:30:00"
         assert book_dict["status"] == "Present"
 
+        # Test with description included
+        book_dict_with_desc = sample_book.to_dict(include_description=True)
+        assert (
+            book_dict_with_desc["description"]
+            == "A comprehensive guide to Python programming covering best practices and design patterns."
+        )
+
     def test_book_equality(self, sample_book: Book) -> None:
         """Test book equality based on all fields."""
         book2 = Book(
             book_id="B001",
             title="Python Programming",
             author="John Smith",
+            description="A comprehensive guide to Python programming covering best practices and design patterns.",
             category=Category.PROGRAMMING,
             location=Location(cabinet=3, rack=2, row=5),
             signal_strength=-45.2,
@@ -233,6 +249,7 @@ class TestBook:
             "B001",
             "Python Programming",
             "John Smith",
+            "A comprehensive guide to Python programming covering best practices and design patterns.",
             "Programming",
             3,
             2,
@@ -244,5 +261,9 @@ class TestBook:
         book = Book.from_row(row)
         assert book.book_id == "B001"
         assert book.title == "Python Programming"
+        assert (
+            book.description
+            == "A comprehensive guide to Python programming covering best practices and design patterns."
+        )
         assert book.category == Category.PROGRAMMING
         assert book.status == BookStatus.PRESENT

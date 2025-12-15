@@ -231,7 +231,7 @@ def search_books(query: str, category: Optional[str] = None) -> List[Dict[str, A
         category: Optional category filter (Programming, History, Science, Fiction, Thriller)
 
     Returns:
-        List of matching books with all fields
+        List of matching books (without description for token efficiency)
 
     Example:
         >>> books = search_books("Python", category="Programming")
@@ -292,7 +292,7 @@ def get_book_details(book_id: str) -> Optional[Dict[str, Any]]:
         ...     print(f"{book['title']} by {book['author']}")
     """
     result = _conn.execute("""
-        SELECT book_id, title, author, category,
+        SELECT book_id, title, author, description, category,
                cabinet, rack, row, signal_strength,
                timestamp, status
         FROM library.books
@@ -306,17 +306,18 @@ def get_book_details(book_id: str) -> Optional[Dict[str, Any]]:
         "book_id": result[0],
         "title": result[1],
         "author": result[2],
-        "category": result[3],
+        "description": result[3],
+        "category": result[4],
         "location": {
-            "cabinet": result[4],
-            "rack": result[5],
-            "row": result[6]
+            "cabinet": result[5],
+            "rack": result[6],
+            "row": result[7]
         },
-        "signal_strength": result[7],
-        "timestamp": str(result[8]),
-        "status": result[9],
-        "has_weak_signal": result[7] < -55,
-        "is_available": result[9] == "Present"
+        "signal_strength": result[8],
+        "timestamp": str(result[9]),
+        "status": result[10],
+        "has_weak_signal": result[8] < -55,
+        "is_available": result[10] == "Present"
     }
 '''
 
@@ -366,7 +367,7 @@ def list_by_category(category: str, status: Optional[str] = None) -> List[Dict[s
         status: Optional status filter (Present, Missing, Checked Out)
 
     Returns:
-        List of books in the category
+        List of books in the category (without description for token efficiency)
 
     Example:
         >>> books = list_by_category("Programming", status="Present")
@@ -420,7 +421,7 @@ def list_by_status(status: str, category: Optional[str] = None) -> List[Dict[str
         category: Optional category filter
 
     Returns:
-        List of books with the specified status
+        List of books with the specified status (without description for token efficiency)
 
     Example:
         >>> missing_books = list_by_status("Missing")
@@ -508,7 +509,7 @@ def find_books_in_cabinet(cabinet: int, rack: Optional[int] = None) -> List[Dict
         rack: Optional rack number within cabinet
 
     Returns:
-        List of books in the specified location
+        List of books in the specified location (without description for token efficiency)
 
     Example:
         >>> books = find_books_in_cabinet(3, rack=2)
@@ -561,7 +562,7 @@ def get_weak_signal_books(threshold: float = -55.0) -> List[Dict[str, Any]]:
         threshold: Signal strength threshold in dBm (default: -55)
 
     Returns:
-        List of books with signal below threshold
+        List of books with signal below threshold (without description for token efficiency)
 
     Example:
         >>> weak_books = get_weak_signal_books()

@@ -43,6 +43,7 @@ def create_table(conn: duckdb.DuckDBPyConnection) -> None:
             book_id VARCHAR PRIMARY KEY,
             title VARCHAR NOT NULL,
             author VARCHAR NOT NULL,
+            description VARCHAR NOT NULL,
             category VARCHAR NOT NULL CHECK (category IN ('Programming', 'History', 'Science', 'Fiction', 'Thriller')),
             cabinet INTEGER NOT NULL CHECK (cabinet >= 1),
             rack INTEGER NOT NULL CHECK (rack >= 1),
@@ -91,6 +92,7 @@ def load_csv(conn: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
             Book_ID as book_id,
             Title as title,
             Author as author,
+            Description as description,
             Category as category,
             Cabinet as cabinet,
             Rack as rack,
@@ -150,12 +152,22 @@ def validate_data(conn: duckdb.DuckDBPyConnection) -> bool:
         errors.append(f"Invalid statuses found: {invalid_stats}")
 
     # Check for NULL values in required fields
-    for field in ["book_id", "title", "author", "category", "status"]:
+    for field in ["book_id", "title", "author", "description", "category", "status"]:
         result = conn.execute(
             f"SELECT COUNT(*) FROM library.books WHERE {field} IS NULL"
         ).fetchone()
         if result and result[0] > 0:
             errors.append(f"Found {result[0]} NULL values in {field}")
+
+    # Check description length constraints (50-300 characters)
+    result = conn.execute("""
+        SELECT COUNT(*) FROM library.books
+        WHERE LENGTH(description) < 50 OR LENGTH(description) > 500
+    """).fetchone()
+    if result and result[0] > 0:
+        errors.append(
+            f"Found {result[0]} descriptions outside length constraints (50-500 characters)"
+        )
 
     if errors:
         print("✗ Validation failed:")

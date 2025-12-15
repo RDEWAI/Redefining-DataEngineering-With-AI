@@ -74,6 +74,7 @@ class Book:
         book_id: Unique identifier (e.g., "B001")
         title: Book title
         author: Author name
+        description: Book description/summary (50-100 words)
         category: Book category
         location: Physical location in library
         signal_strength: RFID signal strength in dBm (typically -30 to -90)
@@ -84,6 +85,7 @@ class Book:
     book_id: str
     title: str
     author: str
+    description: str
     category: Category
     location: Location
     signal_strength: float
@@ -113,14 +115,18 @@ class Book:
         """
         return self.status == BookStatus.PRESENT
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, include_description: bool = False) -> dict[str, Any]:
         """Convert book to dictionary for JSON serialization.
 
+        Args:
+            include_description: If True, include the description field (50-100 words).
+                               Default is False for token efficiency.
+
         Returns:
-            Dictionary with all book fields, with enum values as strings
+            Dictionary with book fields, with enum values as strings
             and timestamp as ISO format string.
         """
-        return {
+        result = {
             "book_id": self.book_id,
             "title": self.title,
             "author": self.author,
@@ -132,27 +138,31 @@ class Book:
             "timestamp": self.timestamp.isoformat(),
             "status": self.status.value,
         }
+        if include_description:
+            result["description"] = self.description
+        return result
 
     @classmethod
     def from_row(cls, row: tuple) -> "Book":
         """Create Book instance from database row tuple.
 
         Args:
-            row: Tuple with values in order: (book_id, title, author,
+            row: Tuple with values in order: (book_id, title, author, description,
                 category, cabinet, rack, row, signal_strength, timestamp, status)
 
         Returns:
             Book instance
 
         Example:
-            >>> row = ("B001", "Python Book", "John", "Programming", 1, 2, 3,
-            ...        -45.0, datetime.now(), "Present")
+            >>> row = ("B001", "Python Book", "John", "A great book about Python",
+            ...        "Programming", 1, 2, 3, -45.0, datetime.now(), "Present")
             >>> book = Book.from_row(row)
         """
         (
             book_id,
             title,
             author,
+            description,
             category_str,
             cabinet,
             rack,
@@ -166,6 +176,7 @@ class Book:
             book_id=book_id,
             title=title,
             author=author,
+            description=description,
             category=Category(category_str),
             location=Location(cabinet=cabinet, rack=rack, row=row_num),
             signal_strength=signal_strength,
@@ -202,6 +213,7 @@ class Book:
             book_id=data["book_id"],
             title=data["title"],
             author=data["author"],
+            description=data["description"],
             category=category,
             location=Location(
                 cabinet=data["cabinet"],
