@@ -47,16 +47,63 @@ def test_db_path(tmp_path):
 
     # Insert test data
     test_books = [
-        ("B001", "Python Programming", "John Smith", "Programming", 1, 1, 1, -45.2, "2025-01-15 10:30:00", "Present"),
-        ("B002", "Advanced Python", "Jane Doe", "Programming", 1, 1, 2, -60.5, "2025-01-15 10:31:00", "Present"),
-        ("B003", "World History", "Bob Johnson", "History", 2, 1, 1, -50.0, "2025-01-15 09:00:00", "Checked Out"),
-        ("B004", "Science 101", "Alice Brown", "Science", 3, 2, 5, -70.0, "2025-01-14 08:00:00", "Missing"),
+        (
+            "B001",
+            "Python Programming",
+            "John Smith",
+            "Programming",
+            1,
+            1,
+            1,
+            -45.2,
+            "2025-01-15 10:30:00",
+            "Present",
+        ),
+        (
+            "B002",
+            "Advanced Python",
+            "Jane Doe",
+            "Programming",
+            1,
+            1,
+            2,
+            -60.5,
+            "2025-01-15 10:31:00",
+            "Present",
+        ),
+        (
+            "B003",
+            "World History",
+            "Bob Johnson",
+            "History",
+            2,
+            1,
+            1,
+            -50.0,
+            "2025-01-15 09:00:00",
+            "Checked Out",
+        ),
+        (
+            "B004",
+            "Science 101",
+            "Alice Brown",
+            "Science",
+            3,
+            2,
+            5,
+            -70.0,
+            "2025-01-14 08:00:00",
+            "Missing",
+        ),
     ]
 
     for book in test_books:
-        conn.execute("""
+        conn.execute(
+            """
             INSERT INTO library.books VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, book)
+        """,
+            book,
+        )
 
     conn.close()
     return str(db_path)
@@ -66,13 +113,14 @@ def test_db_path(tmp_path):
 def mcp_server(test_db_path, monkeypatch):
     """Create an MCP server instance with test database."""
     # Set database path in environment
-    monkeypatch.setenv('DB_PATH', test_db_path)
+    monkeypatch.setenv("DB_PATH", test_db_path)
 
     # Import server (will use test DB path)
     from src.mcp_servers import library_server
 
     # Reinitialize the repository with the test database (read_only=True for consistency)
     from src.mcp_servers.library_server import BookRepository
+
     library_server.repository = BookRepository(test_db_path, read_only=True)
 
     # Return the FastMCP instance
@@ -92,7 +140,7 @@ def parse_tool_result(result):
         raise Exception(error_text)
 
     # Parse from content[0].text which contains the JSON string
-    if result.content and hasattr(result.content[0], 'text'):
+    if result.content and hasattr(result.content[0], "text"):
         return json.loads(result.content[0].text)
 
     return None
@@ -114,9 +162,9 @@ class TestMCPToolExecution:
             assert len(data) >= 2  # Should find both Python books
 
             # Verify structure
-            assert all('book_id' in book for book in data)
-            assert all('title' in book for book in data)
-            assert any('Python' in book['title'] for book in data)
+            assert all("book_id" in book for book in data)
+            assert all("title" in book for book in data)
+            assert any("Python" in book["title"] for book in data)
 
     @pytest.mark.asyncio
     async def test_get_book_details_tool(self, mcp_server):
@@ -126,14 +174,14 @@ class TestMCPToolExecution:
             data = parse_tool_result(result)
 
             assert data is not None
-            assert data['book_id'] == "B001"
-            assert data['title'] == "Python Programming"
-            assert data['author'] == "John Smith"
+            assert data["book_id"] == "B001"
+            assert data["title"] == "Python Programming"
+            assert data["author"] == "John Smith"
             # Location is stored as flat keys
-            assert 'cabinet' in data
-            assert 'rack' in data
-            assert 'row' in data
-            assert 'status' in data
+            assert "cabinet" in data
+            assert "rack" in data
+            assert "row" in data
+            assert "status" in data
 
     @pytest.mark.asyncio
     async def test_check_availability_tool(self, mcp_server):
@@ -144,14 +192,14 @@ class TestMCPToolExecution:
             data = parse_tool_result(result)
 
             assert data is not None
-            assert data['available'] is True
-            assert data['status'] == "Present"
+            assert data["available"] is True
+            assert data["status"] == "Present"
 
             # Test checked out book
             result = await client.call_tool("check_availability", {"book_id": "B003"})
             data = parse_tool_result(result)
-            assert data['available'] is False
-            assert data['status'] == "Checked Out"
+            assert data["available"] is False
+            assert data["status"] == "Checked Out"
 
     @pytest.mark.asyncio
     async def test_list_by_category_tool(self, mcp_server):
@@ -163,7 +211,7 @@ class TestMCPToolExecution:
             assert data is not None
             assert isinstance(data, list)
             assert len(data) == 2  # Two programming books
-            assert all(book['category'] == "Programming" for book in data)
+            assert all(book["category"] == "Programming" for book in data)
 
     @pytest.mark.asyncio
     async def test_list_by_status_tool(self, mcp_server):
@@ -174,7 +222,7 @@ class TestMCPToolExecution:
 
             assert data is not None
             assert isinstance(data, list)
-            assert all(book['status'] == "Present" for book in data)
+            assert all(book["status"] == "Present" for book in data)
 
     @pytest.mark.asyncio
     async def test_locate_book_tool(self, mcp_server):
@@ -184,12 +232,12 @@ class TestMCPToolExecution:
             data = parse_tool_result(result)
 
             assert data is not None
-            assert 'cabinet' in data
-            assert 'rack' in data
-            assert 'row' in data
-            assert data['cabinet'] == 1
-            assert data['rack'] == 1
-            assert data['row'] == 1
+            assert "cabinet" in data
+            assert "rack" in data
+            assert "row" in data
+            assert data["cabinet"] == 1
+            assert data["rack"] == 1
+            assert data["row"] == 1
 
     @pytest.mark.asyncio
     async def test_find_books_in_cabinet_tool(self, mcp_server):
@@ -202,7 +250,7 @@ class TestMCPToolExecution:
             assert isinstance(data, list)
             # Books in cabinet 1 should have cabinet field equal to 1
             for book in data:
-                assert book['cabinet'] == 1
+                assert book["cabinet"] == 1
 
     @pytest.mark.asyncio
     async def test_get_weak_signal_books_tool(self, mcp_server):
@@ -214,7 +262,7 @@ class TestMCPToolExecution:
             assert data is not None
             assert isinstance(data, list)
             # Should include B002 (-60.5) and B004 (-70.0)
-            book_ids = [book['book_id'] for book in data]
+            book_ids = [book["book_id"] for book in data]
             assert "B002" in book_ids
             assert "B004" in book_ids
 
@@ -234,9 +282,9 @@ class TestMCPResources:
             # Get the text from first result
             text = result[0].text
             data = json.loads(text)
-            assert 'by_category' in data
-            assert 'by_status' in data
-            assert 'total_books' in data
+            assert "by_category" in data
+            assert "by_status" in data
+            assert "total_books" in data
 
     @pytest.mark.asyncio
     async def test_missing_books_resource(self, mcp_server):
@@ -250,7 +298,7 @@ class TestMCPResources:
             data = json.loads(text)
             assert isinstance(data, list)
             # Should have B004 which is marked as Missing
-            assert any(book['book_id'] == "B004" for book in data)
+            assert any(book["book_id"] == "B004" for book in data)
 
     @pytest.mark.asyncio
     async def test_location_map_resource(self, mcp_server):
@@ -263,8 +311,8 @@ class TestMCPResources:
             text = result[0].text
             data = json.loads(text)
             assert isinstance(data, list)
-            assert all('cabinet' in loc for loc in data)
-            assert all('book_count' in loc for loc in data)
+            assert all("cabinet" in loc for loc in data)
+            assert all("book_count" in loc for loc in data)
 
 
 class TestMCPPrompts:
@@ -281,7 +329,7 @@ class TestMCPPrompts:
             assert len(result.messages) > 0
             content = result.messages[0].content
             # Content could be a string or a TextContent object
-            text = content.text if hasattr(content, 'text') else str(content)
+            text = content.text if hasattr(content, "text") else str(content)
             assert "Python books" in text
             assert len(text) > 0
 
@@ -294,7 +342,7 @@ class TestMCPPrompts:
             assert result is not None
             assert len(result.messages) > 0
             content = result.messages[0].content
-            text = content.text if hasattr(content, 'text') else str(content)
+            text = content.text if hasattr(content, "text") else str(content)
             assert len(text) > 0
 
 
@@ -331,16 +379,16 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_invalid_category(self, mcp_server):
         """Test error for invalid category value."""
-        from fastmcp.exceptions import ToolError
-
         async with Client(mcp_server) as client:
-            # FastMCP raises ToolError because tool returns dict but expects list
-            with pytest.raises(ToolError) as exc_info:
-                await client.call_tool("list_by_category", {"category": "InvalidCategory"})
+            # Tool returns error dict for invalid category
+            result = await client.call_tool("list_by_category", {"category": "InvalidCategory"})
+            parsed = parse_tool_result(result)
 
-            # Error should mention invalid category
-            error_msg = str(exc_info.value).lower()
-            assert "invalid" in error_msg or "category" in error_msg or "validation" in error_msg
+            # Should return error dict with error message
+            assert isinstance(parsed, dict)
+            assert "error" in parsed
+            error_msg = parsed["error"].lower()
+            assert "invalid" in error_msg and "category" in error_msg
 
 
 class TestMultiToolWorkflow:
@@ -356,12 +404,12 @@ class TestMultiToolWorkflow:
             assert len(search_results) > 0
 
             # Step 2: Get details for first result
-            first_book_id = search_results[0]['book_id']
+            first_book_id = search_results[0]["book_id"]
             details_result = await client.call_tool("get_book_details", {"book_id": first_book_id})
             details = parse_tool_result(details_result)
 
-            assert details['book_id'] == first_book_id
-            assert "Python" in details['title']
+            assert details["book_id"] == first_book_id
+            assert "Python" in details["title"]
 
     @pytest.mark.asyncio
     async def test_category_to_location_workflow(self, mcp_server):
@@ -374,7 +422,7 @@ class TestMultiToolWorkflow:
 
             # Step 2: Get location for each book
             for book in prog_books:
-                loc_result = await client.call_tool("locate_book", {"book_id": book['book_id']})
+                loc_result = await client.call_tool("locate_book", {"book_id": book["book_id"]})
                 location = parse_tool_result(loc_result)
-                assert 'cabinet' in location
-                assert location['cabinet'] >= 1
+                assert "cabinet" in location
+                assert location["cabinet"] >= 1

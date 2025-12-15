@@ -43,11 +43,13 @@ class MockLLMProvider:
         """Return the next response from the list."""
         # Record the number of messages at time of call
         self._message_counts.append(len(messages))
-        self._calls.append({
-            "messages": list(messages),  # Copy the list
-            "model": model,
-            "tools": tools,
-        })
+        self._calls.append(
+            {
+                "messages": list(messages),  # Copy the list
+                "model": model,
+                "tools": tools,
+            }
+        )
 
         if self._response_index < len(self._responses):
             response = self._responses[self._response_index]
@@ -516,9 +518,7 @@ class TestShowToolCalls:
         """Test that LLM calls show iteration numbers."""
         tool_response = LLMResponse(
             content=None,
-            tool_calls=[
-                ToolCall(id="call_1", name="get_library_stats", arguments="{}")
-            ],
+            tool_calls=[ToolCall(id="call_1", name="get_library_stats", arguments="{}")],
             finish_reason="tool_calls",
             usage={"prompt_tokens": 60, "completion_tokens": 20, "total_tokens": 80},
         )

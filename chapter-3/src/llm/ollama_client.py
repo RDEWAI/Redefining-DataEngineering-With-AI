@@ -96,7 +96,7 @@ class OllamaProvider(LLMProvider):
 
     def _parse_tool_calls(self, raw_calls: list[dict[str, Any]]) -> list[ToolCall]:
         """Parse tool calls from API response."""
-        tool_calls = []
+        tool_calls: list[ToolCall] = []
         for call in raw_calls:
             function = call.get("function", {})
             tool_calls.append(
@@ -274,7 +274,7 @@ class OllamaProvider(LLMProvider):
         """
         try:
             response = self._client.get("/api/tags")
-            return response.status_code == 200
+            return bool(response.status_code == 200)
         except httpx.RequestError:
             return False
 

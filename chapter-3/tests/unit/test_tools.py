@@ -12,7 +12,6 @@ from src.agents.library_assistant import (
     get_tool_function,
     get_tools_for_llm,
 )
-from src.llm.base import ToolDefinition
 
 
 class TestToolDefinitions:

@@ -9,8 +9,6 @@ Tests cover:
 - Missing prerequisites error handling
 """
 
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -63,7 +61,9 @@ class TestLoadSingleCsv:
     def sample_csv(self, tmp_path):
         """Create a sample CSV file for testing."""
         csv_path = tmp_path / "test_patients.csv"
-        csv_path.write_text("id,name,birthdate\n1,John Doe,1990-01-01\n2,Jane Smith,1985-05-15\n")
+        csv_path.write_text(
+            "id,name,birthdate\n1,John Doe,1990-01-01\n2,Jane Smith,1985-05-15\n"
+        )
         return csv_path
 
     def test_load_single_csv(self, temp_db, sample_csv):
@@ -155,7 +155,9 @@ class TestIdempotentLoading:
         """Create sample CSV files."""
         csv_dir = tmp_path / "raw"
         csv_dir.mkdir()
-        (csv_dir / "patients.csv").write_text("id,name\n1,Test Patient\n2,Another Patient\n")
+        (csv_dir / "patients.csv").write_text(
+            "id,name\n1,Test Patient\n2,Another Patient\n"
+        )
         return csv_dir
 
     def test_idempotent_loading(self, temp_db_path, sample_csv_dir):

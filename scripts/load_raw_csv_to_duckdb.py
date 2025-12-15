@@ -187,7 +187,7 @@ def print_summary(results: List[Tuple[str, int]], elapsed: float) -> None:
     total_tables = len(results)
     total_rows = sum(count for _, count in results)
 
-    print(f"\n✅ Summary:")
+    print("\n✅ Summary:")
     print(f"  Tables created: {total_tables}")
     print(f"  Total rows loaded: {total_rows:,}")
     print(f"  Time elapsed: {elapsed:.2f}s")
@@ -217,7 +217,7 @@ def main() -> int:
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
         # Connect to DuckDB and load data
-        print(f"\n[3/4] Loading CSV files into DuckDB...")
+        print("\n[3/4] Loading CSV files into DuckDB...")
         conn = duckdb.connect(str(DB_PATH))
 
         try:
@@ -229,7 +229,7 @@ def main() -> int:
 
             # Calculate elapsed time and print summary
             elapsed = time.time() - start_time
-            print(f"\n[4/4] Loading complete!")
+            print("\n[4/4] Loading complete!")
             print_summary(results, elapsed)
             print(f"\nDuckDB tables available in: {DB_PATH} ({SCHEMA_NAME} schema)")
 

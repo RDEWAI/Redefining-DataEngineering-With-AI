@@ -492,11 +492,240 @@ dev = [
 
 ---
 
+---
+
+## 8. Phase 5.5: Unified LLM Client & Git Hooks (NEW)
+
+### Decision: OpenAI SDK as Unified Client
+
+**Use OpenAI SDK v1.0+ with custom base_url for all providers (OpenRouter, Ollama, OpenAI).**
+
+**Rationale**:
+- Single dependency replaces multiple custom clients
+- Type-safe API with excellent IDE support
+- Supports custom `base_url` parameter for any OpenAI-compatible API
+- Well-documented and actively maintained
+- Already supports function calling, streaming, etc.
+
+**Implementation**:
+```python
+from openai import OpenAI
+
+# OpenRouter
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("LLM_API_KEY")
+)
+
+# Ollama (local)
+client = OpenAI(
+    base_url="http://localhost:11434/v1",
+    api_key="not-required"
+)
+
+# OpenAI (standard)
+client = OpenAI(
+    base_url="https://api.openai.com/v1",
+    api_key=os.getenv("LLM_API_KEY")
+)
+```
+
+**Alternatives Considered**:
+- Custom httpx-based client: More control but higher maintenance
+- Provider-specific SDKs: Inconsistent APIs, more dependencies
+- LangChain wrappers: Too heavy for this use case
+
+---
+
+### Decision: OpenRouter Usage Accounting
+
+**Use built-in `usage` parameter in API requests for token tracking.**
+
+**Rationale**:
+- Most accurate (uses model's native tokenizer)
+- No additional API calls required
+- ~200ms overhead acceptable for non-streaming
+- Standard OpenAI SDK response format
+
+**Response Format**:
+```json
+{
+  "usage": {
+    "prompt_tokens": 150,
+    "completion_tokens": 50,
+    "total_tokens": 200
+  }
+}
+```
+
+**Key Findings** (from [OpenRouter Usage Accounting docs](https://openrouter.ai/docs/use-cases/usage-accounting)):
+- Add `"usage": true` to request for detailed token counts
+- Adds ~200ms latency to final response chunk
+- Alternative: GET /api/v1/generation/{id} for async stats
+- Credits API: GET /api/v1/key for balance checking
+
+**Alternatives Considered**:
+- Generation endpoint: Extra API call, async complexity
+- Client-side estimation: Inaccurate, model-dependent
+- No tracking: Misses optimization opportunities
+
+---
+
+### Decision: Pre-commit Framework for Git Hooks
+
+**Use pre-commit framework with .pre-commit-config.yaml.**
+
+**Rationale** (from [2025 best practices](https://gatlenculp.medium.com/effortless-code-quality-the-ultimate-pre-commit-hooks-guide-for-2025-57ca501d9835)):
+- Python ecosystem standard
+- Automatic hook installation: `pre-commit install`
+- Version-controlled configuration
+- Community hook repositories available
+- Multi-language support (future-proof)
+
+**Hook Configuration**:
+```yaml
+repos:
+  - repo: local
+    hooks:
+      # Pre-commit: Fast checks (<5s)
+      - id: ruff-check
+        entry: uv run ruff check
+        language: system
+        types: [python]
+
+      - id: mypy
+        entry: uv run mypy
+        language: system
+        types: [python]
+
+      # Pre-push: Tests (<30s)
+      - id: pytest-unit
+        entry: uv run pytest tests/unit/ -v
+        language: system
+        stages: [push]
+```
+
+**Alternatives Considered**:
+- Manual .git/hooks/ scripts: Not version-controlled, hard to maintain
+- Husky (Node.js): Overkill for Python projects
+- Makefile targets: Requires manual execution
+
+---
+
+### Decision: Ruff for Linting/Formatting
+
+**Use Ruff as single tool for linting, formatting, and import sorting.**
+
+**Rationale**:
+- **200x faster** than Flake8 (Rust-based)
+- Replaces: Black + Flake8 + isort + pydocstyle + pyupgrade
+- Drop-in Black-compatible formatting
+- Already configured in pyproject.toml
+
+**Performance Benchmarks**:
+- Ruff: ~10ms for 1000 files
+- Flake8: ~2000ms for same files
+
+**Alternatives Considered**:
+- Black + Flake8 + isort: Traditional but slow, 3+ tools
+- Pylint: Slower, overlapping rules
+- Blue: Less mature, smaller community
+
+---
+
+### Decision: Pre-push Testing Strategy
+
+**Run unit tests only in pre-push hook (integration tests in CI/CD).**
+
+**Rationale**:
+- Fast execution (<30s target for developer experience)
+- Catches most regressions (80%+ coverage)
+- Doesn't block workflow
+- Full suite (integration + E2E) runs in CI/CD
+
+**Configuration**:
+```yaml
+- id: pytest-unit
+  name: "Unit Tests"
+  entry: "uv run pytest tests/unit/ -v"
+  timeout: 30
+  stages: [push]
+```
+
+**Alternatives Considered**:
+- All tests: Too slow (>1 minute), friction
+- No tests: Misses obvious regressions
+- Only modified files: Complex, unreliable
+
+---
+
+### Environment Configuration (.env)
+
+**Unified configuration replacing separate provider variables**:
+
+```bash
+# Before (Phase 5)
+OPENROUTER_API_KEY=sk-or-v1-...
+LLM_PROVIDER=openrouter
+LLM_MODEL=openai/gpt-4o-mini
+OLLAMA_HOST=http://localhost:11434
+
+# After (Phase 5.5)
+LLM_BASE_URL=https://openrouter.ai/api/v1
+LLM_API_KEY=sk-or-v1-...
+LLM_MODEL=openai/gpt-4o-mini
+LLM_ENABLE_USAGE_TRACKING=true
+```
+
+**Benefits**:
+- Single pattern for all providers (change base_url to switch)
+- Clear relationship between config values
+- Usage tracking opt-in via flag
+- Backward compatible during migration
+
+---
+
+### Migration Strategy
+
+**Deprecation Path**:
+1. Phase 5.5: Introduce UnifiedLLMClient, keep legacy clients
+2. Phase 6: Migrate agents to UnifiedLLMClient
+3. Phase 7: Remove openrouter_client.py and ollama_client.py
+
+**Backward Compatibility**:
+- Legacy clients marked deprecated in docstrings
+- All code continues working during migration
+- Gradual migration prevents breaking changes
+
+---
+
+## 9. Phase 5.5 Dependencies
+
+**New/Updated Dependencies**:
+```toml
+dependencies = [
+    "openai>=1.0.0",  # Already present
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.1.0",        # Already present
+    "mypy>=1.0.0",        # Already present
+    "pre-commit>=3.0.0",  # NEW
+]
+```
+
+---
+
 ## Sources
 
 - [FastMCP Documentation](https://gofastmcp.com/)
 - [DuckDB VSS Extension](https://duckdb.org/docs/stable/core_extensions/vss)
 - [OpenRouter API Documentation](https://openrouter.ai/docs)
+- [OpenRouter Usage Accounting](https://openrouter.ai/docs/use-cases/usage-accounting)
 - [Google A2A Protocol](https://github.com/google/A2A)
 - [Anthropic: Code Execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp)
 - [Anthropic: Advanced Tool Use](https://www.anthropic.com/engineering/advanced-tool-use)
+- [Pre-commit Framework](https://pre-commit.com/)
+- [Pre-Commit Hooks Guide 2025](https://gatlenculp.medium.com/effortless-code-quality-the-ultimate-pre-commit-hooks-guide-for-2025-57ca501d9835)
+- [Git Hooks for Code Quality 2025](https://dev.to/arasosman/git-hooks-for-automated-code-quality-checks-guide-2025-372f)

@@ -196,6 +196,143 @@ All paths relative to `chapter-3/` directory:
 
 ---
 
+## Phase 5.5: Code Quality & Unified LLM Client (NEW)
+
+**Goal**: Add git hooks for code quality enforcement and unify LLM client configuration across all providers
+
+**Independent Test**:
+- Run `git commit` → pre-commit hooks (ruff, mypy) execute automatically
+- Run `git push` → pre-push hooks (unit tests) execute automatically
+- Use `UnifiedLLMClient.from_env()` → client works with any provider (OpenRouter/Ollama/OpenAI)
+
+**Dependencies**: Requires Phase 5 (US3) complete. Blocks Phase 6 (US4) until complete.
+
+### Phase 5.5.1: Setup - Pre-commit Framework
+
+**Purpose**: Install and configure pre-commit hooks framework
+
+- [X] T5.5-001 Add `pre-commit>=3.0.0` to dev dependencies in `chapter-3/pyproject.toml`
+- [X] T5.5-002 Run `uv sync` to install pre-commit dependency in `chapter-3/`
+- [X] T5.5-003 Verify `uv run pre-commit --version` returns version >= 3.0.0
+
+---
+
+### Phase 5.5.2: Git Hooks Configuration
+
+**Purpose**: Configure pre-commit and pre-push hooks for automated quality checks
+
+- [X] T5.5-004 [P] Create `chapter-3/.pre-commit-config.yaml` with ruff-check hook (linting)
+- [X] T5.5-005 [P] Add ruff-format hook to `.pre-commit-config.yaml` (formatting check)
+- [X] T5.5-006 [P] Add mypy hook to `.pre-commit-config.yaml` (type checking)
+- [X] T5.5-007 [P] Add pytest-unit hook for pre-push stage to `.pre-commit-config.yaml` (unit tests)
+- [X] T5.5-008 Install git hooks using `uv run pre-commit install && uv run pre-commit install --hook-type pre-push`
+- [X] T5.5-009 [P] Update `.gitignore` to exclude `.pre-commit-cache` and `.mypy_cache` directories
+- [X] T5.5-010 Verify pre-commit hooks with `uv run pre-commit run --all-files`
+
+**Checkpoint**: Git hooks installed and running - commits trigger ruff/mypy, pushes trigger tests
+
+---
+
+### Phase 5.5.3: Unified LLM Client Implementation
+
+**Purpose**: Create OpenAI SDK-based unified client supporting OpenRouter, Ollama, and OpenAI
+
+- [ ] T5.5-011 [P] Create `chapter-3/src/llm/unified_client.py` with UnifiedLLMClient class
+- [ ] T5.5-012 [P] Implement OpenAI SDK initialization with custom `base_url` parameter in `unified_client.py`
+- [ ] T5.5-013 Add `from_env()` class method to load LLM_BASE_URL, LLM_API_KEY, LLM_MODEL from environment
+- [ ] T5.5-014 Implement `generate()` method matching LLMProvider interface from `base.py`
+- [ ] T5.5-015 Add usage tracking via OpenAI SDK `response.usage` (returns prompt_tokens, completion_tokens, total_tokens)
+- [ ] T5.5-016 Add API key validation - required for OpenRouter/OpenAI, optional for Ollama
+- [ ] T5.5-017 Add user-friendly error messages for configuration errors (missing API key, invalid URL)
+
+**Checkpoint**: UnifiedLLMClient works with all three providers via base_url switching
+
+---
+
+### Phase 5.5.4: Unit Tests for Unified Client
+
+**Purpose**: Test coverage for unified LLM client
+
+- [ ] T5.5-018 [P] Create `chapter-3/tests/unit/test_unified_client.py` with test fixtures
+- [ ] T5.5-019 [P] Add test for OpenRouter initialization (base_url=https://openrouter.ai/api/v1)
+- [ ] T5.5-020 [P] Add test for Ollama initialization (base_url=http://localhost:11434/v1, no API key)
+- [ ] T5.5-021 [P] Add test for OpenAI initialization (base_url=https://api.openai.com/v1)
+- [ ] T5.5-022 Add test for missing API key error when provider requires it
+- [ ] T5.5-023 Add test for usage tracking returns correct fields (prompt_tokens, completion_tokens, total_tokens)
+- [ ] T5.5-024 Add test for `from_env()` loading configuration from environment variables
+
+---
+
+### Phase 5.5.5: Integration & Migration
+
+**Purpose**: Update configuration and maintain backward compatibility
+
+- [ ] T5.5-025 Update `chapter-3/.env.example` with unified LLM configuration variables:
+  - LLM_BASE_URL (with examples for all 3 providers)
+  - LLM_API_KEY (note: optional for Ollama)
+  - LLM_MODEL (with model examples)
+  - LLM_ENABLE_USAGE_TRACKING (default: true)
+- [ ] T5.5-026 Update `chapter-3/src/llm/__init__.py` to export UnifiedLLMClient
+- [ ] T5.5-027 Add deprecation warning docstrings to `chapter-3/src/llm/openrouter_client.py`
+- [ ] T5.5-028 Add deprecation warning docstrings to `chapter-3/src/llm/ollama_client.py`
+
+**Checkpoint**: Configuration updated, legacy clients deprecated but still functional
+
+---
+
+### Phase 5.5.6: Verification & Documentation
+
+**Purpose**: Verify all components work together
+
+- [ ] T5.5-029 Run full verification: `uv run pre-commit run --all-files` passes
+- [ ] T5.5-030 Run full verification: `uv run ruff check chapter-3/src/` passes with zero errors
+- [ ] T5.5-031 Run full verification: `uv run pytest chapter-3/tests/unit/ -v` passes 100%
+- [ ] T5.5-032 Verify git commit triggers pre-commit hooks automatically
+- [ ] T5.5-033 Verify git push triggers pre-push hooks (unit tests) automatically
+
+**Checkpoint**: Phase 5.5 complete - code quality gates active, unified client ready
+
+---
+
+## Summary: Phase 5.5 Tasks
+
+| Sub-Phase | Task Count | Parallelizable | Description |
+|-----------|-----------|----------------|-------------|
+| 5.5.1: Setup | 3 | 0 | Pre-commit installation |
+| 5.5.2: Git Hooks | 7 | 4 | Hook configuration |
+| 5.5.3: Unified Client | 7 | 2 | Core implementation |
+| 5.5.4: Unit Tests | 7 | 4 | Test coverage |
+| 5.5.5: Integration | 4 | 0 | Config & migration |
+| 5.5.6: Verification | 5 | 0 | End-to-end validation |
+| **Total** | **33** | **10** | |
+
+### Parallel Execution for Phase 5.5
+
+**After T5.5-003 (setup complete)**:
+```bash
+# Run in parallel:
+Task: T5.5-004 [P] Create .pre-commit-config.yaml with ruff-check hook
+Task: T5.5-005 [P] Add ruff-format hook
+Task: T5.5-006 [P] Add mypy hook
+Task: T5.5-007 [P] Add pytest-unit hook for pre-push
+Task: T5.5-009 [P] Update .gitignore
+
+# After hooks configured:
+Task: T5.5-011 [P] Create unified_client.py
+Task: T5.5-012 [P] Implement OpenAI SDK initialization
+```
+
+**After T5.5-017 (client complete)**:
+```bash
+# Run in parallel:
+Task: T5.5-018 [P] Create test_unified_client.py
+Task: T5.5-019 [P] Test OpenRouter initialization
+Task: T5.5-020 [P] Test Ollama initialization
+Task: T5.5-021 [P] Test OpenAI initialization
+```
+
+---
+
 ## Phase 6: User Story 4 - Code Execution for Token Efficiency (Priority: P4)
 
 **Goal**: Implement sandboxed code execution and benchmark token reduction (Sub-feature 003d)
@@ -383,10 +520,14 @@ Phase 1 (Setup) ───► Phase 2 (Foundational) ───► User Stories
               003a: Data                       003b: MCP
                      │                                │
                      ▼                                ▼
-              US3 (P3) ──────────────────────► US4 (P4)
-              003c: Tools                      003d: Code Exec
-                     │                                │
-                     ▼                                ▼
+              US3 (P3) ──────────────────────► Phase 5.5 (NEW)
+              003c: Tools                      Code Quality
+                                                      │
+                                                      ▼
+              US4 (P4) ◄───────────────────── Phase 5.5 Done
+              003d: Code Exec
+                     │
+                     ▼
               US5 (P5) ──────────────────────► US6 (P6)
               003e: RAG                        003f: Multi-Agent
                                                       │
@@ -394,18 +535,19 @@ Phase 1 (Setup) ───► Phase 2 (Foundational) ───► User Stories
                                               Phase 9 (Polish)
 ```
 
-### User Story Dependencies
+### User Story & Phase Dependencies
 
-| Story | Depends On | Can Parallelize With |
-|-------|------------|----------------------|
+| Story/Phase | Depends On | Can Parallelize With |
+|-------------|------------|----------------------|
 | US1 (003a) | Phase 2 only | None (foundational) |
 | US2 (003b) | US1 (shared library layer) | None |
 | US3 (003c) | US2 (same tool functions) | None |
-| US4 (003d) | US3 (baseline comparison) | None |
+| **Phase 5.5** | **US3 (003c) complete** | **None** |
+| US4 (003d) | **Phase 5.5 complete** | None |
 | US5 (003e) | US4 (code execution pattern) | None |
 | US6 (003f) | US5 (RAG + tool patterns) | None |
 
-**Note**: This is a progressive learning path - each story builds on the previous. Stories CANNOT be parallelized across sub-features.
+**Note**: Phase 5.5 is a code quality phase inserted between US3 and US4. It adds git hooks and unified LLM client that US4+ will use.
 
 ### Within Each User Story
 

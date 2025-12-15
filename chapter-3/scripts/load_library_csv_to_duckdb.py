@@ -19,7 +19,6 @@ from pathlib import Path
 
 import duckdb
 
-
 # Default paths relative to chapter-3 directory
 SCRIPT_DIR = Path(__file__).parent
 CHAPTER_DIR = SCRIPT_DIR.parent
@@ -60,7 +59,9 @@ def create_indexes(conn: duckdb.DuckDBPyConnection) -> None:
     """Create indexes for common query patterns."""
     conn.execute("CREATE INDEX IF NOT EXISTS idx_books_category ON library.books(category)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_books_status ON library.books(status)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_books_location ON library.books(cabinet, rack, row)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_books_location ON library.books(cabinet, rack, row)"
+    )
     # Note: DuckDB doesn't support partial indexes, so we use a full index on signal_strength
     conn.execute("CREATE INDEX IF NOT EXISTS idx_books_signal ON library.books(signal_strength)")
     print("✓ Created indexes")
@@ -150,7 +151,9 @@ def validate_data(conn: duckdb.DuckDBPyConnection) -> bool:
 
     # Check for NULL values in required fields
     for field in ["book_id", "title", "author", "category", "status"]:
-        result = conn.execute(f"SELECT COUNT(*) FROM library.books WHERE {field} IS NULL").fetchone()
+        result = conn.execute(
+            f"SELECT COUNT(*) FROM library.books WHERE {field} IS NULL"
+        ).fetchone()
         if result and result[0] > 0:
             errors.append(f"Found {result[0]} NULL values in {field}")
 
@@ -208,9 +211,7 @@ def main() -> int:
     Returns:
         0 on success, 1 on error
     """
-    parser = argparse.ArgumentParser(
-        description="Load library CSV data into DuckDB database"
-    )
+    parser = argparse.ArgumentParser(description="Load library CSV data into DuckDB database")
     parser.add_argument(
         "--db-path",
         type=Path,

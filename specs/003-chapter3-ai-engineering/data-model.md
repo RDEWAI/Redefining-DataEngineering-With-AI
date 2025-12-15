@@ -381,3 +381,192 @@ WHERE signal_strength < -55;
   "capabilities": ["search"]
 }
 ```
+
+---
+
+## Phase 5.5 Entities (NEW)
+
+### 4. UnifiedLLMClient
+
+Configuration object for unified LLM provider access.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `base_url` | str | NOT NULL, Valid URL | API endpoint (OpenRouter, Ollama, or OpenAI) |
+| `api_key` | str \| None | NULL for Ollama | Authentication key |
+| `model` | str | NOT NULL | Model identifier (e.g., "openai/gpt-4o-mini") |
+| `enable_usage_tracking` | bool | NOT NULL, Default: True | Enable token usage tracking |
+
+**Provider Types (Inferred from base_url)**:
+- `openrouter`: https://openrouter.ai/api/v1
+- `ollama`: http://localhost:11434/v1
+- `openai`: https://api.openai.com/v1
+
+**Validation Rules**:
+- `base_url` must be valid HTTP/HTTPS URL
+- `api_key` required if provider is OpenRouter or OpenAI
+- `model` must not be empty string
+- Usage tracking only functional for OpenRouter provider
+
+**Python Definition**:
+```python
+from dataclasses import dataclass
+from typing import Optional
+from openai import OpenAI
+
+@dataclass
+class UnifiedLLMClient:
+    base_url: str
+    api_key: Optional[str]
+    model: str
+    enable_usage_tracking: bool = True
+
+    def __post_init__(self):
+        """Validate configuration and initialize OpenAI client."""
+        if not self.base_url:
+            raise ValueError("base_url is required")
+        if not self.model:
+            raise ValueError("model is required")
+
+        # Require API key for non-Ollama providers
+        if "ollama" not in self.base_url.lower() and not self.api_key:
+            raise ValueError("api_key required for OpenRouter and OpenAI")
+
+        self._client = OpenAI(
+            base_url=self.base_url,
+            api_key=self.api_key or "not-required"
+        )
+
+    @classmethod
+    def from_env(cls) -> "UnifiedLLMClient":
+        """Create client from environment variables."""
+        import os
+        return cls(
+            base_url=os.getenv("LLM_BASE_URL"),
+            api_key=os.getenv("LLM_API_KEY"),
+            model=os.getenv("LLM_MODEL"),
+            enable_usage_tracking=os.getenv("LLM_ENABLE_USAGE_TRACKING", "true").lower() == "true"
+        )
+```
+
+---
+
+### 5. UsageMetrics
+
+Token usage and cost tracking for LLM requests.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `prompt_tokens` | int | >= 0 | Input tokens consumed |
+| `completion_tokens` | int | >= 0 | Output tokens generated |
+| `total_tokens` | int | >= 0 | Sum of prompt + completion |
+| `model` | str | NOT NULL | Model used for request |
+
+**Validation Rules**:
+- All token counts must be non-negative integers
+- `total_tokens` = `prompt_tokens` + `completion_tokens`
+- Returned from OpenAI SDK response.usage
+
+**Python Definition**:
+```python
+from dataclasses import dataclass
+
+@dataclass
+class UsageMetrics:
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    model: str
+
+    def __post_init__(self):
+        """Validate token counts."""
+        if self.prompt_tokens < 0 or self.completion_tokens < 0:
+            raise ValueError("Token counts must be non-negative")
+        if self.total_tokens != self.prompt_tokens + self.completion_tokens:
+            raise ValueError("total_tokens must equal prompt_tokens + completion_tokens")
+
+    @classmethod
+    def from_openai_usage(cls, usage_obj, model: str) -> "UsageMetrics":
+        """Create from OpenAI SDK usage object."""
+        return cls(
+            prompt_tokens=usage_obj.prompt_tokens,
+            completion_tokens=usage_obj.completion_tokens,
+            total_tokens=usage_obj.total_tokens,
+            model=model
+        )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for logging."""
+        return {
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
+            "total_tokens": self.total_tokens,
+            "model": self.model
+        }
+```
+
+**Sample Data**:
+```json
+{
+  "prompt_tokens": 150,
+  "completion_tokens": 50,
+  "total_tokens": 200,
+  "model": "openai/gpt-4o-mini"
+}
+```
+
+---
+
+### 6. GitHookConfig
+
+Configuration for pre-commit and pre-push hooks (stored in .pre-commit-config.yaml).
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `hook_id` | str | NOT NULL | Unique hook identifier |
+| `name` | str | NOT NULL | Display name |
+| `entry` | str | NOT NULL | Command to execute |
+| `language` | str | NOT NULL | Hook language (system, python, etc.) |
+| `types` | str[] | NOT NULL | File types to trigger on |
+| `stages` | str[] | NULL | Git stages (commit, push) |
+| `pass_filenames` | bool | NOT NULL, Default: True | Pass filenames to hook |
+
+**Hook Types**:
+- `pre-commit`: Run before git commit (linting, formatting)
+- `pre-push`: Run before git push (testing)
+
+**YAML Definition** (.pre-commit-config.yaml):
+```yaml
+repos:
+  - repo: local
+    hooks:
+      # Pre-commit: Fast checks
+      - id: ruff-check
+        name: "Ruff Linter"
+        entry: "uv run ruff check"
+        language: system
+        types: [python]
+        pass_filenames: true
+
+      - id: ruff-format
+        name: "Ruff Formatter"
+        entry: "uv run ruff format --check"
+        language: system
+        types: [python]
+        pass_filenames: true
+
+      - id: mypy
+        name: "Type Checker"
+        entry: "uv run mypy"
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      # Pre-push: Tests
+      - id: pytest-unit
+        name: "Unit Tests"
+        entry: "uv run pytest tests/unit/ -v"
+        language: system
+        pass_filenames: false
+        stages: [push]
+```

@@ -11,7 +11,6 @@ These tests assume prerequisites (UV, Python) are already met.
 
 import os
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -90,7 +89,9 @@ class TestVenvCreation:
 
         # Should have at least one pythonX.Y directory
         python_dirs = list(lib_path.glob("python*"))
-        assert len(python_dirs) > 0, "Should have at least one python* directory in lib/"
+        assert len(python_dirs) > 0, (
+            "Should have at least one python* directory in lib/"
+        )
 
         # Check site-packages exists
         site_packages = python_dirs[0] / "site-packages"
@@ -108,9 +109,7 @@ class TestPackageImports:
             text=True,
         )
 
-        assert result.returncode == 0, (
-            f"Failed to import duckdb:\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"Failed to import duckdb:\n{result.stderr}"
         assert result.stdout.strip(), "DuckDB version should be printed"
 
     def test_sqlmesh_importable(self):
@@ -121,9 +120,7 @@ class TestPackageImports:
             text=True,
         )
 
-        assert result.returncode == 0, (
-            f"Failed to import sqlmesh:\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"Failed to import sqlmesh:\n{result.stderr}"
         assert "SQLMesh imported" in result.stdout
 
     def test_superset_importable(self):
@@ -134,9 +131,7 @@ class TestPackageImports:
             text=True,
         )
 
-        assert result.returncode == 0, (
-            f"Failed to import superset:\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"Failed to import superset:\n{result.stderr}"
         assert "Superset imported" in result.stdout
 
     def test_pytest_importable(self):
@@ -147,9 +142,7 @@ class TestPackageImports:
             text=True,
         )
 
-        assert result.returncode == 0, (
-            f"Failed to import pytest:\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"Failed to import pytest:\n{result.stderr}"
         assert result.stdout.strip(), "pytest version should be printed"
 
     def test_all_packages_together(self):

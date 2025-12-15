@@ -1,0 +1,51 @@
+# Pre-commit hooks configuration for Chapter 3
+# Install: uv run pre-commit install && uv run pre-commit install --hook-type pre-push
+# Run manually: uv run pre-commit run --all-files
+#
+# Note: This config only applies to chapter-3/ directory files and can be extended to other directories by adding the directory to the files
+
+repos:
+  # Ruff - fast Python linter and formatter (replaces flake8, isort, black)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      # Ruff linting (check for errors, style issues)
+      - id: ruff
+        name: ruff-check
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+        files: ^chapter-3/
+
+      # Ruff formatting (check code format, don't auto-fix in pre-commit)
+      - id: ruff-format
+        name: ruff-format
+        args: [--check]
+        types_or: [python, pyi]
+        files: ^chapter-3/
+
+  # Mypy - static type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        name: mypy
+        args: [--config-file=chapter-3/pyproject.toml]
+        additional_dependencies:
+          - types-requests
+          - pandas-stubs
+        types: [python]
+        # Only run mypy on chapter-3/src/ to avoid test file issues
+        files: ^chapter-3/src/
+        pass_filenames: false
+        entry: mypy chapter-3/src/
+
+  # Unit tests on pre-push (runs before code is pushed to remote)
+  - repo: local
+    hooks:
+      - id: pytest-unit
+        name: pytest-unit
+        entry: bash -c 'cd chapter-3 && uv run pytest tests/unit/ -v --tb=short'
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true

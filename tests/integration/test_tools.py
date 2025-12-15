@@ -12,8 +12,6 @@ These tests assume dev-setup has been run successfully.
 import subprocess
 from pathlib import Path
 
-import pytest
-
 
 # Repository root is two levels up from this test file
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -28,14 +26,16 @@ class TestDuckDB:
     def test_duckdb_import(self):
         """Verify DuckDB can be imported."""
         result = subprocess.run(
-            [str(VENV_PYTHON), "-c", "import duckdb; print(f'DuckDB {duckdb.__version__}')"],
+            [
+                str(VENV_PYTHON),
+                "-c",
+                "import duckdb; print(f'DuckDB {duckdb.__version__}')",
+            ],
             capture_output=True,
             text=True,
         )
 
-        assert result.returncode == 0, (
-            f"Failed to import DuckDB:\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"Failed to import DuckDB:\n{result.stderr}"
         assert "DuckDB" in result.stdout, "DuckDB version should be printed"
 
     def test_duckdb_basic_query(self):
@@ -69,9 +69,7 @@ print('DuckDB query test passed!')
             text=True,
         )
 
-        assert result.returncode == 0, (
-            f"DuckDB query failed:\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"DuckDB query failed:\n{result.stderr}"
         assert "DuckDB query test passed!" in result.stdout
         assert "Row count: 2" in result.stdout
 
@@ -111,9 +109,7 @@ finally:
             text=True,
         )
 
-        assert result.returncode == 0, (
-            f"DuckDB CSV test failed:\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"DuckDB CSV test failed:\n{result.stderr}"
         assert "DuckDB CSV test passed!" in result.stdout
 
 
@@ -123,20 +119,26 @@ class TestSQLMesh:
     def test_sqlmesh_import(self):
         """Verify SQLMesh can be imported."""
         result = subprocess.run(
-            [str(VENV_PYTHON), "-c", "import sqlmesh; print('SQLMesh imported successfully')"],
+            [
+                str(VENV_PYTHON),
+                "-c",
+                "import sqlmesh; print('SQLMesh imported successfully')",
+            ],
             capture_output=True,
             text=True,
         )
 
-        assert result.returncode == 0, (
-            f"Failed to import SQLMesh:\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"Failed to import SQLMesh:\n{result.stderr}"
         assert "SQLMesh imported successfully" in result.stdout
 
     def test_sqlmesh_version(self):
         """Verify SQLMesh has version attribute."""
         result = subprocess.run(
-            [str(VENV_PYTHON), "-c", "import sqlmesh; print(f'SQLMesh version: {sqlmesh.__version__}')"],
+            [
+                str(VENV_PYTHON),
+                "-c",
+                "import sqlmesh; print(f'SQLMesh version: {sqlmesh.__version__}')",
+            ],
             capture_output=True,
             text=True,
         )
@@ -196,14 +198,16 @@ class TestSuperset:
     def test_superset_import(self):
         """Verify Superset can be imported."""
         result = subprocess.run(
-            [str(VENV_PYTHON), "-c", "import superset; print('Superset imported successfully')"],
+            [
+                str(VENV_PYTHON),
+                "-c",
+                "import superset; print('Superset imported successfully')",
+            ],
             capture_output=True,
             text=True,
         )
 
-        assert result.returncode == 0, (
-            f"Failed to import Superset:\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"Failed to import Superset:\n{result.stderr}"
         assert "Superset imported successfully" in result.stdout
 
     def test_superset_version_command(self):
@@ -251,7 +255,7 @@ class TestDependencyConflicts:
     def test_uv_lock_is_valid(self):
         """Verify uv.lock file is valid and parseable."""
         # Try to read and validate lock file structure
-        with open(UV_LOCK_FILE, 'r') as f:
+        with open(UV_LOCK_FILE, "r") as f:
             lock_content = f.read()
 
         assert lock_content, "uv.lock should not be empty"
@@ -280,18 +284,21 @@ class TestDependencyConflicts:
 
     def test_critical_packages_in_lock(self):
         """Verify critical packages are present in uv.lock."""
-        with open(UV_LOCK_FILE, 'r') as f:
+        with open(UV_LOCK_FILE, "r") as f:
             lock_content = f.read()
 
         # Check for critical packages
-        critical_packages = ['duckdb', 'apache-superset', 'sqlmesh', 'pytest']
+        critical_packages = ["duckdb", "apache-superset", "sqlmesh", "pytest"]
 
         found_packages = []
         missing_packages = []
 
         for package in critical_packages:
             # Package names in lock file might have variations
-            if package.lower() in lock_content.lower() or package.replace('-', '_').lower() in lock_content.lower():
+            if (
+                package.lower() in lock_content.lower()
+                or package.replace("-", "_").lower() in lock_content.lower()
+            ):
                 found_packages.append(package)
             else:
                 missing_packages.append(package)

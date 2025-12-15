@@ -26,8 +26,8 @@ load_dotenv(env_path, override=True)
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from library import tools as library_tools
-from llm.base import (
+from library import tools as library_tools  # noqa: E402
+from llm.base import (  # noqa: E402
     LLMProvider,
     LLMResponse,
     Message,
@@ -367,10 +367,10 @@ class LibraryAssistant:
                 if iterations == 1:
                     print()
                     print(f"🤖 LLM Call #{iterations} → {model_name}")
-                    print(f"   └─ Analyzing query and deciding on tools...")
+                    print("   └─ Analyzing query and deciding on tools...")
                 else:
                     print(f"🤖 LLM Call #{iterations} → {model_name}")
-                    print(f"   └─ Processing tool results and generating response...")
+                    print("   └─ Processing tool results and generating response...")
 
             # Call the LLM
             response = self._provider.generate(
@@ -385,12 +385,12 @@ class LibraryAssistant:
             # If no tool calls, we have a final response
             if not response.has_tool_calls:
                 if self._show_tool_calls:
-                    print(f"   ✓ Response ready (no more tool calls needed)")
+                    print("   ✓ Response ready (no more tool calls needed)")
                     print()
-                final_content = response.content or "I apologize, but I couldn't generate a response."
-                self._conversation_history.append(
-                    Message(role="assistant", content=final_content)
+                final_content = (
+                    response.content or "I apologize, but I couldn't generate a response."
                 )
+                self._conversation_history.append(Message(role="assistant", content=final_content))
                 return final_content
 
             # Show tool decision (educational output)
@@ -400,11 +400,15 @@ class LibraryAssistant:
 
             # Process tool calls
             if self._verbose:
-                print(f"[Iteration {iterations}] Processing {len(response.tool_calls)} tool call(s)")
+                print(
+                    f"[Iteration {iterations}] Processing {len(response.tool_calls)} tool call(s)"
+                )
 
             # Show tool calls to user (educational output)
             if self._show_tool_calls:
-                print(f"🔧 Tool Call{'s' if len(response.tool_calls) > 1 else ''} ({len(response.tool_calls)}):")
+                print(
+                    f"🔧 Tool Call{'s' if len(response.tool_calls) > 1 else ''} ({len(response.tool_calls)}):"
+                )
                 print("-" * 40)
 
             # Add assistant message with tool calls
@@ -535,9 +539,7 @@ class LibraryAssistant:
 
     def clear_conversation(self) -> None:
         """Clear conversation history, keeping only the system message."""
-        self._conversation_history = [
-            Message(role="system", content=self._system_prompt)
-        ]
+        self._conversation_history = [Message(role="system", content=self._system_prompt)]
 
     def get_conversation_history(self) -> list[dict[str, Any]]:
         """Get the current conversation history.

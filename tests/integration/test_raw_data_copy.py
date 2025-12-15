@@ -8,7 +8,6 @@ Tests verify that the raw-data-copy target:
 These tests assume Docker is installed and running.
 """
 
-import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -111,7 +110,9 @@ class TestCSVFilesExist:
 
     def test_data_raw_directory_exists(self):
         """Verify data/raw directory is created."""
-        assert DATA_RAW_PATH.exists(), "data/raw directory should exist after raw-data-copy"
+        assert DATA_RAW_PATH.exists(), (
+            "data/raw directory should exist after raw-data-copy"
+        )
         assert DATA_RAW_PATH.is_dir(), "data/raw should be a directory"
 
     def test_csv_files_present(self):
@@ -145,7 +146,9 @@ class TestCSVFilesExist:
         # Check that files have content
         for csv_file in csv_files:
             file_size = csv_file.stat().st_size
-            assert file_size > 0, f"{csv_file.name} should not be empty (has {file_size} bytes)"
+            assert file_size > 0, (
+                f"{csv_file.name} should not be empty (has {file_size} bytes)"
+            )
 
     def test_csv_files_have_headers(self):
         """Verify CSV files have proper header rows."""
@@ -154,10 +157,12 @@ class TestCSVFilesExist:
 
         # Check that at least one file has a header (contains commas, typical CSV format)
         for csv_file in csv_files:
-            with open(csv_file, 'r') as f:
+            with open(csv_file, "r") as f:
                 first_line = f.readline()
                 # CSV headers should have at least one comma
-                assert ',' in first_line, f"{csv_file.name} should have CSV header with commas"
+                assert "," in first_line, (
+                    f"{csv_file.name} should have CSV header with commas"
+                )
             break  # Just check one file as a smoke test
 
 

@@ -5,27 +5,30 @@ integration with Claude Desktop and other MCP clients.
 
 Sub-feature: 003b - Basic MCP Server
 """
-import os
+
 import json
-from pathlib import Path
-from typing import Optional
-from fastmcp import FastMCP, Context
+import os
 
 # Import library layer
 import sys
 from pathlib import Path
+from typing import Any, cast
+
+from fastmcp import Context, FastMCP
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from library.repository import BookRepository
-from library.domain import BookStatus, Category
+from library.domain import BookStatus, Category  # noqa: E402
+from library.repository import BookRepository  # noqa: E402
 
 # Initialize FastMCP server
 mcp = FastMCP("LibraryServer")
 
 # Initialize repository with database path from environment
-DB_PATH = os.getenv('DB_PATH', str(Path(__file__).parent.parent.parent / "data" / "duckdb" / "chapter3.db"))
+DB_PATH = os.getenv(
+    "DB_PATH", str(Path(__file__).parent.parent.parent / "data" / "duckdb" / "chapter3.db")
+)
 # Use read_only=True to allow concurrent access from multiple MCP connections
 repository = BookRepository(DB_PATH, read_only=True)
 
@@ -34,8 +37,11 @@ repository = BookRepository(DB_PATH, read_only=True)
 # Tools - 8 library operations
 # ============================================================================
 
+
 @mcp.tool()
-def search_books(query: str, category: Optional[str] = None, limit: int = 10) -> list[dict]:
+def search_books(
+    query: str, category: str | None = None, limit: int = 10
+) -> list[dict[str, Any]] | dict[str, str]:
     """Search books by title, author, or keyword.
 
     Args:
@@ -76,7 +82,7 @@ def search_books(query: str, category: Optional[str] = None, limit: int = 10) ->
 
 
 @mcp.tool()
-def get_book_details(book_id: str) -> dict:
+def get_book_details(book_id: str) -> dict[str, Any]:
     """Get complete details for a specific book including location and status.
 
     Args:
@@ -89,16 +95,18 @@ def get_book_details(book_id: str) -> dict:
         book = repository.get_book_by_id(book_id)
 
         if book is None:
-            return {"error": f"Book with ID '{book_id}' not found. Please check the book ID and try again."}
+            return {
+                "error": f"Book with ID '{book_id}' not found. Please check the book ID and try again."
+            }
 
-        return book.to_dict()
+        return cast(dict[str, Any], book.to_dict())
 
     except Exception as e:
         return {"error": f"Failed to get book details: {str(e)}"}
 
 
 @mcp.tool()
-def check_availability(book_id: str) -> dict:
+def check_availability(book_id: str) -> dict[str, Any]:
     """Check if a book is available and get its current location.
 
     Args:
@@ -119,7 +127,7 @@ def check_availability(book_id: str) -> dict:
             "available": book.is_available,
             "status": book.status.value,
             "location": str(book.location),
-            "signal_strength": book.signal_strength
+            "signal_strength": book.signal_strength,
         }
 
     except Exception as e:
@@ -127,7 +135,9 @@ def check_availability(book_id: str) -> dict:
 
 
 @mcp.tool()
-def list_by_category(category: str, status: Optional[str] = None) -> list[dict]:
+def list_by_category(
+    category: str, status: str | None = None
+) -> list[dict[str, Any]] | dict[str, str]:
     """List all books in a specific category.
 
     Args:
@@ -164,7 +174,9 @@ def list_by_category(category: str, status: Optional[str] = None) -> list[dict]:
 
 
 @mcp.tool()
-def list_by_status(status: str, category: Optional[str] = None) -> list[dict]:
+def list_by_status(
+    status: str, category: str | None = None
+) -> list[dict[str, Any]] | dict[str, str]:
     """List all books with a specific availability status.
 
     Args:
@@ -201,7 +213,7 @@ def list_by_status(status: str, category: Optional[str] = None) -> list[dict]:
 
 
 @mcp.tool()
-def locate_book(book_id: str) -> dict:
+def locate_book(book_id: str) -> dict[str, Any]:
     """Get the physical location of a book (Cabinet, Rack, Row).
 
     Args:
@@ -222,7 +234,7 @@ def locate_book(book_id: str) -> dict:
             "cabinet": book.location.cabinet,
             "rack": book.location.rack,
             "row": book.location.row,
-            "location_description": str(book.location)
+            "location_description": str(book.location),
         }
 
     except Exception as e:
@@ -230,7 +242,9 @@ def locate_book(book_id: str) -> dict:
 
 
 @mcp.tool()
-def find_books_in_cabinet(cabinet: int, rack: Optional[int] = None) -> list[dict]:
+def find_books_in_cabinet(
+    cabinet: int, rack: int | None = None
+) -> list[dict[str, Any]] | dict[str, str]:
     """List all books in a specific cabinet location.
 
     Args:
@@ -255,7 +269,7 @@ def find_books_in_cabinet(cabinet: int, rack: Optional[int] = None) -> list[dict
 
 
 @mcp.tool()
-def get_weak_signal_books(threshold: float = -55.0) -> list[dict]:
+def get_weak_signal_books(threshold: float = -55.0) -> list[dict[str, Any]] | dict[str, str]:
     """Get books with weak RFID signal strength that may need maintenance.
 
     Args:
@@ -267,11 +281,7 @@ def get_weak_signal_books(threshold: float = -55.0) -> list[dict]:
     try:
         books = repository.get_weak_signal_books(threshold)
         return [
-            {
-                **book.to_dict(),
-                "needs_maintenance": True,
-                "signal_quality": "Weak"
-            }
+            {**book.to_dict(), "needs_maintenance": True, "signal_quality": "Weak"}
             for book in books
         ]
 
@@ -282,6 +292,7 @@ def get_weak_signal_books(threshold: float = -55.0) -> list[dict]:
 # ============================================================================
 # Resources - 3 library data resources
 # ============================================================================
+
 
 @mcp.resource("library://stats")
 def get_library_stats() -> str:
@@ -343,7 +354,7 @@ def get_location_map() -> str:
                 "rack": row[1],
                 "row": row[2],
                 "book_count": row[3],
-                "book_ids": row[4]
+                "book_ids": row[4],
             }
             for row in result
         ]
@@ -357,6 +368,7 @@ def get_location_map() -> str:
 # ============================================================================
 # Prompts - 2 prompt templates
 # ============================================================================
+
 
 @mcp.prompt()
 def book_search(query: str) -> str:
@@ -382,7 +394,7 @@ for checkout."""
 
 
 @mcp.prompt()
-def library_status_report(focus: Optional[str] = None) -> str:
+def library_status_report(focus: str | None = None) -> str:
     """Generate a status report for the library.
 
     Args:
@@ -428,13 +440,11 @@ Use the following resources and tools:
 # Context and Logging Support
 # ============================================================================
 
+
 @mcp.tool()
 async def search_books_with_logging(
-    query: str,
-    category: Optional[str] = None,
-    limit: int = 10,
-    ctx: Context = None
-) -> list[dict]:
+    query: str, category: str | None = None, limit: int = 10, ctx: Context | None = None
+) -> list[dict[str, Any]] | dict[str, str]:
     """Search books with progress logging (example of Context usage).
 
     This is a demonstration of how to use FastMCP's Context for logging.
@@ -445,7 +455,7 @@ async def search_books_with_logging(
         if category:
             await ctx.info(f"Filtering by category: {category}")
 
-    result = search_books(query, category, limit)
+    result: list[dict[str, Any]] | dict[str, str] = search_books(query, category, limit)
 
     if ctx:
         if isinstance(result, list):

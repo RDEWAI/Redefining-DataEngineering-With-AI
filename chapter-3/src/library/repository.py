@@ -62,13 +62,15 @@ class BookRepository:
         """Convert database row to Book instance."""
         return Book.from_row(row)
 
-    def _execute_query(self, query: str, params: tuple | None = None) -> list[tuple]:
+    def _execute_query(
+        self, query: str, params: tuple[object, ...] | None = None
+    ) -> list[tuple[object, ...]]:
         """Execute query and return all results."""
         if params:
             result = self.conn.execute(query, params)
         else:
             result = self.conn.execute(query)
-        return result.fetchall()
+        return list(result.fetchall())
 
     def search_books(
         self,

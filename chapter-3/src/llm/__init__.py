@@ -11,6 +11,8 @@ Example:
     >>> response = provider.generate([Message(role="user", content="Hello")])
 """
 
+from typing import Any
+
 from .base import (
     LLMProvider,
     LLMResponse,
@@ -36,7 +38,7 @@ __all__ = [
 ]
 
 
-def get_provider(provider_name: str = "openrouter", **kwargs) -> LLMProvider:
+def get_provider(provider_name: str = "openrouter", **kwargs: Any) -> LLMProvider:
     """Factory function to get an LLM provider.
 
     Args:
@@ -53,7 +55,7 @@ def get_provider(provider_name: str = "openrouter", **kwargs) -> LLMProvider:
         >>> provider = get_provider("openrouter", api_key="sk-...")
         >>> provider = get_provider("ollama", base_url="http://localhost:11434")
     """
-    providers = {
+    providers: dict[str, type[LLMProvider]] = {
         "openrouter": OpenRouterProvider,
         "ollama": OllamaProvider,
     }

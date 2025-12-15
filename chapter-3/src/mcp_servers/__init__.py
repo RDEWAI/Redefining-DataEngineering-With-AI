@@ -6,4 +6,4 @@ tools, resources, and prompts following the Model Context Protocol.
 
 from .library_server import mcp
 
-__all__ = ['mcp']
+__all__ = ["mcp"]
