@@ -1,4 +1,4 @@
-.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant benchmark generate-embeddings semantic-search multi-agent test test-unit test-integration lint format clean
+.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant assistant-enhanced assistant-code compare-modes test-code-execution benchmark generate-embeddings semantic-search multi-agent test test-unit test-integration lint format clean
 
 help:
 	@echo "Chapter 3: AI Engineering with Library Management Data"
@@ -9,7 +9,11 @@ help:
 	@echo "  verify-data         - Verify data loaded correctly"
 	@echo "  mcp-server          - Start MCP server"
 	@echo "  mcp-dev             - Start MCP Inspector for debugging"
-	@echo "  assistant           - Start Library Assistant CLI"
+	@echo "  assistant           - Start Library Assistant (Traditional Mode)"
+	@echo "  assistant-enhanced  - Start Enhanced Assistant (switch modes interactively)"
+	@echo "  assistant-code      - Start Enhanced Assistant (Code Execution Mode)"
+	@echo "  compare-modes       - Compare token usage: Traditional vs Code Execution"
+	@echo "  test-code-execution - Test Phase 6 code execution sandbox"
 	@echo "  benchmark           - Run token comparison benchmark"
 	@echo "  generate-embeddings - Generate book embeddings for RAG"
 	@echo "  semantic-search     - Test semantic search"
@@ -47,8 +51,24 @@ mcp-dev:
 	uv run fastmcp dev src/mcp_servers/library_server.py
 
 assistant:
-	@echo "Starting Library Assistant..."
+	@echo "Starting Library Assistant (Traditional Mode)..."
 	uv run python src/agents/library_assistant.py
+
+assistant-enhanced:
+	@echo "Starting Enhanced Library Assistant (choose mode interactively)..."
+	uv run python src/agents/library_assistant_enhanced.py
+
+assistant-code:
+	@echo "Starting Enhanced Library Assistant (Code Execution Mode)..."
+	uv run python src/agents/library_assistant_enhanced.py --mode code_execution
+
+compare-modes:
+	@echo "Comparing Traditional vs Code Execution modes..."
+	uv run python scripts/compare_modes.py
+
+test-code-execution:
+	@echo "Testing Phase 6 code execution sandbox..."
+	uv run python scripts/test_code_execution.py
 
 benchmark:
 	@echo "Running token comparison benchmark..."

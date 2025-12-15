@@ -341,40 +341,52 @@ Task: T5.5-021 [P] Test OpenAI initialization
 
 ### Unit Tests for User Story 4
 
-- [ ] T068 [P] [US4] Create `chapter-3/tests/unit/test_sandbox.py` with security constraint tests (import whitelist, timeout, memory)
+- [X] T068 [P] [US4] Create `chapter-3/tests/unit/test_sandbox.py` with security constraint tests (import whitelist, timeout, memory)
 
 ### Integration Tests for User Story 4
 
-- [ ] T069 [P] [US4] Create `chapter-3/tests/integration/test_code_execution.py` with end-to-end code execution tests
+- [X] T069 [P] [US4] Create `chapter-3/tests/integration/test_code_execution.py` with end-to-end code execution tests
 
 ### Sandbox Implementation
 
-- [ ] T070 [US4] Create `chapter-3/src/code_execution/__init__.py`
-- [ ] T071 [US4] Create `chapter-3/src/code_execution/sandbox.py` with CodeSandbox class
-- [ ] T072 [US4] Implement subprocess isolation with resource limits (30s timeout, memory limit)
-- [ ] T073 [US4] Implement import whitelist enforcement (pandas, duckdb, numpy, matplotlib, seaborn)
-- [ ] T074 [US4] Add user-friendly error messages for timeout and out-of-memory conditions
+- [X] T070 [US4] Create `chapter-3/src/code_execution/__init__.py`
+- [X] T071 [US4] Create `chapter-3/src/code_execution/sandbox.py` with CodeSandbox class
+- [X] T072 [US4] Implement subprocess isolation with resource limits (30s timeout, memory limit)
+- [X] T073 [US4] Implement import whitelist enforcement (pandas, duckdb, numpy, matplotlib, seaborn)
+- [X] T074 [US4] Add user-friendly error messages for timeout and out-of-memory conditions
 
 ### Tool-to-API Transformer
 
-- [ ] T075 [US4] Create `chapter-3/src/code_execution/tool_api.py` with tool-to-code wrapper generator
-- [ ] T076 [US4] Generate Python wrapper code for each library tool
-- [ ] T077 [US4] Add type hints and docstrings for LLM understanding
+- [X] T075 [US4] Create `chapter-3/src/code_execution/tool_api.py` with tool-to-code wrapper generator
+- [X] T076 [US4] Generate Python wrapper code for each library tool
+- [X] T077 [US4] Add type hints and docstrings for LLM understanding
 
 ### Benchmark Implementation
 
-- [ ] T078 [US4] Create `chapter-3/benchmarks/token_comparison.py` with TokenBenchmark class
-- [ ] T079 [US4] Implement fixed benchmark query: "Show top 5 categories by missing books with average signal strength"
-- [ ] T080 [US4] Implement traditional tools measurement (multiple tool calls)
-- [ ] T081 [US4] Implement code execution measurement (single code generation)
-- [ ] T082 [US4] Add comparison output: token count, latency, accuracy
-- [ ] T083 [US4] Add `make benchmark` target to run token comparison
+- [X] T078 [US4] Create `chapter-3/benchmarks/token_comparison.py` with TokenBenchmark class
+- [X] T079 [US4] Implement fixed benchmark query: "Show top 5 categories by missing books with average signal strength"
+- [X] T080 [US4] Implement traditional tools measurement (multiple tool calls)
+- [X] T081 [US4] Implement code execution measurement (single code generation)
+- [X] T082 [US4] Add comparison output: token count, latency, accuracy
+- [X] T083 [US4] Add `make benchmark` target to run token comparison
 
 ### Documentation for US4
 
-- [ ] T084 [P] [US4] Create `chapter-3/docs/05-code-execution.md` documenting token reduction results
+- [X] T084 [P] [US4] Create `chapter-3/docs/05-code-execution.md` documenting token reduction results
 
-**Checkpoint**: User Story 4 complete - benchmark shows measurable token reduction
+### Dual-Mode Integration (Enhancement)
+
+- [X] T085 [US4] Create `chapter-3/src/agents/library_assistant_enhanced.py` with dual-mode support
+- [X] T086 [US4] Implement AssistantMode enum (TRADITIONAL, CODE_EXECUTION)
+- [X] T087 [US4] Add mode switching capability with `/mode` command
+- [X] T088 [US4] Add token tracking unified across both modes
+- [X] T089 [US4] Create `chapter-3/scripts/compare_modes.py` for side-by-side comparison
+- [X] T090 [US4] Add `make assistant-enhanced` target for interactive mode switching
+- [X] T091 [US4] Add `make assistant-code` target for code execution mode
+- [X] T092 [US4] Add `make compare-modes` target for automated comparison
+- [X] T093 [US4] Update `docs/05-code-execution.md` with dual-mode usage guide
+
+**Checkpoint**: User Story 4 complete - benchmark shows measurable token reduction + learners can compare modes hands-on
 
 ---
 

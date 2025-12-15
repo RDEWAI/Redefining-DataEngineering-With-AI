@@ -558,8 +558,8 @@ def create_assistant(
     """Create a Library Assistant with the specified provider.
 
     Args:
-        provider: LLM provider to use ("openrouter" or "ollama")
-        model: Model to use (defaults to provider's default)
+        provider: LLM provider to use (deprecated - now uses UnifiedLLMClient)
+        model: Model to use (deprecated - now uses LLM_MODEL env var)
         verbose: Whether to print debug information
 
     Returns:
@@ -568,17 +568,10 @@ def create_assistant(
     Raises:
         ValueError: If the provider is not supported
     """
-    if provider == "openrouter":
-        from llm.openrouter_client import OpenRouterProvider
+    # Use UnifiedLLMClient for consistency with enhanced assistant
+    from llm.unified_client import UnifiedLLMClient
 
-        llm_provider = OpenRouterProvider(default_model=model)
-    elif provider == "ollama":
-        from llm.ollama_client import OllamaProvider
-
-        llm_provider = OllamaProvider(default_model=model)
-    else:
-        raise ValueError(f"Unsupported provider: {provider}. Use 'openrouter' or 'ollama'.")
-
+    llm_provider = UnifiedLLMClient.from_env()
     return LibraryAssistant(llm_provider=llm_provider, verbose=verbose)
 
 
@@ -592,23 +585,23 @@ def interactive_repl() -> None:
     print("=" * 50)
     print()
 
-    # Determine provider from environment
-    provider = os.getenv("LLM_PROVIDER", "openrouter")
-    model = os.getenv("LLM_MODEL")
+    # Show configuration from environment
+    base_url = os.getenv("LLM_BASE_URL", "not set")
+    model = os.getenv("LLM_MODEL", "not set")
 
-    print(f"Provider: {provider}")
-    if model:
-        print(f"Model: {model}")
+    print(f"Base URL: {base_url}")
+    print(f"Model: {model}")
     print()
 
     try:
-        assistant = create_assistant(provider=provider, model=model, verbose=False)
-    except ValueError as e:
+        assistant = create_assistant(verbose=False)
+    except Exception as e:
         print(f"Error: {e}")
         print()
-        print("Please ensure your API key is set:")
-        print("  - For OpenRouter: export OPENROUTER_API_KEY=your-key")
-        print("  - For Ollama: ensure Ollama server is running on localhost:11434")
+        print("Please ensure your LLM configuration is set in .env:")
+        print("  LLM_BASE_URL=your-api-base-url")
+        print("  LLM_API_KEY=your-api-key")
+        print("  LLM_MODEL=your-model-name")
         sys.exit(1)
 
     print("Commands:")
