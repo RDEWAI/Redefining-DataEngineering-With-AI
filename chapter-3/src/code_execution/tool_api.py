@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from library.repository import BookRepository  # noqa: E402
+from tools.dummy_tools import generate_dummy_tools  # noqa: E402
 
 
 class ToolAPIGenerator:
@@ -38,6 +39,7 @@ class ToolAPIGenerator:
         repository: BookRepository,
         db_path: str | None = None,
         include_rag: bool = False,
+        include_dummy_tools: bool = False,
     ):
         """Initialize the API generator.
 
@@ -45,10 +47,12 @@ class ToolAPIGenerator:
             repository: BookRepository instance for database access
             db_path: Path to database (required for generating API code)
             include_rag: Whether to include semantic_search (RAG) function
+            include_dummy_tools: Whether to include enterprise dummy tools
         """
         self.repository = repository
         self.db_path = db_path or "data/duckdb/chapter3.db"
         self.include_rag = include_rag
+        self.include_dummy_tools = include_dummy_tools
 
     def set_include_rag(self, include_rag: bool) -> None:
         """Set whether to include RAG (semantic_search) function.
@@ -57,6 +61,14 @@ class ToolAPIGenerator:
             include_rag: Whether to include semantic_search
         """
         self.include_rag = include_rag
+
+    def set_include_dummy_tools(self, include_dummy_tools: bool) -> None:
+        """Set whether to include enterprise dummy tools.
+
+        Args:
+            include_dummy_tools: Whether to include 100 dummy tools
+        """
+        self.include_dummy_tools = include_dummy_tools
 
     def generate_discovery_functions(self) -> str:
         """Generate tool discovery functions for progressive loading.
@@ -222,6 +234,7 @@ def get_tool_help(tool_name: str) -> str:
         - Database connection setup (if include_setup=True)
         - All library tool functions with docstrings
         - semantic_search only if include_rag=True
+        - Dummy tool API stubs if include_dummy_tools=True
         """
         code_parts = []
 
@@ -245,6 +258,10 @@ def get_tool_help(tool_name: str) -> str:
         # Conditionally add semantic_search if RAG is enabled
         if self.include_rag:
             code_parts.append(self._generate_semantic_search())
+
+        # Conditionally add dummy tool stubs if enabled
+        if self.include_dummy_tools:
+            code_parts.append(self._generate_dummy_tool_stubs())
 
         return "\n\n".join(code_parts)
 
@@ -695,6 +712,75 @@ def semantic_search(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
     return books
 '''
 
+    def _generate_dummy_tool_stubs(self) -> str:
+        """Generate lightweight API stubs for dummy tools (code execution mode).
+
+        This generates compact function stubs that return mock responses.
+        The key benefit: ~650 tokens vs ~18,000 tokens for full tool definitions.
+
+        Returns:
+            Python code with all dummy tool function stubs
+        """
+        # Generate a compact stub header
+        code_lines = [
+            "# Enterprise Dummy Tools - API Stubs (100 tools across 10 domains)",
+            "# These are lightweight mock implementations for token efficiency demo",
+            "from datetime import datetime",
+            "",
+            "def _mock_response(domain: str, tool: str, **kwargs):",
+            '    """Generate mock response for dummy tools."""',
+            "    return {",
+            '        "success": True,',
+            '        "domain": domain,',
+            '        "tool": tool,',
+            '        "message": f"Mock response from {domain}.{tool}",',
+            '        "input": kwargs,',
+            '        "data": {"mock": True, "timestamp": datetime.now().isoformat()},',
+            "    }",
+            "",
+        ]
+
+        # Generate stubs for each dummy tool
+        dummy_tools = generate_dummy_tools()
+        for tool in dummy_tools:
+            # Extract parameter names from input_schema
+            params = tool.input_schema.get("properties", {})
+            required = set(tool.input_schema.get("required", []))
+
+            # Build function signature - IMPORTANT: required params first, then optional
+            # Python requires non-default args before default args
+            required_param_strs = []
+            optional_param_strs = []
+
+            for param_name, param_def in params.items():
+                if param_name in required:
+                    required_param_strs.append(param_name)
+                else:
+                    default = param_def.get("default", None)
+                    if default is None:
+                        optional_param_strs.append(f"{param_name}=None")
+                    elif isinstance(default, str):
+                        optional_param_strs.append(f'{param_name}="{default}"')
+                    else:
+                        optional_param_strs.append(f"{param_name}={default}")
+
+            # Combine: required params first, then optional params with defaults
+            param_strs = required_param_strs + optional_param_strs
+            params_str = ", ".join(param_strs)
+
+            # Generate compact function stub
+            code_lines.extend(
+                [
+                    f"def {tool.name}({params_str}):",
+                    f'    """(Mock) {tool.description[:60]}..."""',
+                    f'    return _mock_response("{tool.domain.value}", "{tool.name}", '
+                    f"**{{k: v for k, v in locals().items() if k != 'domain'}})",
+                    "",
+                ]
+            )
+
+        return "\n".join(code_lines)
+
     def get_tool_descriptions(self) -> dict[str, str]:
         """Get descriptions of all available tool functions.
 
@@ -722,6 +808,12 @@ def semantic_search(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
             descriptions["semantic_search"] = (
                 "Search books using natural language semantic similarity (RAG)"
             )
+
+        # Conditionally add dummy tool descriptions if enabled
+        if self.include_dummy_tools:
+            dummy_tools = generate_dummy_tools()
+            for tool in dummy_tools:
+                descriptions[tool.name] = tool.description[:80] + "..."
 
         return descriptions
 

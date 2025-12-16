@@ -131,8 +131,7 @@ class ToolSearch:
         """
         if not self.embeddings or self._embedding_generator is None:
             raise RuntimeError(
-                "Embedding-based search not available. "
-                "Ensure sentence-transformers is installed."
+                "Embedding-based search not available. Ensure sentence-transformers is installed."
             )
 
         # Generate query embedding

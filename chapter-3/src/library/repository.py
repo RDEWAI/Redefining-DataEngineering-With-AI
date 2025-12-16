@@ -57,6 +57,28 @@ class BookRepository:
         """Close the database connection if owned by this repository."""
         if self._owns_connection and self.conn is not None:
             self.conn.close()
+            self.conn = None  # type: ignore[assignment]
+
+    def reopen(self, db_path: str, read_only: bool = False) -> None:
+        """Reopen the database connection after it was closed.
+
+        This is useful for releasing file locks to allow subprocess access.
+
+        Args:
+            db_path: Path to DuckDB database file
+            read_only: If True, open database in read-only mode
+        """
+        if self.conn is None:
+            self.conn = duckdb.connect(db_path, read_only=read_only)
+            self._owns_connection = True
+
+    def is_open(self) -> bool:
+        """Check if the database connection is open.
+
+        Returns:
+            True if connection is open, False otherwise
+        """
+        return self.conn is not None
 
     def _row_to_book(self, row: tuple) -> Book:
         """Convert database row to Book instance."""

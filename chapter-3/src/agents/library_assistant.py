@@ -34,6 +34,10 @@ from llm.base import (  # noqa: E402
     ToolCall,
     ToolDefinition,
 )
+from tools.dummy_tools import (  # noqa: E402
+    generate_dummy_tool_definitions,
+    get_dummy_tool_functions,
+)
 
 # System prompt for the Library Assistant
 SYSTEM_PROMPT = """You are a helpful Library Assistant with access to a library management system.
@@ -241,11 +245,15 @@ TOOL_FUNCTION_MAP: dict[str, Callable[..., dict[str, Any]]] = {
 }
 
 
-def get_tools_for_llm(include_rag: bool = False) -> list[dict[str, Any]]:
+def get_tools_for_llm(
+    include_rag: bool = False,
+    include_dummy_tools: bool = False,
+) -> list[dict[str, Any]]:
     """Get tool definitions in OpenAI/LLM format.
 
     Args:
         include_rag: If True, include the semantic_search RAG tool.
+        include_dummy_tools: If True, include 100 enterprise dummy tools.
 
     Returns:
         List of tool definitions in the format expected by OpenAI-compatible APIs.
@@ -253,14 +261,21 @@ def get_tools_for_llm(include_rag: bool = False) -> list[dict[str, Any]]:
     tools = [tool.to_openai_format() for tool in TOOL_DEFINITIONS]
     if include_rag:
         tools.append(SEMANTIC_SEARCH_TOOL.to_openai_format())
+    if include_dummy_tools:
+        dummy_defs = generate_dummy_tool_definitions()
+        tools.extend([t.to_openai_format() for t in dummy_defs])
     return tools
 
 
-def get_tool_function(name: str) -> Callable[..., dict[str, Any]]:
+def get_tool_function(
+    name: str,
+    include_dummy_tools: bool = False,
+) -> Callable[..., dict[str, Any]]:
     """Get the implementation function for a tool.
 
     Args:
         name: Tool name
+        include_dummy_tools: If True, also search dummy tool functions
 
     Returns:
         The callable function that implements the tool
@@ -268,9 +283,16 @@ def get_tool_function(name: str) -> Callable[..., dict[str, Any]]:
     Raises:
         ValueError: If the tool name is unknown
     """
-    if name not in TOOL_FUNCTION_MAP:
-        raise ValueError(f"Unknown tool: {name}")
-    return TOOL_FUNCTION_MAP[name]
+    if name in TOOL_FUNCTION_MAP:
+        return TOOL_FUNCTION_MAP[name]
+
+    if include_dummy_tools:
+        dummy_funcs = get_dummy_tool_functions()
+        if name in dummy_funcs:
+            func: Callable[..., dict[str, Any]] = dummy_funcs[name]
+            return func
+
+    raise ValueError(f"Unknown tool: {name}")
 
 
 @dataclass
@@ -327,6 +349,7 @@ class LibraryAssistant:
         max_tool_iterations: Maximum number of tool calling rounds per query
         verbose: Whether to print debug information
         show_tool_calls: Whether to display tool calls (educational output, default True)
+        enable_dummy_tools: Whether to include 100 enterprise dummy tools (for scale demo)
 
     Example:
         >>> from llm.openrouter_client import OpenRouterProvider
@@ -344,6 +367,7 @@ class LibraryAssistant:
         verbose: bool = False,
         show_tool_calls: bool = True,
         enable_rag: bool = False,
+        enable_dummy_tools: bool = False,
     ) -> None:
         """Initialize the Library Assistant."""
         self._provider = llm_provider
@@ -352,9 +376,10 @@ class LibraryAssistant:
         self._verbose = verbose
         self._show_tool_calls = show_tool_calls
         self._enable_rag = enable_rag
+        self._enable_dummy_tools = enable_dummy_tools
         self._token_usage = TokenUsage()
 
-        # Get tools based on RAG setting
+        # Get tools based on RAG and dummy tools settings
         self._tools = self._get_tool_definitions()
 
         # Initialize conversation with system message
@@ -363,10 +388,12 @@ class LibraryAssistant:
         ]
 
     def _get_tool_definitions(self) -> list[ToolDefinition]:
-        """Get the list of tool definitions based on RAG setting."""
+        """Get the list of tool definitions based on RAG and dummy tools settings."""
         tools = list(TOOL_DEFINITIONS)
         if self._enable_rag:
             tools.append(SEMANTIC_SEARCH_TOOL)
+        if self._enable_dummy_tools:
+            tools.extend(generate_dummy_tool_definitions())
         return tools
 
     def set_rag_enabled(self, enabled: bool) -> None:
@@ -385,6 +412,31 @@ class LibraryAssistant:
             True if RAG is enabled
         """
         return self._enable_rag
+
+    def set_dummy_tools_enabled(self, enabled: bool) -> None:
+        """Enable or disable enterprise dummy tools.
+
+        Args:
+            enabled: Whether to enable dummy tools (100 tools across 10 domains)
+        """
+        self._enable_dummy_tools = enabled
+        self._tools = self._get_tool_definitions()
+
+    def is_dummy_tools_enabled(self) -> bool:
+        """Check if dummy tools are enabled.
+
+        Returns:
+            True if dummy tools are enabled
+        """
+        return self._enable_dummy_tools
+
+    def get_tool_count(self) -> int:
+        """Get the current number of tools available.
+
+        Returns:
+            Number of tool definitions currently loaded
+        """
+        return len(self._tools)
 
     def query(self, user_input: str) -> str:
         """Process a user query and return a response.
@@ -542,13 +594,19 @@ class LibraryAssistant:
             print(f"  Arguments: {tool_call.arguments}")
 
         try:
-            # Get the tool function
-            func = get_tool_function(tool_name)
+            # Get the tool function (check dummy tools if enabled)
+            func = get_tool_function(
+                tool_name,
+                include_dummy_tools=self._enable_dummy_tools,
+            )
         except ValueError as e:
+            available = list(TOOL_FUNCTION_MAP.keys())
+            if self._enable_dummy_tools:
+                available.append("(+100 dummy tools)")
             return {
                 "success": False,
                 "error": str(e),
-                "message": f"Unknown tool '{tool_name}'. Available tools: {', '.join(TOOL_FUNCTION_MAP.keys())}",
+                "message": f"Unknown tool '{tool_name}'. Available: {', '.join(available)}",
             }
 
         try:
@@ -611,6 +669,7 @@ def create_assistant(
     provider: str = "openrouter",
     model: str | None = None,
     verbose: bool = False,
+    enable_dummy_tools: bool = False,
 ) -> LibraryAssistant:
     """Create a Library Assistant with the specified provider.
 
@@ -618,6 +677,7 @@ def create_assistant(
         provider: LLM provider to use (deprecated - now uses UnifiedLLMClient)
         model: Model to use (deprecated - now uses LLM_MODEL env var)
         verbose: Whether to print debug information
+        enable_dummy_tools: Whether to enable 100 enterprise dummy tools for scale demo
 
     Returns:
         Configured LibraryAssistant instance
@@ -629,10 +689,12 @@ def create_assistant(
     from llm.unified_client import UnifiedLLMClient
 
     llm_provider = UnifiedLLMClient.from_env()
-    return LibraryAssistant(llm_provider=llm_provider, verbose=verbose)
+    return LibraryAssistant(
+        llm_provider=llm_provider, verbose=verbose, enable_dummy_tools=enable_dummy_tools
+    )
 
 
-def interactive_repl(enable_rag: bool = False) -> None:
+def interactive_repl(enable_rag: bool = False, enable_dummy_tools: bool = False) -> None:
     """Run an interactive REPL for the Library Assistant.
 
     This function starts an interactive session where users can
@@ -640,8 +702,11 @@ def interactive_repl(enable_rag: bool = False) -> None:
 
     Args:
         enable_rag: If True, enable RAG/semantic search by default
+        enable_dummy_tools: If True, enable 100 enterprise dummy tools for scale demo
     """
     mode_str = "RAG Mode" if enable_rag else "Traditional Mode"
+    if enable_dummy_tools:
+        mode_str = f"{mode_str} + Enterprise Dummy Tools"
     print(f"Library Assistant - {mode_str}")
     print("=" * 50)
     print()
@@ -654,10 +719,12 @@ def interactive_repl(enable_rag: bool = False) -> None:
     print(f"Model: {model}")
     if enable_rag:
         print("RAG: ENABLED (semantic_search tool available)")
+    if enable_dummy_tools:
+        print("Dummy Tools: ENABLED (100 enterprise tools across 10 domains)")
     print()
 
     try:
-        assistant = create_assistant(verbose=False)
+        assistant = create_assistant(verbose=False, enable_dummy_tools=enable_dummy_tools)
         if enable_rag:
             assistant.set_rag_enabled(True)
     except Exception as e:
@@ -670,15 +737,22 @@ def interactive_repl(enable_rag: bool = False) -> None:
         sys.exit(1)
 
     rag_status = "ON" if enable_rag else "OFF"
+    tool_count = assistant.get_tool_count()
+    dummy_status = "ON" if assistant.is_dummy_tools_enabled() else "OFF"
+    print(f"Tools: {tool_count} available")
+    if assistant.is_dummy_tools_enabled():
+        print("  └─ 100 enterprise dummy tools ENABLED for scale demo")
+    print()
     print("Commands:")
-    print("  /help     - Show this help message")
-    print("  /settings - Show current settings")
-    print("  /stats    - Show token usage statistics")
-    print("  /tools    - Toggle tool call display (currently: ON)")
-    print(f"  /rag      - Toggle semantic search/RAG (currently: {rag_status})")
-    print("  /clear    - Clear conversation history")
-    print("  /reset    - Reset token usage counters")
-    print("  /quit     - Exit the assistant")
+    print("  /help        - Show this help message")
+    print("  /settings    - Show current settings")
+    print("  /stats       - Show token usage statistics")
+    print("  /tools       - Toggle tool call display (currently: ON)")
+    print(f"  /rag         - Toggle semantic search/RAG (currently: {rag_status})")
+    print(f"  /dummy-tools - Toggle 100 enterprise dummy tools (currently: {dummy_status})")
+    print("  /clear       - Clear conversation history")
+    print("  /reset       - Reset token usage counters")
+    print("  /quit        - Exit the assistant")
     print()
     print("Ask me anything about the library!")
     print("-" * 50)
@@ -701,27 +775,35 @@ def interactive_repl(enable_rag: bool = False) -> None:
             if command == "/help":
                 tools_status = "ON" if assistant._show_tool_calls else "OFF"
                 rag_status = "ON" if assistant.is_rag_enabled() else "OFF"
+                dummy_status = "ON" if assistant.is_dummy_tools_enabled() else "OFF"
                 print()
                 print("Commands:")
-                print("  /help     - Show this help message")
-                print("  /settings - Show current settings")
-                print("  /stats    - Show token usage statistics")
-                print(f"  /tools    - Toggle tool call display (currently: {tools_status})")
-                print(f"  /rag      - Toggle semantic search/RAG (currently: {rag_status})")
-                print("  /clear    - Clear conversation history")
-                print("  /reset    - Reset token usage counters")
-                print("  /quit     - Exit the assistant")
+                print("  /help        - Show this help message")
+                print("  /settings    - Show current settings")
+                print("  /stats       - Show token usage statistics")
+                print(f"  /tools       - Toggle tool call display (currently: {tools_status})")
+                print(f"  /rag         - Toggle semantic search/RAG (currently: {rag_status})")
+                print(
+                    f"  /dummy-tools - Toggle 100 enterprise dummy tools (currently: {dummy_status})"
+                )
+                print("  /clear       - Clear conversation history")
+                print("  /reset       - Reset token usage counters")
+                print("  /quit        - Exit the assistant")
                 print()
                 continue
 
             if command == "/settings":
                 tools_status = "ON" if assistant._show_tool_calls else "OFF"
                 rag_status = "ON" if assistant.is_rag_enabled() else "OFF"
+                dummy_status = "ON" if assistant.is_dummy_tools_enabled() else "OFF"
+                tool_count = assistant.get_tool_count()
                 print()
                 print("Current Settings:")
                 print("-" * 40)
                 print("  Mode:          Traditional (JSON tools)")
                 print(f"  RAG:           {rag_status}")
+                print(f"  Dummy Tools:   {dummy_status}")
+                print(f"  Tool Count:    {tool_count}")
                 print(f"  Tool Display:  {tools_status}")
                 print(f"  Base URL:      {os.getenv('LLM_BASE_URL', 'not set')}")
                 print(f"  Model:         {os.getenv('LLM_MODEL', 'not set')}")
@@ -746,6 +828,23 @@ def interactive_repl(enable_rag: bool = False) -> None:
                         "  The assistant can now use semantic_search for natural language queries."
                     )
                     print("  Try: 'Find books about time travel' or 'something like Harry Potter'")
+                print()
+                continue
+
+            if command == "/dummy-tools":
+                new_dummy_status = not assistant.is_dummy_tools_enabled()
+                assistant.set_dummy_tools_enabled(new_dummy_status)
+                status = "ON" if new_dummy_status else "OFF"
+                tool_count = assistant.get_tool_count()
+                print(f"Enterprise dummy tools: {status}")
+                print(f"  Total tools available: {tool_count}")
+                if new_dummy_status:
+                    print("  100 enterprise tools added across 10 domains:")
+                    print("    Engineering, Data Platform, Security, HR, Finance,")
+                    print("    Marketing, Sales, Support, Infrastructure, ML Platform")
+                    print()
+                    print("  This demonstrates token overhead at enterprise scale.")
+                    print("  Compare with code execution mode for 80%+ token reduction.")
                 print()
                 continue
 
@@ -802,6 +901,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Enable RAG/semantic search by default",
     )
+    parser.add_argument(
+        "--dummy-tools",
+        action="store_true",
+        help="Enable 100 enterprise dummy tools across 10 domains for scale demo",
+    )
     args = parser.parse_args()
 
-    interactive_repl(enable_rag=args.rag)
+    interactive_repl(enable_rag=args.rag, enable_dummy_tools=args.dummy_tools)

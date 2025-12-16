@@ -35,6 +35,33 @@ def set_repository(repo: BookRepository) -> None:
     _repository = repo
 
 
+def close_repository() -> None:
+    """Close the module-level repository connection.
+
+    This releases file locks to allow subprocess access to the database.
+    """
+    global _repository
+    if _repository is not None:
+        _repository.close()
+
+
+def reopen_repository(db_path: str | None = None, read_only: bool = True) -> None:
+    """Reopen the module-level repository connection.
+
+    Args:
+        db_path: Optional database path (uses default if not provided)
+        read_only: If True, open database in read-only mode
+    """
+    global _repository
+    if _repository is not None and not _repository.is_open():
+        import os
+
+        path: str = (
+            db_path or os.getenv("DB_PATH", "data/duckdb/chapter3.db") or "data/duckdb/chapter3.db"
+        )
+        _repository.reopen(path, read_only=read_only)
+
+
 def search_books(
     query: str,
     category: str | None = None,

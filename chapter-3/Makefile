@@ -1,30 +1,44 @@
-.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant assistant-rag assistant-enhanced assistant-code compare-modes test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration lint format clean
+.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration lint format clean
 
 help:
 	@echo "Chapter 3: AI Engineering with Library Management Data"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  dev-setup           - Complete development setup"
-	@echo "  load-data           - Load CSV into DuckDB"
-	@echo "  verify-data         - Verify data loaded correctly"
-	@echo "  mcp-server          - Start MCP server"
-	@echo "  mcp-dev             - Start MCP Inspector for debugging"
-	@echo "  assistant           - Start Library Assistant (Traditional Mode)"
-	@echo "  assistant-rag       - Start Library Assistant (RAG Mode - semantic search enabled)"
-	@echo "  assistant-enhanced  - Start Enhanced Assistant (Code Execution Mode, switchable)"
-	@echo "  compare-modes       - Compare token usage: Traditional vs Code Execution"
-	@echo "  test-code-execution - Test Phase 6 code execution sandbox"
-	@echo "  benchmark           - Run token comparison benchmark"
-	@echo "  generate-embeddings - Generate book embeddings for RAG"
-	@echo "  semantic-search     - Test semantic search"
-	@echo "  data-analysis       - Start data analysis agent"
-	@echo "  multi-agent         - Start multi-agent system"
-	@echo "  test                - Run all tests"
-	@echo "  test-unit           - Run unit tests only"
-	@echo "  test-integration    - Run integration tests only"
-	@echo "  lint                - Run ruff linter"
-	@echo "  format              - Auto-format code"
-	@echo "  clean               - Clean generated files"
+	@echo "  dev-setup                  - Complete development setup"
+	@echo "  load-data                  - Load CSV into DuckDB"
+	@echo "  verify-data                - Verify data loaded correctly"
+	@echo "  mcp-server                 - Start MCP server"
+	@echo "  mcp-dev                    - Start MCP Inspector for debugging"
+	@echo ""
+	@echo "Assistant Modes:"
+	@echo "  assistant                  - Traditional mode (8 library tools)"
+	@echo "  assistant-rag              - RAG mode (semantic search enabled)"
+	@echo "  assistant-enhanced         - Code execution mode (switchable)"
+	@echo "  assistant-dummy-tools      - Traditional mode + 100 enterprise dummy tools"
+	@echo "  assistant-code-dummy-tools - Code execution mode + 100 enterprise dummy tools"
+	@echo ""
+	@echo "Comparison & Benchmarks:"
+	@echo "  compare-modes              - Compare Traditional vs Code Execution (interactive)"
+	@echo "  compare-modes-enterprise   - Enterprise scale demo with 100 dummy tools (interactive)"
+	@echo "  compare-modes-enterprise-all - Run ALL queries with 100 dummy tools (automated)"
+	@echo "  benchmark                  - Run token comparison benchmark"
+	@echo "  test-code-execution        - Test Phase 6 code execution sandbox"
+	@echo ""
+	@echo "RAG & Semantic Search:"
+	@echo "  generate-embeddings        - Generate book embeddings for RAG"
+	@echo "  semantic-search            - Test semantic search"
+	@echo "  data-analysis              - Start data analysis agent"
+	@echo ""
+	@echo "Multi-Agent:"
+	@echo "  multi-agent                - Start multi-agent system"
+	@echo ""
+	@echo "Testing & Quality:"
+	@echo "  test                       - Run all tests"
+	@echo "  test-unit                  - Run unit tests only"
+	@echo "  test-integration           - Run integration tests only"
+	@echo "  lint                       - Run ruff linter"
+	@echo "  format                     - Auto-format code"
+	@echo "  clean                      - Clean generated files"
 
 dev-setup:
 	@echo "Setting up development environment..."
@@ -63,9 +77,30 @@ assistant-enhanced:
 	@echo "Starting Enhanced Library Assistant (Code Execution Mode)..."
 	uv run python src/agents/library_assistant_enhanced.py
 
+assistant-dummy-tools:
+	@echo "Starting Library Assistant (Traditional Mode + 100 Enterprise Dummy Tools)..."
+	@echo "This demonstrates token overhead at enterprise scale."
+	uv run python src/agents/library_assistant.py --dummy-tools
+
+assistant-code-dummy-tools:
+	@echo "Starting Enhanced Assistant (Code Execution Mode + 100 Enterprise Dummy Tools)..."
+	@echo "This demonstrates token efficiency at enterprise scale."
+	uv run python src/agents/library_assistant_enhanced.py --mode code_execution --dummy-tools
+
 compare-modes:
 	@echo "Comparing Traditional vs Code Execution modes..."
 	uv run python scripts/compare_modes.py
+
+compare-modes-enterprise:
+	@echo "Enterprise Scale Demo: Comparing with 100 dummy tools..."
+	@echo "Expected: 80%+ token reduction in code execution mode"
+	@echo ""
+	uv run python scripts/compare_modes.py --enable-dummy-tools
+
+compare-modes-enterprise-all:
+	@echo "Enterprise Scale Demo: Running ALL queries with 100 dummy tools..."
+	@echo "Expected: 80%+ token reduction in code execution mode"
+	uv run python scripts/compare_modes.py --enable-dummy-tools --all --no-rag
 
 test-code-execution:
 	@echo "Testing Phase 6 code execution sandbox..."

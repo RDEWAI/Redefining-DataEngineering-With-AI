@@ -37,7 +37,9 @@ from agents.library_assistant import (  # noqa: E402
 from code_execution.sandbox import CodeSandbox  # noqa: E402
 from code_execution.tool_api import ToolAPIGenerator  # noqa: E402
 from library.repository import BookRepository  # noqa: E402
+from library.tools import close_repository, reopen_repository  # noqa: E402
 from llm.base import LLMProvider, Message  # noqa: E402
+from tools.dummy_tools import get_total_tool_count  # noqa: E402
 
 
 class AssistantMode(Enum):
@@ -142,6 +144,7 @@ class EnhancedLibraryAssistant:
         db_path: Path to DuckDB database
         verbose: Whether to print debug information
         show_tool_calls: Whether to display tool calls/code
+        enable_dummy_tools: Whether to include 100 enterprise dummy tools
 
     Example:
         >>> from llm.unified_client import UnifiedLLMClient
@@ -167,12 +170,14 @@ class EnhancedLibraryAssistant:
         verbose: bool = False,
         show_tool_calls: bool = True,
         enable_rag: bool = False,
+        enable_dummy_tools: bool = False,
     ) -> None:
         """Initialize the Enhanced Library Assistant."""
         self._llm_provider = llm_provider
         self._verbose = verbose
         self._show_tool_calls = show_tool_calls
         self._enable_rag = enable_rag
+        self._enable_dummy_tools = enable_dummy_tools
 
         # Parse mode
         if isinstance(mode, str):
@@ -187,7 +192,10 @@ class EnhancedLibraryAssistant:
         self._repository = BookRepository(db_path=self._db_path, read_only=True)
         self._sandbox = CodeSandbox()
         self._tool_api_generator = ToolAPIGenerator(
-            self._repository, db_path=self._db_path, include_rag=enable_rag
+            self._repository,
+            db_path=self._db_path,
+            include_rag=enable_rag,
+            include_dummy_tools=enable_dummy_tools,
         )
 
         # Traditional assistant (for traditional mode)
@@ -196,6 +204,7 @@ class EnhancedLibraryAssistant:
             verbose=verbose,
             show_tool_calls=show_tool_calls,
             enable_rag=enable_rag,
+            enable_dummy_tools=enable_dummy_tools,
         )
 
         # Token tracking
@@ -250,6 +259,43 @@ class EnhancedLibraryAssistant:
         """
         return self._enable_rag
 
+    def set_dummy_tools_enabled(self, enabled: bool) -> None:
+        """Enable or disable enterprise dummy tools.
+
+        Args:
+            enabled: Whether to enable 100 enterprise dummy tools
+        """
+        self._enable_dummy_tools = enabled
+        self._traditional_assistant.set_dummy_tools_enabled(enabled)
+        self._tool_api_generator.set_include_dummy_tools(enabled)
+        # Reset conversation to apply new settings
+        self.reset_conversation()
+
+    def is_dummy_tools_enabled(self) -> bool:
+        """Check if dummy tools are enabled.
+
+        Returns:
+            True if dummy tools are enabled
+        """
+        return self._enable_dummy_tools
+
+    def get_tool_count(self) -> int:
+        """Get the current number of tools available.
+
+        Returns:
+            Number of tool definitions currently loaded
+        """
+        if self._mode == AssistantMode.TRADITIONAL:
+            return int(self._traditional_assistant.get_tool_count())
+        else:
+            # Code execution mode: base tools + RAG + dummy tools
+            count = 8  # Base library tools
+            if self._enable_rag:
+                count += 1
+            if self._enable_dummy_tools:
+                count += get_total_tool_count()
+            return count
+
     def reset_conversation(self) -> None:
         """Reset conversation history and token counters."""
         if self._mode == AssistantMode.TRADITIONAL:
@@ -259,6 +305,7 @@ class EnhancedLibraryAssistant:
                 verbose=self._verbose,
                 show_tool_calls=self._show_tool_calls,
                 enable_rag=self._enable_rag,
+                enable_dummy_tools=self._enable_dummy_tools,
             )
         else:
             # Reset code execution history with system prompt based on RAG setting
@@ -359,10 +406,20 @@ class EnhancedLibraryAssistant:
             api_functions = self._tool_api_generator.generate_api_code(include_setup=False)
             full_api_code = discovery_code + "\n\n" + api_functions
 
-            # Use stateful execution - variables persist between iterations (Anthropic pattern)
-            result = self._sandbox.execute_stateful(
-                code, db_path=self._db_path, api_code=full_api_code
-            )
+            # IMPORTANT: Close all database connections before subprocess execution
+            # DuckDB doesn't support concurrent access to file databases
+            self._repository.close()
+            close_repository()  # Close module-level repository in library/tools.py
+
+            try:
+                # Use stateful execution - variables persist between iterations (Anthropic pattern)
+                result = self._sandbox.execute_stateful(
+                    code, db_path=self._db_path, api_code=full_api_code
+                )
+            finally:
+                # Reopen connections after subprocess completes
+                self._repository.reopen(self._db_path, read_only=True)
+                reopen_repository(self._db_path, read_only=True)
 
             # Add assistant's code generation to history
             self._code_exec_history.append(
@@ -383,28 +440,30 @@ class EnhancedLibraryAssistant:
                 if self._verbose:
                     print("\n[EXECUTION SUCCESS] Output shown above")
 
-                # Feed execution results back to LLM for reflection
-                result_message = f"Code executed successfully. Output:\n```\n{output}\n```\n\nProvide a final answer based on these results, or generate new code if needed."
-                self._code_exec_history.append(Message(role="user", content=result_message))
+                # If we have meaningful output, get final answer directly
+                # This is a key optimization: don't encourage more code generation
+                if output and len(output.strip()) > 10:
+                    # Feed execution results back to LLM for final answer ONLY
+                    # IMPORTANT: Do NOT mention "generate new code" - this wastes tokens
+                    result_message = f"Code executed successfully. Output:\n```\n{output}\n```\n\nProvide a brief, helpful answer to the user based on these results. Do NOT generate any more code."
+                    self._code_exec_history.append(Message(role="user", content=result_message))
 
-                # Get LLM reflection on results
-                final_response = self._llm_provider.generate(
-                    messages=self._code_exec_history,
-                    temperature=0.0,
-                )
-                self._token_usage.add(final_response)
+                    # Get LLM final answer (should not contain code)
+                    final_response = self._llm_provider.generate(
+                        messages=self._code_exec_history,
+                        temperature=0.0,
+                    )
+                    self._token_usage.add(final_response)
 
-                # Check if LLM wants to generate more code or give final answer
-                final_code = self._extract_code_from_response(final_response.content or "")
-
-                if not final_code:
-                    # No more code - this is the final answer
                     self._code_exec_history.append(
                         Message(role="assistant", content=final_response.content or "")
                     )
                     return str(final_response.content or "")
 
-                # LLM generated more code - continue loop
+                # Empty or minimal output - let LLM try again
+                result_message = f"Code executed but output was empty or minimal:\n```\n{output}\n```\n\nPlease try a different approach."
+                self._code_exec_history.append(Message(role="user", content=result_message))
+                # Continue loop to let LLM try again
 
             else:
                 error = result["stderr"]
@@ -485,6 +544,11 @@ def run_interactive_cli() -> None:
     parser.add_argument("--db-path", help="Path to DuckDB database (default: from DB_PATH env var)")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
     parser.add_argument("--hide-tools", action="store_true", help="Hide tool calls/generated code")
+    parser.add_argument(
+        "--dummy-tools",
+        action="store_true",
+        help="Enable 100 enterprise dummy tools across 10 domains for scale demo",
+    )
 
     args = parser.parse_args()
 
@@ -503,6 +567,7 @@ def run_interactive_cli() -> None:
         db_path=args.db_path,
         verbose=args.verbose,
         show_tool_calls=not args.hide_tools,
+        enable_dummy_tools=args.dummy_tools,
     )
 
     print("\n" + "=" * 60)
@@ -510,11 +575,17 @@ def run_interactive_cli() -> None:
     print("=" * 60)
     print(f"Mode: {assistant.get_mode()}")
     rag_status = "ON" if assistant.is_rag_enabled() else "OFF"
+    dummy_status = "ON" if assistant.is_dummy_tools_enabled() else "OFF"
+    tool_count = assistant.get_tool_count()
     print(f"RAG:  {rag_status}")
+    print(f"Tools: {tool_count} available")
+    if assistant.is_dummy_tools_enabled():
+        print("  └─ 100 enterprise dummy tools ENABLED for scale demo")
     print("\nCommands:")
     print("  /mode traditional    - Switch to traditional tool calls")
     print("  /mode code           - Switch to code execution")
-    print("  /rag                 - Toggle semantic search/RAG")
+    print(f"  /rag                 - Toggle semantic search/RAG (currently: {rag_status})")
+    print(f"  /dummy-tools         - Toggle 100 enterprise dummy tools (currently: {dummy_status})")
     print("  /settings            - Show current settings")
     print("  /reset               - Reset conversation and token counters")
     print("  /tokens              - Show token usage summary")
@@ -539,16 +610,20 @@ def run_interactive_cli() -> None:
 
                 elif cmd == "/help":
                     rag_status = "ON" if assistant.is_rag_enabled() else "OFF"
+                    dummy_status = "ON" if assistant.is_dummy_tools_enabled() else "OFF"
                     print("\nAvailable commands:")
                     print("  /mode traditional - Switch to traditional tool calls")
-                    print("  /mode code       - Switch to code execution")
+                    print("  /mode code        - Switch to code execution")
                     print(
-                        f"  /rag             - Toggle semantic search/RAG (currently: {rag_status})"
+                        f"  /rag              - Toggle semantic search/RAG (currently: {rag_status})"
                     )
-                    print("  /settings        - Show current settings")
-                    print("  /reset           - Reset conversation")
-                    print("  /tokens          - Show token usage")
-                    print("  /quit            - Exit")
+                    print(
+                        f"  /dummy-tools      - Toggle 100 enterprise dummy tools (currently: {dummy_status})"
+                    )
+                    print("  /settings         - Show current settings")
+                    print("  /reset            - Reset conversation")
+                    print("  /tokens           - Show token usage")
+                    print("  /quit             - Exit")
 
                 elif cmd == "/settings":
                     mode = assistant.get_mode()
@@ -558,12 +633,16 @@ def run_interactive_cli() -> None:
                         else "Code Execution (Python)"
                     )
                     rag_status = "ON" if assistant.is_rag_enabled() else "OFF"
+                    dummy_status = "ON" if assistant.is_dummy_tools_enabled() else "OFF"
                     tools_status = "ON" if assistant._show_tool_calls else "OFF"
+                    tool_count = assistant.get_tool_count()
                     print()
                     print("Current Settings:")
                     print("-" * 40)
                     print(f"  Mode:          {mode_display}")
                     print(f"  RAG:           {rag_status}")
+                    print(f"  Dummy Tools:   {dummy_status}")
+                    print(f"  Tool Count:    {tool_count}")
                     print(f"  Tool Display:  {tools_status}")
                     print(f"  Base URL:      {os.getenv('LLM_BASE_URL', 'not set')}")
                     print(f"  Model:         {os.getenv('LLM_MODEL', 'not set')}")
@@ -589,6 +668,24 @@ def run_interactive_cli() -> None:
                         print(
                             "  Try: 'Find books about time travel' or 'something like Harry Potter'"
                         )
+
+                elif cmd == "/dummy-tools":
+                    new_dummy_status = not assistant.is_dummy_tools_enabled()
+                    assistant.set_dummy_tools_enabled(new_dummy_status)
+                    status = "ON" if new_dummy_status else "OFF"
+                    tool_count = assistant.get_tool_count()
+                    print(f"Enterprise dummy tools: {status}")
+                    print(f"  Total tools available: {tool_count}")
+                    if new_dummy_status:
+                        print("  100 enterprise tools added across 10 domains:")
+                        print("    Engineering, Data Platform, Security, HR, Finance,")
+                        print("    Marketing, Sales, Support, Infrastructure, ML Platform")
+                        print()
+                        print("  This demonstrates token overhead at enterprise scale.")
+                        print(
+                            "  Compare traditional vs code execution mode for 80%+ token reduction."
+                        )
+                        print("  Use /mode traditional and /mode code to switch modes.")
 
                 elif cmd.startswith("/mode "):
                     new_mode = cmd.split()[1]
