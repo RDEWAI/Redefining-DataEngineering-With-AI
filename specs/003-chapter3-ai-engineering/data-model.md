@@ -579,3 +579,173 @@ repos:
         pass_filenames: false
         stages: [push]
 ```
+
+---
+
+## Phase 7.5 Entities (Enterprise Tool Scale)
+
+### 7. DummyTool
+
+Enterprise dummy tool definition for demonstrating code execution token efficiency at scale.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `name` | str | NOT NULL, Unique | Tool identifier (e.g., "engineering_run_build") |
+| `domain` | str | NOT NULL | Enterprise domain (10 domains total) |
+| `description` | str | NOT NULL | Detailed tool description (50-100 words) |
+| `input_schema` | dict | NOT NULL | JSON Schema for parameters |
+| `is_mock` | bool | NOT NULL, Default: True | Always True for dummy tools |
+
+**Domain Values (Enum)**:
+- `engineering` - CI/CD and code operations
+- `data_platform` - Data warehouse and analytics
+- `security` - Compliance and access control
+- `hr` - Employee data and requests
+- `finance` - Budget and expense management
+- `marketing` - Campaign and content operations
+- `sales` - CRM and pipeline management
+- `support` - Customer service operations
+- `infrastructure` - DevOps and monitoring
+- `ml_platform` - ML/AI model operations
+
+**Python Definition**:
+```python
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any
+
+class EnterpriseDomain(Enum):
+    ENGINEERING = "engineering"
+    DATA_PLATFORM = "data_platform"
+    SECURITY = "security"
+    HR = "hr"
+    FINANCE = "finance"
+    MARKETING = "marketing"
+    SALES = "sales"
+    SUPPORT = "support"
+    INFRASTRUCTURE = "infrastructure"
+    ML_PLATFORM = "ml_platform"
+
+@dataclass
+class DummyTool:
+    name: str
+    domain: EnterpriseDomain
+    description: str
+    input_schema: dict[str, Any]
+    is_mock: bool = True
+
+    def to_tool_definition(self) -> "ToolDefinition":
+        """Convert to ToolDefinition for LLM tool calling."""
+        from llm.base import ToolDefinition
+        return ToolDefinition(
+            name=self.name,
+            description=self.description,
+            parameters=self.input_schema
+        )
+
+    def execute(self, **kwargs) -> dict[str, Any]:
+        """Execute mock tool (returns simulated response)."""
+        return {
+            "success": True,
+            "domain": self.domain.value,
+            "tool": self.name,
+            "message": f"Mock response from {self.domain.value}.{self.name}",
+            "input": kwargs,
+            "data": {"mock": True}
+        }
+```
+
+**Sample Tools by Domain**:
+
+```json
+{
+  "engineering": [
+    {"name": "engineering_run_build", "description": "Trigger CI/CD build pipeline..."},
+    {"name": "engineering_check_ci_status", "description": "Check current CI status..."},
+    {"name": "engineering_trigger_deployment", "description": "Deploy to environment..."}
+  ],
+  "data_platform": [
+    {"name": "data_query_warehouse", "description": "Execute SQL against warehouse..."},
+    {"name": "data_get_lineage", "description": "Get data lineage graph..."},
+    {"name": "data_validate_schema", "description": "Validate schema changes..."}
+  ]
+}
+```
+
+---
+
+### 8. DummyToolConfig
+
+Configuration for enabling/disabling dummy tools in the assistant.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `enabled` | bool | NOT NULL, Default: False | Whether dummy tools are active |
+| `tool_count` | int | >= 0, Default: 100 | Number of dummy tools loaded |
+| `domains` | list[str] | NULL (all if None) | Filter to specific domains |
+
+**Python Definition**:
+```python
+from dataclasses import dataclass, field
+
+@dataclass
+class DummyToolConfig:
+    enabled: bool = False
+    tool_count: int = 100
+    domains: list[str] | None = None  # None = all domains
+
+    def get_active_tools(self) -> list["DummyTool"]:
+        """Get list of active dummy tools based on config."""
+        if not self.enabled:
+            return []
+
+        all_tools = generate_all_dummy_tools()
+
+        if self.domains:
+            all_tools = [t for t in all_tools if t.domain.value in self.domains]
+
+        return all_tools[:self.tool_count]
+```
+
+**Token Impact (Key Metrics)**:
+
+| Configuration | Tool Count | Traditional Tokens | Code Exec Tokens | Reduction |
+|---------------|------------|-------------------|------------------|-----------|
+| Library only | 9 | ~1,350 | ~300 | 78% |
+| + 50 dummy | 59 | ~10,200 | ~400 | 96% |
+| + 100 dummy | 109 | ~19,650 | ~650 | 97% |
+
+---
+
+## Updated Entity Relationship Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          LIBRARY SCHEMA                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────────┐         ┌─────────────────────────┐           │
+│  │     books       │         │    book_embeddings      │           │
+│  ├─────────────────┤         ├─────────────────────────┤           │
+│  │ PK book_id      │────────▶│ PK book_id              │           │
+│  │    title        │         │    title                │           │
+│  │    author       │         │    author               │           │
+│  │    description  │         │    description          │           │
+│  │    category     │         │    category             │           │
+│  │    cabinet      │         │    embedding FLOAT[384] │           │
+│  │    rack         │         └─────────────────────────┘           │
+│  │    row          │                                               │
+│  │    signal_str   │         ┌─────────────────────────┐           │
+│  │    timestamp    │         │    tool_registry        │           │
+│  │    status       │         ├─────────────────────────┤           │
+│  └─────────────────┘         │ PK tool_name            │           │
+│                              │    description          │           │
+│                              │    input_schema (JSON)  │           │
+│                              │    capabilities[]       │           │
+│                              │    embedding FLOAT[384] │           │
+│                              │    domain (Phase 7.5)   │           │
+│                              │    is_mock (Phase 7.5)  │           │
+│                              └─────────────────────────┘           │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```

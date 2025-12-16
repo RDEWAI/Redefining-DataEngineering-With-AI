@@ -537,6 +537,167 @@ Task: T121 [P] Update docs
 
 ---
 
+## Phase 7.5: Enterprise Tool Scale Demonstration (NEW)
+
+**Goal**: Demonstrate token efficiency of code execution vs traditional tool calling at enterprise scale with 100 dummy tools across 10 domains.
+
+**Independent Test**: Run `compare_modes.py --enable-dummy-tools` and verify 80%+ token reduction for code execution mode.
+
+**Dependencies**: Requires Phase 7 (RAG) complete. Blocks Phase 8 (Multi-Agent System).
+
+**Rationale**: From Anthropic's "Advanced Tool Use" paper - code execution dramatically reduces token overhead when dealing with many tools. This phase provides empirical evidence with a realistic enterprise simulation.
+
+### Phase 7.5.1: Dummy Tool Generator
+
+**Purpose**: Create 100 enterprise dummy tools across 10 domains
+
+- [ ] T7.5-001 [US4+] Create `chapter-3/src/tools/dummy_tools.py` with EnterpriseDomain enum and DummyTool dataclass
+- [ ] T7.5-002 [P] [US4+] Generate 10 tools for Engineering domain (CI/CD: run_build, check_ci_status, trigger_deployment, get_test_coverage, etc.)
+- [ ] T7.5-003 [P] [US4+] Generate 10 tools for Data Platform domain (query_warehouse, get_data_lineage, validate_schema, refresh_dashboard, etc.)
+- [ ] T7.5-004 [P] [US4+] Generate 10 tools for Security domain (scan_vulnerabilities, check_access_permissions, audit_logs, rotate_secrets, etc.)
+- [ ] T7.5-005 [P] [US4+] Generate 10 tools for HR domain (get_employee_info, submit_pto_request, check_org_chart, get_team_roster, etc.)
+- [ ] T7.5-006 [P] [US4+] Generate 10 tools for Finance domain (get_budget_status, submit_expense, generate_invoice, check_payment_status, etc.)
+- [ ] T7.5-007 [P] [US4+] Generate 10 tools for Marketing domain (get_campaign_metrics, schedule_post, analyze_sentiment, generate_report, etc.)
+- [ ] T7.5-008 [P] [US4+] Generate 10 tools for Sales domain (get_lead_details, update_opportunity, check_quota, forecast_revenue, etc.)
+- [ ] T7.5-009 [P] [US4+] Generate 10 tools for Support domain (create_ticket, get_ticket_status, escalate_issue, search_knowledge_base, etc.)
+- [ ] T7.5-010 [P] [US4+] Generate 10 tools for Infrastructure domain (check_server_status, scale_service, get_metrics, restart_container, etc.)
+- [ ] T7.5-011 [P] [US4+] Generate 10 tools for ML Platform domain (train_model, get_experiment_results, deploy_model, monitor_predictions, etc.)
+
+### Phase 7.5.2: Mock Implementations
+
+**Purpose**: Create mock function implementations for all dummy tools
+
+- [ ] T7.5-012 [US4+] Add `generate_dummy_tools() -> list[ToolDefinition]` function
+- [ ] T7.5-013 [US4+] Add `get_dummy_tool_functions() -> dict[str, Callable]` for mock implementations
+- [ ] T7.5-014 [US4+] Add `create_mock_function(domain, tool_name, description)` factory function
+- [ ] T7.5-015 [US4+] Ensure all mock functions return realistic-looking JSON responses
+
+### Phase 7.5.3: Assistant Integration
+
+**Purpose**: Update assistants to support dummy tools
+
+- [ ] T7.5-016 [US4+] Update `chapter-3/src/agents/library_assistant.py` - add `enable_dummy_tools: bool = False` parameter
+- [ ] T7.5-017 [US4+] Update `_get_tools()` method to optionally include dummy tools
+- [ ] T7.5-018 [US4+] Update `_get_tool_functions()` method to include dummy tool mock implementations
+- [ ] T7.5-019 [US4+] Update `chapter-3/src/agents/library_assistant_enhanced.py` - add `enable_dummy_tools: bool = False` parameter
+- [ ] T7.5-020 [US4+] Update `ToolAPIGenerator` to optionally include dummy tool API stubs in code execution mode
+
+### Phase 7.5.4: CLI Commands
+
+**Purpose**: Add interactive commands for enabling/disabling dummy tools
+
+- [ ] T7.5-021 [US4+] Add `/enable-dummy-tools` command to library_assistant.py REPL
+- [ ] T7.5-022 [US4+] Add `/enable-dummy-tools` command to library_assistant_enhanced.py REPL
+- [ ] T7.5-023 [US4+] Add `/settings` command update to show dummy tools count when enabled
+- [ ] T7.5-024 [US4+] Add tool count display in startup message when dummy tools enabled
+
+### Phase 7.5.5: Compare Modes Update
+
+**Purpose**: Update compare_modes.py to demonstrate enterprise scale
+
+- [ ] T7.5-025 [US4+] Update `chapter-3/scripts/compare_modes.py` - add `--enable-dummy-tools` argument
+- [ ] T7.5-026 [US4+] Add token breakdown display showing tool definition overhead
+- [ ] T7.5-027 [US4+] Add summary showing percentage reduction with dummy tools vs without
+
+### Phase 7.5.6: Makefile Targets
+
+**Purpose**: Add make targets for enterprise tool demonstration
+
+- [ ] T7.5-028 [P] [US4+] Add `make assistant-dummy-tools` target (starts traditional mode with 100 dummy tools)
+- [ ] T7.5-029 [P] [US4+] Add `make assistant-code-dummy-tools` target (starts code execution mode with 100 dummy tools)
+- [ ] T7.5-030 [P] [US4+] Add `make compare-modes-enterprise` target (runs comparison with dummy tools enabled)
+
+### Phase 7.5.7: Unit Tests
+
+**Purpose**: Test dummy tool generation and integration
+
+- [ ] T7.5-031 [P] [US4+] Create `chapter-3/tests/unit/test_dummy_tools.py`
+- [ ] T7.5-032 [P] [US4+] Test `generate_dummy_tools()` returns exactly 100 tools
+- [ ] T7.5-033 [P] [US4+] Test tools are distributed across 10 domains (10 each)
+- [ ] T7.5-034 [P] [US4+] Test `get_dummy_tool_functions()` returns matching function count
+- [ ] T7.5-035 [P] [US4+] Test mock functions return valid JSON structure
+
+### Phase 7.5.8: Integration Tests
+
+**Purpose**: End-to-end tests with dummy tools enabled
+
+- [ ] T7.5-036 [P] [US4+] Create `chapter-3/tests/integration/test_assistant_dummy.py`
+- [ ] T7.5-037 [P] [US4+] Test LibraryAssistant initializes with dummy tools enabled
+- [ ] T7.5-038 [P] [US4+] Test EnhancedLibraryAssistant initializes with dummy tools enabled
+- [ ] T7.5-039 [P] [US4+] Test library queries still work correctly with dummy tools present
+- [ ] T7.5-040 [P] [US4+] Test token usage increases in traditional mode with dummy tools
+
+### Phase 7.5.9: Documentation
+
+**Purpose**: Document enterprise scale demonstration
+
+- [ ] T7.5-041 [P] [US4+] Create `chapter-3/docs/05.5-enterprise-tool-scale.md`
+- [ ] T7.5-042 [US4+] Document motivation (Anthropic paper reference)
+- [ ] T7.5-043 [US4+] Document 10 enterprise domains and tool examples
+- [ ] T7.5-044 [US4+] Document expected token reduction percentages
+- [ ] T7.5-045 [US4+] Document how to run comparison benchmarks
+
+### Phase 7.5.10: Verification & Benchmark
+
+**Purpose**: Verify implementation and record results
+
+- [ ] T7.5-046 [US4+] Run `uv run pytest chapter-3/tests/unit/test_dummy_tools.py -v` - verify 100% pass
+- [ ] T7.5-047 [US4+] Run `uv run pytest chapter-3/tests/integration/test_assistant_dummy.py -v` - verify 100% pass
+- [ ] T7.5-048 [US4+] Run `make compare-modes-enterprise` and record results
+- [ ] T7.5-049 [US4+] Verify traditional mode uses 15,000+ tokens for tool definitions
+- [ ] T7.5-050 [US4+] Verify code execution mode uses < 2,000 tokens for tool definitions
+- [ ] T7.5-051 [US4+] Verify token reduction is 80%+ as predicted
+
+**Checkpoint**: Phase 7.5 complete - enterprise scale demonstration shows 80%+ token reduction
+
+---
+
+### Phase 7.5 Summary
+
+| Sub-Phase | Task Count | Parallelizable | Description |
+|-----------|-----------|----------------|-------------|
+| 7.5.1: Tool Generator | 11 | 10 | Create 100 enterprise dummy tools |
+| 7.5.2: Mock Implementations | 4 | 0 | Mock function factory |
+| 7.5.3: Assistant Integration | 5 | 0 | Update assistants |
+| 7.5.4: CLI Commands | 4 | 0 | Interactive commands |
+| 7.5.5: Compare Modes | 3 | 0 | Benchmark script updates |
+| 7.5.6: Makefile Targets | 3 | 3 | Make targets |
+| 7.5.7: Unit Tests | 5 | 5 | Test coverage |
+| 7.5.8: Integration Tests | 5 | 5 | E2E tests |
+| 7.5.9: Documentation | 5 | 1 | Docs |
+| 7.5.10: Verification | 6 | 0 | Benchmarks |
+| **Total** | **51** | **24** | |
+
+### Parallel Execution for Phase 7.5
+
+**After T7.5-001 (base module created)**:
+```bash
+# Run in parallel - all 10 domain tool generators:
+Task: T7.5-002 [P] Engineering domain tools
+Task: T7.5-003 [P] Data Platform domain tools
+Task: T7.5-004 [P] Security domain tools
+Task: T7.5-005 [P] HR domain tools
+Task: T7.5-006 [P] Finance domain tools
+Task: T7.5-007 [P] Marketing domain tools
+Task: T7.5-008 [P] Sales domain tools
+Task: T7.5-009 [P] Support domain tools
+Task: T7.5-010 [P] Infrastructure domain tools
+Task: T7.5-011 [P] ML Platform domain tools
+```
+
+**After T7.5-020 (assistant integration complete)**:
+```bash
+# Run in parallel:
+Task: T7.5-028 [P] make assistant-dummy-tools target
+Task: T7.5-029 [P] make assistant-code-dummy-tools target
+Task: T7.5-030 [P] make compare-modes-enterprise target
+Task: T7.5-031-T7.5-035 [P] Unit tests
+Task: T7.5-036-T7.5-040 [P] Integration tests
+Task: T7.5-041 [P] Documentation
+```
+
+---
+
 ## Phase 8: User Story 6 - Multi-Agent System with Orchestration (Priority: P6)
 
 **Goal**: Build multi-agent system with search, analytics, recommendation agents (Sub-feature 003f)
@@ -632,11 +793,19 @@ Phase 1 (Setup) ───► Phase 2 (Foundational) ───► User Stories
               Dataset Enhancement              (Add Description)
                      │
                      ▼
-              US5 (P5) ──────────────────────► US6 (P6)
-              003e: RAG                        003f: Multi-Agent
-                                                      │
-                                                      ▼
-                                              Phase 9 (Polish)
+              US5 (P5) ◄──────────────────── Phase 6.5 Done
+              003e: RAG
+                     │
+                     ▼
+              Phase 7.5 ◄─────────────────── US5 Done
+              Enterprise Tool Scale            (100 Dummy Tools)
+                     │
+                     ▼
+              US6 (P6) ◄──────────────────── Phase 7.5 Done
+              003f: Multi-Agent
+                     │
+                     ▼
+              Phase 9 (Polish)
 ```
 
 ### User Story & Phase Dependencies
@@ -650,11 +819,13 @@ Phase 1 (Setup) ───► Phase 2 (Foundational) ───► User Stories
 | US4 (003d) | **Phase 5.5 complete** | None |
 | **Phase 6.5** | **US4 (003d) complete** | **None** |
 | US5 (003e) | **Phase 6.5 complete** (needs Description for RAG) | None |
-| US6 (003f) | US5 (RAG + tool patterns) | None |
+| **Phase 7.5** | **US5 (003e) complete** | **None** |
+| US6 (003f) | **Phase 7.5 complete** | None |
 
 **Notes**:
 - Phase 5.5 is a code quality phase inserted between US3 and US4. It adds git hooks and unified LLM client that US4+ will use.
 - Phase 6.5 is a dataset enhancement phase inserted before US5 (RAG). It adds the Description column to enable rich textual content for semantic search.
+- Phase 7.5 is an enterprise scale demonstration phase inserted before US6 (Multi-Agent). It adds 100 dummy tools to demonstrate code execution token efficiency.
 
 ### Within Each User Story
 
@@ -742,7 +913,7 @@ Task: "Add Location dataclass to domain.py"
 
 | Metric | Count |
 |--------|-------|
-| **Total Tasks** | 183 |
+| **Total Tasks** | 234 |
 | **Setup (Phase 1)** | 6 |
 | **Foundational (Phase 2)** | 5 |
 | **US1 Tasks** | 30 |
@@ -752,9 +923,10 @@ Task: "Add Location dataclass to domain.py"
 | **US4 Tasks** | 17 |
 | **Phase 6.5 (Dataset Enhancement)** | 34 |
 | **US5 Tasks** | 25 |
+| **Phase 7.5 (Enterprise Tool Scale)** | 51 |
 | **US6 Tasks** | 22 |
 | **Polish (Phase 9)** | 9 |
-| **Parallelizable Tasks** | 58 |
+| **Parallelizable Tasks** | 82 |
 
 ---
 
