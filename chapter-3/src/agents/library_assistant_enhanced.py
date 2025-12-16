@@ -47,8 +47,8 @@ class AssistantMode(Enum):
     CODE_EXECUTION = "code_execution"
 
 
-# Minimal system prompt for progressive tool loading (Anthropic pattern)
-CODE_EXECUTION_SYSTEM_PROMPT = """You are a Library Data Analyst with Python code execution.
+# Base system prompt for code execution (without RAG)
+CODE_EXECUTION_SYSTEM_PROMPT_BASE = """You are a Library Data Analyst with Python code execution.
 
 **Database:** library.books (DuckDB, accessed via `_conn`)
 - Columns: book_id, title, author, description, category, status, cabinet, rack, row, signal_strength, timestamp
@@ -58,32 +58,72 @@ CODE_EXECUTION_SYSTEM_PROMPT = """You are a Library Data Analyst with Python cod
 **API Functions Available:**
 Use these directly: search_books(), get_book_details(), check_availability(), list_by_category(), list_by_status(), locate_book(), find_books_in_cabinet(), get_weak_signal_books()
 
-**Tool Discovery (optional):**
-- `list_tools()` - List all API functions
-- `get_tool_help(name)` - Get function signature/docs
+**CRITICAL INSTRUCTIONS:**
+1. **Write ALL code in a SINGLE block** - Do the ENTIRE task in one code generation, not multiple iterations
+2. **ALWAYS print() results** - Empty output wastes tokens on extra iterations
+3. **Chain operations together** - If you need search + availability, do BOTH in one block
+4. **Use loops for multiple items** - Don't generate code iteratively; use for-loops
 
-**Instructions:**
-1. **Simple lookups**: Use API functions directly (e.g., `get_book_details("B001")`)
-2. **Complex analytics**: Use `_conn.execute()` for SQL queries
-3. **Unsure**: Call `get_tool_help('function_name')` for details
-4. Always print results
-5. **IMPORTANT**: Always generate Python code (not raw SQL). Wrap SQL in _conn.execute()
-
-**Examples:**
+**Example - CORRECT (single block):**
 ```python
-# Direct API use (preferred for simple lookups)
-book = get_book_details("B001")
-print(book)
+# Do EVERYTHING in one code block
+results = search_books("Python", category="Programming")
+print(f"Found {len(results)} books:")
+for book in results:
+    avail = check_availability(book['book_id'])
+    status = "✓" if avail['available'] else "✗"
+    print(f"  {status} {book['title']} - {avail['status']} at {avail.get('location', 'N/A')}")
+```
 
-# SQL for complex queries
-result = _conn.execute('''
-    SELECT category, COUNT(*) as count
-    FROM library.books WHERE status = 'Missing'
-    GROUP BY category ORDER BY count DESC
-''').fetchdf()
-print(result)
+**Example - WRONG (multiple iterations):**
+```python
+# Iteration 1 - INEFFICIENT
+results = search_books("Python")
+print(results)
+# Then waiting for another iteration to check availability - WASTEFUL!
 ```
 """
+
+# RAG-specific additions to the system prompt
+CODE_EXECUTION_RAG_ADDITIONS = """
+**RAG/Semantic Search - WHEN TO USE:**
+- `semantic_search(query, top_k=5)` - Find books by meaning, not just keywords
+- **RAG indexes**: title, author, description, category (conceptual/text data)
+- **NOT in RAG**: status, location, signal_strength, book_id (use tools/SQL instead)
+- Use for: "books about time travel", "something like Harry Potter", "adventure stories"
+- Do NOT use for: "available books", "missing books", "weak signal", "in cabinet 3"
+
+**Example - RAG + Availability in ONE block:**
+```python
+# Do EVERYTHING in one code block - search AND check availability
+results = semantic_search("science fiction adventures")
+print(f"Found {len(results)} similar books:\\n")
+for book in results:
+    avail = check_availability(book['book_id'])
+    status_icon = "✓" if avail['available'] else "✗"
+    print(f"  {status_icon} {book['title']} (similarity: {book['similarity']:.3f})")
+    print(f"      Status: {avail['status']} | Location: {avail.get('location', 'N/A')}")
+```
+"""
+
+
+def get_code_execution_system_prompt(include_rag: bool = False) -> str:
+    """Get the system prompt for code execution mode.
+
+    Args:
+        include_rag: Whether to include RAG/semantic search instructions
+
+    Returns:
+        System prompt string
+    """
+    if include_rag:
+        # Insert RAG additions after API functions list
+        base = CODE_EXECUTION_SYSTEM_PROMPT_BASE.replace(
+            "get_weak_signal_books()",
+            "get_weak_signal_books(), semantic_search()",
+        )
+        return base + CODE_EXECUTION_RAG_ADDITIONS
+    return CODE_EXECUTION_SYSTEM_PROMPT_BASE
 
 
 class EnhancedLibraryAssistant:
@@ -126,11 +166,13 @@ class EnhancedLibraryAssistant:
         db_path: str | None = None,
         verbose: bool = False,
         show_tool_calls: bool = True,
+        enable_rag: bool = False,
     ) -> None:
         """Initialize the Enhanced Library Assistant."""
         self._llm_provider = llm_provider
         self._verbose = verbose
         self._show_tool_calls = show_tool_calls
+        self._enable_rag = enable_rag
 
         # Parse mode
         if isinstance(mode, str):
@@ -144,13 +186,16 @@ class EnhancedLibraryAssistant:
         # Use read_only=True to allow concurrent access and match sandbox behavior
         self._repository = BookRepository(db_path=self._db_path, read_only=True)
         self._sandbox = CodeSandbox()
-        self._tool_api_generator = ToolAPIGenerator(self._repository, db_path=self._db_path)
+        self._tool_api_generator = ToolAPIGenerator(
+            self._repository, db_path=self._db_path, include_rag=enable_rag
+        )
 
         # Traditional assistant (for traditional mode)
         self._traditional_assistant = LibraryAssistant(
             llm_provider=llm_provider,
             verbose=verbose,
             show_tool_calls=show_tool_calls,
+            enable_rag=enable_rag,
         )
 
         # Token tracking
@@ -185,6 +230,26 @@ class EnhancedLibraryAssistant:
         """
         return self._mode.value
 
+    def set_rag_enabled(self, enabled: bool) -> None:
+        """Enable or disable RAG (semantic search) tool.
+
+        Args:
+            enabled: Whether to enable RAG
+        """
+        self._enable_rag = enabled
+        self._traditional_assistant.set_rag_enabled(enabled)
+        self._tool_api_generator.set_include_rag(enabled)
+        # Reset conversation to apply new system prompt
+        self.reset_conversation()
+
+    def is_rag_enabled(self) -> bool:
+        """Check if RAG is enabled.
+
+        Returns:
+            True if RAG is enabled
+        """
+        return self._enable_rag
+
     def reset_conversation(self) -> None:
         """Reset conversation history and token counters."""
         if self._mode == AssistantMode.TRADITIONAL:
@@ -193,11 +258,12 @@ class EnhancedLibraryAssistant:
                 llm_provider=self._llm_provider,
                 verbose=self._verbose,
                 show_tool_calls=self._show_tool_calls,
+                enable_rag=self._enable_rag,
             )
         else:
-            # Reset code execution history with minimal system prompt
-            # (no tool descriptions - progressive loading pattern)
-            self._code_exec_history = [Message(role="system", content=CODE_EXECUTION_SYSTEM_PROMPT)]
+            # Reset code execution history with system prompt based on RAG setting
+            system_prompt = get_code_execution_system_prompt(include_rag=self._enable_rag)
+            self._code_exec_history = [Message(role="system", content=system_prompt)]
 
         self._token_usage.reset()
 
@@ -236,6 +302,9 @@ class EnhancedLibraryAssistant:
         """Handle query using code execution with iterative feedback."""
         if self._verbose:
             print(f"\n[CODE EXECUTION MODE] Processing query: {user_input}")
+
+        # Reset sandbox state for new query (Anthropic pattern: fresh state per query)
+        self._sandbox.reset_state()
 
         # Add user message
         self._code_exec_history.append(Message(role="user", content=user_input))
@@ -290,7 +359,10 @@ class EnhancedLibraryAssistant:
             api_functions = self._tool_api_generator.generate_api_code(include_setup=False)
             full_api_code = discovery_code + "\n\n" + api_functions
 
-            result = self._sandbox.execute(code, db_path=self._db_path, api_code=full_api_code)
+            # Use stateful execution - variables persist between iterations (Anthropic pattern)
+            result = self._sandbox.execute_stateful(
+                code, db_path=self._db_path, api_code=full_api_code
+            )
 
             # Add assistant's code generation to history
             self._code_exec_history.append(
@@ -407,8 +479,8 @@ def run_interactive_cli() -> None:
     parser.add_argument(
         "--mode",
         choices=["traditional", "code_execution"],
-        default="traditional",
-        help="Execution mode (default: traditional)",
+        default="code_execution",
+        help="Execution mode (default: code_execution)",
     )
     parser.add_argument("--db-path", help="Path to DuckDB database (default: from DB_PATH env var)")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
@@ -437,9 +509,13 @@ def run_interactive_cli() -> None:
     print("Enhanced Library Assistant")
     print("=" * 60)
     print(f"Mode: {assistant.get_mode()}")
+    rag_status = "ON" if assistant.is_rag_enabled() else "OFF"
+    print(f"RAG:  {rag_status}")
     print("\nCommands:")
-    print("  /mode traditional     - Switch to traditional tool calls")
+    print("  /mode traditional    - Switch to traditional tool calls")
     print("  /mode code           - Switch to code execution")
+    print("  /rag                 - Toggle semantic search/RAG")
+    print("  /settings            - Show current settings")
     print("  /reset               - Reset conversation and token counters")
     print("  /tokens              - Show token usage summary")
     print("  /help                - Show this help")
@@ -462,12 +538,37 @@ def run_interactive_cli() -> None:
                     break
 
                 elif cmd == "/help":
+                    rag_status = "ON" if assistant.is_rag_enabled() else "OFF"
                     print("\nAvailable commands:")
                     print("  /mode traditional - Switch to traditional tool calls")
                     print("  /mode code       - Switch to code execution")
+                    print(
+                        f"  /rag             - Toggle semantic search/RAG (currently: {rag_status})"
+                    )
+                    print("  /settings        - Show current settings")
                     print("  /reset           - Reset conversation")
                     print("  /tokens          - Show token usage")
                     print("  /quit            - Exit")
+
+                elif cmd == "/settings":
+                    mode = assistant.get_mode()
+                    mode_display = (
+                        "Traditional (JSON tools)"
+                        if mode == "traditional"
+                        else "Code Execution (Python)"
+                    )
+                    rag_status = "ON" if assistant.is_rag_enabled() else "OFF"
+                    tools_status = "ON" if assistant._show_tool_calls else "OFF"
+                    print()
+                    print("Current Settings:")
+                    print("-" * 40)
+                    print(f"  Mode:          {mode_display}")
+                    print(f"  RAG:           {rag_status}")
+                    print(f"  Tool Display:  {tools_status}")
+                    print(f"  Base URL:      {os.getenv('LLM_BASE_URL', 'not set')}")
+                    print(f"  Model:         {os.getenv('LLM_MODEL', 'not set')}")
+                    print(f"  DB Path:       {assistant._db_path}")
+                    print("-" * 40)
 
                 elif cmd == "/reset":
                     assistant.reset_conversation()
@@ -475,6 +576,19 @@ def run_interactive_cli() -> None:
 
                 elif cmd == "/tokens":
                     assistant.print_token_summary()
+
+                elif cmd == "/rag":
+                    new_rag_status = not assistant.is_rag_enabled()
+                    assistant.set_rag_enabled(new_rag_status)
+                    status = "ON" if new_rag_status else "OFF"
+                    print(f"Semantic search (RAG): {status}")
+                    if new_rag_status:
+                        print(
+                            "  The assistant can now use semantic_search for natural language queries."
+                        )
+                        print(
+                            "  Try: 'Find books about time travel' or 'something like Harry Potter'"
+                        )
 
                 elif cmd.startswith("/mode "):
                     new_mode = cmd.split()[1]

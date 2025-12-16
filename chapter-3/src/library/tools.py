@@ -493,6 +493,118 @@ def get_library_stats() -> dict[str, Any]:
         }
 
 
+# RAG components (lazy initialization)
+_embedding_generator = None
+_vector_store = None
+
+
+def _get_rag_components() -> tuple:
+    """Get or create RAG components (embedding generator and vector store)."""
+    global _embedding_generator, _vector_store
+
+    if _embedding_generator is None:
+        # Try relative import first (works for make assistant/assistant-rag),
+        # then src-prefixed (works for scripts that add chapter-3 to path)
+        try:
+            from rag.embeddings import EmbeddingGenerator
+        except ImportError:
+            from src.rag.embeddings import EmbeddingGenerator
+
+        _embedding_generator = EmbeddingGenerator()
+
+    if _vector_store is None:
+        from pathlib import Path
+
+        try:
+            from rag.vector_store import DuckDBVectorStore
+        except ImportError:
+            from src.rag.vector_store import DuckDBVectorStore
+
+        db_path = Path(__file__).parent.parent.parent / "data" / "duckdb" / "chapter3.db"
+        _vector_store = DuckDBVectorStore(db_path=str(db_path), read_only=True)
+
+    return _embedding_generator, _vector_store
+
+
+def semantic_search(
+    query: str,
+    top_k: int = 5,
+) -> dict[str, Any]:
+    """Search books using natural language semantic similarity.
+
+    Uses RAG (Retrieval-Augmented Generation) with vector embeddings to find
+    books semantically similar to the query. This is useful for queries like
+    "books about time travel" or "something about programming for beginners".
+
+    Args:
+        query: Natural language search query
+        top_k: Maximum number of results (default 5)
+
+    Returns:
+        Dictionary with:
+        - success: bool indicating if search was successful
+        - count: number of results found
+        - books: list of book dictionaries with similarity scores
+        - message: user-friendly message
+
+    Example:
+        >>> result = semantic_search("books about time travel")
+        >>> print(result["message"])
+        Found 5 books semantically similar to 'books about time travel'
+    """
+    try:
+        generator, store = _get_rag_components()
+
+        # Check if embeddings exist
+        if store.get_embedding_count() == 0:
+            return {
+                "success": False,
+                "count": 0,
+                "books": [],
+                "message": "Semantic search not available. Run 'make generate-embeddings' first.",
+            }
+
+        # Generate query embedding
+        query_embedding = generator.embed_text(query)
+
+        # Search for similar books
+        results = store.semantic_search(query_embedding, top_k=top_k)
+
+        if not results:
+            return {
+                "success": True,
+                "count": 0,
+                "books": [],
+                "message": f"No books found semantically similar to '{query}'",
+            }
+
+        # Enrich results with book details
+        repo = _get_repo()
+        enriched_results = []
+        for result in results:
+            book = repo.get_book_by_id(result["book_id"])
+            if book:
+                book_dict = book.to_dict(include_description=True)
+                book_dict["similarity"] = round(result["similarity"], 3)
+                enriched_results.append(book_dict)
+
+        message = f"Found {len(enriched_results)} book(s) semantically similar to '{query}'"
+
+        return {
+            "success": True,
+            "count": len(enriched_results),
+            "books": enriched_results,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "count": 0,
+            "books": [],
+            "message": f"Error in semantic search: {str(e)}",
+        }
+
+
 # Export all tool functions
 __all__ = [
     "search_books",
@@ -504,5 +616,6 @@ __all__ = [
     "find_books_in_cabinet",
     "get_weak_signal_books",
     "get_library_stats",
+    "semantic_search",
     "set_repository",
 ]

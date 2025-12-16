@@ -150,6 +150,7 @@ DB_PATH=data/duckdb/chapter3.db
 | Command | Description |
 |---------|-------------|
 | `/help` | Show help message (with current tool display status) |
+| `/settings` | Show current configuration (mode, RAG status, LLM settings) |
 | `/stats` | Show token usage statistics |
 | `/tools` | Toggle tool call display ON/OFF (for educational visibility) |
 | `/clear` | Clear conversation history |

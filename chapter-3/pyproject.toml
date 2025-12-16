@@ -20,8 +20,9 @@ dependencies = [
     "openai>=1.0.0",  # OpenAI SDK for OpenRouter
     "httpx>=0.27.0",  # HTTP client for Ollama
 
-    # Embeddings (optional - installed on demand for Phase 5)
-    # "sentence-transformers>=2.2.0",
+    # Embeddings (Phase 7 - RAG)
+    "sentence-transformers>=2.2.0",
+    "torch>=2.0.0,<2.3.0",  # Constrain torch version for macOS x86_64 compatibility
 
     # Testing
     "pytest>=8.0.0",

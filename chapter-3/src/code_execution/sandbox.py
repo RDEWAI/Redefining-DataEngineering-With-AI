@@ -42,11 +42,19 @@ class SandboxError(Exception):
 class CodeSandbox:
     """Execute Python code in an isolated subprocess with resource limits.
 
+    Supports stateful execution where variables persist between calls,
+    following Anthropic's code execution pattern.
+
     Example:
         >>> sandbox = CodeSandbox(timeout=30, memory_mb=512)
         >>> result = sandbox.execute("print('Hello, world!')")
         >>> print(result['stdout'])
         Hello, world!
+
+        # Stateful execution (variables persist)
+        >>> sandbox.execute_stateful("x = 10", db_path="data.db", api_code="...")
+        >>> sandbox.execute_stateful("print(x * 2)")  # prints 20
+        >>> sandbox.reset_state()  # clear accumulated state
     """
 
     def __init__(self, timeout: int = DEFAULT_TIMEOUT_SECONDS, memory_mb: int = DEFAULT_MEMORY_MB):
@@ -58,6 +66,8 @@ class CodeSandbox:
         """
         self.timeout = timeout
         self.memory_bytes = memory_mb * 1024 * 1024
+        # Accumulated code for stateful execution (Anthropic pattern)
+        self._accumulated_code: list[str] = []
 
     def _set_limits(self) -> None:
         """Set resource limits for child process (Unix only).
@@ -238,6 +248,89 @@ _conn = None
             code = context_code + "\n" + code
 
         return self.execute(code, db_path)
+
+    def reset_state(self) -> None:
+        """Reset accumulated state for stateful execution.
+
+        Call this when starting a new conversation or query to clear
+        any previously accumulated code.
+        """
+        self._accumulated_code = []
+
+    def execute_stateful(
+        self,
+        code: str,
+        db_path: str | None = None,
+        api_code: str | None = None,
+    ) -> dict[str, Any]:
+        """Execute code with state persistence between calls.
+
+        This implements Anthropic's code execution pattern where variables
+        persist between iterations. Each call accumulates successful code
+        and re-executes the full history, ensuring state consistency.
+
+        Args:
+            code: New Python code to execute
+            db_path: Optional path to DuckDB database
+            api_code: Optional pre-generated API functions
+
+        Returns:
+            Execution result dictionary (same as execute())
+
+        Example:
+            >>> sandbox = CodeSandbox()
+            >>> sandbox.execute_stateful("x = [1, 2, 3]", db_path="lib.db", api_code=api)
+            >>> sandbox.execute_stateful("print(sum(x))")  # prints 6
+            >>> sandbox.reset_state()  # clear for new conversation
+
+        Note:
+            - State is maintained by re-executing all accumulated code
+            - Only successful code blocks are accumulated
+            - Call reset_state() between conversations/queries
+        """
+        # Build full code: accumulated history + new code
+        # We suppress output from accumulated code to only show new output
+        if self._accumulated_code:
+            # Wrap accumulated code to suppress its output
+            accumulated = "\n".join(self._accumulated_code)
+            full_code = f"""
+# === Accumulated state (output suppressed) ===
+import io, sys
+_old_stdout = sys.stdout
+sys.stdout = io.StringIO()
+try:
+{self._indent_code(accumulated, 4)}
+finally:
+    sys.stdout = _old_stdout
+# === End accumulated state ===
+
+# === New code ===
+{code}
+"""
+        else:
+            full_code = code
+
+        # Execute the full code
+        result = self.execute(full_code, db_path, api_code)
+
+        # If successful, add new code to accumulated state
+        if result["success"]:
+            self._accumulated_code.append(code)
+
+        return result
+
+    def _indent_code(self, code: str, spaces: int) -> str:
+        """Indent code by specified number of spaces.
+
+        Args:
+            code: Code to indent
+            spaces: Number of spaces to add
+
+        Returns:
+            Indented code
+        """
+        indent = " " * spaces
+        return "\n".join(indent + line for line in code.split("\n"))
 
 
 def validate_imports(code: str) -> tuple[bool, list[str]]:

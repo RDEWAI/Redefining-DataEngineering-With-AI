@@ -103,8 +103,19 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 Library Assistant with JSON schema tools and token logging.
 
 ```bash
+# Traditional mode (default)
 make assistant
+
+# With RAG enabled
+make assistant-rag
 ```
+
+**Commands:**
+- `/help` - Show available commands
+- `/settings` - Show current configuration
+- `/tools` - Toggle tool call display
+- `/stats` - Show token usage statistics
+- `/quit` - Exit
 
 **Example queries:**
 - "What programming books are available?"
@@ -112,18 +123,30 @@ make assistant
 - "Which books are missing?"
 - "Show me the books on thriller which are available from the author who has most books"
 
-### 003d: Code Execution Benchmark
+### 003d: Code Execution with Token Efficiency
 
-Measure token reduction with sandboxed code execution.
+Enhanced assistant with dual-mode support (Traditional vs Code Execution).
 
 ```bash
+# Start enhanced assistant (defaults to code execution mode)
+make assistant-enhanced
+
+# Compare traditional vs code execution modes
+make compare-modes
+
+# Run benchmark
 make benchmark
 ```
 
-**Expected Results:**
-- Traditional tools: ~1500 tokens
-- Code execution: ~450 tokens
-- Reduction: 70%
+**Key Features:**
+- State persistence between code execution iterations (Anthropic pattern)
+- Progressive tool loading for token efficiency
+- 40%+ token reduction vs traditional tool calling
+
+**Expected Results from compare-modes:**
+- Traditional tools: ~4,000 tokens
+- Code execution: ~2,100 tokens
+- Reduction: ~48%
 
 ### 003e: Semantic Search (RAG)
 
@@ -165,10 +188,15 @@ make multi-agent
 | `make verify-data` | Verify data loaded correctly |
 | `make mcp-server` | Start MCP server |
 | `make mcp-dev` | Start MCP Inspector |
-| `make assistant` | Start Library Assistant CLI |
+| `make assistant` | Start Library Assistant (Traditional Mode) |
+| `make assistant-rag` | Start Library Assistant (RAG Mode - semantic search enabled) |
+| `make assistant-enhanced` | Start Enhanced Assistant (Code Execution Mode, switchable) |
+| `make compare-modes` | Compare token usage: Traditional vs Code Execution |
+| `make test-code-execution` | Test code execution sandbox |
 | `make benchmark` | Run token comparison benchmark |
-| `make generate-embeddings` | Generate book embeddings |
+| `make generate-embeddings` | Generate book embeddings for RAG |
 | `make semantic-search` | Test semantic search |
+| `make data-analysis` | Start data analysis agent |
 | `make multi-agent` | Start multi-agent system |
 | `make test` | Run all tests |
 | `make test-unit` | Run unit tests only |

@@ -205,6 +205,27 @@ TOOL_DEFINITIONS: list[ToolDefinition] = [
     ),
 ]
 
+# RAG tool definition (added separately so it can be toggled)
+SEMANTIC_SEARCH_TOOL = ToolDefinition(
+    name="semantic_search",
+    description="Search books using natural language semantic similarity. Use this when the user asks about books 'about' a topic, 'like' something, or uses vague/conceptual descriptions. Examples: 'books about time travel', 'something like Harry Potter', 'programming tutorials for beginners'.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Natural language search query describing what the user is looking for",
+            },
+            "top_k": {
+                "type": "integer",
+                "default": 5,
+                "description": "Maximum number of results (default 5)",
+            },
+        },
+        "required": ["query"],
+    },
+)
+
 # Mapping from tool names to implementation functions
 TOOL_FUNCTION_MAP: dict[str, Callable[..., dict[str, Any]]] = {
     "search_books": library_tools.search_books,
@@ -216,16 +237,23 @@ TOOL_FUNCTION_MAP: dict[str, Callable[..., dict[str, Any]]] = {
     "find_books_in_cabinet": library_tools.find_books_in_cabinet,
     "get_weak_signal_books": library_tools.get_weak_signal_books,
     "get_library_stats": library_tools.get_library_stats,
+    "semantic_search": library_tools.semantic_search,
 }
 
 
-def get_tools_for_llm() -> list[dict[str, Any]]:
+def get_tools_for_llm(include_rag: bool = False) -> list[dict[str, Any]]:
     """Get tool definitions in OpenAI/LLM format.
+
+    Args:
+        include_rag: If True, include the semantic_search RAG tool.
 
     Returns:
         List of tool definitions in the format expected by OpenAI-compatible APIs.
     """
-    return [tool.to_openai_format() for tool in TOOL_DEFINITIONS]
+    tools = [tool.to_openai_format() for tool in TOOL_DEFINITIONS]
+    if include_rag:
+        tools.append(SEMANTIC_SEARCH_TOOL.to_openai_format())
+    return tools
 
 
 def get_tool_function(name: str) -> Callable[..., dict[str, Any]]:
@@ -315,6 +343,7 @@ class LibraryAssistant:
         max_tool_iterations: int = 10,
         verbose: bool = False,
         show_tool_calls: bool = True,
+        enable_rag: bool = False,
     ) -> None:
         """Initialize the Library Assistant."""
         self._provider = llm_provider
@@ -322,12 +351,40 @@ class LibraryAssistant:
         self._max_tool_iterations = max_tool_iterations
         self._verbose = verbose
         self._show_tool_calls = show_tool_calls
+        self._enable_rag = enable_rag
         self._token_usage = TokenUsage()
+
+        # Get tools based on RAG setting
+        self._tools = self._get_tool_definitions()
 
         # Initialize conversation with system message
         self._conversation_history: list[Message] = [
             Message(role="system", content=self._system_prompt)
         ]
+
+    def _get_tool_definitions(self) -> list[ToolDefinition]:
+        """Get the list of tool definitions based on RAG setting."""
+        tools = list(TOOL_DEFINITIONS)
+        if self._enable_rag:
+            tools.append(SEMANTIC_SEARCH_TOOL)
+        return tools
+
+    def set_rag_enabled(self, enabled: bool) -> None:
+        """Enable or disable RAG (semantic search) tool.
+
+        Args:
+            enabled: Whether to enable RAG
+        """
+        self._enable_rag = enabled
+        self._tools = self._get_tool_definitions()
+
+    def is_rag_enabled(self) -> bool:
+        """Check if RAG is enabled.
+
+        Returns:
+            True if RAG is enabled
+        """
+        return self._enable_rag
 
     def query(self, user_input: str) -> str:
         """Process a user query and return a response.
@@ -375,7 +432,7 @@ class LibraryAssistant:
             # Call the LLM
             response = self._provider.generate(
                 messages=self._conversation_history,
-                tools=TOOL_DEFINITIONS,
+                tools=self._tools,
                 tool_choice="auto",
             )
 
@@ -575,13 +632,17 @@ def create_assistant(
     return LibraryAssistant(llm_provider=llm_provider, verbose=verbose)
 
 
-def interactive_repl() -> None:
+def interactive_repl(enable_rag: bool = False) -> None:
     """Run an interactive REPL for the Library Assistant.
 
     This function starts an interactive session where users can
     query the Library Assistant and see responses in real-time.
+
+    Args:
+        enable_rag: If True, enable RAG/semantic search by default
     """
-    print("Library Assistant - Interactive Mode")
+    mode_str = "RAG Mode" if enable_rag else "Traditional Mode"
+    print(f"Library Assistant - {mode_str}")
     print("=" * 50)
     print()
 
@@ -591,10 +652,14 @@ def interactive_repl() -> None:
 
     print(f"Base URL: {base_url}")
     print(f"Model: {model}")
+    if enable_rag:
+        print("RAG: ENABLED (semantic_search tool available)")
     print()
 
     try:
         assistant = create_assistant(verbose=False)
+        if enable_rag:
+            assistant.set_rag_enabled(True)
     except Exception as e:
         print(f"Error: {e}")
         print()
@@ -604,10 +669,13 @@ def interactive_repl() -> None:
         print("  LLM_MODEL=your-model-name")
         sys.exit(1)
 
+    rag_status = "ON" if enable_rag else "OFF"
     print("Commands:")
     print("  /help     - Show this help message")
+    print("  /settings - Show current settings")
     print("  /stats    - Show token usage statistics")
     print("  /tools    - Toggle tool call display (currently: ON)")
+    print(f"  /rag      - Toggle semantic search/RAG (currently: {rag_status})")
     print("  /clear    - Clear conversation history")
     print("  /reset    - Reset token usage counters")
     print("  /quit     - Exit the assistant")
@@ -632,14 +700,32 @@ def interactive_repl() -> None:
 
             if command == "/help":
                 tools_status = "ON" if assistant._show_tool_calls else "OFF"
+                rag_status = "ON" if assistant.is_rag_enabled() else "OFF"
                 print()
                 print("Commands:")
                 print("  /help     - Show this help message")
+                print("  /settings - Show current settings")
                 print("  /stats    - Show token usage statistics")
                 print(f"  /tools    - Toggle tool call display (currently: {tools_status})")
+                print(f"  /rag      - Toggle semantic search/RAG (currently: {rag_status})")
                 print("  /clear    - Clear conversation history")
                 print("  /reset    - Reset token usage counters")
                 print("  /quit     - Exit the assistant")
+                print()
+                continue
+
+            if command == "/settings":
+                tools_status = "ON" if assistant._show_tool_calls else "OFF"
+                rag_status = "ON" if assistant.is_rag_enabled() else "OFF"
+                print()
+                print("Current Settings:")
+                print("-" * 40)
+                print("  Mode:          Traditional (JSON tools)")
+                print(f"  RAG:           {rag_status}")
+                print(f"  Tool Display:  {tools_status}")
+                print(f"  Base URL:      {os.getenv('LLM_BASE_URL', 'not set')}")
+                print(f"  Model:         {os.getenv('LLM_MODEL', 'not set')}")
+                print("-" * 40)
                 print()
                 continue
 
@@ -647,6 +733,19 @@ def interactive_repl() -> None:
                 assistant._show_tool_calls = not assistant._show_tool_calls
                 status = "ON" if assistant._show_tool_calls else "OFF"
                 print(f"Tool call display: {status}")
+                print()
+                continue
+
+            if command == "/rag":
+                new_rag_status = not assistant.is_rag_enabled()
+                assistant.set_rag_enabled(new_rag_status)
+                status = "ON" if new_rag_status else "OFF"
+                print(f"Semantic search (RAG): {status}")
+                if new_rag_status:
+                    print(
+                        "  The assistant can now use semantic_search for natural language queries."
+                    )
+                    print("  Try: 'Find books about time travel' or 'something like Harry Potter'")
                 print()
                 continue
 
@@ -695,4 +794,14 @@ def interactive_repl() -> None:
 
 
 if __name__ == "__main__":
-    interactive_repl()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Library Assistant")
+    parser.add_argument(
+        "--rag",
+        action="store_true",
+        help="Enable RAG/semantic search by default",
+    )
+    args = parser.parse_args()
+
+    interactive_repl(enable_rag=args.rag)

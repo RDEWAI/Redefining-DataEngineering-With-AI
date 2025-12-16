@@ -2,7 +2,7 @@
 
 **Feature**: Sub-feature 003d - Code Execution Pattern
 **Goal**: Demonstrate 30%+ token reduction using code execution vs traditional tool calls
-**Status**: ✅ COMPLETE - Achieved **41.3% average reduction** (exceeds 30% target)
+**Status**: COMPLETE - Achieved **47.9% average reduction** (exceeds 30% target) with state persistence
 
 ---
 
@@ -376,32 +376,25 @@ cd chapter-3
 make assistant-enhanced
 ```
 
-Start in traditional mode, then switch:
+The enhanced assistant defaults to code execution mode. Switch modes with `/mode`:
 ```
-You: What programming books are available?
-Assistant: [responds using traditional tools]
-
-📊 Tokens: 850
-   - Tool calls: 2
-
-You: /mode code
-Mode changed to: code_execution
-Conversation reset.
-
 You: What programming books are available?
 Assistant: [responds using code execution]
 
-📊 Tokens: 320
-   - Saved: 530 tokens (62% reduction)
+Tokens: 320
+
+You: /mode traditional
+Mode changed to: traditional
+Conversation reset.
+
+You: What programming books are available?
+Assistant: [responds using traditional tools]
+
+Tokens: 850
+   - Tool calls: 2
 ```
 
-#### Option 2: Start Directly in Code Execution Mode
-
-```bash
-make assistant-code
-```
-
-#### Option 3: Side-by-Side Comparison
+#### Option 2: Side-by-Side Comparison
 
 ```bash
 make compare-modes
@@ -414,18 +407,18 @@ This runs the SAME query in BOTH modes:
 QUERY: What programming books are available?
 ============================================================
 
-🔧 MODE 1: TRADITIONAL TOOL CALLS
+[MODE 1] TRADITIONAL TOOL CALLS
 ------------------------------------------------------------
 Tool Call 1: list_by_category(category="Programming")
 Tool Call 2: get_book_details(book_id="B001")
 
 Response: Found 25 programming books...
-📊 Tokens: 850
+Tokens: 850
    - Prompt: 650
    - Completion: 200
    - Tool calls: 2
 
-💻 MODE 2: CODE EXECUTION
+[MODE 2] CODE EXECUTION
 ------------------------------------------------------------
 Generated Code:
 ```python
@@ -436,18 +429,18 @@ for book in books[:5]:
 ```
 
 Response: Found 25 programming books...
-📊 Tokens: 320
+Tokens: 320
    - Prompt: 250
    - Completion: 70
 
 ============================================================
-📈 COMPARISON
+COMPARISON
 ============================================================
 Traditional tokens:     850
 Code execution tokens:  320
 Difference:             530 tokens (62.4% reduction)
 
-✅ Code execution SAVED 530 tokens (62.4% reduction)
+>>> Code execution SAVED 530 tokens (62.4% reduction)
 ============================================================
 ```
 
@@ -457,6 +450,8 @@ Difference:             530 tokens (62.4% reduction)
 |---------|-------------|
 | `/mode traditional` | Switch to traditional tool calling |
 | `/mode code` | Switch to code execution |
+| `/rag on` or `/rag off` | Enable/disable RAG (semantic search) |
+| `/settings` | Show current configuration |
 | `/reset` | Reset conversation and token counters |
 | `/tokens` | Show token usage summary |
 | `/help` | Show available commands |
@@ -477,6 +472,36 @@ Executes Python code in an isolated subprocess with security constraints.
 - **Timeout enforcement**: Kills execution after 30 seconds (configurable)
 - **Memory limits**: Restricts address space to 512MB (Unix only)
 - **Import whitelist**: Only allows pandas, duckdb, numpy, matplotlib, seaborn
+
+**State Persistence (Anthropic Pattern)**:
+
+Following [Anthropic's code execution best practices](https://www.anthropic.com/engineering/code-execution-with-mcp), the sandbox supports **stateful execution** where variables persist between iterations within a single query:
+
+```python
+# Stateful execution - variables persist between iterations
+sandbox = CodeSandbox()
+
+# First iteration: LLM generates this code
+result1 = sandbox.execute_stateful(
+    "books = search_books('Python')",
+    db_path="data.db",
+    api_code=api_code
+)
+
+# Second iteration: LLM can reference 'books' variable
+result2 = sandbox.execute_stateful(
+    "print(f'Found {len(books)} books')"
+)  # Works! 'books' is still available
+
+# New query: reset state
+sandbox.reset_state()
+```
+
+**Key points**:
+- State persists between code execution iterations within a query
+- State is reset at the start of each new user query
+- Accumulated code is re-executed to restore state (output suppressed)
+- Only successful code blocks are accumulated
 
 **Progressive Loading Integration**:
 ```python
@@ -1084,16 +1109,16 @@ Our implementation follows [Anthropic's best practices](https://www.anthropic.co
 ## Makefile Reference
 
 ```bash
-# Library Assistant (original - traditional only)
+# Library Assistant (traditional only)
 make assistant
 
-# Enhanced Assistant (dual mode - start traditional)
+# Library Assistant with RAG enabled
+make assistant-rag
+
+# Enhanced Assistant (dual mode - defaults to code execution)
 make assistant-enhanced
 
-# Enhanced Assistant (dual mode - start code execution)
-make assistant-code
-
-# Side-by-side comparison
+# Side-by-side comparison (with RAG options)
 make compare-modes
 
 # Test code execution functionality

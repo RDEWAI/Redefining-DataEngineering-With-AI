@@ -33,15 +33,30 @@ class ToolAPIGenerator:
         >>> # api_code contains functions like search_books(), get_book_details(), etc.
     """
 
-    def __init__(self, repository: BookRepository, db_path: str | None = None):
+    def __init__(
+        self,
+        repository: BookRepository,
+        db_path: str | None = None,
+        include_rag: bool = False,
+    ):
         """Initialize the API generator.
 
         Args:
             repository: BookRepository instance for database access
             db_path: Path to database (required for generating API code)
+            include_rag: Whether to include semantic_search (RAG) function
         """
         self.repository = repository
         self.db_path = db_path or "data/duckdb/chapter3.db"
+        self.include_rag = include_rag
+
+    def set_include_rag(self, include_rag: bool) -> None:
+        """Set whether to include RAG (semantic_search) function.
+
+        Args:
+            include_rag: Whether to include semantic_search
+        """
+        self.include_rag = include_rag
 
     def generate_discovery_functions(self) -> str:
         """Generate tool discovery functions for progressive loading.
@@ -129,6 +144,28 @@ class ToolAPIGenerator:
         List of books with signal below threshold""",
         }
 
+        # Conditionally add semantic_search if RAG is enabled
+        if self.include_rag:
+            tool_help_map[
+                "semantic_search"
+            ] = """semantic_search(query: str, top_k: int = 5) -> List[Dict[str, Any]]
+    Search books using natural language semantic similarity (RAG).
+
+    Use this when the user asks about books "about" a topic, "like" something,
+    or uses vague/conceptual descriptions.
+
+    Args:
+        query: Natural language search query (e.g., "books about time travel")
+        top_k: Number of results to return (default: 5)
+
+    Returns:
+        List of books with similarity scores
+
+    Example:
+        results = semantic_search("books about time travel")
+        for book in results:
+            print(f"{book['title']} - similarity: {book['similarity']}")"""
+
         # Generate the discovery functions
         code = f'''
 # Tool Discovery Functions (Progressive Loading Pattern)
@@ -183,7 +220,8 @@ def get_tool_help(tool_name: str) -> str:
         The generated code includes:
         - Import statements (if include_setup=True)
         - Database connection setup (if include_setup=True)
-        - All 8 library tool functions with docstrings
+        - All library tool functions with docstrings
+        - semantic_search only if include_rag=True
         """
         code_parts = []
 
@@ -203,6 +241,10 @@ def get_tool_help(tool_name: str) -> str:
                 self._generate_get_weak_signal_books(),
             ]
         )
+
+        # Conditionally add semantic_search if RAG is enabled
+        if self.include_rag:
+            code_parts.append(self._generate_semantic_search())
 
         return "\n\n".join(code_parts)
 
@@ -597,6 +639,62 @@ def get_weak_signal_books(threshold: float = -55.0) -> List[Dict[str, Any]]:
     return books
 '''
 
+    def _generate_semantic_search(self) -> str:
+        """Generate semantic_search function for RAG."""
+        return '''
+def semantic_search(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    """Search books using natural language semantic similarity (RAG).
+
+    Use this when the user asks about books "about" a topic, "like" something,
+    or uses vague/conceptual descriptions like "time travel" or "adventure stories".
+
+    Args:
+        query: Natural language search query
+        top_k: Number of results to return (default: 5)
+
+    Returns:
+        List of books with similarity scores, sorted by relevance
+
+    Example:
+        >>> results = semantic_search("books about time travel")
+        >>> for book in results:
+        ...     print(f"{book['title']} - similarity: {book['similarity']}")
+    """
+    from sentence_transformers import SentenceTransformer
+    import numpy as np
+
+    # Load embedding model (cached after first load)
+    model = SentenceTransformer("all-MiniLM-L6-v2")
+
+    # Generate query embedding
+    query_embedding = model.encode(query, convert_to_numpy=True, normalize_embeddings=True)
+
+    # Search using cosine similarity in DuckDB
+    query_list = query_embedding.tolist()
+
+    results = _conn.execute(f"""
+        SELECT
+            be.book_id,
+            array_cosine_similarity(be.embedding, ?::FLOAT[384]) as similarity
+        FROM library.book_embeddings be
+        ORDER BY similarity DESC
+        LIMIT ?
+    """, [query_list, top_k]).fetchall()
+
+    if not results:
+        return []
+
+    # Get book details for each result
+    books = []
+    for book_id, similarity in results:
+        book = get_book_details(book_id)
+        if book:
+            book["similarity"] = round(similarity, 3)
+            books.append(book)
+
+    return books
+'''
+
     def get_tool_descriptions(self) -> dict[str, str]:
         """Get descriptions of all available tool functions.
 
@@ -608,7 +706,7 @@ def get_weak_signal_books(threshold: float = -55.0) -> List[Dict[str, Any]]:
         - Documentation generation
         - API discovery
         """
-        return {
+        descriptions = {
             "search_books": "Search books by title, author, or category",
             "get_book_details": "Get detailed information for a specific book",
             "check_availability": "Check if a book is available for checkout",
@@ -618,6 +716,14 @@ def get_weak_signal_books(threshold: float = -55.0) -> List[Dict[str, Any]]:
             "find_books_in_cabinet": "Find all books in a specific cabinet or rack",
             "get_weak_signal_books": "Find books with weak RFID signal strength",
         }
+
+        # Conditionally add semantic_search if RAG is enabled
+        if self.include_rag:
+            descriptions["semantic_search"] = (
+                "Search books using natural language semantic similarity (RAG)"
+            )
+
+        return descriptions
 
     def generate_usage_examples(self) -> str:
         """Generate code examples for using the API.

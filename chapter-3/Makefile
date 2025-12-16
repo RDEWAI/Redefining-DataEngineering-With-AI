@@ -1,4 +1,4 @@
-.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant assistant-enhanced assistant-code compare-modes test-code-execution benchmark generate-embeddings semantic-search multi-agent test test-unit test-integration lint format clean
+.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant assistant-rag assistant-enhanced assistant-code compare-modes test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration lint format clean
 
 help:
 	@echo "Chapter 3: AI Engineering with Library Management Data"
@@ -10,13 +10,14 @@ help:
 	@echo "  mcp-server          - Start MCP server"
 	@echo "  mcp-dev             - Start MCP Inspector for debugging"
 	@echo "  assistant           - Start Library Assistant (Traditional Mode)"
-	@echo "  assistant-enhanced  - Start Enhanced Assistant (switch modes interactively)"
-	@echo "  assistant-code      - Start Enhanced Assistant (Code Execution Mode)"
+	@echo "  assistant-rag       - Start Library Assistant (RAG Mode - semantic search enabled)"
+	@echo "  assistant-enhanced  - Start Enhanced Assistant (Code Execution Mode, switchable)"
 	@echo "  compare-modes       - Compare token usage: Traditional vs Code Execution"
 	@echo "  test-code-execution - Test Phase 6 code execution sandbox"
 	@echo "  benchmark           - Run token comparison benchmark"
 	@echo "  generate-embeddings - Generate book embeddings for RAG"
 	@echo "  semantic-search     - Test semantic search"
+	@echo "  data-analysis       - Start data analysis agent"
 	@echo "  multi-agent         - Start multi-agent system"
 	@echo "  test                - Run all tests"
 	@echo "  test-unit           - Run unit tests only"
@@ -54,13 +55,13 @@ assistant:
 	@echo "Starting Library Assistant (Traditional Mode)..."
 	uv run python src/agents/library_assistant.py
 
-assistant-enhanced:
-	@echo "Starting Enhanced Library Assistant (choose mode interactively)..."
-	uv run python src/agents/library_assistant_enhanced.py
+assistant-rag:
+	@echo "Starting Library Assistant (RAG Mode)..."
+	uv run python src/agents/library_assistant.py --rag
 
-assistant-code:
+assistant-enhanced:
 	@echo "Starting Enhanced Library Assistant (Code Execution Mode)..."
-	uv run python src/agents/library_assistant_enhanced.py --mode code_execution
+	uv run python src/agents/library_assistant_enhanced.py
 
 compare-modes:
 	@echo "Comparing Traditional vs Code Execution modes..."
@@ -81,6 +82,10 @@ generate-embeddings:
 semantic-search:
 	@echo "Starting semantic search CLI..."
 	uv run python -c "from src.rag.vector_store import semantic_search_cli; semantic_search_cli()"
+
+data-analysis:
+	@echo "Starting data analysis agent..."
+	uv run python -m src.agents.data_analysis_agent
 
 multi-agent:
 	@echo "Starting multi-agent system..."

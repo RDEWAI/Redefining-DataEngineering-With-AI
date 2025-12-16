@@ -486,52 +486,52 @@ Task: T121 [P] Update docs
 
 ### Unit Tests for User Story 5
 
-- [ ] T128 [P] [US5] Create `chapter-3/tests/unit/test_embeddings.py` with embedding generation tests
-- [ ] T129 [P] [US5] Create `chapter-3/tests/unit/test_tool_registry.py` with tool registry tests
+- [X] T128 [P] [US5] Create `chapter-3/tests/unit/test_embeddings.py` with embedding generation tests
+- [X] T129 [P] [US5] Create `chapter-3/tests/unit/test_tool_registry.py` with tool registry tests
 
 ### Integration Tests for User Story 5
 
-- [ ] T130 [P] [US5] Create `chapter-3/tests/integration/test_semantic_search.py` with retrieval accuracy tests
+- [X] T130 [P] [US5] Create `chapter-3/tests/integration/test_semantic_search.py` with retrieval accuracy tests
 
 ### RAG Implementation
 
-- [ ] T131 [US5] Create `chapter-3/src/rag/__init__.py`
-- [ ] T132 [US5] Create `chapter-3/src/rag/embeddings.py` with EmbeddingGenerator class using sentence-transformers
-- [ ] T133 [US5] Implement embed_text(text) and embed_books(books) methods
-- [ ] T134 [US5] Create `chapter-3/src/rag/vector_store.py` with DuckDBVectorStore class
-- [ ] T178 [US5] Implement VSS extension setup and book_embeddings table creation
-- [ ] T179 [US5] Implement semantic_search(query, top_k) using array_cosine_distance
-- [ ] T180 [US5] Add HNSW index creation after data population
-- [ ] T181 [US5] Add user-friendly error messages for empty search results
+- [X] T131 [US5] Create `chapter-3/src/rag/__init__.py`
+- [X] T132 [US5] Create `chapter-3/src/rag/embeddings.py` with EmbeddingGenerator class using sentence-transformers
+- [X] T133 [US5] Implement embed_text(text) and embed_books(books) methods
+- [X] T134 [US5] Create `chapter-3/src/rag/vector_store.py` with DuckDBVectorStore class
+- [X] T178 [US5] Implement VSS extension setup and book_embeddings table creation
+- [X] T179 [US5] Implement semantic_search(query, top_k) using array_cosine_distance
+- [X] T180 [US5] Add HNSW index creation after data population
+- [X] T181 [US5] Add user-friendly error messages for empty search results
 
 ### Tool Registry Implementation
 
-- [ ] T182 [US5] Create `chapter-3/src/tools/__init__.py`
-- [ ] T183 [US5] Create `chapter-3/src/tools/tool_registry.py` with ToolRegistry class
-- [ ] T141 [US5] Implement register_tool(tool) with metadata (name, description, schema, capabilities)
-- [ ] T142 [US5] Implement get_tool(name) for direct lookup
-- [ ] T143 [US5] Implement list_tools(capability) for capability-based filtering
+- [X] T182 [US5] Create `chapter-3/src/tools/__init__.py`
+- [X] T183 [US5] Create `chapter-3/src/tools/tool_registry.py` with ToolRegistry class
+- [X] T141 [US5] Implement register_tool(tool) with metadata (name, description, schema, capabilities)
+- [X] T142 [US5] Implement get_tool(name) for direct lookup
+- [X] T143 [US5] Implement list_tools(capability) for capability-based filtering
 
 ### Tool Search Implementation
 
-- [ ] T144 [US5] Create `chapter-3/src/tools/tool_search.py` with ToolSearch class
-- [ ] T145 [US5] Implement search_by_name(query) for name-based lookup
-- [ ] T146 [US5] Implement search_by_description(query) using embedding similarity
+- [X] T144 [US5] Create `chapter-3/src/tools/tool_search.py` with ToolSearch class
+- [X] T145 [US5] Implement search_by_name(query) for name-based lookup
+- [X] T146 [US5] Implement search_by_description(query) using embedding similarity
 
 ### Data Analysis Agent
 
-- [ ] T147 [US5] Create `chapter-3/src/agents/data_analysis_agent.py` with DataAnalysisAgent class
-- [ ] T148 [US5] Integrate code execution for complex analytics
-- [ ] T149 [US5] Integrate semantic search for book discovery
+- [X] T147 [US5] Create `chapter-3/src/agents/data_analysis_agent.py` with DataAnalysisAgent class
+- [X] T148 [US5] Integrate code execution for complex analytics
+- [X] T149 [US5] Integrate semantic search for book discovery
 
 ### CLI and Makefile for US5
 
-- [ ] T150 [US5] Add `make generate-embeddings` target to generate book embeddings
-- [ ] T151 [US5] Add `make semantic-search` target for interactive semantic search
+- [X] T150 [US5] Add `make generate-embeddings` target to generate book embeddings
+- [X] T151 [US5] Add `make semantic-search` target for interactive semantic search
 
 ### Documentation for US5
 
-- [ ] T152 [P] [US5] Create `chapter-3/docs/06-advanced-tools-rag.md` explaining RAG scope decisions
+- [X] T152 [P] [US5] Create `chapter-3/docs/06-advanced-tools-rag.md` explaining RAG scope decisions
 
 **Checkpoint**: User Story 5 complete - semantic search works with 70%+ top-3 precision
 
