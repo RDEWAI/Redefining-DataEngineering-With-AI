@@ -5,6 +5,11 @@ This script demonstrates the code execution sandbox and tool API generator.
 """
 
 import os
+import sys
+from pathlib import Path
+
+# Add chapter-3 to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.code_execution.sandbox import CodeSandbox
 from src.code_execution.tool_api import ToolAPIGenerator

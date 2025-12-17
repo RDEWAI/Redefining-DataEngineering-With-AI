@@ -50,14 +50,14 @@ make load-data
 # Verify data is loaded
 make verify-data
 
-# Run tests
-make test-data
+# Run data tests
+make test-unit
 ```
 
 **Quick Test:**
 ```python
 import duckdb
-conn = duckdb.connect('data/duckdb/library.db')
+conn = duckdb.connect('data/duckdb/chapter3.db')
 print(conn.execute("SELECT COUNT(*) FROM library.books").fetchone())
 # Expected: (200,)
 ```
@@ -174,7 +174,7 @@ make multi-agent
 | `LLM_PROVIDER` | LLM provider (`openrouter` or `ollama`) | `openrouter` |
 | `LLM_MODEL` | Model identifier | `anthropic/claude-3.5-sonnet` |
 | `OLLAMA_HOST` | Ollama server URL | `http://localhost:11434` |
-| `DB_PATH` | DuckDB database path | `data/duckdb/library.db` |
+| `DB_PATH` | DuckDB database path | `data/duckdb/chapter3.db` |
 | `LOG_LEVEL` | Logging level | `INFO` |
 
 ## Troubleshooting

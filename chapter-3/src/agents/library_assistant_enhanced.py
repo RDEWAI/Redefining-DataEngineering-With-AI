@@ -41,7 +41,11 @@ from code_execution.tool_api import ToolAPIGenerator  # noqa: E402
 from library.repository import BookRepository  # noqa: E402
 from library.tools import close_repository, reopen_repository  # noqa: E402
 from llm.base import LLMProvider, Message  # noqa: E402
+from logging_config import get_logger  # noqa: E402
 from tools.dummy_tools import get_total_tool_count  # noqa: E402
+
+# Initialize logger
+logger = get_logger("chapter3.agents.library_assistant_enhanced")
 
 
 class AssistantMode(Enum):
@@ -325,6 +329,20 @@ class EnhancedLibraryAssistant:
         Returns:
             The assistant's response text
         """
+        # Only log here for code execution mode
+        # Traditional mode delegates to LibraryAssistant which has its own logging
+        if self._mode == AssistantMode.CODE_EXECUTION:
+            logger.info(
+                "Processing query",
+                extra={
+                    "query_length": len(user_input),
+                    "mode": self._mode.value,
+                    "tool_count": self.get_tool_count(),
+                    "rag_enabled": self._enable_rag,
+                    "dummy_tools_enabled": self._enable_dummy_tools,
+                },
+            )
+
         self._token_usage.increment_query()
 
         if self._mode == AssistantMode.TRADITIONAL:

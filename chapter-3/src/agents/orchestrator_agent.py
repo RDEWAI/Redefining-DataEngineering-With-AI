@@ -14,6 +14,7 @@ Example:
 """
 
 import json
+import logging
 import os
 import re
 import sys
@@ -37,6 +38,9 @@ from src.tools.tool_registry import format_agent_tools_display, get_agent_tools
 # Load .env from chapter-3 directory
 env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(env_path, override=True)
+
+# Use standard logging with optional JSON formatting via logging_config
+logger = logging.getLogger("chapter3.agents.orchestrator")
 
 
 PLANNER_SYSTEM_PROMPT = """You are an intelligent query planner for a library management system.
@@ -65,13 +69,15 @@ Your job is to analyze user queries and create an execution plan using the avail
 
 1. Analyze the query to understand what information is needed
 2. Decide which agent(s) to call and in what ORDER
-3. If one agent's output is needed for another agent, chain them
-4. Return a JSON plan with the execution steps
+3. Use `depends_on` to specify which previous steps a step needs data from
+4. Steps with no dependencies can run in parallel (fan-out)
+5. Steps can depend on multiple previous steps (fan-in)
+6. Return a JSON plan with the execution steps
 
-**IMPORTANT**: Some queries need MULTIPLE agents in sequence. Examples:
-- "Recommend books by the author who has most books" → analytics_agent FIRST (find author), THEN recommendation_agent
+**IMPORTANT**: Some queries need MULTIPLE agents. Examples:
+- "Recommend books by the author who has most books" → analytics_agent FIRST, THEN recommendation_agent
 - "Find fiction books and count them" → search_agent FIRST, THEN analytics_agent
-- "Show statistics and recommend top category" → analytics_agent FIRST, THEN recommendation_agent
+- "Compare fiction and programming books" → search both in parallel, THEN analytics
 
 **Response Format (JSON only, no markdown):**
 {
@@ -81,47 +87,62 @@ Your job is to analyze user queries and create an execution plan using the avail
       "step": 1,
       "agent": "agent_name",
       "task": "What this agent should do",
-      "needs_previous": false
+      "depends_on": []
     },
     {
       "step": 2,
       "agent": "agent_name",
       "task": "What this agent should do, using result from step 1",
-      "needs_previous": true
+      "depends_on": [1]
     }
   ]
 }
+
+**Dependency Patterns:**
+- `"depends_on": []` - No dependencies, can start immediately
+- `"depends_on": [1]` - Needs result from step 1
+- `"depends_on": [1, 2]` - Needs results from both step 1 AND step 2 (fan-in)
 
 **Examples:**
 
 Query: "Find Python programming books"
 {
   "analysis": "Simple search query for books by keyword",
-  "plan": [{"step": 1, "agent": "search_agent", "task": "Search for Python programming books", "needs_previous": false}]
+  "plan": [{"step": 1, "agent": "search_agent", "task": "Search for Python programming books", "depends_on": []}]
 }
 
 Query: "How many books are missing?"
 {
   "analysis": "Analytics query to count books by status",
-  "plan": [{"step": 1, "agent": "analytics_agent", "task": "Count books with status Missing", "needs_previous": false}]
+  "plan": [{"step": 1, "agent": "analytics_agent", "task": "Count books with status Missing", "depends_on": []}]
 }
 
 Query: "Recommend fiction books by the author who has the most books"
 {
   "analysis": "Need to first find the author with most books, then recommend their fiction books",
   "plan": [
-    {"step": 1, "agent": "analytics_agent", "task": "Find which author has the most books in the library", "needs_previous": false},
-    {"step": 2, "agent": "recommendation_agent", "task": "Recommend fiction books by the author identified in step 1", "needs_previous": true}
+    {"step": 1, "agent": "analytics_agent", "task": "Find which author has the most books in the library", "depends_on": []},
+    {"step": 2, "agent": "recommendation_agent", "task": "Recommend fiction books by the author identified in step 1", "depends_on": [1]}
   ]
 }
 
 Query: "Find science books, count how many are available, and recommend the best ones"
 {
-  "analysis": "Multi-step: search, then analytics, then recommendations",
+  "analysis": "Multi-step: search, then analytics, then recommendations based on both",
   "plan": [
-    {"step": 1, "agent": "search_agent", "task": "Find science books", "needs_previous": false},
-    {"step": 2, "agent": "analytics_agent", "task": "Count how many science books are available", "needs_previous": true},
-    {"step": 3, "agent": "recommendation_agent", "task": "Recommend the best available science books", "needs_previous": true}
+    {"step": 1, "agent": "search_agent", "task": "Find science books", "depends_on": []},
+    {"step": 2, "agent": "analytics_agent", "task": "Count how many science books are available from step 1", "depends_on": [1]},
+    {"step": 3, "agent": "recommendation_agent", "task": "Recommend the best available science books using search results from step 1 and counts from step 2", "depends_on": [1, 2]}
+  ]
+}
+
+Query: "Compare fiction and programming books - find both and analyze which category has more available"
+{
+  "analysis": "Parallel search for two categories, then combined analytics",
+  "plan": [
+    {"step": 1, "agent": "search_agent", "task": "Find all fiction books", "depends_on": []},
+    {"step": 2, "agent": "search_agent", "task": "Find all programming books", "depends_on": []},
+    {"step": 3, "agent": "analytics_agent", "task": "Compare availability between fiction (step 1) and programming (step 2) books", "depends_on": [1, 2]}
   ]
 }
 
@@ -337,7 +358,7 @@ class OrchestratorAgent:
             }
 
     def _execute_plan(self, plan: dict[str, Any], original_query: str) -> dict[str, Any]:
-        """Execute the planned steps.
+        """Execute the planned steps with flexible dependency support.
 
         Args:
             plan: The execution plan from _create_plan
@@ -345,16 +366,30 @@ class OrchestratorAgent:
 
         Returns:
             Aggregated results from all steps
+
+        Supports:
+            - depends_on: [] - No dependencies
+            - depends_on: [1] - Needs result from step 1
+            - depends_on: [1, 2] - Needs results from steps 1 AND 2 (fan-in)
+            - Backward compatible with needs_previous: true/false
         """
         steps = plan.get("plan", [])
         results: list[dict[str, Any]] = []
-        previous_result: str | None = None
+        # Store all step outputs keyed by step number for flexible dependencies
+        step_outputs: dict[int, str] = {}
 
         for step in steps:
             step_num = step.get("step", 1)
             agent_name = step.get("agent", "search_agent")
             task = step.get("task", original_query)
+
+            # Support both new depends_on and legacy needs_previous
+            depends_on: list[int] = step.get("depends_on", [])
             needs_previous = step.get("needs_previous", False)
+
+            # Backward compatibility: convert needs_previous to depends_on
+            if not depends_on and needs_previous and step_num > 1:
+                depends_on = [step_num - 1]
 
             # Agent emoji mapping
             agent_emoji = {
@@ -368,16 +403,25 @@ class OrchestratorAgent:
                 print(f"   ┌─ Step {step_num}: {agent_emoji} {agent_name}")
                 print(f"   │  Task: {task}")
 
-            # Build the query for this step
-            if needs_previous and previous_result:
-                # Include context from previous step
-                step_query = f"{task}\n\nContext from previous step:\n{previous_result}"
-                if self.show_routing:
-                    print(
-                        f"   │  📎 Context: Using output from previous step ({len(previous_result)} chars)"
-                    )
-            else:
-                step_query = task
+            # Build the query for this step with context from dependencies
+            step_query = task
+            if depends_on:
+                # Collect context from all dependent steps
+                context_parts: list[str] = []
+                for dep_step in depends_on:
+                    if dep_step in step_outputs:
+                        context_parts.append(f"[Step {dep_step} output]:\n{step_outputs[dep_step]}")
+
+                if context_parts:
+                    context_str = "\n\n".join(context_parts)
+                    step_query = f"{task}\n\nContext from previous steps:\n{context_str}"
+
+                    if self.show_routing:
+                        dep_str = ", ".join(str(d) for d in depends_on)
+                        total_chars = sum(len(step_outputs.get(d, "")) for d in depends_on)
+                        print(
+                            f"   │  📎 Context: Using output from step(s) {dep_str} ({total_chars} chars)"
+                        )
 
             if self.show_routing:
                 print("   │")
@@ -394,6 +438,18 @@ class OrchestratorAgent:
                     }
                 )
                 continue
+
+            # Log routing decision with dependency info
+            if depends_on:
+                dep_str = ", ".join(str(d) for d in depends_on)
+                routing_details = f"Step {step_num} → {agent_name} (depends_on: [{dep_str}])"
+            else:
+                routing_details = f"Step {step_num} → {agent_name} (no dependencies)"
+            self._logger.log(
+                agent_name=self.name,
+                event="ROUTING",
+                details=routing_details,
+            )
 
             # Determine query type for the message
             query_type_map = {
@@ -417,20 +473,28 @@ class OrchestratorAgent:
                 "step": step_num,
                 "agent": agent_name,
                 "task": task,
+                "depends_on": depends_on,
                 "status": response.status.value,
                 "output": response.content if response.status == AgentStatus.COMPLETED else None,
                 "error": response.error if response.status == AgentStatus.FAILED else None,
             }
             results.append(step_result)
 
-            # Store for next step
+            # Store output for dependent steps
             if response.status == AgentStatus.COMPLETED:
-                previous_result = response.content
+                step_outputs[step_num] = response.content
+
+        # Final output is from the last successful step
+        final_output = None
+        for step_result in reversed(results):
+            if step_result.get("output"):
+                final_output = step_result["output"]
+                break
 
         return {
             "analysis": plan.get("analysis", ""),
             "steps": results,
-            "final_output": previous_result,
+            "final_output": final_output,
         }
 
     def query(self, user_query: str) -> dict[str, Any]:
@@ -606,6 +670,7 @@ class OrchestratorAgent:
 
                 # Event-specific formatting with emojis
                 event_emoji = {
+                    "ROUTING": "🔀",
                     "INVOKED": "🚀",
                     "CODE_GENERATED": "💻",
                     "CODE_EXECUTED": "✅",
@@ -671,13 +736,13 @@ def run_interactive_cli() -> None:
     print("This system uses LLM-powered planning to dynamically decide")
     print("which agents to call for your queries.")
     print()
-    print("Available Agents:")
+    print("Worker Agents:")
     print("  • SearchAgent: Book discovery and search")
     print("  • AnalyticsAgent: Statistics and reporting")
     print("  • RecommendationAgent: Book suggestions with quality filters")
     print()
-    print("The Orchestrator analyzes your query and creates an execution plan,")
-    print("chaining agents together when needed.")
+    print("Coordinator:")
+    print("  • OrchestratorAgent: Analyzes queries, plans execution, chains agents")
     print()
     print("Commands:")
     print("  /tools     - Show available tools/API functions")
@@ -743,11 +808,17 @@ def run_interactive_cli() -> None:
                     continue
 
                 elif cmd == "/agents":
-                    print("\nRegistered Agents:")
+                    print("\nWorker Agents:")
                     for agent in orchestrator.get_agents():
                         print(f"  • {agent['name']}")
                         print(f"    Capabilities: {', '.join(agent['capabilities'])}")
                         print(f"    Description: {agent['description']}")
+                    print("\nCoordinator:")
+                    print("  • orchestrator_agent")
+                    print("    Capabilities: planning, delegation, chaining")
+                    print(
+                        "    Description: LLM-powered coordinator that analyzes queries and delegates to worker agents"
+                    )
                     continue
 
                 elif cmd == "/stats":

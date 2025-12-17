@@ -4,12 +4,16 @@ This module provides the BookRepository class for all database operations
 related to books. It implements search, filtering, and statistics queries.
 """
 
+import logging
 from pathlib import Path
 from typing import Any
 
 import duckdb
 
 from .domain import Book, BookStatus, Category
+
+# Use standard logging with optional JSON formatting via logging_config
+logger = logging.getLogger("chapter3.library.repository")
 
 
 class BookRepository:

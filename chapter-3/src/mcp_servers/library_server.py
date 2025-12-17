@@ -455,7 +455,7 @@ async def search_books_with_logging(
         if category:
             await ctx.info(f"Filtering by category: {category}")
 
-    result: list[dict[str, Any]] | dict[str, str] = search_books(query, category, limit)
+    result: list[dict[str, Any]] | dict[str, str] = search_books(query, category, limit)  # type: ignore[operator]  # FastMCP decorated function
 
     if ctx:
         if isinstance(result, list):

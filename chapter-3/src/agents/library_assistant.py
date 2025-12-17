@@ -36,10 +36,14 @@ from llm.base import (  # noqa: E402
     ToolCall,
     ToolDefinition,
 )
+from logging_config import get_logger  # noqa: E402
 from tools.dummy_tools import (  # noqa: E402
     generate_dummy_tool_definitions,
     get_dummy_tool_functions,
 )
+
+# Initialize logger
+logger = get_logger("chapter3.agents.library_assistant")
 
 # System prompt for the Library Assistant
 SYSTEM_PROMPT = """You are a helpful Library Assistant with access to a library management system.
@@ -460,6 +464,17 @@ class LibraryAssistant:
             >>> response = assistant.query("Find Python programming books")
             >>> print(response)
         """
+        logger.info(
+            "Processing query",
+            extra={
+                "query_length": len(user_input),
+                "mode": "traditional",
+                "tool_count": len(self._tools),
+                "rag_enabled": self._enable_rag,
+                "dummy_tools_enabled": self._enable_dummy_tools,
+            },
+        )
+
         # Add user message to history
         self._conversation_history.append(Message(role="user", content=user_input))
         self._token_usage.increment_query()

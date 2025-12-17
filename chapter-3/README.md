@@ -67,7 +67,7 @@ make test-unit
 **Test Query:**
 ```python
 import duckdb
-conn = duckdb.connect('data/duckdb/library.db')
+conn = duckdb.connect('data/duckdb/chapter3.db')
 books = conn.execute("SELECT * FROM library.books WHERE category = 'Programming'").fetchall()
 print(f"Found {len(books)} programming books")
 ```
@@ -148,6 +148,22 @@ make benchmark
 - Code execution: ~2,100 tokens
 - Reduction: ~48%
 
+**Enterprise Scale Demo (100 dummy tools):**
+```bash
+# Demonstrate token efficiency at enterprise scale
+make compare-modes-enterprise
+
+# Run with all query types
+make compare-modes-enterprise-all
+```
+
+This demonstrates the core insight from Anthropic's "Advanced Tool Use" paper:
+code execution dramatically reduces token overhead when dealing with many tools.
+With 100 enterprise dummy tools:
+- Traditional mode: ~131,000 tokens (6 queries)
+- Code execution: ~25,000 tokens (6 queries)
+- **Reduction: 80%+**
+
 ### 003e: Semantic Search (RAG)
 
 Semantic book search using DuckDB VSS.
@@ -189,15 +205,20 @@ make multi-agent
 | `make mcp-server` | Start MCP server |
 | `make mcp-dev` | Start MCP Inspector |
 | `make assistant` | Start Library Assistant (Traditional Mode) |
-| `make assistant-rag` | Start Library Assistant (RAG Mode - semantic search enabled) |
-| `make assistant-enhanced` | Start Enhanced Assistant (Code Execution Mode, switchable) |
-| `make compare-modes` | Compare token usage: Traditional vs Code Execution |
+| `make assistant-rag` | Start Library Assistant (RAG Mode) |
+| `make assistant-enhanced` | Start Enhanced Assistant (Code Execution Mode) |
+| `make assistant-dummy-tools` | Traditional Mode + 100 enterprise dummy tools |
+| `make assistant-code-dummy-tools` | Code Execution Mode + 100 enterprise dummy tools |
+| `make compare-modes` | Compare Traditional vs Code Execution |
+| `make compare-modes-enterprise` | Enterprise scale demo with 100 dummy tools |
+| `make compare-modes-enterprise-all` | Run ALL queries with 100 dummy tools |
 | `make test-code-execution` | Test code execution sandbox |
 | `make benchmark` | Run token comparison benchmark |
 | `make generate-embeddings` | Generate book embeddings for RAG |
 | `make semantic-search` | Test semantic search |
 | `make data-analysis` | Start data analysis agent |
 | `make multi-agent` | Start multi-agent system |
+| `make test-multi-agent` | Run multi-agent system tests |
 | `make test` | Run all tests |
 | `make test-unit` | Run unit tests only |
 | `make test-integration` | Run integration tests only |
@@ -213,7 +234,7 @@ make multi-agent
 | `LLM_PROVIDER` | LLM provider (`openrouter` or `ollama`) | `openrouter` |
 | `LLM_MODEL` | Model identifier | `anthropic/claude-3.5-sonnet` |
 | `OLLAMA_HOST` | Ollama server URL | `http://localhost:11434` |
-| `DB_PATH` | DuckDB database path | `data/duckdb/library.db` |
+| `DB_PATH` | DuckDB database path | `data/duckdb/chapter3.db` |
 | `LOG_LEVEL` | Logging level | `INFO` |
 
 ## Project Structure

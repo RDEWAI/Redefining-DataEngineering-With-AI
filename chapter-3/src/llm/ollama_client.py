@@ -71,7 +71,9 @@ class OllamaProvider(LLMProvider):
             base_url: Ollama server URL (defaults to OLLAMA_HOST or localhost:11434)
             default_model: Default model (defaults to llama3.2)
         """
-        self._base_url = base_url or os.getenv("OLLAMA_HOST", self.DEFAULT_BASE_URL)
+        # Get base URL from parameter, env var, or default
+        env_url = os.getenv("OLLAMA_HOST")
+        self._base_url: str = base_url or env_url or self.DEFAULT_BASE_URL
         self._default_model = default_model or self.DEFAULT_MODEL
 
         self._client = httpx.Client(

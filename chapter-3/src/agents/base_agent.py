@@ -267,11 +267,11 @@ class BaseCodeExecutionAgent:
             else:
                 query = str(message.content)
 
-            # Log agent invocation
+            # Log agent invocation (truncate at 150 chars to preserve step references)
             self._logger.log(
                 agent_name=self.name,
                 event="INVOKED",
-                details=f"Query: {query[:100]}{'...' if len(query) > 100 else ''}",
+                details=f"Query: {query[:150]}{'...' if len(query) > 150 else ''}",
             )
 
             # Add user query to conversation
