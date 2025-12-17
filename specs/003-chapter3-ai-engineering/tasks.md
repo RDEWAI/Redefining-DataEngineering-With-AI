@@ -706,46 +706,46 @@ Task: T7.5-041 [P] Documentation
 
 ### Unit Tests for User Story 6
 
-- [ ] T153 [P] [US6] Create `chapter-3/tests/unit/test_agents.py` with tests for each agent type
-- [ ] T154 [P] [US6] Create `chapter-3/tests/unit/test_protocol.py` with A2A message protocol tests
+- [X] T153 [P] [US6] Create `chapter-3/tests/unit/test_agents.py` with tests for each agent type
+- [X] T154 [P] [US6] Create `chapter-3/tests/unit/test_protocol.py` with A2A message protocol tests
 
 ### Integration Tests for User Story 6
 
-- [ ] T155 [P] [US6] Create `chapter-3/tests/integration/test_multi_agent.py` with end-to-end multi-step query tests
+- [X] T155 [P] [US6] Create `chapter-3/tests/integration/test_multi_agent.py` with end-to-end multi-step query tests
 
 ### A2A Protocol Implementation
 
-- [ ] T156 [US6] Create `chapter-3/src/a2a/__init__.py`
-- [ ] T157 [US6] Create `chapter-3/src/a2a/protocol.py` with QueryType enum and AgentMessage dataclass
-- [ ] T158 [US6] Create `chapter-3/src/a2a/server.py` with in-process message routing
+- [X] T156 [US6] Create `chapter-3/src/a2a/__init__.py`
+- [X] T157 [US6] Create `chapter-3/src/a2a/protocol.py` with QueryType enum and AgentMessage dataclass
+- [X] T158 [US6] Create `chapter-3/src/a2a/server.py` with in-process message routing
 
 ### Specialized Agents Implementation
 
-- [ ] T159 [US6] Create `chapter-3/src/agents/search_agent.py` with SearchAgent class
-- [ ] T160 [US6] Implement search_agent with tools: search_books, get_book_details, locate_book, semantic_search
-- [ ] T161 [US6] Create `chapter-3/src/agents/analytics_agent.py` with AnalyticsAgent class
-- [ ] T162 [US6] Implement analytics_agent with tools: get_library_stats, list_by_category, list_by_status, execute_analytics
-- [ ] T163 [US6] Create `chapter-3/src/agents/recommendation_agent.py` with RecommendationAgent class
-- [ ] T164 [US6] Implement recommendation_agent with signal strength consideration ("avoid weak signal books")
+- [X] T159 [US6] Create `chapter-3/src/agents/search_agent.py` with SearchAgent class
+- [X] T160 [US6] Implement search_agent with tools: search_books, get_book_details, locate_book, semantic_search
+- [X] T161 [US6] Create `chapter-3/src/agents/analytics_agent.py` with AnalyticsAgent class
+- [X] T162 [US6] Implement analytics_agent with tools: get_library_stats, list_by_category, list_by_status, execute_analytics
+- [X] T163 [US6] Create `chapter-3/src/agents/recommendation_agent.py` with RecommendationAgent class
+- [X] T164 [US6] Implement recommendation_agent with signal strength consideration ("avoid weak signal books")
 
 ### Orchestrator Implementation
 
-- [ ] T165 [US6] Create `chapter-3/src/agents/orchestrator_agent.py` with OrchestratorAgent class
-- [ ] T166 [US6] Implement query classification (search / analytics / multi-step)
-- [ ] T167 [US6] Implement agent discovery and routing
-- [ ] T168 [US6] Implement result aggregation from multiple agents
-- [ ] T169 [US6] Add routing decision display for transparency
-- [ ] T170 [US6] Add user-friendly error messages for agent failures
+- [X] T165 [US6] Create `chapter-3/src/agents/orchestrator_agent.py` with OrchestratorAgent class
+- [X] T166 [US6] Implement query classification (search / analytics / multi-step)
+- [X] T167 [US6] Implement agent discovery and routing
+- [X] T168 [US6] Implement result aggregation from multiple agents
+- [X] T169 [US6] Add routing decision display for transparency
+- [X] T170 [US6] Add user-friendly error messages for agent failures
 
 ### CLI and Makefile for US6
 
-- [ ] T171 [US6] Add unified multi-agent CLI to orchestrator_agent.py
-- [ ] T172 [US6] Add `make multi-agent` target to start multi-agent system
-- [ ] T173 [US6] Add routing visualization in CLI output
+- [X] T171 [US6] Add unified multi-agent CLI to orchestrator_agent.py
+- [X] T172 [US6] Add `make multi-agent` target to start multi-agent system
+- [X] T173 [US6] Add routing visualization in CLI output
 
 ### Documentation for US6
 
-- [ ] T174 [P] [US6] Create `chapter-3/docs/07-a2a-multi-agent.md` tying to Google A2A concepts
+- [X] T174 [P] [US6] Create `chapter-3/docs/08-multi-agent-system.md` explaining multi-agent architecture
 
 **Checkpoint**: User Story 6 complete - multi-agent system routes queries at 85%+ accuracy
 

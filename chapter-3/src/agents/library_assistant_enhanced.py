@@ -26,7 +26,9 @@ env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(env_path, override=True)
 
 # Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add both src/ and chapter-3/ to support both import styles
+sys.path.insert(0, str(Path(__file__).parent.parent))  # src/
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))  # chapter-3/
 
 
 # Import traditional assistant for delegation

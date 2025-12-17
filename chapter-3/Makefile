@@ -1,4 +1,4 @@
-.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration lint format clean
+.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean
 
 help:
 	@echo "Chapter 3: AI Engineering with Library Management Data"
@@ -29,8 +29,9 @@ help:
 	@echo "  semantic-search            - Test semantic search"
 	@echo "  data-analysis              - Start data analysis agent"
 	@echo ""
-	@echo "Multi-Agent:"
-	@echo "  multi-agent                - Start multi-agent system"
+	@echo "Multi-Agent System:"
+	@echo "  multi-agent                - Start multi-agent system with orchestrator"
+	@echo "  test-multi-agent           - Run multi-agent system tests"
 	@echo ""
 	@echo "Testing & Quality:"
 	@echo "  test                       - Run all tests"
@@ -123,8 +124,18 @@ data-analysis:
 	uv run python -m src.agents.data_analysis_agent
 
 multi-agent:
-	@echo "Starting multi-agent system..."
-	uv run python src/agents/orchestrator_agent.py
+	@echo "Starting Multi-Agent Library System..."
+	@echo ""
+	@echo "This system uses specialized agents coordinated by an orchestrator:"
+	@echo "  - SearchAgent: Book discovery and semantic search"
+	@echo "  - AnalyticsAgent: Statistics and reporting"
+	@echo "  - RecommendationAgent: Suggestions with quality filters"
+	@echo ""
+	uv run python -m src.agents.orchestrator_agent
+
+test-multi-agent:
+	@echo "Running multi-agent system tests..."
+	uv run pytest tests/unit/test_protocol.py tests/unit/test_agents.py tests/integration/test_multi_agent.py -v
 
 test:
 	@echo "Running all tests..."

@@ -27,11 +27,19 @@ class ToolAPIGenerator:
     - Error handling
     - Database connection setup
 
+    Supports agent-specific tool filtering for specialization while
+    maintaining backward compatibility (no tools specified = all tools).
+
     Example:
         >>> repo = BookRepository("library.db")
         >>> generator = ToolAPIGenerator(repo, db_path="library.db")
         >>> api_code = generator.generate_api_code()
         >>> # api_code contains functions like search_books(), get_book_details(), etc.
+
+        # Agent-specific tools:
+        >>> generator = ToolAPIGenerator(repo, db_path="library.db",
+        ...                              tools=["search_books", "locate_book"])
+        >>> api_code = generator.generate_api_code()  # Only search_books and locate_book
     """
 
     def __init__(
@@ -40,6 +48,7 @@ class ToolAPIGenerator:
         db_path: str | None = None,
         include_rag: bool = False,
         include_dummy_tools: bool = False,
+        tools: list[str] | None = None,
     ):
         """Initialize the API generator.
 
@@ -48,11 +57,14 @@ class ToolAPIGenerator:
             db_path: Path to database (required for generating API code)
             include_rag: Whether to include semantic_search (RAG) function
             include_dummy_tools: Whether to include enterprise dummy tools
+            tools: Optional list of specific tools to include. If None, all tools
+                   are included (backward compatible behavior).
         """
         self.repository = repository
         self.db_path = db_path or "data/duckdb/chapter3.db"
         self.include_rag = include_rag
         self.include_dummy_tools = include_dummy_tools
+        self.tools = tools  # None = all tools (backward compatible)
 
     def set_include_rag(self, include_rag: bool) -> None:
         """Set whether to include RAG (semantic_search) function.
@@ -69,6 +81,20 @@ class ToolAPIGenerator:
             include_dummy_tools: Whether to include 100 dummy tools
         """
         self.include_dummy_tools = include_dummy_tools
+
+    def _should_include_tool(self, tool_name: str) -> bool:
+        """Check if a tool should be included based on filtering.
+
+        Args:
+            tool_name: Name of the tool to check
+
+        Returns:
+            True if tool should be included, False otherwise
+        """
+        # If no tools filter specified, include all (backward compatible)
+        if self.tools is None:
+            return True
+        return tool_name in self.tools
 
     def generate_discovery_functions(self) -> str:
         """Generate tool discovery functions for progressive loading.
@@ -242,21 +268,25 @@ def get_tool_help(tool_name: str) -> str:
             code_parts.append(self._generate_imports())
             code_parts.append(self._generate_db_setup())
 
-        code_parts.extend(
-            [
-                self._generate_search_books(),
-                self._generate_get_book_details(),
-                self._generate_check_availability(),
-                self._generate_list_by_category(),
-                self._generate_list_by_status(),
-                self._generate_locate_book(),
-                self._generate_find_books_in_cabinet(),
-                self._generate_get_weak_signal_books(),
-            ]
-        )
+        # Tool generators mapping - allows filtering by tool name
+        tool_generators = {
+            "search_books": self._generate_search_books,
+            "get_book_details": self._generate_get_book_details,
+            "check_availability": self._generate_check_availability,
+            "list_by_category": self._generate_list_by_category,
+            "list_by_status": self._generate_list_by_status,
+            "locate_book": self._generate_locate_book,
+            "find_books_in_cabinet": self._generate_find_books_in_cabinet,
+            "get_weak_signal_books": self._generate_get_weak_signal_books,
+        }
 
-        # Conditionally add semantic_search if RAG is enabled
-        if self.include_rag:
+        # Add tools based on filtering
+        for tool_name, generator in tool_generators.items():
+            if self._should_include_tool(tool_name):
+                code_parts.append(generator())
+
+        # Conditionally add semantic_search if RAG is enabled AND tool is allowed
+        if self.include_rag and self._should_include_tool("semantic_search"):
             code_parts.append(self._generate_semantic_search())
 
         # Conditionally add dummy tool stubs if enabled
@@ -791,8 +821,10 @@ def semantic_search(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
         - Generating LLM prompts
         - Documentation generation
         - API discovery
+
+        Note: Respects tool filtering if tools parameter was set.
         """
-        descriptions = {
+        all_descriptions = {
             "search_books": "Search books by title, author, or category",
             "get_book_details": "Get detailed information for a specific book",
             "check_availability": "Check if a book is available for checkout",
@@ -803,8 +835,13 @@ def semantic_search(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
             "get_weak_signal_books": "Find books with weak RFID signal strength",
         }
 
-        # Conditionally add semantic_search if RAG is enabled
-        if self.include_rag:
+        # Filter descriptions based on tools parameter
+        descriptions = {
+            name: desc for name, desc in all_descriptions.items() if self._should_include_tool(name)
+        }
+
+        # Conditionally add semantic_search if RAG is enabled AND tool is allowed
+        if self.include_rag and self._should_include_tool("semantic_search"):
             descriptions["semantic_search"] = (
                 "Search books using natural language semantic similarity (RAG)"
             )

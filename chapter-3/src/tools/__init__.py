@@ -24,7 +24,7 @@ Example:
     100
 """
 
-from src.tools.dummy_tools import (
+from .dummy_tools import (
     DummyTool,
     EnterpriseDomain,
     generate_dummy_tool_definitions,
@@ -33,13 +33,13 @@ from src.tools.dummy_tools import (
     get_dummy_tool_functions,
     get_total_tool_count,
 )
-from src.tools.tool_registry import (
+from .tool_registry import (
     Capability,
     ToolMetadata,
     ToolRegistry,
     create_library_tool_registry,
 )
-from src.tools.tool_search import ToolSearch, create_tool_search
+from .tool_search import ToolSearch, create_tool_search
 
 __all__ = [
     # Tool Registry

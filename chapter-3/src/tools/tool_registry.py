@@ -442,3 +442,145 @@ def create_library_tool_registry() -> ToolRegistry:
     )
 
     return registry
+
+
+# =============================================================================
+# AGENT-SPECIFIC TOOL ASSIGNMENTS
+# =============================================================================
+# Each agent gets only the tools relevant to its role.
+# This follows the "least privilege" principle and improves token efficiency.
+
+AGENT_TOOL_ASSIGNMENTS: dict[str, list[str]] = {
+    "search_agent": [
+        "search_books",
+        "get_book_details",
+        "locate_book",
+        "find_books_in_cabinet",
+        "check_availability",
+        "semantic_search",  # For natural language search (if RAG enabled)
+    ],
+    "analytics_agent": [
+        "list_by_category",
+        "list_by_status",
+        "get_weak_signal_books",
+        "get_library_stats",
+        # Analytics agent also gets direct SQL via _conn (not a tool, always available)
+    ],
+    "recommendation_agent": [
+        "search_books",  # To find books matching criteria
+        "check_availability",
+        "list_by_category",
+        "get_weak_signal_books",  # For quality filtering
+        "semantic_search",  # For finding similar books (if RAG enabled)
+    ],
+}
+
+# All library tools (for backward compatibility)
+ALL_LIBRARY_TOOLS: list[str] = [
+    "search_books",
+    "get_book_details",
+    "check_availability",
+    "list_by_category",
+    "list_by_status",
+    "locate_book",
+    "find_books_in_cabinet",
+    "get_weak_signal_books",
+    "get_library_stats",
+    "semantic_search",
+]
+
+
+def get_agent_tools(
+    agent_name: str,
+    include_rag: bool = True,
+    use_specialization: bool = True,
+) -> list[str]:
+    """Get the list of tools for a specific agent.
+
+    Args:
+        agent_name: Name of the agent (e.g., "search_agent")
+        include_rag: Whether to include RAG tools (semantic_search)
+        use_specialization: If False, return ALL tools (backward compatibility)
+
+    Returns:
+        List of tool names for this agent
+
+    Example:
+        >>> tools = get_agent_tools("search_agent")
+        >>> print(tools)
+        ['search_books', 'get_book_details', 'locate_book', ...]
+    """
+    if not use_specialization:
+        # Backward compatibility: return all tools
+        tools = ALL_LIBRARY_TOOLS.copy()
+    else:
+        # Get agent-specific tools
+        tools = AGENT_TOOL_ASSIGNMENTS.get(agent_name, ALL_LIBRARY_TOOLS).copy()
+
+    # Filter out RAG tools if not enabled
+    if not include_rag and "semantic_search" in tools:
+        tools.remove("semantic_search")
+
+    return tools
+
+
+def format_agent_tools_display(include_rag: bool = True) -> str:
+    """Generate a formatted display of tools per agent.
+
+    Args:
+        include_rag: Whether to include RAG tools
+
+    Returns:
+        Formatted string showing agent tool assignments
+    """
+    lines = []
+    lines.append("")
+    lines.append("=" * 70)
+    lines.append("🔧 AGENT TOOL SPECIALIZATION")
+    lines.append("=" * 70)
+    lines.append("")
+    lines.append("Each agent has access to tools specific to its role:")
+    lines.append("")
+
+    emoji_map = {
+        "search_agent": "🔍",
+        "analytics_agent": "📊",
+        "recommendation_agent": "⭐",
+    }
+
+    tool_descriptions = {
+        "search_books": "Search books by title/author/keyword",
+        "get_book_details": "Get detailed book information",
+        "locate_book": "Get physical location of a book",
+        "find_books_in_cabinet": "Find books in specific cabinet/rack",
+        "check_availability": "Check if book is available",
+        "list_by_category": "List books by category",
+        "list_by_status": "List books by status",
+        "get_weak_signal_books": "Find books with weak RFID signal",
+        "get_library_stats": "Get library statistics",
+        "semantic_search": "Natural language semantic search (RAG)",
+    }
+
+    for agent_name, tools in AGENT_TOOL_ASSIGNMENTS.items():
+        emoji = emoji_map.get(agent_name, "🔹")
+        lines.append(f"  {emoji} {agent_name}:")
+        lines.append("  " + "─" * 50)
+
+        agent_tools = get_agent_tools(agent_name, include_rag=include_rag)
+        for tool_name in agent_tools:
+            desc = tool_descriptions.get(tool_name, "")
+            rag_marker = " 🧠" if tool_name == "semantic_search" else ""
+            lines.append(f"    • {tool_name}{rag_marker}")
+            if desc:
+                lines.append(f"      {desc}")
+        lines.append("")
+
+    # Show shared resources
+    lines.append("  🗄️ SHARED (all agents):")
+    lines.append("  " + "─" * 50)
+    lines.append("    • _conn - DuckDB connection for direct SQL queries")
+    lines.append("      Table: library.books")
+    lines.append("")
+    lines.append("=" * 70)
+
+    return "\n".join(lines)

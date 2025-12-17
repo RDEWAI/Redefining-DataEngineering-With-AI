@@ -24,7 +24,9 @@ env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(env_path, override=True)
 
 # Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add both src/ and chapter-3/ to support both import styles
+sys.path.insert(0, str(Path(__file__).parent.parent))  # src/
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))  # chapter-3/
 
 from library import tools as library_tools  # noqa: E402
 from llm.base import (  # noqa: E402
@@ -212,7 +214,7 @@ TOOL_DEFINITIONS: list[ToolDefinition] = [
 # RAG tool definition (added separately so it can be toggled)
 SEMANTIC_SEARCH_TOOL = ToolDefinition(
     name="semantic_search",
-    description="Search books using natural language semantic similarity. Use this when the user asks about books 'about' a topic, 'like' something, or uses vague/conceptual descriptions. Examples: 'books about time travel', 'something like Harry Potter', 'programming tutorials for beginners'.",
+    description="Search books using natural language semantic similarity. Use this when the user asks about books 'about' a topic, 'like' something, or uses vague/conceptual descriptions. Examples: 'books about time travel', 'something like Harry Potter', 'programming tutorials for beginners'. NOT for structured queries that need counting or aggregation.",
     parameters={
         "type": "object",
         "properties": {
