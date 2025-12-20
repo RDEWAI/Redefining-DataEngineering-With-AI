@@ -315,8 +315,23 @@ make load-data
 2. Verify config path in Claude Desktop settings
 3. Restart Claude Desktop completely
 
-### "Embeddings table empty"
+### "Embeddings table empty" or "Table book_embeddings does not exist"
 ```bash
+make generate-embeddings
+```
+
+### "Could not set lock on file" (DuckDB IO Error)
+This happens when another process is holding the database open.
+```bash
+# 1. Close any other terminal windows running chapter-3 commands
+#    (make assistant, make mcp-server, etc.)
+
+# 2. Check for processes holding the database:
+lsof data/duckdb/chapter3.db
+
+# 3. Kill any orphaned Python processes if needed
+
+# 4. Retry the command
 make generate-embeddings
 ```
 
