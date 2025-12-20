@@ -1,4 +1,18 @@
-.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean
+# Detect operating system and architecture for default Homebrew paths
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
+# Default Homebrew paths: /opt/homebrew (Apple Silicon), /usr/local (Intel/older macOS)
+ifeq ($(UNAME_S),Darwin)
+    ifeq ($(UNAME_M),arm64)
+        BREW_PREFIX := /opt/homebrew
+    else
+        BREW_PREFIX := /usr/local
+    endif
+endif
+
+.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew
+
 
 help:
 	@echo "Chapter 3: AI Engineering with Library Management Data"
@@ -41,7 +55,27 @@ help:
 	@echo "  format                     - Auto-format code"
 	@echo "  clean                      - Clean generated files"
 
-dev-setup:
+
+
+install-brew:
+	if ! command -v brew >/dev/null 2>&1; then \
+		echo "Homebrew not found. Installing..."; \
+		/bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; \
+		echo >> $(HOME)/.bash_profile; \
+		echo 'eval "$$($(BREW_PREFIX)/bin/brew shellenv)"' >> $(HOME)/.bash_profile; \
+		eval "$$($(BREW_PREFIX)/bin/brew shellenv)"; \
+		source $(HOME)/.bash_profile; \
+	fi; \
+
+install-uv:
+	if ! command -v uv >/dev/null 2>&1; then \
+		echo "uv not found. Installing via Homebrew..."; \
+		$(BREW_PREFIX)/bin/brew install uv; \
+		echo 'eval "$$(uv generate-shell-completion bash)"' >> $(HOME)/.bash_profile ;\
+		source $(HOME)/.bash_profile; \
+	fi; \
+
+dev-setup: install-brew install-uv
 	@echo "Setting up development environment..."
 	uv sync
 	@echo "✓ Dependencies installed"

@@ -18,7 +18,6 @@ This project implements a complete AI Engineering stack:
 ### Prerequisites
 
 - Python 3.10-3.12
-- UV package manager (`brew install uv` or `pip install uv`)
 - OpenRouter API key (or local Ollama installation)
 
 ### Setup
