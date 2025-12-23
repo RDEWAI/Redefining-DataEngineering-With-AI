@@ -90,7 +90,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "library": {
       "command": "uv",
-      "args": ["run", "fastmcp", "run", "src/mcp_servers/library_server.py"],
+      "args": ["run", "fastmcp", "run", "src/agentic/mcp_servers/library_server.py"],
       "cwd": "/path/to/chapter-3"
     }
   }
@@ -247,14 +247,15 @@ chapter-3/
 │   ├── raw/library/             # Source CSV files
 │   └── duckdb/                  # DuckDB database files
 ├── src/
-│   ├── library/                 # 003a: Data layer
-│   ├── llm/                     # 003a: LLM abstraction
-│   ├── mcp_servers/             # 003b: MCP server
-│   ├── agents/                  # 003c, 003e, 003f: Agents
-│   ├── code_execution/          # 003d: Sandbox
-│   ├── tools/                   # 003e: Tool registry
-│   ├── rag/                     # 003e: RAG components
-│   └── a2a/                     # 003f: A2A protocol
+│   └── agentic/                 # Main package
+│       ├── library/             # 003a: Data layer
+│       ├── llm/                 # 003a: LLM abstraction
+│       ├── mcp_servers/         # 003b: MCP server
+│       ├── agents/              # 003c, 003e, 003f: Agents
+│       ├── code_execution/      # 003d: Sandbox
+│       ├── tools/               # 003e: Tool registry
+│       ├── rag/                 # 003e: RAG components
+│       └── a2a/                 # 003f: A2A protocol
 ├── scripts/                     # Data loading scripts
 ├── benchmarks/                  # Performance benchmarks
 ├── docs/                        # Detailed documentation

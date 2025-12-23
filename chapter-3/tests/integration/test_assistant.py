@@ -9,8 +9,8 @@ These tests verify the complete flow of the Library Assistant:
 
 import json
 
-from src.agents.library_assistant import LibraryAssistant
-from src.llm.base import LLMResponse, Message, ToolCall, ToolDefinition
+from src.agentic.agents.library_assistant import LibraryAssistant
+from src.agentic.llm.base import LLMResponse, Message, ToolCall, ToolDefinition
 
 
 class MockLLMProvider:

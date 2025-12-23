@@ -9,12 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from src.a2a.protocol import AgentMessage, AgentStatus, QueryType
-from src.a2a.server import MessageRouter
-from src.agents.analytics_agent import AnalyticsAgent
-from src.agents.orchestrator_agent import OrchestratorAgent
-from src.agents.recommendation_agent import RecommendationAgent
-from src.agents.search_agent import SearchAgent
+from src.agentic.a2a.protocol import AgentMessage, AgentStatus, QueryType
+from src.agentic.a2a.server import MessageRouter
+from src.agentic.agents.analytics_agent import AnalyticsAgent
+from src.agentic.agents.orchestrator_agent import OrchestratorAgent
+from src.agentic.agents.recommendation_agent import RecommendationAgent
+from src.agentic.agents.search_agent import SearchAgent
 
 # Get test database path
 TEST_DB_PATH = os.getenv(

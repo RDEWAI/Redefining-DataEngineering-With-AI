@@ -14,7 +14,7 @@ from pathlib import Path
 # Add src directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from tools.dummy_tools import (  # noqa: E402
+from src.agentic.tools.dummy_tools import (  # noqa: E402
     DOMAIN_TOOLS,
     DummyTool,
     EnterpriseDomain,
@@ -94,9 +94,9 @@ class TestDummyToolFunctions:
         tools = generate_dummy_tools()
         functions = get_dummy_tool_functions()
 
-        assert len(functions) == len(
-            tools
-        ), f"Function count ({len(functions)}) doesn't match tool count ({len(tools)})"
+        assert len(functions) == len(tools), (
+            f"Function count ({len(functions)}) doesn't match tool count ({len(tools)})"
+        )
         assert len(functions) == 100, f"Expected 100 functions, got {len(functions)}"
 
     def test_function_names_match_tool_names(self):
@@ -194,9 +194,9 @@ class TestDummyToolDefinitions:
 
         for defn in definitions:
             assert defn.description, f"Tool {defn.name} has empty description"
-            assert (
-                len(defn.description) > 20
-            ), f"Tool {defn.name} description too short: {len(defn.description)}"
+            assert len(defn.description) > 20, (
+                f"Tool {defn.name} description too short: {len(defn.description)}"
+            )
 
     def test_tool_definitions_openai_format(self):
         """Test conversion to OpenAI format."""

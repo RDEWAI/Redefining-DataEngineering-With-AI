@@ -21,7 +21,7 @@ import pytest
 # Add src directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from tools.dummy_tools import get_total_tool_count  # noqa: E402
+from src.agentic.tools.dummy_tools import get_total_tool_count  # noqa: E402
 
 # Skip tests if database is not available
 DB_PATH = os.getenv("DB_PATH", str(Path(__file__).parent.parent.parent / "data/duckdb/chapter3.db"))
@@ -37,8 +37,8 @@ class TestLibraryAssistantWithDummyTools:
     @SKIP_IF_NO_DB
     def test_assistant_initializes_with_dummy_tools(self):
         """T7.5-037: Test LibraryAssistant initializes with dummy tools enabled."""
-        from agents.library_assistant import LibraryAssistant
-        from llm.base import LLMProvider
+        from src.agentic.agents.library_assistant import LibraryAssistant
+        from src.agentic.llm.base import LLMProvider
 
         # Mock the LLM provider
         mock_provider = MagicMock(spec=LLMProvider)
@@ -59,15 +59,15 @@ class TestLibraryAssistantWithDummyTools:
         expected_count = base_tools + get_total_tool_count()
         actual_count = assistant.get_tool_count()
 
-        assert (
-            actual_count == expected_count
-        ), f"Expected {expected_count} tools (9 base + 100 dummy), got {actual_count}"
+        assert actual_count == expected_count, (
+            f"Expected {expected_count} tools (9 base + 100 dummy), got {actual_count}"
+        )
 
     @SKIP_IF_NO_DB
     def test_assistant_toggle_dummy_tools(self):
         """Test toggling dummy tools on and off."""
-        from agents.library_assistant import LibraryAssistant
-        from llm.base import LLMProvider
+        from src.agentic.agents.library_assistant import LibraryAssistant
+        from src.agentic.llm.base import LLMProvider
 
         mock_provider = MagicMock(spec=LLMProvider)
         mock_provider.default_model = "test-model"
@@ -88,9 +88,9 @@ class TestLibraryAssistantWithDummyTools:
 
         # Tool count should increase by 100
         new_count = assistant.get_tool_count()
-        assert (
-            new_count == base_count + 100
-        ), f"Expected {base_count + 100} tools after enabling dummy tools, got {new_count}"
+        assert new_count == base_count + 100, (
+            f"Expected {base_count + 100} tools after enabling dummy tools, got {new_count}"
+        )
 
         # Disable dummy tools
         assistant.set_dummy_tools_enabled(False)
@@ -100,8 +100,8 @@ class TestLibraryAssistantWithDummyTools:
     @SKIP_IF_NO_DB
     def test_assistant_with_rag_and_dummy_tools(self):
         """Test assistant with both RAG and dummy tools enabled."""
-        from agents.library_assistant import LibraryAssistant
-        from llm.base import LLMProvider
+        from src.agentic.agents.library_assistant import LibraryAssistant
+        from src.agentic.llm.base import LLMProvider
 
         mock_provider = MagicMock(spec=LLMProvider)
         mock_provider.default_model = "test-model"
@@ -117,9 +117,9 @@ class TestLibraryAssistantWithDummyTools:
         expected_count = 9 + 1 + 100
         actual_count = assistant.get_tool_count()
 
-        assert (
-            actual_count == expected_count
-        ), f"Expected {expected_count} tools (9 base + 1 RAG + 100 dummy), got {actual_count}"
+        assert actual_count == expected_count, (
+            f"Expected {expected_count} tools (9 base + 1 RAG + 100 dummy), got {actual_count}"
+        )
 
 
 class TestEnhancedLibraryAssistantWithDummyTools:
@@ -128,8 +128,8 @@ class TestEnhancedLibraryAssistantWithDummyTools:
     @SKIP_IF_NO_DB
     def test_enhanced_assistant_initializes_with_dummy_tools(self):
         """T7.5-038: Test EnhancedLibraryAssistant initializes with dummy tools enabled."""
-        from agents.library_assistant_enhanced import EnhancedLibraryAssistant
-        from llm.base import LLMProvider
+        from src.agentic.agents.library_assistant_enhanced import EnhancedLibraryAssistant
+        from src.agentic.llm.base import LLMProvider
 
         mock_provider = MagicMock(spec=LLMProvider)
         mock_provider.default_model = "test-model"
@@ -150,15 +150,15 @@ class TestEnhancedLibraryAssistantWithDummyTools:
 
         # 9 base + 0 RAG + 100 dummy = 109 (traditional uses 9 base tools including get_library_stats)
         expected_traditional = 9 + 100
-        assert (
-            traditional_count == expected_traditional
-        ), f"Expected {expected_traditional} tools in traditional mode, got {traditional_count}"
+        assert traditional_count == expected_traditional, (
+            f"Expected {expected_traditional} tools in traditional mode, got {traditional_count}"
+        )
 
     @SKIP_IF_NO_DB
     def test_enhanced_assistant_code_execution_mode_with_dummy_tools(self):
         """Test code execution mode includes dummy tool API stubs."""
-        from agents.library_assistant_enhanced import EnhancedLibraryAssistant
-        from llm.base import LLMProvider
+        from src.agentic.agents.library_assistant_enhanced import EnhancedLibraryAssistant
+        from src.agentic.llm.base import LLMProvider
 
         mock_provider = MagicMock(spec=LLMProvider)
         mock_provider.default_model = "test-model"
@@ -178,15 +178,15 @@ class TestEnhancedLibraryAssistantWithDummyTools:
         expected_code = (
             8 + 100
         )  # 8 library API tools + dummy (get_library_stats is not in code exec)
-        assert (
-            code_count == expected_code
-        ), f"Expected {expected_code} tools in code mode, got {code_count}"
+        assert code_count == expected_code, (
+            f"Expected {expected_code} tools in code mode, got {code_count}"
+        )
 
     @SKIP_IF_NO_DB
     def test_enhanced_assistant_mode_switching_with_dummy_tools(self):
         """Test switching modes preserves dummy tools setting."""
-        from agents.library_assistant_enhanced import EnhancedLibraryAssistant
-        from llm.base import LLMProvider
+        from src.agentic.agents.library_assistant_enhanced import EnhancedLibraryAssistant
+        from src.agentic.llm.base import LLMProvider
 
         mock_provider = MagicMock(spec=LLMProvider)
         mock_provider.default_model = "test-model"
@@ -219,7 +219,7 @@ class TestLibraryQueriesWithDummyTools:
     @SKIP_IF_NO_DB
     def test_library_tools_still_accessible(self):
         """T7.5-039: Test library queries still work correctly with dummy tools present."""
-        from agents.library_assistant import get_tool_function  # noqa: E402
+        from src.agentic.agents.library_assistant import get_tool_function  # noqa: E402
 
         # Verify all library tool functions are still accessible
         library_tools = [
@@ -261,7 +261,7 @@ class TestLibraryQueriesWithDummyTools:
     @SKIP_IF_NO_DB
     def test_get_tool_function_returns_dummy_tool(self):
         """Test that get_tool_function can retrieve dummy tools."""
-        from agents.library_assistant import get_tool_function
+        from src.agentic.agents.library_assistant import get_tool_function
 
         # Try to get a dummy tool function
         func = get_tool_function("engineering_run_build", include_dummy_tools=True)
@@ -276,7 +276,7 @@ class TestLibraryQueriesWithDummyTools:
     @SKIP_IF_NO_DB
     def test_get_tool_function_raises_for_unknown_tool(self):
         """Test that get_tool_function raises for unknown tools."""
-        from agents.library_assistant import get_tool_function
+        from src.agentic.agents.library_assistant import get_tool_function
 
         with pytest.raises(ValueError, match="Unknown tool"):
             get_tool_function("nonexistent_tool", include_dummy_tools=True)
@@ -288,7 +288,7 @@ class TestTokenUsageWithDummyTools:
     @SKIP_IF_NO_DB
     def test_tool_definitions_count_increases_with_dummy_tools(self):
         """T7.5-040: Verify tool definition count increases with dummy tools."""
-        from agents.library_assistant import get_tools_for_llm
+        from src.agentic.agents.library_assistant import get_tools_for_llm
 
         # Get tools without dummy tools
         tools_without_dummy = get_tools_for_llm(include_rag=False, include_dummy_tools=False)
@@ -297,12 +297,12 @@ class TestTokenUsageWithDummyTools:
         tools_with_dummy = get_tools_for_llm(include_rag=False, include_dummy_tools=True)
 
         # Verify counts
-        assert (
-            len(tools_without_dummy) == 9
-        ), f"Expected 9 base tools, got {len(tools_without_dummy)}"
-        assert (
-            len(tools_with_dummy) == 109
-        ), f"Expected 109 tools (9 + 100), got {len(tools_with_dummy)}"
+        assert len(tools_without_dummy) == 9, (
+            f"Expected 9 base tools, got {len(tools_without_dummy)}"
+        )
+        assert len(tools_with_dummy) == 109, (
+            f"Expected 109 tools (9 + 100), got {len(tools_with_dummy)}"
+        )
 
         # Verify difference is exactly 100
         diff = len(tools_with_dummy) - len(tools_without_dummy)
@@ -313,7 +313,7 @@ class TestTokenUsageWithDummyTools:
         """Estimate and verify token overhead from tool definitions."""
         import json
 
-        from agents.library_assistant import get_tools_for_llm  # noqa: E402
+        from src.agentic.agents.library_assistant import get_tools_for_llm  # noqa: E402
 
         # Get tools with and without dummy tools
         tools_without = get_tools_for_llm(include_rag=False, include_dummy_tools=False)
@@ -340,14 +340,14 @@ class TestTokenUsageWithDummyTools:
 
         # Verify significant increase
         # Enterprise dummy tools should add substantial token overhead
-        assert (
-            token_increase_est > 10000
-        ), f"Expected >10,000 token increase from dummy tools, got ~{token_increase_est}"
+        assert token_increase_est > 10000, (
+            f"Expected >10,000 token increase from dummy tools, got ~{token_increase_est}"
+        )
 
     def test_tool_api_generator_dummy_stubs_size(self):
         """Verify code execution mode API stubs are much smaller."""
-        from code_execution.tool_api import ToolAPIGenerator
-        from library.repository import BookRepository
+        from src.agentic.code_execution.tool_api import ToolAPIGenerator
+        from src.agentic.library.repository import BookRepository
 
         # Create generator with dummy tools
         repo = MagicMock(spec=BookRepository)
@@ -371,9 +371,9 @@ class TestTokenUsageWithDummyTools:
         # API stubs should be much smaller than JSON tool definitions
         # This is the key token efficiency advantage
         # The API stubs include 100 dummy tools but should still be reasonable
-        assert (
-            api_tokens_est < 20000
-        ), f"API stubs too large: ~{api_tokens_est} tokens. Expected efficient representation."
+        assert api_tokens_est < 20000, (
+            f"API stubs too large: ~{api_tokens_est} tokens. Expected efficient representation."
+        )
 
 
 class TestToolAPIGeneratorWithDummyTools:
@@ -381,8 +381,8 @@ class TestToolAPIGeneratorWithDummyTools:
 
     def test_generator_includes_dummy_tool_stubs(self):
         """Test that ToolAPIGenerator generates dummy tool API stubs."""
-        from code_execution.tool_api import ToolAPIGenerator
-        from library.repository import BookRepository
+        from src.agentic.code_execution.tool_api import ToolAPIGenerator
+        from src.agentic.library.repository import BookRepository
 
         repo = MagicMock(spec=BookRepository)
         generator = ToolAPIGenerator(
@@ -401,8 +401,8 @@ class TestToolAPIGeneratorWithDummyTools:
 
     def test_generator_excludes_dummy_stubs_when_disabled(self):
         """Test that dummy tool stubs are excluded when disabled."""
-        from code_execution.tool_api import ToolAPIGenerator
-        from library.repository import BookRepository
+        from src.agentic.code_execution.tool_api import ToolAPIGenerator
+        from src.agentic.library.repository import BookRepository
 
         repo = MagicMock(spec=BookRepository)
         generator = ToolAPIGenerator(
@@ -423,8 +423,8 @@ class TestToolAPIGeneratorWithDummyTools:
 
     def test_generator_toggle_dummy_tools(self):
         """Test toggling dummy tools in generator."""
-        from code_execution.tool_api import ToolAPIGenerator
-        from library.repository import BookRepository
+        from src.agentic.code_execution.tool_api import ToolAPIGenerator
+        from src.agentic.library.repository import BookRepository
 
         repo = MagicMock(spec=BookRepository)
         generator = ToolAPIGenerator(

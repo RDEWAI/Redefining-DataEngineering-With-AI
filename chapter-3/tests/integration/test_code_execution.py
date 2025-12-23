@@ -11,9 +11,9 @@ import os
 
 import pytest
 
-from src.code_execution.sandbox import CodeSandbox
-from src.code_execution.tool_api import ToolAPIGenerator
-from src.library.repository import BookRepository
+from src.agentic.code_execution.sandbox import CodeSandbox
+from src.agentic.code_execution.tool_api import ToolAPIGenerator
+from src.agentic.library.repository import BookRepository
 
 
 class TestCodeExecutionIntegration:

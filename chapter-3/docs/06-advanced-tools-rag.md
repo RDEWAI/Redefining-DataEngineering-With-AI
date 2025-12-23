@@ -117,7 +117,7 @@ The Tool Registry provides:
 ### Usage
 
 ```python
-from src.tools import ToolRegistry, Capability
+from src.agentic.tools import ToolRegistry, Capability
 
 registry = ToolRegistry()
 
@@ -156,7 +156,7 @@ schemas = registry.get_all_schemas()
 ### Name-Based Search
 
 ```python
-from src.tools import ToolSearch, create_library_tool_registry
+from src.agentic.tools import ToolSearch, create_library_tool_registry
 
 registry = create_library_tool_registry()
 searcher = ToolSearch(registry)
@@ -210,7 +210,7 @@ Example queries:
 ### EmbeddingGenerator
 
 ```python
-from src.rag import EmbeddingGenerator
+from src.agentic.rag import EmbeddingGenerator
 
 generator = EmbeddingGenerator()
 
@@ -227,7 +227,7 @@ embeddings = generator.embed_books(books)
 ### DuckDBVectorStore
 
 ```python
-from src.rag import DuckDBVectorStore
+from src.agentic.rag import DuckDBVectorStore
 
 store = DuckDBVectorStore(db_path="data/duckdb/chapter3.db")
 
@@ -243,7 +243,7 @@ results = store.semantic_search(query_embedding, top_k=5)
 ### ToolRegistry
 
 ```python
-from src.tools import ToolRegistry, ToolMetadata
+from src.agentic.tools import ToolRegistry, ToolMetadata
 
 registry = ToolRegistry()
 

@@ -29,9 +29,9 @@ from pathlib import Path
 # Add chapter-3 directory to path so src.* imports work
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.agents.library_assistant_enhanced import EnhancedLibraryAssistant
-from src.llm.unified_client import UnifiedLLMClient
-from src.tools.dummy_tools import get_domain_tool_count, get_total_tool_count
+from src.agentic.agents.library_assistant_enhanced import EnhancedLibraryAssistant
+from src.agentic.llm.unified_client import UnifiedLLMClient
+from src.agentic.tools.dummy_tools import get_domain_tool_count, get_total_tool_count
 
 # Sample queries to test
 # Format: (query, requires_rag)

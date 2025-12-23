@@ -52,9 +52,9 @@ def run_benchmark():
         return
 
     try:
-        from src.agents.library_assistant import LibraryAssistant
-        from src.agents.library_assistant_enhanced import EnhancedLibraryAssistant
-        from src.llm.unified_client import UnifiedLLMClient
+        from src.agentic.agents.library_assistant import LibraryAssistant
+        from src.agentic.agents.library_assistant_enhanced import EnhancedLibraryAssistant
+        from src.agentic.llm.unified_client import UnifiedLLMClient
 
         # Initialize LLM client
         client = UnifiedLLMClient.from_env()

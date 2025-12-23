@@ -6,8 +6,8 @@ and the MessageRouter for proper message handling and routing.
 
 import pytest
 
-from src.a2a.protocol import AgentMessage, AgentStatus, QueryType
-from src.a2a.server import AgentInfo, MessageRouter
+from src.agentic.a2a.protocol import AgentMessage, AgentStatus, QueryType
+from src.agentic.a2a.server import AgentInfo, MessageRouter
 
 
 class MockAgent:

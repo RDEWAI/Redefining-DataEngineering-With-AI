@@ -132,7 +132,7 @@ make test-multi-agent
 
 ### Python API
 ```python
-from src.agents import OrchestratorAgent
+from src.agentic.agents import OrchestratorAgent
 
 # Initialize
 orchestrator = OrchestratorAgent()

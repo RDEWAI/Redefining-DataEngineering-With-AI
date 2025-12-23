@@ -7,7 +7,7 @@ and can be properly converted for LLM function calling.
 import pytest
 
 # Import to be tested (will be created in library_assistant.py)
-from src.agents.library_assistant import (
+from src.agentic.agents.library_assistant import (
     TOOL_DEFINITIONS,
     get_tool_function,
     get_tools_for_llm,

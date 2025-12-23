@@ -14,7 +14,7 @@ This document covers the LLM provider abstraction layer, which enables:
 ## Quick Start
 
 ```python
-from src.llm import OpenRouterProvider, OllamaProvider, Message, get_provider
+from src.agentic.llm import OpenRouterProvider, OllamaProvider, Message, get_provider
 
 # Using OpenRouter (cloud)
 provider = OpenRouterProvider()  # Uses OPENROUTER_API_KEY env var
@@ -106,7 +106,7 @@ class LLMProvider(ABC):
 Access cloud LLM models through OpenRouter:
 
 ```python
-from src.llm import OpenRouterProvider, Message
+from src.agentic.llm import OpenRouterProvider, Message
 
 # Initialize
 provider = OpenRouterProvider(
@@ -148,7 +148,7 @@ for chunk in provider.stream_generate([
 Access locally running models:
 
 ```python
-from src.llm import OllamaProvider, Message
+from src.agentic.llm import OllamaProvider, Message
 
 # Initialize
 provider = OllamaProvider(
@@ -181,7 +181,7 @@ if provider.check_connection():
 ### Message
 
 ```python
-from src.llm import Message
+from src.agentic.llm import Message
 
 # User message
 user_msg = Message(role="user", content="Hello")
@@ -212,7 +212,7 @@ tool_msg = Message(
 ### ToolDefinition
 
 ```python
-from src.llm import ToolDefinition
+from src.agentic.llm import ToolDefinition
 
 search_tool = ToolDefinition(
     name="search_books",
@@ -237,7 +237,7 @@ search_tool = ToolDefinition(
 ### LLMResponse
 
 ```python
-from src.llm import LLMResponse
+from src.agentic.llm import LLMResponse
 
 response = provider.generate([...], tools=[search_tool])
 
@@ -255,7 +255,7 @@ print(response.finish_reason)  # "stop", "tool_calls", etc.
 ### Defining Tools
 
 ```python
-from src.llm import ToolDefinition, Message
+from src.agentic.llm import ToolDefinition, Message
 
 # Define tools
 tools = [
@@ -288,7 +288,7 @@ tools = [
 
 ```python
 import json
-from src.library import search_books, get_book_details
+from src.agentic.library import search_books, get_book_details
 
 # Define tool handlers
 tool_handlers = {
@@ -340,7 +340,7 @@ while True:
 ## Token Counting
 
 ```python
-from src.llm import Message
+from src.agentic.llm import Message
 
 messages = [
     Message(role="system", content="You are a helpful assistant."),
@@ -362,7 +362,7 @@ print(f"Total tokens: {response.usage.get('total_tokens')}")
 
 ```python
 import httpx
-from src.llm import OpenRouterProvider
+from src.agentic.llm import OpenRouterProvider
 
 try:
     provider = OpenRouterProvider()

@@ -14,7 +14,7 @@ class TestToolMetadata:
 
     def test_tool_metadata_creation(self) -> None:
         """Test creating tool metadata."""
-        from src.tools.tool_registry import ToolMetadata
+        from src.agentic.tools.tool_registry import ToolMetadata
 
         metadata = ToolMetadata(
             name="search_books",
@@ -36,7 +36,7 @@ class TestToolMetadata:
 
     def test_tool_metadata_multiple_capabilities(self) -> None:
         """Test tool with multiple capabilities."""
-        from src.tools.tool_registry import ToolMetadata
+        from src.agentic.tools.tool_registry import ToolMetadata
 
         metadata = ToolMetadata(
             name="get_library_stats",
@@ -56,7 +56,7 @@ class TestToolRegistry:
 
     def test_register_tool(self) -> None:
         """Test registering a tool."""
-        from src.tools.tool_registry import ToolMetadata, ToolRegistry
+        from src.agentic.tools.tool_registry import ToolMetadata, ToolRegistry
 
         registry = ToolRegistry()
 
@@ -74,7 +74,7 @@ class TestToolRegistry:
 
     def test_register_duplicate_tool_raises_error(self) -> None:
         """Test that registering duplicate tool raises error."""
-        from src.tools.tool_registry import ToolMetadata, ToolRegistry
+        from src.agentic.tools.tool_registry import ToolMetadata, ToolRegistry
 
         registry = ToolRegistry()
 
@@ -93,7 +93,7 @@ class TestToolRegistry:
 
     def test_get_tool_by_name(self) -> None:
         """Test getting tool by name."""
-        from src.tools.tool_registry import ToolMetadata, ToolRegistry
+        from src.agentic.tools.tool_registry import ToolMetadata, ToolRegistry
 
         registry = ToolRegistry()
 
@@ -115,7 +115,7 @@ class TestToolRegistry:
 
     def test_get_nonexistent_tool_returns_none(self) -> None:
         """Test that getting nonexistent tool returns None."""
-        from src.tools.tool_registry import ToolRegistry
+        from src.agentic.tools.tool_registry import ToolRegistry
 
         registry = ToolRegistry()
         result = registry.get_tool("nonexistent")
@@ -124,7 +124,7 @@ class TestToolRegistry:
 
     def test_list_tools_by_capability(self) -> None:
         """Test listing tools by capability."""
-        from src.tools.tool_registry import ToolMetadata, ToolRegistry
+        from src.agentic.tools.tool_registry import ToolMetadata, ToolRegistry
 
         registry = ToolRegistry()
 
@@ -172,7 +172,7 @@ class TestToolRegistry:
 
     def test_list_all_tools(self) -> None:
         """Test listing all tools without filter."""
-        from src.tools.tool_registry import ToolMetadata, ToolRegistry
+        from src.agentic.tools.tool_registry import ToolMetadata, ToolRegistry
 
         registry = ToolRegistry()
 
@@ -193,7 +193,7 @@ class TestToolRegistry:
 
     def test_list_tool_names(self) -> None:
         """Test listing tool names."""
-        from src.tools.tool_registry import ToolMetadata, ToolRegistry
+        from src.agentic.tools.tool_registry import ToolMetadata, ToolRegistry
 
         registry = ToolRegistry()
 
@@ -224,7 +224,7 @@ class TestToolRegistry:
 
     def test_execute_tool(self) -> None:
         """Test executing a registered tool."""
-        from src.tools.tool_registry import ToolMetadata, ToolRegistry
+        from src.agentic.tools.tool_registry import ToolMetadata, ToolRegistry
 
         registry = ToolRegistry()
 
@@ -247,7 +247,7 @@ class TestToolRegistry:
 
     def test_execute_nonexistent_tool_raises_error(self) -> None:
         """Test that executing nonexistent tool raises error."""
-        from src.tools.tool_registry import ToolRegistry
+        from src.agentic.tools.tool_registry import ToolRegistry
 
         registry = ToolRegistry()
 
@@ -256,7 +256,7 @@ class TestToolRegistry:
 
     def test_get_tool_schema(self) -> None:
         """Test getting tool schema for LLM."""
-        from src.tools.tool_registry import ToolMetadata, ToolRegistry
+        from src.agentic.tools.tool_registry import ToolMetadata, ToolRegistry
 
         registry = ToolRegistry()
 
@@ -285,7 +285,7 @@ class TestToolRegistry:
 
     def test_get_all_schemas(self) -> None:
         """Test getting all tool schemas for LLM."""
-        from src.tools.tool_registry import ToolMetadata, ToolRegistry
+        from src.agentic.tools.tool_registry import ToolMetadata, ToolRegistry
 
         registry = ToolRegistry()
 
@@ -311,7 +311,7 @@ class TestToolRegistryDecorator:
 
     def test_register_decorator(self) -> None:
         """Test using decorator to register tools."""
-        from src.tools.tool_registry import ToolRegistry
+        from src.agentic.tools.tool_registry import ToolRegistry
 
         registry = ToolRegistry()
 
@@ -334,7 +334,7 @@ class TestToolRegistryDecorator:
 
     def test_register_decorator_uses_function_name(self) -> None:
         """Test that decorator uses function name as tool name."""
-        from src.tools.tool_registry import ToolRegistry
+        from src.agentic.tools.tool_registry import ToolRegistry
 
         registry = ToolRegistry()
 
@@ -354,7 +354,7 @@ class TestCapabilities:
 
     def test_capability_constants_exist(self) -> None:
         """Test that capability constants are defined."""
-        from src.tools.tool_registry import Capability
+        from src.agentic.tools.tool_registry import Capability
 
         assert hasattr(Capability, "SEARCH")
         assert hasattr(Capability, "ANALYTICS")
@@ -364,7 +364,7 @@ class TestCapabilities:
 
     def test_capability_values(self) -> None:
         """Test capability enum values."""
-        from src.tools.tool_registry import Capability
+        from src.agentic.tools.tool_registry import Capability
 
         assert Capability.SEARCH.value == "search"
         assert Capability.ANALYTICS.value == "analytics"

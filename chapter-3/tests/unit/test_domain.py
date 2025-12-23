@@ -7,7 +7,7 @@ from datetime import datetime
 
 import pytest
 
-from src.library.domain import (
+from src.agentic.library.domain import (
     Book,
     BookStatus,
     Category,

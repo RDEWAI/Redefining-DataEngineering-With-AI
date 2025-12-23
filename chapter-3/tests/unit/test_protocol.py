@@ -9,7 +9,7 @@ from datetime import datetime
 
 import pytest
 
-from src.a2a.protocol import AgentMessage, AgentStatus, QueryType
+from src.agentic.a2a.protocol import AgentMessage, AgentStatus, QueryType
 
 
 class TestQueryType:

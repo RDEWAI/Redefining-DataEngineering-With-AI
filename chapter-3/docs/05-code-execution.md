@@ -520,8 +520,8 @@ def execute(self, code: str, db_path: Optional[str] = None,
 
 **Usage**:
 ```python
-from src.code_execution.sandbox import CodeSandbox
-from src.code_execution.tool_api import ToolAPIGenerator
+from src.agentic.code_execution.sandbox import CodeSandbox
+from src.agentic.code_execution.tool_api import ToolAPIGenerator
 
 sandbox = CodeSandbox(timeout=30, memory_mb=512)
 generator = ToolAPIGenerator(repository, db_path)

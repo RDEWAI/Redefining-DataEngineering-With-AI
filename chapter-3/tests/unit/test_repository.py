@@ -6,8 +6,8 @@ Tests for BookRepository including search, filter, and stats operations.
 import duckdb
 import pytest
 
-from src.library.domain import BookStatus, Category
-from src.library.repository import BookRepository
+from src.agentic.library.domain import BookStatus, Category
+from src.agentic.library.repository import BookRepository
 
 
 @pytest.fixture

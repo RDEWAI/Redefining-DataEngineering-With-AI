@@ -11,7 +11,7 @@ import sys
 
 import pytest
 
-from src.code_execution.sandbox import CodeSandbox
+from src.agentic.code_execution.sandbox import CodeSandbox
 
 
 class TestCodeSandbox:

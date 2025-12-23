@@ -54,7 +54,7 @@ CREATE TABLE library.books (
 The domain layer provides Python dataclasses for type-safe book handling:
 
 ```python
-from src.library import Book, BookStatus, Category, Location
+from src.agentic.library import Book, BookStatus, Category, Location
 
 # Create a book
 book = Book(
@@ -101,7 +101,7 @@ print(book.is_available)     # True (status is Present)
 The `BookRepository` class provides all database operations:
 
 ```python
-from src.library import BookRepository, Category, BookStatus
+from src.agentic.library import BookRepository, Category, BookStatus
 
 # Create repository
 repo = BookRepository(db_path="data/duckdb/library.db")
@@ -143,7 +143,7 @@ stats = repo.get_library_stats()
 The `tools.py` module wraps repository methods for LLM tool calling:
 
 ```python
-from src.library import search_books, get_book_details, check_availability
+from src.agentic.library import search_books, get_book_details, check_availability
 
 # All functions return structured dictionaries
 result = search_books("Python", category="Programming")

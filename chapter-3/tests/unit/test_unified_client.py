@@ -9,8 +9,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.llm.base import Message, ToolDefinition
-from src.llm.unified_client import ProviderType, UnifiedLLMClient
+from src.agentic.llm.base import Message, ToolDefinition
+from src.agentic.llm.unified_client import ProviderType, UnifiedLLMClient
 
 
 class TestUnifiedLLMClientInitialization:
@@ -350,7 +350,7 @@ class TestUnifiedLLMClientContextManager:
 
     def test_context_manager_closes_client(self) -> None:
         """Test that context manager calls close()."""
-        with patch("src.llm.unified_client.OpenAI") as mock_openai:
+        with patch("src.agentic.llm.unified_client.OpenAI") as mock_openai:
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
 

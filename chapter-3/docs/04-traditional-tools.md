@@ -273,7 +273,7 @@ The example above demonstrates the complete tool use loop:
 ## Programmatic Usage
 
 ```python
-from src.agents.library_assistant import LibraryAssistant, create_assistant
+from src.agentic.agents.library_assistant import LibraryAssistant, create_assistant
 
 # Create with OpenRouter (tool display on by default)
 assistant = create_assistant(provider="openrouter")

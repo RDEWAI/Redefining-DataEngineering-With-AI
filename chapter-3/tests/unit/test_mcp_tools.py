@@ -21,7 +21,7 @@ class TestMCPToolRegistration:
     async def test_all_tools_registered(self):
         """Test that all 8 library tools are registered."""
         with patch("library.repository.BookRepository"):
-            from mcp_servers import library_server
+            from src.agentic.mcp_servers import library_server
 
             tools = await library_server.mcp.get_tools()
             # get_tools() returns a dict of {name: tool_object}
@@ -46,7 +46,7 @@ class TestMCPToolRegistration:
     async def test_tool_has_description(self):
         """Test that tools have descriptions."""
         with patch("library.repository.BookRepository"):
-            from mcp_servers import library_server
+            from src.agentic.mcp_servers import library_server
 
             search_tool = await library_server.mcp.get_tool("search_books")
             assert search_tool is not None
@@ -61,7 +61,7 @@ class TestMCPResources:
     async def test_all_resources_registered(self):
         """Test that all 3 resources are registered."""
         with patch("library.repository.BookRepository"):
-            from mcp_servers import library_server
+            from src.agentic.mcp_servers import library_server
 
             resources = await library_server.mcp.get_resources()
             # get_resources() returns a dict of {uri: resource_object}
@@ -85,7 +85,7 @@ class TestMCPPrompts:
     async def test_all_prompts_registered(self):
         """Test that both prompts are registered."""
         with patch("library.repository.BookRepository"):
-            from mcp_servers import library_server
+            from src.agentic.mcp_servers import library_server
 
             prompts = await library_server.mcp.get_prompts()
             # get_prompts() returns a dict of {name: prompt_object}
@@ -104,13 +104,13 @@ class TestServerInitialization:
     def test_server_name(self):
         """Test server has correct name."""
         with patch("library.repository.BookRepository"):
-            from mcp_servers import library_server
+            from src.agentic.mcp_servers import library_server
 
             assert library_server.mcp.name == "LibraryServer"
 
     def test_server_has_repository(self):
         """Test server initializes with repository."""
         with patch("library.repository.BookRepository"):
-            from mcp_servers import library_server
+            from src.agentic.mcp_servers import library_server
 
             assert hasattr(library_server, "repository")

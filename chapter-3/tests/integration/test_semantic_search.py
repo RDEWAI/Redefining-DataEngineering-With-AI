@@ -13,7 +13,7 @@ from datetime import datetime
 import numpy as np
 import pytest
 
-from src.library.domain import Book, BookStatus, Category, Location
+from src.agentic.library.domain import Book, BookStatus, Category, Location
 
 
 @pytest.fixture
@@ -121,8 +121,8 @@ class TestSemanticSearchIntegration:
         self, sample_books: list[Book], temp_db_path: str
     ) -> None:
         """Test full pipeline: embed books, store, and search."""
-        from src.rag.embeddings import EmbeddingGenerator
-        from src.rag.vector_store import DuckDBVectorStore
+        from src.agentic.rag.embeddings import EmbeddingGenerator
+        from src.agentic.rag.vector_store import DuckDBVectorStore
 
         # Initialize components
         generator = EmbeddingGenerator()
@@ -150,7 +150,7 @@ class TestSemanticSearchIntegration:
 
     def test_vector_store_setup_with_mock(self, temp_db_path: str) -> None:
         """Test vector store table creation."""
-        from src.rag.vector_store import DuckDBVectorStore
+        from src.agentic.rag.vector_store import DuckDBVectorStore
 
         store = DuckDBVectorStore(db_path=temp_db_path)
 
@@ -165,7 +165,7 @@ class TestSemanticSearchIntegration:
 
     def test_store_and_retrieve_embeddings(self, temp_db_path: str) -> None:
         """Test storing and retrieving embeddings."""
-        from src.rag.vector_store import DuckDBVectorStore
+        from src.agentic.rag.vector_store import DuckDBVectorStore
 
         store = DuckDBVectorStore(db_path=temp_db_path)
 
@@ -186,7 +186,7 @@ class TestSemanticSearchIntegration:
 
     def test_semantic_search_returns_sorted_by_similarity(self, temp_db_path: str) -> None:
         """Test that search results are sorted by similarity score."""
-        from src.rag.vector_store import DuckDBVectorStore
+        from src.agentic.rag.vector_store import DuckDBVectorStore
 
         store = DuckDBVectorStore(db_path=temp_db_path)
 
@@ -222,7 +222,7 @@ class TestSemanticSearchIntegration:
 
     def test_semantic_search_respects_top_k(self, temp_db_path: str) -> None:
         """Test that top_k limits results."""
-        from src.rag.vector_store import DuckDBVectorStore
+        from src.agentic.rag.vector_store import DuckDBVectorStore
 
         store = DuckDBVectorStore(db_path=temp_db_path)
 
@@ -244,7 +244,7 @@ class TestSemanticSearchIntegration:
 
     def test_semantic_search_empty_store(self, temp_db_path: str) -> None:
         """Test search on empty store returns empty list."""
-        from src.rag.vector_store import DuckDBVectorStore
+        from src.agentic.rag.vector_store import DuckDBVectorStore
 
         store = DuckDBVectorStore(db_path=temp_db_path)
 
@@ -269,8 +269,8 @@ class TestRetrievalAccuracy:
 
         Target: 70%+ precision at k=3 (at least 2 of top 3 are relevant)
         """
-        from src.rag.embeddings import EmbeddingGenerator
-        from src.rag.vector_store import DuckDBVectorStore
+        from src.agentic.rag.embeddings import EmbeddingGenerator
+        from src.agentic.rag.vector_store import DuckDBVectorStore
 
         generator = EmbeddingGenerator()
         store = DuckDBVectorStore(db_path=temp_db_path)
@@ -298,8 +298,8 @@ class TestRetrievalAccuracy:
     @pytest.mark.skip(reason="Requires sentence-transformers model download")
     def test_programming_query_precision(self, sample_books: list[Book], temp_db_path: str) -> None:
         """Test that programming query retrieves relevant books."""
-        from src.rag.embeddings import EmbeddingGenerator
-        from src.rag.vector_store import DuckDBVectorStore
+        from src.agentic.rag.embeddings import EmbeddingGenerator
+        from src.agentic.rag.vector_store import DuckDBVectorStore
 
         generator = EmbeddingGenerator()
         store = DuckDBVectorStore(db_path=temp_db_path)
@@ -324,7 +324,7 @@ class TestVectorStoreOperations:
 
     def test_update_embedding(self, temp_db_path: str) -> None:
         """Test updating an existing embedding."""
-        from src.rag.vector_store import DuckDBVectorStore
+        from src.agentic.rag.vector_store import DuckDBVectorStore
 
         store = DuckDBVectorStore(db_path=temp_db_path)
 
@@ -349,7 +349,7 @@ class TestVectorStoreOperations:
 
     def test_delete_embedding(self, temp_db_path: str) -> None:
         """Test deleting an embedding."""
-        from src.rag.vector_store import DuckDBVectorStore
+        from src.agentic.rag.vector_store import DuckDBVectorStore
 
         store = DuckDBVectorStore(db_path=temp_db_path)
 
@@ -375,7 +375,7 @@ class TestVectorStoreOperations:
 
     def test_get_embedding_count(self, temp_db_path: str) -> None:
         """Test getting total embedding count."""
-        from src.rag.vector_store import DuckDBVectorStore
+        from src.agentic.rag.vector_store import DuckDBVectorStore
 
         store = DuckDBVectorStore(db_path=temp_db_path)
 

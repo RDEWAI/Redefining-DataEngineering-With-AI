@@ -94,33 +94,33 @@ verify-data:
 
 mcp-server:
 	@echo "Starting MCP server..."
-	uv run fastmcp run src/mcp_servers/library_server.py
+	uv run fastmcp run src/agentic/mcp_servers/library_server.py
 
 mcp-dev:
 	@echo "Starting MCP Inspector..."
-	uv run fastmcp dev src/mcp_servers/library_server.py
+	uv run fastmcp dev src/agentic/mcp_servers/library_server.py
 
 assistant:
 	@echo "Starting Library Assistant (Traditional Mode)..."
-	uv run python src/agents/library_assistant.py
+	uv run python -m src.agentic.agents.library_assistant
 
 assistant-rag:
 	@echo "Starting Library Assistant (RAG Mode)..."
-	uv run python src/agents/library_assistant.py --rag
+	uv run python -m src.agentic.agents.library_assistant --rag
 
 assistant-enhanced:
 	@echo "Starting Enhanced Library Assistant (Code Execution Mode)..."
-	uv run python src/agents/library_assistant_enhanced.py
+	uv run python -m src.agentic.agents.library_assistant_enhanced
 
 assistant-dummy-tools:
 	@echo "Starting Library Assistant (Traditional Mode + 100 Enterprise Dummy Tools)..."
 	@echo "This demonstrates token overhead at enterprise scale."
-	uv run python src/agents/library_assistant.py --dummy-tools
+	uv run python -m src.agentic.agents.library_assistant --dummy-tools
 
 assistant-code-dummy-tools:
 	@echo "Starting Enhanced Assistant (Code Execution Mode + 100 Enterprise Dummy Tools)..."
 	@echo "This demonstrates token efficiency at enterprise scale."
-	uv run python src/agents/library_assistant_enhanced.py --mode code_execution --dummy-tools
+	uv run python -m src.agentic.agents.library_assistant_enhanced --mode code_execution --dummy-tools
 
 compare-modes:
 	@echo "Comparing Traditional vs Code Execution modes..."
@@ -147,15 +147,15 @@ benchmark:
 
 generate-embeddings:
 	@echo "Generating book embeddings..."
-	uv run python -c "from src.rag.embeddings import generate_all_embeddings; generate_all_embeddings()"
+	uv run python -c "from src.agentic.rag.embeddings import generate_all_embeddings; generate_all_embeddings()"
 
 semantic-search:
 	@echo "Starting semantic search CLI..."
-	uv run python -c "from src.rag.vector_store import semantic_search_cli; semantic_search_cli()"
+	uv run python -c "from src.agentic.rag.vector_store import semantic_search_cli; semantic_search_cli()"
 
 data-analysis:
 	@echo "Starting data analysis agent..."
-	uv run python -m src.agents.data_analysis_agent
+	uv run python -m src.agentic.agents.data_analysis_agent
 
 multi-agent:
 	@echo "Starting Multi-Agent Library System..."
@@ -165,7 +165,7 @@ multi-agent:
 	@echo "  - AnalyticsAgent: Statistics and reporting"
 	@echo "  - RecommendationAgent: Suggestions with quality filters"
 	@echo ""
-	uv run python -m src.agents.orchestrator_agent
+	uv run python -m src.agentic.agents.orchestrator_agent
 
 test-multi-agent:
 	@echo "Running multi-agent system tests..."

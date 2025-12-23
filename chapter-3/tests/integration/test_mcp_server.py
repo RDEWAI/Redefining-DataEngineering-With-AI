@@ -121,10 +121,10 @@ def mcp_server(test_db_path, monkeypatch):
     monkeypatch.setenv("DB_PATH", test_db_path)
 
     # Import server (will use test DB path)
-    from src.mcp_servers import library_server
+    from src.agentic.mcp_servers import library_server
 
     # Reinitialize the repository with the test database (read_only=True for consistency)
-    from src.mcp_servers.library_server import BookRepository
+    from src.agentic.mcp_servers.library_server import BookRepository
 
     library_server.repository = BookRepository(test_db_path, read_only=True)
 

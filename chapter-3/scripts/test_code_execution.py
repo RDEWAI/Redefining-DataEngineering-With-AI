@@ -11,9 +11,9 @@ from pathlib import Path
 # Add chapter-3 to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.code_execution.sandbox import CodeSandbox
-from src.code_execution.tool_api import ToolAPIGenerator
-from src.library.repository import BookRepository
+from src.agentic.code_execution.sandbox import CodeSandbox
+from src.agentic.code_execution.tool_api import ToolAPIGenerator
+from src.agentic.library.repository import BookRepository
 
 
 def test_sandbox_basic():
