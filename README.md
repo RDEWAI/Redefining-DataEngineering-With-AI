@@ -35,6 +35,18 @@ source .venv/bin/activate
 - **Python 3.10, 3.11, or 3.12** - [Download](https://www.python.org/downloads/)
 - **Docker** (only for data extraction) - [Download](https://www.docker.com/)
 
+### LLM API Keys
+
+For AI features, choose a provider and obtain an API key:
+
+| Provider | Get API Key |
+|----------|-------------|
+| **OpenRouter** (Recommended) | [openrouter.ai/keys](https://openrouter.ai/keys) |
+| **OpenAI** | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
+| **Ollama** (Local) | No key needed - [ollama.ai](https://ollama.ai) |
+
+Keep this API key noted or saved, you will know how to add this into configuration.
+
 ---
 
 ## 💡 What This Project Provides
