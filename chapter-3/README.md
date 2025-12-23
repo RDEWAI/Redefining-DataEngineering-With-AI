@@ -51,11 +51,6 @@ This is the core RAG pattern:
 2. **Augment**: Add retrieved data to the LLM prompt
 3. **Generate**: LLM answers using the provided context
 
-```bash
-# See automated side-by-side comparison
-make rag-demo
-```
-
 ### Production RAG with DuckDB VSS
 
 For the full library dataset (200 books), we use vector embeddings and semantic search.
@@ -83,7 +78,6 @@ make assistant-rag
 |---------|-------------|
 | `make llm` | Chat with plain LLM (no RAG) - see hallucinations |
 | `make llm-rag` | Chat with LLM + RAG - see accurate answers |
-| `make rag-demo` | Automated RAG vs no-RAG comparison |
 | `make generate-embeddings` | Generate book embeddings (requires DB) |
 | `make semantic-search` | Interactive semantic search (requires DB) |
 | `make assistant-rag` | Library Assistant with RAG (requires DB) |

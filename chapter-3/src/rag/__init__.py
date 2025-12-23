@@ -8,12 +8,10 @@ The demo shows:
 2. With RAG: LLM can answer accurately by retrieving relevant context
 
 Usage:
-    python -m src.rag.simple_rag
-
-    # Or via Makefile:
-    make rag-demo
+    make llm       # Chat without RAG (see hallucinations)
+    make llm-rag   # Chat with RAG (see accurate answers)
 """
 
-from .simple_rag import LibraryRAG, run_demo
+from .simple_rag import LibraryRAG, llm_chat
 
-__all__ = ["LibraryRAG", "run_demo"]
+__all__ = ["LibraryRAG", "llm_chat"]

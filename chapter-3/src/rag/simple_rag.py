@@ -228,119 +228,8 @@ class LibraryRAG:
 
 
 # =============================================================================
-# DEMO RUNNER
+# LLM CHAT MODE
 # =============================================================================
-
-
-def run_demo():
-    """Run the RAG demonstration.
-
-    Shows the difference between querying with and without RAG.
-    """
-    print("=" * 70)
-    print("SIMPLE RAG DEMO: Library Book Assistant")
-    print("=" * 70)
-    print()
-    print("This demo shows how RAG (Retrieval-Augmented Generation) enables")
-    print("an LLM to answer questions about PRIVATE data it has never seen.")
-    print()
-    print("We have a small library with 5 fictional books that don't exist")
-    print("in the LLM's training data. Watch how RAG makes the difference!")
-    print()
-
-    # Initialize RAG system
-    rag = LibraryRAG()
-
-    # Demo questions that require knowledge of our private library data
-    questions = [
-        "Who wrote 'The Quantum Garden' and what is it about?",
-        "Which books are currently available in the library?",
-        "Tell me about the book by Marcus Chen.",
-    ]
-
-    for i, question in enumerate(questions, 1):
-        print("=" * 70)
-        print(f"QUESTION {i}: {question}")
-        print("=" * 70)
-
-        # WITHOUT RAG
-        print("\n[WITHOUT RAG] - LLM has no access to library data:")
-        print("-" * 50)
-        try:
-            answer_no_rag = rag.query_without_rag(question)
-            print(answer_no_rag)
-        except Exception as e:
-            print(f"Error: {e}")
-
-        # WITH RAG
-        print("\n[WITH RAG] - LLM uses retrieved library context:")
-        print("-" * 50)
-        try:
-            answer_with_rag, retrieval = rag.query_with_rag(question)
-            print(f"Retrieved {len(retrieval.matched_books)} relevant book(s)")
-            print()
-            print(answer_with_rag)
-        except Exception as e:
-            print(f"Error: {e}")
-
-        print()
-
-    print("=" * 70)
-    print("DEMO COMPLETE")
-    print("=" * 70)
-    print()
-    print("Key Takeaways:")
-    print("1. WITHOUT RAG: LLM cannot answer about private/unknown data")
-    print("2. WITH RAG: LLM accurately answers using retrieved context")
-    print("3. RAG = Retrieve relevant docs + Augment prompt + Generate answer")
-    print()
-
-
-def interactive_mode():
-    """Run interactive Q&A mode with both RAG and no-RAG options."""
-    print("=" * 70)
-    print("INTERACTIVE RAG DEMO")
-    print("=" * 70)
-    print()
-    print("Available books in our library:")
-    for book in LIBRARY_BOOKS:
-        status = "Available" if book["available"] else "Checked Out"
-        print(f"  - {book['title']} by {book['author']} [{status}]")
-    print()
-    print("Ask questions about these books! Type 'quit' to exit.")
-    print("Use '/norag' prefix to query without RAG context.")
-    print()
-
-    rag = LibraryRAG()
-
-    while True:
-        try:
-            question = input("You: ").strip()
-            if not question:
-                continue
-            if question.lower() in ('quit', 'exit', '/quit'):
-                print("Goodbye!")
-                break
-
-            use_rag = True
-            if question.startswith('/norag '):
-                use_rag = False
-                question = question[7:]
-
-            if use_rag:
-                answer, retrieval = rag.query_with_rag(question)
-                print(f"\n[RAG: Retrieved {len(retrieval.matched_books)} book(s)]")
-            else:
-                answer = rag.query_without_rag(question)
-                print("\n[NO RAG: No context provided]")
-
-            print(f"Assistant: {answer}\n")
-
-        except KeyboardInterrupt:
-            print("\nGoodbye!")
-            break
-        except Exception as e:
-            print(f"Error: {e}\n")
 
 
 def llm_chat(use_rag: bool = False):
@@ -405,15 +294,16 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 1:
         arg = sys.argv[1]
-        if arg == "--interactive":
-            interactive_mode()
-        elif arg == "--no-rag":
+        if arg == "--no-rag":
             llm_chat(use_rag=False)
         elif arg == "--rag":
             llm_chat(use_rag=True)
         else:
             print(f"Unknown argument: {arg}")
-            print("Usage: python -m src.rag.simple_rag [--interactive|--no-rag|--rag]")
+            print("Usage: python -m src.rag.simple_rag [--no-rag|--rag]")
             sys.exit(1)
     else:
-        run_demo()
+        print("Usage: python -m src.rag.simple_rag [--no-rag|--rag]")
+        print("  --no-rag  Chat with LLM without RAG (see hallucinations)")
+        print("  --rag     Chat with LLM with RAG (see accurate answers)")
+        sys.exit(1)
