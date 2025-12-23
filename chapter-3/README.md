@@ -1,90 +1,102 @@
 # Chapter 3: AI Engineering with Library Management Data
 
-Progressive AI Engineering learning path using Library Management IoT dataset (200 books). This chapter demonstrates modern AI patterns through six sub-features, from basic data infrastructure to sophisticated multi-agent systems.
+This chapter demonstrates modern AI engineering patterns using a Library Management dataset. The content follows the book structure: **RAG** → **MCP** → **Agentic AI**.
 
-## Overview
+---
 
-This project implements a complete AI Engineering stack:
+## Section 1: RAG (Retrieval-Augmented Generation)
 
-- **003a**: Library Data Infrastructure - DuckDB setup and query tools
-- **003b**: Basic MCP Server - FastMCP tool exposure for Claude Desktop
-- **003c**: Traditional Tool Use - JSON schema-based tool calling with token logging
-- **003d**: Code Execution Pattern - Sandboxed Python execution for token efficiency
-- **003e**: Advanced Tool Use & RAG - Semantic search with DuckDB VSS
-- **003f**: A2A Multi-Agent System - Orchestrated specialist agents
+RAG enables LLMs to answer questions about private data they've never seen during training. This section demonstrates the core RAG pattern: **Retrieve** → **Augment** → **Generate**.
 
-## Quick Start
+### Quick Start (Simple RAG Demo)
 
-### Prerequisites
-
-- Python 3.10-3.12
-- OpenRouter API key (or local Ollama installation)
-
-### Setup
+The minimal demo uses 5 fictional books hardcoded in the script - no database setup required:
 
 ```bash
-# Install dependencies
+# 1. Setup environment
 make dev-setup
 
-# Configure environment
+# 2. Configure API key
 cp .env.example .env
 # Edit .env and add your OPENROUTER_API_KEY
 
-# Load data into DuckDB
+# 3. Run the RAG demo
+make rag-demo
+```
+
+**What You'll See:**
+
+| Query | Without RAG | With RAG |
+|-------|-------------|----------|
+| "Who wrote The Quantum Garden?" | Hallucinated answer | "Dr. Elena Voss" (correct) |
+| "Which books are available?" | "I don't have access" | Lists 3 available books |
+
+```bash
+# Interactive Q&A mode
+make rag-interactive
+```
+
+### Production RAG with DuckDB VSS
+
+For the full library dataset (200 books), we use vector embeddings and semantic search.
+This requires database setup (see Section 2 prerequisites):
+
+```bash
+# Generate embeddings (after load-data)
+make generate-embeddings
+
+# Interactive semantic search
+make semantic-search
+
+# Assistant with RAG enabled
+make assistant-rag
+```
+
+**Example Semantic Queries:**
+- "books about time travel adventures"
+- "something about Python programming"
+- "mystery novels with detective stories"
+
+### RAG Make Commands
+
+| Command | Description |
+|---------|-------------|
+| `make rag-demo` | Simple RAG vs no-RAG comparison (no DB needed) |
+| `make rag-interactive` | Interactive RAG Q&A mode (no DB needed) |
+| `make generate-embeddings` | Generate book embeddings (requires DB) |
+| `make semantic-search` | Interactive semantic search (requires DB) |
+| `make assistant-rag` | Library Assistant with RAG (requires DB) |
+
+---
+
+## Section 2: MCP (Model Context Protocol)
+
+MCP exposes your tools to AI applications like Claude Desktop. This section shows how to create and deploy an MCP server.
+
+### Prerequisites (Database Setup)
+
+MCP and Agentic sections require the library database:
+
+```bash
+# Load 200 books into DuckDB
 make load-data
-make verify-data
+make verify-data    # Expected: ✓ Found 200 books
 ```
 
-### Verify Installation
+### Start the MCP Server
 
 ```bash
-# Check data is loaded
-make verify-data
-# Expected: ✓ Found 200 books
-
-# Run tests
-make test
-```
-
-## Sub-Feature Workflows
-
-### 003a: Library Data Infrastructure
-
-Set up DuckDB database with library data and query capabilities.
-
-```bash
-# Load data
-make load-data
-
-# Verify
-make verify-data
-
-# Run tests
-make test-unit
-```
-
-**Test Query:**
-```python
-import duckdb
-conn = duckdb.connect('data/duckdb/chapter3.db')
-books = conn.execute("SELECT * FROM library.books WHERE category = 'Programming'").fetchall()
-print(f"Found {len(books)} programming books")
-```
-
-### 003b: MCP Server
-
-Expose library tools via MCP for Claude Desktop integration.
-
-```bash
-# Start MCP server
+# Production mode
 make mcp-server
 
-# Test with MCP Inspector
+# Development mode with MCP Inspector
 make mcp-dev
 ```
 
-**Claude Desktop Setup:**
+### Claude Desktop Integration
+
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
 ```json
 {
   "mcpServers": {
@@ -97,208 +109,197 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-### 003c: Traditional Tool Use
+**Available MCP Tools:**
+- `search_books` - Search by title, author, or keyword
+- `get_book_details` - Get full book information
+- `get_available_books` - List books currently available
+- `get_books_by_category` - Filter by category
+- `get_library_statistics` - Library analytics
+- `checkout_book` / `return_book` - Circulation management
+- `get_overdue_books` - Find overdue items
 
-Library Assistant with JSON schema tools and token logging.
+### MCP Make Commands
+
+| Command | Description |
+|---------|-------------|
+| `make mcp-server` | Start MCP server |
+| `make mcp-dev` | Start MCP Inspector for debugging |
+
+---
+
+## Section 3: Agentic AI
+
+This section covers tool-calling patterns, from traditional JSON schema tools to code execution and multi-agent orchestration.
+
+### 3.1 Traditional Tool Use
+
+The Library Assistant uses JSON schema-based tool calling:
 
 ```bash
-# Traditional mode (default)
 make assistant
-
-# With RAG enabled
-make assistant-rag
 ```
 
-**Commands:**
+**In-App Commands:**
 - `/help` - Show available commands
-- `/settings` - Show current configuration
 - `/tools` - Toggle tool call display
 - `/stats` - Show token usage statistics
 - `/quit` - Exit
 
-**Example queries:**
+**Example Queries:**
 - "What programming books are available?"
 - "Show me books by John Smith"
 - "Which books are missing?"
-- "Show me the books on thriller which are available from the author who has most books"
 
-### 003d: Code Execution with Token Efficiency
+### 3.2 Code Execution Pattern
 
-Enhanced assistant with dual-mode support (Traditional vs Code Execution).
+Enhanced assistant with sandboxed Python execution for token efficiency:
 
 ```bash
-# Start enhanced assistant (defaults to code execution mode)
+# Code execution mode (default)
 make assistant-enhanced
 
-# Compare traditional vs code execution modes
+# Compare modes side-by-side
 make compare-modes
 
-# Run benchmark
+# Run benchmarks
 make benchmark
 ```
 
-**Key Features:**
-- State persistence between code execution iterations (Anthropic pattern)
-- Progressive tool loading for token efficiency
-- 40%+ token reduction vs traditional tool calling
+**Why Code Execution?**
 
-**Expected Results from compare-modes:**
-- Traditional tools: ~4,000 tokens
-- Code execution: ~2,100 tokens
-- Reduction: ~48%
+Traditional tool calling sends full JSON schemas for every tool in every request. Code execution sends tools once, then executes Python code—dramatically reducing tokens.
 
-**Enterprise Scale Demo (100 dummy tools):**
+**Expected Results:**
+- Traditional: ~4,000 tokens
+- Code Execution: ~2,100 tokens
+- **Reduction: ~48%**
+
+### 3.3 Enterprise Scale (100+ Tools)
+
+At enterprise scale with many tools, the difference is dramatic:
+
 ```bash
-# Demonstrate token efficiency at enterprise scale
+# Interactive demo
 make compare-modes-enterprise
 
-# Run with all query types
+# Automated full benchmark
 make compare-modes-enterprise-all
 ```
 
-This demonstrates the core insight from Anthropic's "Advanced Tool Use" paper:
-code execution dramatically reduces token overhead when dealing with many tools.
-With 100 enterprise dummy tools:
-- Traditional mode: ~131,000 tokens (6 queries)
-- Code execution: ~25,000 tokens (6 queries)
+**Enterprise Results (100 dummy tools):**
+- Traditional: ~131,000 tokens
+- Code Execution: ~25,000 tokens
 - **Reduction: 80%+**
 
-### 003e: Semantic Search (RAG)
+This demonstrates insights from Anthropic's "Advanced Tool Use" paper.
 
-Semantic book search using DuckDB VSS.
+### 3.4 Multi-Agent System
 
-```bash
-# Generate embeddings (first time only)
-make generate-embeddings
-
-# Test semantic search
-make semantic-search
-```
-
-**Example queries:**
-- "that book about time travel"
-- "something about Python programming"
-- "adventure stories"
-
-### 003f: Multi-Agent System
-
-Orchestrated specialist agents for complex queries.
+Orchestrated specialist agents handle complex queries:
 
 ```bash
 make multi-agent
 ```
 
-**Example queries:**
+**Specialist Agents:**
+- **SearchAgent** - Book discovery and semantic search
+- **AnalyticsAgent** - Statistics and reporting
+- **RecommendationAgent** - Suggestions with quality filters
+
+**Example Multi-Agent Queries:**
 - "Find available programming books and recommend one with good signal"
 - "How many books are missing? Show breakdown by category"
 - "Search for fiction books and analyze their availability patterns"
 
-## Makefile Targets
+### Agentic Make Commands
 
-| Target | Description |
-|--------|-------------|
-| `make help` | Show all available targets |
-| `make dev-setup` | Complete development setup |
-| `make load-data` | Load CSV into DuckDB |
-| `make verify-data` | Verify data loaded correctly |
-| `make mcp-server` | Start MCP server |
-| `make mcp-dev` | Start MCP Inspector |
-| `make assistant` | Start Library Assistant (Traditional Mode) |
-| `make assistant-rag` | Start Library Assistant (RAG Mode) |
-| `make assistant-enhanced` | Start Enhanced Assistant (Code Execution Mode) |
-| `make assistant-dummy-tools` | Traditional Mode + 100 enterprise dummy tools |
-| `make assistant-code-dummy-tools` | Code Execution Mode + 100 enterprise dummy tools |
+| Command | Description |
+|---------|-------------|
+| `make assistant` | Traditional tool-calling mode |
+| `make assistant-enhanced` | Code execution mode |
+| `make assistant-dummy-tools` | Traditional + 100 enterprise tools |
+| `make assistant-code-dummy-tools` | Code execution + 100 enterprise tools |
 | `make compare-modes` | Compare Traditional vs Code Execution |
-| `make compare-modes-enterprise` | Enterprise scale demo with 100 dummy tools |
-| `make compare-modes-enterprise-all` | Run ALL queries with 100 dummy tools |
+| `make compare-modes-enterprise` | Enterprise scale demo (interactive) |
+| `make compare-modes-enterprise-all` | Enterprise scale demo (automated) |
 | `make test-code-execution` | Test code execution sandbox |
 | `make benchmark` | Run token comparison benchmark |
-| `make generate-embeddings` | Generate book embeddings for RAG |
-| `make semantic-search` | Test semantic search |
 | `make data-analysis` | Start data analysis agent |
-| `make multi-agent` | Start multi-agent system |
-| `make test-multi-agent` | Run multi-agent system tests |
+| `make multi-agent` | Start multi-agent orchestrator |
+
+---
+
+## All Make Commands
+
+### Setup
+
+| Command | Description |
+|---------|-------------|
+| `make help` | Show all available targets |
+| `make dev-setup` | Install dependencies (uv sync) |
+| `make clean` | Clean generated files |
+
+### Data (Required for MCP & Agentic)
+
+| Command | Description |
+|---------|-------------|
+| `make load-data` | Load 200 books into DuckDB |
+| `make verify-data` | Verify data loaded correctly |
+
+### Testing & Quality
+
+| Command | Description |
+|---------|-------------|
 | `make test` | Run all tests |
 | `make test-unit` | Run unit tests only |
 | `make test-integration` | Run integration tests only |
+| `make test-multi-agent` | Run multi-agent system tests |
 | `make lint` | Run ruff linter |
 | `make format` | Auto-format code |
-| `make clean` | Clean generated files |
+
+---
 
 ## Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `OPENROUTER_API_KEY` | OpenRouter API key | Required |
-| `LLM_PROVIDER` | LLM provider (`openrouter` or `ollama`) | `openrouter` |
+| `LLM_PROVIDER` | `openrouter` or `ollama` | `openrouter` |
 | `LLM_MODEL` | Model identifier | `anthropic/claude-3.5-sonnet` |
 | `OLLAMA_HOST` | Ollama server URL | `http://localhost:11434` |
 | `DB_PATH` | DuckDB database path | `data/duckdb/chapter3.db` |
 | `LOG_LEVEL` | Logging level | `INFO` |
 
+---
+
 ## Project Structure
 
 ```
 chapter-3/
-├── README.md                    # This file
-├── Makefile                     # Make targets
-├── pyproject.toml               # UV dependencies
+├── src/
+│   ├── rag/                     # Section 1: Simple RAG demo
+│   │   └── simple_rag.py        # Minimal RAG implementation
+│   └── agentic/                 # Main package
+│       ├── rag/                 # Production RAG (embeddings, vector store)
+│       ├── mcp_servers/         # Section 2: MCP server
+│       ├── library/             # Data layer (domain, repository)
+│       ├── llm/                 # LLM abstraction (OpenRouter, Ollama)
+│       ├── agents/              # Section 3: All agents
+│       ├── code_execution/      # Sandbox for code execution
+│       ├── tools/               # Tool registry and search
+│       └── a2a/                 # Agent-to-Agent protocol
 ├── data/
 │   ├── raw/library/             # Source CSV files
-│   └── duckdb/                  # DuckDB database files
-├── src/
-│   └── agentic/                 # Main package
-│       ├── library/             # 003a: Data layer
-│       ├── llm/                 # 003a: LLM abstraction
-│       ├── mcp_servers/         # 003b: MCP server
-│       ├── agents/              # 003c, 003e, 003f: Agents
-│       ├── code_execution/      # 003d: Sandbox
-│       ├── tools/               # 003e: Tool registry
-│       ├── rag/                 # 003e: RAG components
-│       └── a2a/                 # 003f: A2A protocol
-├── scripts/                     # Data loading scripts
+│   └── duckdb/                  # DuckDB database
+├── scripts/                     # Utility scripts
 ├── benchmarks/                  # Performance benchmarks
 ├── docs/                        # Detailed documentation
 └── tests/                       # Unit and integration tests
 ```
 
-## Learning Path
-
-1. **Start with 003a** - Understand data and query patterns
-2. **Build 003b** - Learn MCP fundamentals
-3. **Implement 003c** - Compare traditional tool calling
-4. **Add 003d** - Measure token savings
-5. **Enhance with 003e** - Add semantic search
-6. **Complete with 003f** - Orchestrate multiple agents
-
-Each sub-feature builds on the previous. Run tests at each step to verify correctness.
-
-## Testing
-
-```bash
-# Run all tests
-make test
-
-# Run specific test suite
-make test-unit
-make test-integration
-
-# Run with coverage
-uv run pytest tests/ -v --cov=src --cov-report=term-missing
-```
-
-**Quality Gates:**
-- Unit test coverage: 80%+
-- Integration tests: 100% pass rate
-- Linting: Zero ruff errors
-- Type checking: mypy passing
+---
 
 ## Troubleshooting
-
-### "No module named 'fastmcp'"
-```bash
-uv sync
-```
 
 ### "OPENROUTER_API_KEY not set"
 ```bash
@@ -311,30 +312,29 @@ export OPENROUTER_API_KEY="your-key-here"
 make load-data
 ```
 
+### "No module named 'fastmcp'"
+```bash
+uv sync
+```
+
+### "Embeddings table empty"
+```bash
+make generate-embeddings
+```
+
+### "Could not set lock on file" (DuckDB)
+```bash
+# Close other terminals running chapter-3 commands
+lsof data/duckdb/chapter3.db
+# Kill orphaned processes if needed
+```
+
 ### "MCP server not connecting"
 1. Check server is running: `make mcp-server`
 2. Verify config path in Claude Desktop settings
 3. Restart Claude Desktop completely
 
-### "Embeddings table empty" or "Table book_embeddings does not exist"
-```bash
-make generate-embeddings
-```
-
-### "Could not set lock on file" (DuckDB IO Error)
-This happens when another process is holding the database open.
-```bash
-# 1. Close any other terminal windows running chapter-3 commands
-#    (make assistant, make mcp-server, etc.)
-
-# 2. Check for processes holding the database:
-lsof data/duckdb/chapter3.db
-
-# 3. Kill any orphaned Python processes if needed
-
-# 4. Retry the command
-make generate-embeddings
-```
+---
 
 ## Resources
 
@@ -343,6 +343,8 @@ make generate-embeddings
 - [DuckDB VSS Extension](https://duckdb.org/docs/stable/core_extensions/vss)
 - [Anthropic: Code Execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp)
 - [Anthropic: Advanced Tool Use](https://www.anthropic.com/engineering/advanced-tool-use)
+
+---
 
 ## License
 

@@ -11,49 +11,51 @@ ifeq ($(UNAME_S),Darwin)
     endif
 endif
 
-.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew
+.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew rag-demo rag-interactive
 
 
 help:
 	@echo "Chapter 3: AI Engineering with Library Management Data"
+	@echo "Structure: RAG -> MCP -> Agentic AI"
 	@echo ""
-	@echo "Available targets:"
-	@echo "  dev-setup                  - Complete development setup"
-	@echo "  load-data                  - Load CSV into DuckDB"
+	@echo "=== Setup ==="
+	@echo "  dev-setup                  - Install dependencies (uv sync)"
+	@echo "  clean                      - Clean generated files"
+	@echo ""
+	@echo "=== Section 1: RAG (no database needed for demo) ==="
+	@echo "  rag-demo                   - Simple RAG demo (RAG vs no-RAG comparison)"
+	@echo "  rag-interactive            - Interactive RAG Q&A mode"
+	@echo "  --- Production RAG (requires load-data first) ---"
+	@echo "  generate-embeddings        - Generate book embeddings for semantic search"
+	@echo "  semantic-search            - Interactive semantic search CLI"
+	@echo "  assistant-rag              - Library Assistant with RAG enabled"
+	@echo ""
+	@echo "=== Section 2: MCP (requires load-data first) ==="
+	@echo "  load-data                  - Load 200 books into DuckDB"
 	@echo "  verify-data                - Verify data loaded correctly"
 	@echo "  mcp-server                 - Start MCP server"
 	@echo "  mcp-dev                    - Start MCP Inspector for debugging"
 	@echo ""
-	@echo "Assistant Modes:"
-	@echo "  assistant                  - Traditional mode (8 library tools)"
-	@echo "  assistant-rag              - RAG mode (semantic search enabled)"
-	@echo "  assistant-enhanced         - Code execution mode (switchable)"
-	@echo "  assistant-dummy-tools      - Traditional mode + 100 enterprise dummy tools"
-	@echo "  assistant-code-dummy-tools - Code execution mode + 100 enterprise dummy tools"
-	@echo ""
-	@echo "Comparison & Benchmarks:"
-	@echo "  compare-modes              - Compare Traditional vs Code Execution (interactive)"
-	@echo "  compare-modes-enterprise   - Enterprise scale demo with 100 dummy tools (interactive)"
-	@echo "  compare-modes-enterprise-all - Run ALL queries with 100 dummy tools (automated)"
+	@echo "=== Section 3: Agentic AI ==="
+	@echo "  assistant                  - Traditional tool-calling mode"
+	@echo "  assistant-enhanced         - Code execution mode"
+	@echo "  compare-modes              - Compare Traditional vs Code Execution"
 	@echo "  benchmark                  - Run token comparison benchmark"
-	@echo "  test-code-execution        - Test Phase 6 code execution sandbox"
-	@echo ""
-	@echo "RAG & Semantic Search:"
-	@echo "  generate-embeddings        - Generate book embeddings for RAG"
-	@echo "  semantic-search            - Test semantic search"
+	@echo "  assistant-dummy-tools      - Traditional + 100 enterprise tools"
+	@echo "  assistant-code-dummy-tools - Code execution + 100 enterprise tools"
+	@echo "  compare-modes-enterprise   - Enterprise scale demo (interactive)"
+	@echo "  compare-modes-enterprise-all - Enterprise scale demo (automated)"
 	@echo "  data-analysis              - Start data analysis agent"
+	@echo "  multi-agent                - Start multi-agent orchestrator"
 	@echo ""
-	@echo "Multi-Agent System:"
-	@echo "  multi-agent                - Start multi-agent system with orchestrator"
-	@echo "  test-multi-agent           - Run multi-agent system tests"
-	@echo ""
-	@echo "Testing & Quality:"
+	@echo "=== Testing & Quality ==="
 	@echo "  test                       - Run all tests"
 	@echo "  test-unit                  - Run unit tests only"
 	@echo "  test-integration           - Run integration tests only"
+	@echo "  test-multi-agent           - Run multi-agent system tests"
+	@echo "  test-code-execution        - Test code execution sandbox"
 	@echo "  lint                       - Run ruff linter"
 	@echo "  format                     - Auto-format code"
-	@echo "  clean                      - Clean generated files"
 
 
 
@@ -152,6 +154,18 @@ generate-embeddings:
 semantic-search:
 	@echo "Starting semantic search CLI..."
 	uv run python -c "from src.agentic.rag.vector_store import semantic_search_cli; semantic_search_cli()"
+
+rag-demo:
+	@echo "Running Simple RAG Demo..."
+	@echo ""
+	@echo "This demo shows how RAG enables LLMs to answer questions about"
+	@echo "private data they have never seen during training."
+	@echo ""
+	uv run python -m src.rag.simple_rag
+
+rag-interactive:
+	@echo "Starting Interactive RAG Demo..."
+	uv run python -m src.rag.simple_rag --interactive
 
 data-analysis:
 	@echo "Starting data analysis agent..."
