@@ -11,7 +11,7 @@ ifeq ($(UNAME_S),Darwin)
     endif
 endif
 
-.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew rag-demo rag-interactive
+.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew llm llm-rag rag-demo rag-interactive
 
 
 help:
@@ -22,9 +22,10 @@ help:
 	@echo "  dev-setup                  - Install dependencies (uv sync)"
 	@echo "  clean                      - Clean generated files"
 	@echo ""
-	@echo "=== Section 1: RAG (no database needed for demo) ==="
-	@echo "  rag-demo                   - Simple RAG demo (RAG vs no-RAG comparison)"
-	@echo "  rag-interactive            - Interactive RAG Q&A mode"
+	@echo "=== Section 1: RAG (no database needed) ==="
+	@echo "  llm                        - Chat with LLM (no RAG) - see hallucinations"
+	@echo "  llm-rag                    - Chat with LLM + RAG - see accurate answers"
+	@echo "  rag-demo                   - Automated RAG vs no-RAG comparison"
 	@echo "  --- Production RAG (requires load-data first) ---"
 	@echo "  generate-embeddings        - Generate book embeddings for semantic search"
 	@echo "  semantic-search            - Interactive semantic search CLI"
@@ -155,8 +156,28 @@ semantic-search:
 	@echo "Starting semantic search CLI..."
 	uv run python -c "from src.agentic.rag.vector_store import semantic_search_cli; semantic_search_cli()"
 
+llm:
+	@echo "============================================================"
+	@echo "LLM Chat (No RAG)"
+	@echo "============================================================"
+	@echo ""
+	@echo "Ask about our library books - the LLM has NO access to the data."
+	@echo "Try: Who wrote 'The Quantum Garden'?"
+	@echo ""
+	uv run python -m src.rag.simple_rag --no-rag
+
+llm-rag:
+	@echo "============================================================"
+	@echo "LLM Chat with RAG (Library Data Enabled)"
+	@echo "============================================================"
+	@echo ""
+	@echo "Now the LLM has access to our library database via RAG."
+	@echo "Try the same question: Who wrote 'The Quantum Garden'?"
+	@echo ""
+	uv run python -m src.rag.simple_rag --rag
+
 rag-demo:
-	@echo "Running Simple RAG Demo..."
+	@echo "Running Automated RAG Demo..."
 	@echo ""
 	@echo "This demo shows how RAG enables LLMs to answer questions about"
 	@echo "private data they have never seen during training."

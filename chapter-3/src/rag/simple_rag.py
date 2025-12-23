@@ -297,7 +297,7 @@ def run_demo():
 
 
 def interactive_mode():
-    """Run interactive Q&A mode."""
+    """Run interactive Q&A mode with both RAG and no-RAG options."""
     print("=" * 70)
     print("INTERACTIVE RAG DEMO")
     print("=" * 70)
@@ -343,10 +343,77 @@ def interactive_mode():
             print(f"Error: {e}\n")
 
 
+def llm_chat(use_rag: bool = False):
+    """Simple LLM chat mode.
+
+    Args:
+        use_rag: If True, enable RAG with library data. If False, plain LLM.
+    """
+    rag = LibraryRAG()
+
+    if use_rag:
+        print("=" * 60)
+        print("LLM Chat with RAG (Library Data Enabled)")
+        print("=" * 60)
+        print()
+        print("The LLM now has access to our library database:")
+        for book in LIBRARY_BOOKS:
+            print(f"  - {book['title']} by {book['author']}")
+        print()
+        print("Try asking: Who wrote 'The Quantum Garden'?")
+        print("Type 'quit' to exit.")
+        print("=" * 60)
+    else:
+        print("=" * 60)
+        print("LLM Chat (No RAG - Plain LLM)")
+        print("=" * 60)
+        print()
+        print("This is a plain LLM with NO access to our library data.")
+        print("Try asking: Who wrote 'The Quantum Garden'?")
+        print("(The LLM will likely hallucinate or say it doesn't know)")
+        print()
+        print("Type 'quit' to exit.")
+        print("=" * 60)
+
+    print()
+
+    while True:
+        try:
+            question = input("You: ").strip()
+            if not question:
+                continue
+            if question.lower() in ('quit', 'exit', '/quit'):
+                print("Goodbye!")
+                break
+
+            if use_rag:
+                answer, retrieval = rag.query_with_rag(question)
+                print(f"\nAssistant: {answer}\n")
+            else:
+                answer = rag.query_without_rag(question)
+                print(f"\nAssistant: {answer}\n")
+
+        except KeyboardInterrupt:
+            print("\nGoodbye!")
+            break
+        except Exception as e:
+            print(f"Error: {e}\n")
+
+
 if __name__ == "__main__":
     import sys
 
-    if len(sys.argv) > 1 and sys.argv[1] == "--interactive":
-        interactive_mode()
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+        if arg == "--interactive":
+            interactive_mode()
+        elif arg == "--no-rag":
+            llm_chat(use_rag=False)
+        elif arg == "--rag":
+            llm_chat(use_rag=True)
+        else:
+            print(f"Unknown argument: {arg}")
+            print("Usage: python -m src.rag.simple_rag [--interactive|--no-rag|--rag]")
+            sys.exit(1)
     else:
         run_demo()

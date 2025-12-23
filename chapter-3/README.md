@@ -8,9 +8,7 @@ This chapter demonstrates modern AI engineering patterns using a Library Managem
 
 RAG enables LLMs to answer questions about private data they've never seen during training. This section demonstrates the core RAG pattern: **Retrieve** → **Augment** → **Generate**.
 
-### Quick Start (Simple RAG Demo)
-
-The minimal demo uses 5 fictional books hardcoded in the script - no database setup required:
+### Quick Start
 
 ```bash
 # 1. Setup environment
@@ -19,21 +17,43 @@ make dev-setup
 # 2. Configure API key
 cp .env.example .env
 # Edit .env and add your OPENROUTER_API_KEY
-
-# 3. Run the RAG demo
-make rag-demo
 ```
 
-**What You'll See:**
-
-| Query | Without RAG | With RAG |
-|-------|-------------|----------|
-| "Who wrote The Quantum Garden?" | Hallucinated answer | "Dr. Elena Voss" (correct) |
-| "Which books are available?" | "I don't have access" | Lists 3 available books |
+### Step 1: Try the LLM Without RAG
 
 ```bash
-# Interactive Q&A mode
-make rag-interactive
+make llm
+```
+
+Ask: **"Who wrote 'The Quantum Garden'?"**
+
+The LLM will likely hallucinate an answer or say it doesn't know - because this is a fictional book that doesn't exist in its training data.
+
+### Step 2: Try the LLM With RAG
+
+```bash
+make llm-rag
+```
+
+Ask the same question: **"Who wrote 'The Quantum Garden'?"**
+
+Now the LLM correctly answers: **"Dr. Elena Voss"** - because RAG retrieved the book data and added it to the prompt.
+
+### What's Happening?
+
+| Mode | What the LLM Sees | Result |
+|------|-------------------|--------|
+| `make llm` | Just your question | Hallucination or "I don't know" |
+| `make llm-rag` | Your question + retrieved book data | Accurate answer |
+
+This is the core RAG pattern:
+1. **Retrieve**: Find relevant documents (our 5 fictional books)
+2. **Augment**: Add retrieved data to the LLM prompt
+3. **Generate**: LLM answers using the provided context
+
+```bash
+# See automated side-by-side comparison
+make rag-demo
 ```
 
 ### Production RAG with DuckDB VSS
@@ -61,8 +81,9 @@ make assistant-rag
 
 | Command | Description |
 |---------|-------------|
-| `make rag-demo` | Simple RAG vs no-RAG comparison (no DB needed) |
-| `make rag-interactive` | Interactive RAG Q&A mode (no DB needed) |
+| `make llm` | Chat with plain LLM (no RAG) - see hallucinations |
+| `make llm-rag` | Chat with LLM + RAG - see accurate answers |
+| `make rag-demo` | Automated RAG vs no-RAG comparison |
 | `make generate-embeddings` | Generate book embeddings (requires DB) |
 | `make semantic-search` | Interactive semantic search (requires DB) |
 | `make assistant-rag` | Library Assistant with RAG (requires DB) |
