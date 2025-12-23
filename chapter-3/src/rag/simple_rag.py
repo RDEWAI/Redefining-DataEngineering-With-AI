@@ -276,7 +276,7 @@ def llm_chat(use_rag: bool = False):
                 break
 
             if use_rag:
-                answer, retrieval = rag.query_with_rag(question)
+                answer, _ = rag.query_with_rag(question)
                 print(f"\nAssistant: {answer}\n")
             else:
                 answer = rag.query_without_rag(question)
