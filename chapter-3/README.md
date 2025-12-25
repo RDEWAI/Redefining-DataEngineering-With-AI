@@ -54,7 +54,17 @@ This is the core RAG pattern:
 ### Production RAG with DuckDB VSS
 
 For the full library dataset (200 books), we use vector embeddings and semantic search.
-This requires database setup (see Section 2 prerequisites):
+This requires database setup:
+
+### Prerequisites (Database Setup)
+
+RAG LLM, MCP and Agentic sections require the library database so if you set this now you don't need to repeat again:
+
+```bash
+# Load 200 books into DuckDB
+make load-data
+make verify-data    # Expected: ✓ Found 200 books
+```
 
 ```bash
 # Generate embeddings (after load-data)
@@ -86,65 +96,115 @@ make assistant-rag
 
 ## Section 2: MCP (Model Context Protocol)
 
-MCP exposes your tools to AI applications like Claude Desktop. This section shows how to create and deploy an MCP server.
+MCP exposes your tools to AI applications like MCP Client and MCP host. This section shows how MCP tools work and how to deploy an MCP server.
 
-### Prerequisites (Database Setup)
+* Make sure to finish [prerequisites](#prerequisites-database-setup) if not already done, while executing RAG section
 
-MCP and Agentic sections require the library database:
-
-```bash
-# Load 200 books into DuckDB
-make load-data
-make verify-data    # Expected: ✓ Found 200 books
-```
-
-### Start the MCP Server
+### Explore MCP Tools Interactively
 
 ```bash
-# Production mode
-make mcp-server
-
-# Development mode with MCP Inspector
-make mcp-dev
+make mcp-client
 ```
 
-### Claude Desktop Integration
+This opens an interactive client where you can:
+- View server status and available tools
+- Execute MCP tools directly
+- Access MCP resources
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+**In-Client Commands:**
+- `/status` - Show server status and book statistics
+- `/tools` - List all 8 MCP tools with parameters
+- `/resources` - List available resources
+- `/help` - Show help
 
-```json
-{
-  "mcpServers": {
-    "library": {
-      "command": "uv",
-      "args": ["run", "fastmcp", "run", "src/agentic/mcp_servers/library_server.py"],
-      "cwd": "/path/to/chapter-3"
-    }
-  }
-}
+**Example Tool Calls:**
+```
+> search_books query="Python"
+> list_by_status status=Missing
+> get_book_details book_id=B001
+> locate_book book_id=B042
 ```
 
-**Available MCP Tools:**
-- `search_books` - Search by title, author, or keyword
-- `get_book_details` - Get full book information
-- `get_available_books` - List books currently available
-- `get_books_by_category` - Filter by category
-- `get_library_statistics` - Library analytics
-- `checkout_book` / `return_book` - Circulation management
-- `get_overdue_books` - Find overdue items
+**Example Resource Access:**
+```
+> resource stats
+> resource missing_books
+```
+
+### Available MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `search_books` | Search by title, author, or keyword |
+| `get_book_details` | Get complete book information |
+| `check_availability` | Check if a book is available |
+| `list_by_category` | List books in a category |
+| `list_by_status` | List books by status (Present/Missing/Checked Out) |
+| `locate_book` | Get physical location (Cabinet/Rack/Row) |
+| `find_books_in_cabinet` | List books in a cabinet location |
+| `get_weak_signal_books` | Find books needing RFID maintenance |
+
+### 2.1 Code Execution Pattern
+
+Enhanced MCP assistant with sandboxed Python execution for token efficiency:
+
+```bash
+# MCP Assistant with code execution mode
+make mcp-assistant
+
+# Compare Traditional vs Code Execution modes
+make mcp-compare-modes
+
+# Run MCP token benchmark
+make mcp-benchmark
+```
+
+**Why Code Execution?**
+
+Traditional tool calling sends full JSON schemas for every tool in every request. Code execution sends tools once, then executes Python code—dramatically reducing tokens.
+
+**Expected Results:**
+- Traditional: ~4,000 tokens
+- Code Execution: ~2,100 tokens
+- **Reduction: ~48%**
+
+### 2.2 Enterprise Scale (100+ Tools)
+
+At enterprise scale with many tools, the difference is dramatic:
+
+```bash
+# Interactive demo with 100 tools
+make mcp-compare-modes-enterprise
+
+# Automated full benchmark with 100 tools
+make mcp-compare-modes-enterprise-all
+```
+
+**Enterprise Results (100 dummy tools):**
+- Traditional: ~131,000 tokens
+- Code Execution: ~25,000 tokens
+- **Reduction: 80%+**
+
+This demonstrates insights from Anthropic's "Advanced Tool Use" paper.
 
 ### MCP Make Commands
 
 | Command | Description |
 |---------|-------------|
-| `make mcp-server` | Start MCP server |
+| `make mcp-client` | Interactive MCP client (explore tools & run queries) |
+| `make mcp-assistant` | MCP Assistant with code execution mode |
+| `make mcp-compare-modes` | Compare Traditional vs Code Execution |
+| `make mcp-benchmark` | Run MCP token comparison benchmark |
+| `make mcp-compare-modes-enterprise` | Enterprise scale (100 tools, interactive) |
+| `make mcp-compare-modes-enterprise-all` | Enterprise scale (100 tools, automated) |
+| `make mcp-server` | Start MCP server (for Claude Desktop) |
 | `make mcp-dev` | Start MCP Inspector for debugging |
 
 ---
 
 ## Section 3: Agentic AI
 
-This section covers tool-calling patterns, from traditional JSON schema tools to code execution and multi-agent orchestration.
+This section covers multi-agent orchestration and traditional tool-calling patterns.
 
 ### 3.1 Traditional Tool Use
 
@@ -165,50 +225,7 @@ make assistant
 - "Show me books by John Smith"
 - "Which books are missing?"
 
-### 3.2 Code Execution Pattern
-
-Enhanced assistant with sandboxed Python execution for token efficiency:
-
-```bash
-# Code execution mode (default)
-make assistant-enhanced
-
-# Compare modes side-by-side
-make compare-modes
-
-# Run benchmarks
-make benchmark
-```
-
-**Why Code Execution?**
-
-Traditional tool calling sends full JSON schemas for every tool in every request. Code execution sends tools once, then executes Python code—dramatically reducing tokens.
-
-**Expected Results:**
-- Traditional: ~4,000 tokens
-- Code Execution: ~2,100 tokens
-- **Reduction: ~48%**
-
-### 3.3 Enterprise Scale (100+ Tools)
-
-At enterprise scale with many tools, the difference is dramatic:
-
-```bash
-# Interactive demo
-make compare-modes-enterprise
-
-# Automated full benchmark
-make compare-modes-enterprise-all
-```
-
-**Enterprise Results (100 dummy tools):**
-- Traditional: ~131,000 tokens
-- Code Execution: ~25,000 tokens
-- **Reduction: 80%+**
-
-This demonstrates insights from Anthropic's "Advanced Tool Use" paper.
-
-### 3.4 Multi-Agent System
+### 3.2 Multi-Agent System
 
 Orchestrated specialist agents handle complex queries:
 
@@ -230,21 +247,31 @@ make multi-agent
 
 | Command | Description |
 |---------|-------------|
-| `make assistant` | Traditional tool-calling mode |
-| `make assistant-enhanced` | Code execution mode |
-| `make assistant-dummy-tools` | Traditional + 100 enterprise tools |
-| `make assistant-code-dummy-tools` | Code execution + 100 enterprise tools |
-| `make compare-modes` | Compare Traditional vs Code Execution |
-| `make compare-modes-enterprise` | Enterprise scale demo (interactive) |
-| `make compare-modes-enterprise-all` | Enterprise scale demo (automated) |
-| `make test-code-execution` | Test code execution sandbox |
-| `make benchmark` | Run token comparison benchmark |
+| `make assistant` | Traditional tool-calling assistant |
 | `make data-analysis` | Start data analysis agent |
 | `make multi-agent` | Start multi-agent orchestrator |
 
+### 3.3 IDE Integrations
+
+**Claude Desktop Configuration:**
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "library": {
+      "command": "uv",
+      "args": ["run", "fastmcp", "run", "src/mcp/library_server.py"],
+      "cwd": "/path/to/chapter-3"
+    }
+  }
+}
+```
+
 ---
 
-## All Make Commands
+## All Make Commands (End of Chapter 3 excercise. From here it is for debugging or extra help)
 
 ### Setup
 
@@ -254,7 +281,7 @@ make multi-agent
 | `make dev-setup` | Install dependencies (uv sync) |
 | `make clean` | Clean generated files |
 
-### Data (Required for MCP & Agentic)
+### Data (Required for Prouduction setup of RAG & MCP & Agentic)
 
 | Command | Description |
 |---------|-------------|
@@ -294,12 +321,14 @@ chapter-3/
 ├── src/
 │   ├── rag/                     # Section 1: Simple RAG demo
 │   │   └── simple_rag.py        # Minimal RAG implementation
-│   └── agentic/                 # Main package
+│   ├── mcp/                     # Section 2: MCP server & client
+│   │   ├── library_server.py    # FastMCP server with tools/resources
+│   │   └── client.py            # Interactive MCP client
+│   └── agentic/                 # Section 3: Agentic AI
 │       ├── rag/                 # Production RAG (embeddings, vector store)
-│       ├── mcp_servers/         # Section 2: MCP server
 │       ├── library/             # Data layer (domain, repository)
 │       ├── llm/                 # LLM abstraction (OpenRouter, Ollama)
-│       ├── agents/              # Section 3: All agents
+│       ├── agents/              # All agents and assistants
 │       ├── code_execution/      # Sandbox for code execution
 │       ├── tools/               # Tool registry and search
 │       └── a2a/                 # Agent-to-Agent protocol

@@ -3,13 +3,16 @@
 Exposes library operations as MCP tools, resources, and prompts for
 integration with Claude Desktop and other MCP clients.
 
-Sub-feature: 003b - Basic MCP Server
+Usage:
+    # Production mode
+    make mcp-server
+
+    # Development mode with MCP Inspector
+    make mcp-dev
 """
 
 import json
 import os
-
-# Import library layer
 import sys
 from pathlib import Path
 from typing import Any, cast
@@ -17,17 +20,17 @@ from typing import Any, cast
 from fastmcp import Context, FastMCP
 
 # Add chapter-3 directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.agentic.library.domain import BookStatus, Category  # noqa: E402
-from src.agentic.library.repository import BookRepository  # noqa: E402
+from src.agentic.library.domain import BookStatus, Category
+from src.agentic.library.repository import BookRepository
 
 # Initialize FastMCP server
 mcp = FastMCP("LibraryServer")
 
 # Initialize repository with database path from environment
 DB_PATH = os.getenv(
-    "DB_PATH", str(Path(__file__).parent.parent.parent.parent / "data" / "duckdb" / "chapter3.db")
+    "DB_PATH", str(Path(__file__).parent.parent.parent / "data" / "duckdb" / "chapter3.db")
 )
 # Use read_only=True to allow concurrent access from multiple MCP connections
 repository = BookRepository(DB_PATH, read_only=True)

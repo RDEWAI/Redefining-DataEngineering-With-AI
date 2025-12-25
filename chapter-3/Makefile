@@ -11,7 +11,7 @@ ifeq ($(UNAME_S),Darwin)
     endif
 endif
 
-.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew llm llm-rag
+.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev mcp-client mcp-assistant mcp-compare-modes mcp-benchmark mcp-compare-modes-enterprise mcp-compare-modes-enterprise-all assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew llm llm-rag
 
 
 help:
@@ -33,18 +33,19 @@ help:
 	@echo "=== Section 2: MCP (requires load-data first) ==="
 	@echo "  load-data                  - Load 200 books into DuckDB"
 	@echo "  verify-data                - Verify data loaded correctly"
-	@echo "  mcp-server                 - Start MCP server"
+	@echo "  mcp-client                 - Interactive MCP client (explore tools & run queries)"
+	@echo "  --- Code Execution Pattern (MCP tool efficiency) ---"
+	@echo "  mcp-assistant              - MCP Assistant with code execution mode"
+	@echo "  mcp-compare-modes          - Compare Traditional vs Code Execution"
+	@echo "  mcp-benchmark              - Run MCP token comparison benchmark"
+	@echo "  mcp-compare-modes-enterprise     - Enterprise scale (100 tools, interactive)"
+	@echo "  mcp-compare-modes-enterprise-all - Enterprise scale (100 tools, automated)"
+	@echo "  --- Advanced: Running your own MCP server ---"
+	@echo "  mcp-server                 - Start MCP server (for Claude Desktop)"
 	@echo "  mcp-dev                    - Start MCP Inspector for debugging"
 	@echo ""
 	@echo "=== Section 3: Agentic AI ==="
-	@echo "  assistant                  - Traditional tool-calling mode"
-	@echo "  assistant-enhanced         - Code execution mode"
-	@echo "  compare-modes              - Compare Traditional vs Code Execution"
-	@echo "  benchmark                  - Run token comparison benchmark"
-	@echo "  assistant-dummy-tools      - Traditional + 100 enterprise tools"
-	@echo "  assistant-code-dummy-tools - Code execution + 100 enterprise tools"
-	@echo "  compare-modes-enterprise   - Enterprise scale demo (interactive)"
-	@echo "  compare-modes-enterprise-all - Enterprise scale demo (automated)"
+	@echo "  assistant                  - Traditional tool-calling assistant"
 	@echo "  data-analysis              - Start data analysis agent"
 	@echo "  multi-agent                - Start multi-agent orchestrator"
 	@echo ""
@@ -96,11 +97,60 @@ verify-data:
 
 mcp-server:
 	@echo "Starting MCP server..."
-	uv run fastmcp run src/agentic/mcp_servers/library_server.py
+	uv run fastmcp run src/mcp/library_server.py
 
 mcp-dev:
 	@echo "Starting MCP Inspector..."
-	uv run fastmcp dev src/agentic/mcp_servers/library_server.py
+	uv run fastmcp dev src/mcp/library_server.py
+
+mcp-client:
+	@echo "============================================================"
+	@echo "MCP Library Client - Interactive Mode"
+	@echo "============================================================"
+	@echo ""
+	@echo "Explore MCP tools, resources, and run queries interactively."
+	@echo ""
+	uv run python -m src.mcp.client
+
+mcp-assistant:
+	@echo "============================================================"
+	@echo "MCP Assistant - Code Execution Mode"
+	@echo "============================================================"
+	@echo ""
+	@echo "This assistant uses code execution to reduce token usage."
+	@echo "Tools are sent once, then Python code is executed."
+	@echo ""
+	uv run python -m src.agentic.agents.library_assistant_enhanced
+
+mcp-compare-modes:
+	@echo "============================================================"
+	@echo "MCP Token Efficiency: Traditional vs Code Execution"
+	@echo "============================================================"
+	@echo ""
+	uv run python scripts/compare_modes.py
+
+mcp-benchmark:
+	@echo "============================================================"
+	@echo "MCP Token Comparison Benchmark"
+	@echo "============================================================"
+	@echo ""
+	uv run python benchmarks/token_comparison.py
+
+mcp-compare-modes-enterprise:
+	@echo "============================================================"
+	@echo "MCP Enterprise Scale Demo (100 Tools)"
+	@echo "============================================================"
+	@echo "Expected: 80%+ token reduction with code execution"
+	@echo ""
+	uv run python scripts/compare_modes.py --enable-dummy-tools
+
+mcp-compare-modes-enterprise-all:
+	@echo "============================================================"
+	@echo "MCP Enterprise Scale Demo - Full Benchmark (100 Tools)"
+	@echo "============================================================"
+	@echo "Running ALL queries with 100 dummy tools..."
+	@echo ""
+	uv run python scripts/compare_modes.py --enable-dummy-tools --all --no-rag
 
 assistant:
 	@echo "Starting Library Assistant (Traditional Mode)..."
