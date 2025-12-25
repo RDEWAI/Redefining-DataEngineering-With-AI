@@ -3,7 +3,6 @@
 > **Modern Local-First Data Engineering Development Environment**
 > Fast, reproducible local development with UV package manager, DuckDB, SQLMesh, and Apache Superset.
 
-[![UV](https://img.shields.io/badge/UV-Package_Manager-blue)](https://docs.astral.sh/uv/)
 [![Python](https://img.shields.io/badge/Python-3.10_|_3.11_|_3.12-green)](https://www.python.org/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.1.3-orange)](https://duckdb.org/)
 [![Superset](https://img.shields.io/badge/Superset-4.1.1-purple)](https://superset.apache.org/)
@@ -16,22 +15,11 @@
 # 1. Clone and navigate to the repository
 git clone <your-repo-url>
 cd Redefining-DataEngineering-With-AI
-
-# 2. Set up development environment (< 5 minutes)
-make dev-setup
-
-# 3. (Optional) Extract raw Synthea data (< 2 minutes)
-make raw-data-copy
-
-# 4. Activate virtual environment
-source .venv/bin/activate
 ```
 
-✅ **You're ready to start developing!**
 
 ### Prerequisites
 
-- **UV Package Manager** - [Install](https://docs.astral.sh/uv/)
 - **Python 3.10, 3.11, or 3.12** - [Download](https://www.python.org/downloads/)
 - **Docker** (only for data extraction) - [Download](https://www.docker.com/)
 
@@ -48,6 +36,9 @@ For AI features, choose a provider and obtain an API key:
 Keep this API key noted or saved, you will know how to add this into configuration.
 
 ---
+
+✅ **You're ready to start developing!**
+
 
 ## 💡 What This Project Provides
 
