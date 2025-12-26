@@ -15,6 +15,9 @@ data/duckdb/*.wal
 # Environment files with secrets
 .env
 
+# MCP client config (user preferences)
+.mcp_config.json
+
 # IDE
 .idea/
 .vscode/

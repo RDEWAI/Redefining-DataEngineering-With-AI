@@ -36,7 +36,8 @@ from src.agentic.llm.unified_client import UnifiedLLMClient
 from src.agentic.tools.tool_registry import format_agent_tools_display, get_agent_tools
 
 # Load .env from chapter-3 directory
-env_path = Path(__file__).parent.parent.parent / ".env"
+# Path: orchestrator_agent.py -> agents/ -> agentic/ -> src/ -> chapter-3/
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
 load_dotenv(env_path, override=True)
 
 # Use standard logging with optional JSON formatting via logging_config

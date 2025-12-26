@@ -14,9 +14,9 @@ RAG enables LLMs to answer questions about private data they've never seen durin
 # 1. Setup environment
 make dev-setup
 
-# 2. Configure API key
+# 2. Configure LLM API
 cp .env.example .env
-# Edit .env and add your OPENROUTER_API_KEY
+# Edit .env and set LLM_BASE_URL, LLM_API_KEY, and LLM_MODEL
 ```
 
 ### Step 1: Try the LLM Without RAG
@@ -100,35 +100,34 @@ MCP exposes your tools to AI applications like MCP Client and MCP host. This sec
 
 * Make sure to finish [prerequisites](#prerequisites-database-setup) if not already done, while executing RAG section
 
-### Explore MCP Tools Interactively
+### Configure MCP Settings
 
 ```bash
 make mcp-client
 ```
 
-This opens an interactive client where you can:
-- View server status and available tools
-- Execute MCP tools directly
-- Access MCP resources
+This opens an interactive settings menu where you can toggle:
+- **Code Execution** - ON by default (token efficient mode)
+- **RAG** - Semantic search functionality
+- **Dummy Tools** - 100 enterprise tools for scale testing
+- **Show Tool Calls** - Display generated code during execution
 
-**In-Client Commands:**
-- `/status` - Show server status and book statistics
-- `/tools` - List all 8 MCP tools with parameters
-- `/resources` - List available resources
-- `/help` - Show help
+Settings are persisted to `.mcp_config.json` and shared with `mcp-assistant`.
 
-**Example Tool Calls:**
-```
-> search_books query="Python"
-> list_by_status status=Missing
-> get_book_details book_id=B001
-> locate_book book_id=B042
+### MCP Assistant (Interactive Chat)
+
+```bash
+make mcp-assistant
 ```
 
-**Example Resource Access:**
-```
-> resource stats
-> resource missing_books
+Chat with an AI assistant that uses MCP tools to answer library questions. Code execution mode is enabled by default for token efficiency.
+
+```bash
+# With RAG enabled
+make mcp-assistant ARGS="--rag"
+
+# Traditional JSON tools (disable code execution)
+make mcp-assistant ARGS="--no-code-execution"
 ```
 
 ### Available MCP Tools
@@ -146,12 +145,9 @@ This opens an interactive client where you can:
 
 ### 2.1 Code Execution Pattern
 
-Enhanced MCP assistant with sandboxed Python execution for token efficiency:
+The MCP assistant uses sandboxed Python execution by default for token efficiency:
 
 ```bash
-# MCP Assistant with code execution mode
-make mcp-assistant
-
 # Compare Traditional vs Code Execution modes
 make mcp-compare-modes
 
@@ -191,8 +187,10 @@ This demonstrates insights from Anthropic's "Advanced Tool Use" paper.
 
 | Command | Description |
 |---------|-------------|
-| `make mcp-client` | Interactive MCP client (explore tools & run queries) |
-| `make mcp-assistant` | MCP Assistant with code execution mode |
+| `make mcp-client` | Settings menu to configure MCP options |
+| `make mcp-assistant` | AI Chat (code execution ON by default) |
+| `make mcp-assistant ARGS="--rag"` | Chat with RAG enabled |
+| `make mcp-assistant ARGS="--no-code-execution"` | Traditional JSON tools mode |
 | `make mcp-compare-modes` | Compare Traditional vs Code Execution |
 | `make mcp-benchmark` | Run MCP token comparison benchmark |
 | `make mcp-compare-modes-enterprise` | Enterprise scale (100 tools, interactive) |
@@ -305,12 +303,19 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `OPENROUTER_API_KEY` | OpenRouter API key | Required |
-| `LLM_PROVIDER` | `openrouter` or `ollama` | `openrouter` |
-| `LLM_MODEL` | Model identifier | `anthropic/claude-3.5-sonnet` |
-| `OLLAMA_HOST` | Ollama server URL | `http://localhost:11434` |
+| `LLM_BASE_URL` | LLM API base URL | `https://openrouter.ai/api/v1` |
+| `LLM_API_KEY` | API key (required for OpenRouter/OpenAI) | Required |
+| `LLM_MODEL` | Model identifier | `openai/gpt-4o-mini` |
+| `LLM_ENABLE_USAGE_TRACKING` | Enable token usage tracking | `true` |
 | `DB_PATH` | DuckDB database path | `data/duckdb/chapter3.db` |
 | `LOG_LEVEL` | Logging level | `INFO` |
+
+**Supported LLM Providers:**
+| Provider | `LLM_BASE_URL` | API Key |
+|----------|----------------|---------|
+| OpenRouter | `https://openrouter.ai/api/v1` | Required |
+| OpenAI | `https://api.openai.com/v1` | Required |
+| Ollama | `http://localhost:11434/v1` | Not needed |
 
 ---
 
@@ -323,7 +328,7 @@ chapter-3/
 │   │   └── simple_rag.py        # Minimal RAG implementation
 │   ├── mcp/                     # Section 2: MCP server & client
 │   │   ├── library_server.py    # FastMCP server with tools/resources
-│   │   └── client.py            # Interactive MCP client
+│   │   └── client.py            # MCP settings menu and assistant
 │   └── agentic/                 # Section 3: Agentic AI
 │       ├── rag/                 # Production RAG (embeddings, vector store)
 │       ├── library/             # Data layer (domain, repository)
@@ -345,10 +350,12 @@ chapter-3/
 
 ## Troubleshooting
 
-### "OPENROUTER_API_KEY not set"
+### "LLM_API_KEY not set" or "API key required"
 ```bash
-export OPENROUTER_API_KEY="your-key-here"
-# Or add to .env file
+# Add to .env file
+LLM_BASE_URL=https://openrouter.ai/api/v1
+LLM_API_KEY=your-api-key-here
+LLM_MODEL=openai/gpt-4o-mini
 ```
 
 ### "Database not found"

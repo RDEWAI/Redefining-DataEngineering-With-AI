@@ -22,7 +22,8 @@ from typing import cast
 from dotenv import load_dotenv
 
 # Load .env from chapter-3 directory
-env_path = Path(__file__).parent.parent.parent / ".env"
+# Path: library_assistant_enhanced.py -> agents/ -> agentic/ -> src/ -> chapter-3/
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
 load_dotenv(env_path, override=True)
 
 # Add parent directory to path for imports
@@ -589,29 +590,6 @@ def run_interactive_cli() -> None:
         show_tool_calls=not args.hide_tools,
         enable_dummy_tools=args.dummy_tools,
     )
-
-    print("\n" + "=" * 60)
-    print("Enhanced Library Assistant")
-    print("=" * 60)
-    print(f"Mode: {assistant.get_mode()}")
-    rag_status = "ON" if assistant.is_rag_enabled() else "OFF"
-    dummy_status = "ON" if assistant.is_dummy_tools_enabled() else "OFF"
-    tool_count = assistant.get_tool_count()
-    print(f"RAG:  {rag_status}")
-    print(f"Tools: {tool_count} available")
-    if assistant.is_dummy_tools_enabled():
-        print("  └─ 100 enterprise dummy tools ENABLED for scale demo")
-    print("\nCommands:")
-    print("  /mode traditional    - Switch to traditional tool calls")
-    print("  /mode code           - Switch to code execution")
-    print(f"  /rag                 - Toggle semantic search/RAG (currently: {rag_status})")
-    print(f"  /dummy-tools         - Toggle 100 enterprise dummy tools (currently: {dummy_status})")
-    print("  /settings            - Show current settings")
-    print("  /reset               - Reset conversation and token counters")
-    print("  /tokens              - Show token usage summary")
-    print("  /help                - Show this help")
-    print("  /quit or /exit       - Exit")
-    print("=" * 60)
 
     while True:
         try:

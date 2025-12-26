@@ -26,7 +26,8 @@ from src.agentic.llm.base import LLMProvider, LLMResponse, Message
 from src.agentic.llm.unified_client import UnifiedLLMClient
 
 # Load .env from chapter-3 directory
-env_path = Path(__file__).parent.parent.parent / ".env"
+# Path: base_agent.py -> agents/ -> agentic/ -> src/ -> chapter-3/
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
 load_dotenv(env_path, override=True)
 
 

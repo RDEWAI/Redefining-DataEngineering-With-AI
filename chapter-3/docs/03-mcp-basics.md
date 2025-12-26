@@ -91,7 +91,7 @@ Add the library-server configuration (update paths to match your system):
         "-m",
         "fastmcp",
         "run",
-        "src/mcp_servers/library_server.py"
+        "src/mcp/library_server.py"
       ],
       "env": {
         "DB_PATH": "/absolute/path/to/chapter-3/data/duckdb/chapter3.db"

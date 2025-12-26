@@ -5,14 +5,8 @@ Client with direct FastMCP server transport.
 """
 
 import json
-import sys
-from pathlib import Path
 
 import pytest
-
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
-
 from fastmcp import Client
 
 
@@ -121,10 +115,10 @@ def mcp_server(test_db_path, monkeypatch):
     monkeypatch.setenv("DB_PATH", test_db_path)
 
     # Import server (will use test DB path)
-    from src.agentic.mcp_servers import library_server
+    from src.mcp import library_server
 
     # Reinitialize the repository with the test database (read_only=True for consistency)
-    from src.agentic.mcp_servers.library_server import BookRepository
+    from src.mcp.library_server import BookRepository
 
     library_server.repository = BookRepository(test_db_path, read_only=True)
 

@@ -33,9 +33,11 @@ help:
 	@echo "=== Section 2: MCP (requires load-data first) ==="
 	@echo "  load-data                  - Load 200 books into DuckDB"
 	@echo "  verify-data                - Verify data loaded correctly"
-	@echo "  mcp-client                 - Interactive MCP client (explore tools & run queries)"
-	@echo "  --- Code Execution Pattern (MCP tool efficiency) ---"
-	@echo "  mcp-assistant              - MCP Assistant with code execution mode"
+	@echo "  mcp-client                 - Settings menu to configure MCP options"
+	@echo "  mcp-assistant              - AI Chat (code execution ON by default)"
+	@echo "  mcp-assistant ARGS=\"--rag\" - Chat with RAG enabled"
+	@echo "  mcp-assistant ARGS=\"--no-code-execution\" - Traditional JSON tools"
+	@echo "  --- Token Efficiency Comparison ---"
 	@echo "  mcp-compare-modes          - Compare Traditional vs Code Execution"
 	@echo "  mcp-benchmark              - Run MCP token comparison benchmark"
 	@echo "  mcp-compare-modes-enterprise     - Enterprise scale (100 tools, interactive)"
@@ -105,22 +107,15 @@ mcp-dev:
 
 mcp-client:
 	@echo "============================================================"
-	@echo "MCP Library Client - Interactive Mode"
+	@echo "MCP Client - Configuration Settings"
 	@echo "============================================================"
 	@echo ""
-	@echo "Explore MCP tools, resources, and run queries interactively."
+	@echo "Configure MCP options, then launch the assistant."
 	@echo ""
-	uv run python -m src.mcp.client
+	uv run python -W ignore::RuntimeWarning -m src.mcp.client -i $(ARGS)
 
 mcp-assistant:
-	@echo "============================================================"
-	@echo "MCP Assistant - Code Execution Mode"
-	@echo "============================================================"
-	@echo ""
-	@echo "This assistant uses code execution to reduce token usage."
-	@echo "Tools are sent once, then Python code is executed."
-	@echo ""
-	uv run python -m src.agentic.agents.library_assistant_enhanced
+	uv run python -W ignore::RuntimeWarning -m src.mcp.client --no-menu $(ARGS)
 
 mcp-compare-modes:
 	@echo "============================================================"
@@ -154,25 +149,25 @@ mcp-compare-modes-enterprise-all:
 
 assistant:
 	@echo "Starting Library Assistant (Traditional Mode)..."
-	uv run python -m src.agentic.agents.library_assistant
+	@uv run python -W ignore::RuntimeWarning -m src.agentic.agents.library_assistant
 
 assistant-rag:
 	@echo "Starting Library Assistant (RAG Mode)..."
-	uv run python -m src.agentic.agents.library_assistant --rag
+	@uv run python -W ignore::RuntimeWarning -m src.agentic.agents.library_assistant --rag
 
 assistant-enhanced:
 	@echo "Starting Enhanced Library Assistant (Code Execution Mode)..."
-	uv run python -m src.agentic.agents.library_assistant_enhanced
+	@uv run python -W ignore::RuntimeWarning -m src.agentic.agents.library_assistant_enhanced
 
 assistant-dummy-tools:
 	@echo "Starting Library Assistant (Traditional Mode + 100 Enterprise Dummy Tools)..."
 	@echo "This demonstrates token overhead at enterprise scale."
-	uv run python -m src.agentic.agents.library_assistant --dummy-tools
+	@uv run python -W ignore::RuntimeWarning -m src.agentic.agents.library_assistant --dummy-tools
 
 assistant-code-dummy-tools:
 	@echo "Starting Enhanced Assistant (Code Execution Mode + 100 Enterprise Dummy Tools)..."
 	@echo "This demonstrates token efficiency at enterprise scale."
-	uv run python -m src.agentic.agents.library_assistant_enhanced --mode code_execution --dummy-tools
+	@uv run python -W ignore::RuntimeWarning -m src.agentic.agents.library_assistant_enhanced --mode code_execution --dummy-tools
 
 compare-modes:
 	@echo "Comparing Traditional vs Code Execution modes..."

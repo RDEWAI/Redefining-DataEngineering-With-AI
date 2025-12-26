@@ -20,7 +20,8 @@ from typing import Any
 from dotenv import load_dotenv
 
 # Load .env from chapter-3 directory (override=True to replace existing env vars)
-env_path = Path(__file__).parent.parent.parent / ".env"
+# Path: library_assistant.py -> agents/ -> agentic/ -> src/ -> chapter-3/
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
 load_dotenv(env_path, override=True)
 
 # Add parent directory to path for imports
@@ -721,23 +722,8 @@ def interactive_repl(enable_rag: bool = False, enable_dummy_tools: bool = False)
         enable_rag: If True, enable RAG/semantic search by default
         enable_dummy_tools: If True, enable 100 enterprise dummy tools for scale demo
     """
-    mode_str = "RAG Mode" if enable_rag else "Traditional Mode"
-    if enable_dummy_tools:
-        mode_str = f"{mode_str} + Enterprise Dummy Tools"
-    print(f"Library Assistant - {mode_str}")
+    print("Library Assistant")
     print("=" * 50)
-    print()
-
-    # Show configuration from environment
-    base_url = os.getenv("LLM_BASE_URL", "not set")
-    model = os.getenv("LLM_MODEL", "not set")
-
-    print(f"Base URL: {base_url}")
-    print(f"Model: {model}")
-    if enable_rag:
-        print("RAG: ENABLED (semantic_search tool available)")
-    if enable_dummy_tools:
-        print("Dummy Tools: ENABLED (100 enterprise tools across 10 domains)")
     print()
 
     try:
@@ -753,25 +739,7 @@ def interactive_repl(enable_rag: bool = False, enable_dummy_tools: bool = False)
         print("  LLM_MODEL=your-model-name")
         sys.exit(1)
 
-    rag_status = "ON" if enable_rag else "OFF"
-    tool_count = assistant.get_tool_count()
-    dummy_status = "ON" if assistant.is_dummy_tools_enabled() else "OFF"
-    print(f"Tools: {tool_count} available")
-    if assistant.is_dummy_tools_enabled():
-        print("  └─ 100 enterprise dummy tools ENABLED for scale demo")
-    print()
-    print("Commands:")
-    print("  /help        - Show this help message")
-    print("  /settings    - Show current settings")
-    print("  /stats       - Show token usage statistics")
-    print("  /tools       - Toggle tool call display (currently: ON)")
-    print(f"  /rag         - Toggle semantic search/RAG (currently: {rag_status})")
-    print(f"  /dummy-tools - Toggle 100 enterprise dummy tools (currently: {dummy_status})")
-    print("  /clear       - Clear conversation history")
-    print("  /reset       - Reset token usage counters")
-    print("  /quit        - Exit the assistant")
-    print()
-    print("Ask me anything about the library!")
+    print("Type /help for commands. Ask me anything about the library!")
     print("-" * 50)
     print()
 

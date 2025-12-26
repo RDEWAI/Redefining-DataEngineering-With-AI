@@ -25,7 +25,7 @@ LIBRARY_BOOKS = [
         "available": True,
         "location": "Shelf A3",
         "summary": "A physicist discovers that her garden exists in multiple quantum states, "
-                   "leading to adventures across parallel realities.",
+        "leading to adventures across parallel realities.",
     },
     {
         "id": "XYZ-002",
@@ -36,7 +36,7 @@ LIBRARY_BOOKS = [
         "available": False,
         "location": "Shelf B7",
         "summary": "Detective Ananya Sharma investigates a series of art thefts that only "
-                   "occur during power outages in Mumbai's wealthiest neighborhoods.",
+        "occur during power outages in Mumbai's wealthiest neighborhoods.",
     },
     {
         "id": "XYZ-003",
@@ -47,7 +47,7 @@ LIBRARY_BOOKS = [
         "available": True,
         "location": "Shelf C2",
         "summary": "A rogue AI researcher must stop his own creation before it rewrites "
-                   "the global financial system.",
+        "the global financial system.",
     },
     {
         "id": "XYZ-004",
@@ -58,7 +58,7 @@ LIBRARY_BOOKS = [
         "available": True,
         "location": "Shelf D5",
         "summary": "Following a young merchant's journey along the ancient Silk Road, "
-                   "discovering secrets that connect East and West.",
+        "discovering secrets that connect East and West.",
     },
     {
         "id": "XYZ-005",
@@ -69,7 +69,7 @@ LIBRARY_BOOKS = [
         "available": False,
         "location": "Shelf E1",
         "summary": "An exploration of organisms that produce their own light, from deep-sea "
-                   "creatures to fireflies, with stunning photography.",
+        "creatures to fireflies, with stunning photography.",
     },
 ]
 
@@ -82,6 +82,7 @@ LIBRARY_BOOKS = [
 @dataclass
 class RetrievalResult:
     """Result from retrieving relevant context."""
+
     query: str
     matched_books: list[dict]
     context: str
@@ -139,7 +140,9 @@ class LibraryRAG:
 
         for book in self.books:
             # Simple relevance check: look for keywords in book fields
-            searchable = f"{book['title']} {book['author']} {book['genre']} {book['summary']}".lower()
+            searchable = (
+                f"{book['title']} {book['author']} {book['genre']} {book['summary']}".lower()
+            )
 
             # Check if any query words appear in the book
             query_words = query_lower.split()
@@ -162,11 +165,7 @@ class LibraryRAG:
                 f"\n  Summary: {book['summary']}"
             )
 
-        return RetrievalResult(
-            query=query,
-            matched_books=matched,
-            context="\n".join(context_parts)
-        )
+        return RetrievalResult(query=query, matched_books=matched, context="\n".join(context_parts))
 
     def query_without_rag(self, question: str) -> str:
         """Query LLM WITHOUT any context (no RAG).
@@ -183,12 +182,12 @@ class LibraryRAG:
                 {
                     "role": "system",
                     "content": "You are a helpful library assistant. Answer questions about books. "
-                               "If you don't have specific information, say so clearly."
+                    "If you don't have specific information, say so clearly.",
                 },
-                {"role": "user", "content": question}
+                {"role": "user", "content": question},
             ],
             temperature=0.3,
-            max_tokens=500
+            max_tokens=500,
         )
 
         return response.choices[0].message.content
@@ -215,13 +214,13 @@ class LibraryRAG:
                 {
                     "role": "system",
                     "content": f"You are a helpful library assistant. Use ONLY the following "
-                               f"library database to answer questions. If the answer is not in "
-                               f"the database, say so.\n\n{retrieval.context}"
+                    f"library database to answer questions. If the answer is not in "
+                    f"the database, say so.\n\n{retrieval.context}",
                 },
-                {"role": "user", "content": question}
+                {"role": "user", "content": question},
             ],
             temperature=0.3,
-            max_tokens=500
+            max_tokens=500,
         )
 
         return response.choices[0].message.content, retrieval
@@ -271,7 +270,7 @@ def llm_chat(use_rag: bool = False):
             question = input("You: ").strip()
             if not question:
                 continue
-            if question.lower() in ('quit', 'exit', '/quit'):
+            if question.lower() in ("quit", "exit", "/quit"):
                 print("Goodbye!")
                 break
 

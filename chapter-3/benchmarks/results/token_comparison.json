@@ -1,12 +1,12 @@
 {
-  "timestamp": "2025-12-22T18:11:16.610627",
+  "timestamp": "2025-12-25T15:51:44.636441",
   "query": "Show top 5 categories by missing books with average signal strength",
   "traditional": {
-    "tokens": 7852,
+    "tokens": 7847,
     "tool_calls": 6
   },
   "code_execution": {
-    "tokens": 6926
+    "tokens": 6921
   },
   "reduction_percent": 11.8
 }

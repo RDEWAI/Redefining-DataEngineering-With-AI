@@ -4,14 +4,9 @@ Tests verify that FastMCP decorators properly register tools, resources,
 and prompts for the library server.
 """
 
-import sys
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 
 class TestMCPToolRegistration:
@@ -21,9 +16,9 @@ class TestMCPToolRegistration:
     async def test_all_tools_registered(self):
         """Test that all 8 library tools are registered."""
         with patch("library.repository.BookRepository"):
-            from src.agentic.mcp_servers import library_server
+            from src.mcp.library_server import mcp
 
-            tools = await library_server.mcp.get_tools()
+            tools = await mcp.get_tools()
             # get_tools() returns a dict of {name: tool_object}
             tool_names = list(tools.keys())
 
@@ -46,9 +41,9 @@ class TestMCPToolRegistration:
     async def test_tool_has_description(self):
         """Test that tools have descriptions."""
         with patch("library.repository.BookRepository"):
-            from src.agentic.mcp_servers import library_server
+            from src.mcp.library_server import mcp
 
-            search_tool = await library_server.mcp.get_tool("search_books")
+            search_tool = await mcp.get_tool("search_books")
             assert search_tool is not None
             assert hasattr(search_tool, "description")
             assert len(search_tool.description) > 0
@@ -61,9 +56,9 @@ class TestMCPResources:
     async def test_all_resources_registered(self):
         """Test that all 3 resources are registered."""
         with patch("library.repository.BookRepository"):
-            from src.agentic.mcp_servers import library_server
+            from src.mcp.library_server import mcp
 
-            resources = await library_server.mcp.get_resources()
+            resources = await mcp.get_resources()
             # get_resources() returns a dict of {uri: resource_object}
             resource_uris = list(resources.keys())
 
@@ -85,9 +80,9 @@ class TestMCPPrompts:
     async def test_all_prompts_registered(self):
         """Test that both prompts are registered."""
         with patch("library.repository.BookRepository"):
-            from src.agentic.mcp_servers import library_server
+            from src.mcp.library_server import mcp
 
-            prompts = await library_server.mcp.get_prompts()
+            prompts = await mcp.get_prompts()
             # get_prompts() returns a dict of {name: prompt_object}
             prompt_names = list(prompts.keys())
 
@@ -104,13 +99,13 @@ class TestServerInitialization:
     def test_server_name(self):
         """Test server has correct name."""
         with patch("library.repository.BookRepository"):
-            from src.agentic.mcp_servers import library_server
+            from src.mcp.library_server import mcp
 
-            assert library_server.mcp.name == "LibraryServer"
+            assert mcp.name == "LibraryServer"
 
     def test_server_has_repository(self):
         """Test server initializes with repository."""
         with patch("library.repository.BookRepository"):
-            from src.agentic.mcp_servers import library_server
+            from src.mcp import library_server
 
             assert hasattr(library_server, "repository")
