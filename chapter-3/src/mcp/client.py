@@ -88,12 +88,32 @@ class MCPClient:
     - Configuration management for execution mode and features
     - Interactive settings menu
     - Integration with EnhancedLibraryAssistant
+    - Interactive commands: /tools, /stats, /resources, /help
 
     Example:
         >>> config = MCPClientConfig(mode="code_execution", enable_rag=True)
         >>> client = MCPClient(config)
         >>> client.run()
     """
+
+    # Available MCP tools (from library_server.py)
+    MCP_TOOLS = [
+        ("search_books", "Search books by title, author, or keyword"),
+        ("get_book_details", "Get complete details for a specific book"),
+        ("check_availability", "Check if a book is available and get location"),
+        ("list_by_category", "List all books in a specific category"),
+        ("list_by_status", "List all books with a specific status"),
+        ("locate_book", "Get physical location of a book"),
+        ("find_books_in_cabinet", "List books in a specific cabinet"),
+        ("get_weak_signal_books", "Get books with weak RFID signals"),
+    ]
+
+    # Available MCP resources (from library_server.py)
+    MCP_RESOURCES = [
+        ("library://stats", "Aggregate library statistics"),
+        ("library://missing_books", "List of all missing books"),
+        ("library://location_map", "Location map with book counts"),
+    ]
 
     def __init__(self, config: MCPClientConfig | None = None):
         """Initialize MCP Client.
@@ -181,6 +201,166 @@ class MCPClient:
             enable_dummy_tools=self.config.enable_dummy_tools,
         )
 
+    def _show_help(self) -> None:
+        """Display available commands."""
+        tools_status = "ON" if self.config.show_tool_calls else "OFF"
+        code_status = "ON" if self.config.enable_code_execution else "OFF"
+        rag_status = "ON" if self.config.enable_rag else "OFF"
+        dummy_status = "ON" if self.config.enable_dummy_tools else "OFF"
+        print()
+        print("Usage:")
+        print("-" * 40)
+        print("  Just type your question to query the library assistant.")
+        print("  Example: 'What programming books are available?'")
+        print()
+        print("Commands:")
+        print("-" * 40)
+        print(f"  /tools      - Toggle tool display ({tools_status}) & list available tools")
+        print("  /stats      - Show token usage statistics")
+        print("  /resources  - List available MCP resources")
+        print()
+        print("Configuration:")
+        print("-" * 40)
+        print(f"  /code       - Toggle code execution ({code_status})")
+        print(f"  /rag        - Toggle RAG/semantic search ({rag_status})")
+        print(f"  /dummy      - Toggle 100 dummy tools ({dummy_status})")
+        print("  /settings   - Show current settings")
+        print()
+        print("Session:")
+        print("-" * 40)
+        print("  /clear      - Clear conversation history")
+        print("  /help       - Show this help message")
+        print("  /quit       - Exit the assistant")
+        print("-" * 40)
+
+    def _show_tools(self) -> None:
+        """Toggle tool display and show available tools."""
+        # Toggle show_tool_calls
+        self.config.show_tool_calls = not self.config.show_tool_calls
+        self.config.save()
+
+        # Update assistant if it exists
+        if self._assistant is not None:
+            self._assistant._show_tool_calls = self.config.show_tool_calls
+
+        status = "ON" if self.config.show_tool_calls else "OFF"
+        print()
+        print(f"Tool display: {status}")
+        print()
+        print("Available MCP Tools:")
+        print("-" * 50)
+        for name, description in self.MCP_TOOLS:
+            print(f"  {name:25} - {description}")
+        print("-" * 50)
+        print(f"  Total: {len(self.MCP_TOOLS)} tools")
+
+        # Show additional tools if enabled
+        if self.config.enable_rag:
+            print("  + semantic_search (RAG enabled)")
+        if self.config.enable_dummy_tools:
+            print("  + 100 enterprise dummy tools")
+
+    def _show_stats(self) -> None:
+        """Show token usage statistics."""
+        if self._assistant is None:
+            print("\nNo queries made yet. Start asking questions to see stats.")
+            return
+
+        usage = self._assistant.get_token_usage()
+        mode = self._assistant.get_mode()
+        mode_display = "Code Execution" if mode == "code_execution" else "Traditional"
+
+        print()
+        print("=" * 50)
+        print("Token Usage Statistics")
+        print("=" * 50)
+        print(f"  Mode:              {mode_display}")
+        print(f"  Queries:           {usage['query_count']}")
+        print(f"  Tool calls:        {usage['tool_calls_count']}")
+        print(f"  Prompt tokens:     {usage['total_prompt_tokens']:,}")
+        print(f"  Completion tokens: {usage['total_completion_tokens']:,}")
+        print(f"  Total tokens:      {usage['total_tokens']:,}")
+        print("=" * 50)
+
+    def _show_resources(self) -> None:
+        """Show available MCP resources."""
+        print()
+        print("Available MCP Resources:")
+        print("-" * 50)
+        for uri, description in self.MCP_RESOURCES:
+            print(f"  {uri:25} - {description}")
+        print("-" * 50)
+        print(f"  Total: {len(self.MCP_RESOURCES)} resources")
+
+    def _show_settings(self) -> None:
+        """Show current settings."""
+        code_exec_status = "ON" if self.config.enable_code_execution else "OFF"
+        rag_status = "ON" if self.config.enable_rag else "OFF"
+        dummy_status = "ON" if self.config.enable_dummy_tools else "OFF"
+        tools_status = "ON" if self.config.show_tool_calls else "OFF"
+
+        print()
+        print("Current Settings:")
+        print("-" * 40)
+        print(f"  Code Execution: {code_exec_status}")
+        print(f"  RAG:            {rag_status}")
+        print(f"  Dummy Tools:    {dummy_status}")
+        print(f"  Tool Display:   {tools_status}")
+        print("-" * 40)
+
+    def _clear_conversation(self) -> None:
+        """Clear conversation history and reset token counters."""
+        if self._assistant is not None:
+            self._assistant.reset_conversation()
+        print("Conversation cleared.")
+
+    def _toggle_code_execution(self) -> None:
+        """Toggle code execution mode."""
+        self.config.enable_code_execution = not self.config.enable_code_execution
+        self.config.save()
+
+        status = "ON" if self.config.enable_code_execution else "OFF"
+        mode = "Code Execution" if self.config.enable_code_execution else "Traditional"
+        print(f"\nCode Execution: {status}")
+        print(f"  Mode: {mode}")
+
+        # Update assistant mode
+        if self._assistant is not None:
+            new_mode = "code_execution" if self.config.enable_code_execution else "traditional"
+            self._assistant.set_mode(new_mode)
+            self._assistant.reset_conversation()
+            print("  Conversation reset for new mode.")
+
+    def _toggle_rag(self) -> None:
+        """Toggle RAG/semantic search."""
+        self.config.enable_rag = not self.config.enable_rag
+        self.config.save()
+
+        status = "ON" if self.config.enable_rag else "OFF"
+        print(f"\nRAG (Semantic Search): {status}")
+
+        # Update assistant
+        if self._assistant is not None:
+            self._assistant.set_rag_enabled(self.config.enable_rag)
+            if self.config.enable_rag:
+                print("  Use natural language queries like 'books about time travel'")
+
+    def _toggle_dummy_tools(self) -> None:
+        """Toggle 100 enterprise dummy tools."""
+        self.config.enable_dummy_tools = not self.config.enable_dummy_tools
+        self.config.save()
+
+        status = "ON" if self.config.enable_dummy_tools else "OFF"
+        print(f"\nDummy Tools (100 enterprise): {status}")
+
+        # Update assistant
+        if self._assistant is not None:
+            self._assistant.set_dummy_tools_enabled(self.config.enable_dummy_tools)
+            tool_count = self._assistant.get_tool_count()
+            print(f"  Total tools available: {tool_count}")
+            if self.config.enable_dummy_tools:
+                print("  Compare /stats between /code ON vs OFF for token savings.")
+
     def run_assistant(self) -> None:
         """Run the assistant interactive loop (pure chat interface)."""
         if self._assistant is None:
@@ -199,8 +379,10 @@ class MCPClient:
         print(f"  Dummy Tools: {dummy_status}")
         print("-" * 60)
         print()
-        print("Ask questions about the library!")
-        print("Type 'quit' or press Ctrl+C to exit.")
+        print("Type your query to ask questions about the library.")
+        print("Example: 'What programming books are available?'")
+        print()
+        print("Type /help for commands or 'quit' to exit.")
         print("-" * 60)
 
         while True:
@@ -214,9 +396,36 @@ class MCPClient:
                 continue
 
             # Exit commands
-            if user_input.lower() in ("quit", "exit", "q"):
+            if user_input.lower() in ("quit", "exit", "q", "/quit", "/exit"):
                 print("Goodbye!")
                 break
+
+            # Handle slash commands
+            if user_input.startswith("/"):
+                cmd = user_input.lower()
+
+                if cmd == "/help":
+                    self._show_help()
+                elif cmd == "/tools":
+                    self._show_tools()
+                elif cmd == "/stats":
+                    self._show_stats()
+                elif cmd == "/resources":
+                    self._show_resources()
+                elif cmd == "/settings":
+                    self._show_settings()
+                elif cmd == "/clear":
+                    self._clear_conversation()
+                elif cmd == "/code":
+                    self._toggle_code_execution()
+                elif cmd == "/rag":
+                    self._toggle_rag()
+                elif cmd == "/dummy":
+                    self._toggle_dummy_tools()
+                else:
+                    print(f"Unknown command: {user_input}")
+                    print("Type /help for available commands")
+                continue
 
             # Process query
             try:
