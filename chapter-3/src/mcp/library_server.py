@@ -25,6 +25,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.agentic.library.domain import BookStatus, Category
 from src.agentic.library.repository import BookRepository
 
+from .sales_repository import SalesRepository
+
 # Initialize FastMCP server
 mcp = FastMCP("LibraryServer")
 
@@ -34,6 +36,7 @@ DB_PATH = os.getenv(
 )
 # Use read_only=True to allow concurrent access from multiple MCP connections
 repository = BookRepository(DB_PATH, read_only=True)
+sales_repository = SalesRepository(db_path=DB_PATH, read_only=True)
 
 
 # ============================================================================
@@ -293,7 +296,146 @@ def get_weak_signal_books(threshold: float = -55.0) -> list[dict[str, Any]] | di
 
 
 # ============================================================================
-# Resources - 3 library data resources
+# Sales Tools - 5 sales operations
+# ============================================================================
+
+
+@mcp.tool()
+def search_sales(
+    book_id: str | None = None,
+    customer_segment: str | None = None,
+    region: str | None = None,
+    channel: str | None = None,
+    limit: int = 20,
+) -> list[dict[str, Any]] | dict[str, str]:
+    """Search sales records with optional filters.
+
+    Args:
+        book_id: Filter by book ID (e.g., 'B001')
+        customer_segment: Filter by segment (Individual, Corporate, Educational, Government)
+        region: Filter by region (Northeast, Southeast, Midwest, West, International)
+        channel: Filter by channel (In-Store, Online, Phone Order, Partner)
+        limit: Maximum number of results (1-100, default: 20)
+
+    Returns:
+        List of matching sales records
+    """
+    try:
+        # Validate limit
+        if limit < 1 or limit > 100:
+            return {"error": "Limit must be between 1 and 100"}
+
+        sales = sales_repository.search_sales(
+            book_id=book_id,
+            customer_segment=customer_segment,
+            region=region,
+            channel=channel,
+            limit=limit,
+        )
+
+        return [sale.to_dict() for sale in sales]
+
+    except Exception as e:
+        return {"error": f"Search failed: {str(e)}"}
+
+
+@mcp.tool()
+def get_book_sales(book_id: str) -> dict[str, Any]:
+    """Get all sales for a specific book with summary statistics.
+
+    Args:
+        book_id: Book ID (e.g., 'B001')
+
+    Returns:
+        Sales records with total units and revenue
+    """
+    try:
+        book = repository.get_book_by_id(book_id)
+        if not book:
+            return {"error": f"No book found with ID '{book_id}'"}
+
+        sales = sales_repository.get_sales_for_book(book_id)
+        sales_list = [sale.to_dict() for sale in sales]
+
+        total_revenue = sum(float(sale.total_amount) for sale in sales)
+        total_units = sum(sale.quantity for sale in sales)
+
+        return {
+            "book_id": book_id,
+            "book_title": book.title,
+            "book_author": book.author,
+            "sales_count": len(sales),
+            "total_units": total_units,
+            "total_revenue": round(total_revenue, 2),
+            "sales": sales_list,
+        }
+
+    except Exception as e:
+        return {"error": f"Failed to get book sales: {str(e)}"}
+
+
+@mcp.tool()
+def get_sales_stats() -> dict[str, Any]:
+    """Get aggregate statistics about all sales.
+
+    Returns:
+        Statistics including total sales, revenue, units, and breakdowns
+    """
+    try:
+        stats = sales_repository.get_sales_stats()
+        return {
+            "total_sales": stats["total_sales"],
+            "total_revenue": round(stats["total_revenue"], 2),
+            "total_units": stats["total_units"],
+            "avg_order_value": round(stats["avg_order_value"], 2),
+            "unique_customers": stats["unique_customers"],
+            "by_segment": stats["by_segment"],
+            "by_region": stats["by_region"],
+            "by_channel": stats["by_channel"],
+        }
+
+    except Exception as e:
+        return {"error": f"Failed to get sales stats: {str(e)}"}
+
+
+@mcp.tool()
+def get_top_selling_books(limit: int = 10) -> list[dict[str, Any]] | dict[str, str]:
+    """Get best-selling books ranked by total quantity sold.
+
+    Args:
+        limit: Maximum number of results (1-50, default: 10)
+
+    Returns:
+        List of top-selling books with sales statistics
+    """
+    try:
+        if limit < 1 or limit > 50:
+            return {"error": "Limit must be between 1 and 50"}
+
+        top_books = sales_repository.get_top_selling_books(limit=limit)
+        return top_books
+
+    except Exception as e:
+        return {"error": f"Failed to get top selling books: {str(e)}"}
+
+
+@mcp.tool()
+def get_sales_by_month() -> list[dict[str, Any]] | dict[str, str]:
+    """Get sales aggregated by month for trend analysis.
+
+    Returns:
+        List of monthly sales with totals and revenue
+    """
+    try:
+        monthly_sales = sales_repository.get_sales_by_month()
+        return monthly_sales
+
+    except Exception as e:
+        return {"error": f"Failed to get sales by month: {str(e)}"}
+
+
+# ============================================================================
+# Resources - 4 library data resources
 # ============================================================================
 
 
@@ -366,6 +508,21 @@ def get_location_map() -> str:
 
     except Exception as e:
         return json.dumps({"error": f"Failed to get location map: {str(e)}"})
+
+
+@mcp.resource("library://sales_stats")
+def get_sales_stats_resource() -> str:
+    """Get aggregate sales statistics.
+
+    Returns:
+        JSON with sales totals and breakdowns by segment, region, channel
+    """
+    try:
+        stats = sales_repository.get_sales_stats()
+        return json.dumps(stats, indent=2, default=float)
+
+    except Exception as e:
+        return json.dumps({"error": f"Failed to get sales stats: {str(e)}"})
 
 
 # ============================================================================

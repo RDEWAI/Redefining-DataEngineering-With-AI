@@ -5,12 +5,11 @@ particularly validating that total_revenue (not total_amount) is used
 for aggregated revenue values.
 """
 
-import pytest
 
 from src.agentic.library.tools import (
-    get_top_selling_books,
-    get_sales_stats,
     get_book_sales,
+    get_sales_stats,
+    get_top_selling_books,
     search_sales,
 )
 
@@ -39,7 +38,9 @@ class TestGetTopSellingBooks:
             # This is the critical test - should be total_revenue, NOT total_amount
             assert "total_revenue" in book, "Book should have 'total_revenue' key"
             assert "total_amount" not in book, "Book should NOT have 'total_amount' key"
-            assert isinstance(book["total_revenue"], (int, float)), "total_revenue should be numeric"
+            assert isinstance(book["total_revenue"], (int, float)), (
+                "total_revenue should be numeric"
+            )
 
     def test_book_has_required_fields(self) -> None:
         """Test that each book has all required fields."""
@@ -47,7 +48,15 @@ class TestGetTopSellingBooks:
 
         if result["books"]:
             book = result["books"][0]
-            required_fields = ["book_id", "title", "author", "category", "total_quantity", "total_revenue", "sale_count"]
+            required_fields = [
+                "book_id",
+                "title",
+                "author",
+                "category",
+                "total_quantity",
+                "total_revenue",
+                "sale_count",
+            ]
             for field in required_fields:
                 assert field in book, f"Book should have '{field}' field"
 
@@ -60,7 +69,9 @@ class TestGetTopSellingBooks:
                 assert book["total_revenue"] >= 0, "total_revenue should be non-negative"
                 # If there are sales, revenue should be positive
                 if book["total_quantity"] > 0:
-                    assert book["total_revenue"] > 0, "total_revenue should be positive when quantity > 0"
+                    assert book["total_revenue"] > 0, (
+                        "total_revenue should be positive when quantity > 0"
+                    )
 
 
 class TestGetSalesStats:
@@ -91,7 +102,14 @@ class TestGetSalesStats:
         result = get_sales_stats()
 
         if result["stats"]:
-            required_fields = ["total_sales", "total_revenue", "total_units", "by_segment", "by_region", "by_channel"]
+            required_fields = [
+                "total_sales",
+                "total_revenue",
+                "total_units",
+                "by_segment",
+                "by_region",
+                "by_channel",
+            ]
             for field in required_fields:
                 assert field in result["stats"], f"Stats should have '{field}' field"
 

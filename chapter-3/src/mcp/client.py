@@ -99,8 +99,9 @@ class MCPClient:
         >>> client.run()
     """
 
-    # Available MCP tools (book tools always available)
+    # Available MCP tools (book tools + sales tools)
     MCP_TOOLS = [
+        # Book tools
         ("search_books", "Search books by title, author, or keyword"),
         ("get_book_details", "Get complete details for a specific book"),
         ("check_availability", "Check if a book is available and get location"),
@@ -109,8 +110,12 @@ class MCPClient:
         ("locate_book", "Get physical location of a book"),
         ("find_books_in_cabinet", "List books in a specific cabinet"),
         ("get_weak_signal_books", "Get books with weak RFID signals"),
-        ("get_library_stats", "Get aggregate library statistics"),
-        ("get_popular_books", "Get top/popular books by category"),
+        # Sales tools
+        ("search_sales", "Search sales with filters (book, segment, region, channel)"),
+        ("get_book_sales", "Get all sales for a specific book"),
+        ("get_sales_stats", "Get aggregate sales statistics"),
+        ("get_top_selling_books", "Get best-selling books by quantity"),
+        ("get_sales_by_month", "Get monthly sales for trend analysis"),
     ]
 
     # Available MCP resources (from library_server.py)
@@ -118,6 +123,7 @@ class MCPClient:
         ("library://stats", "Aggregate library statistics"),
         ("library://missing_books", "List of all missing books"),
         ("library://location_map", "Location map with book counts"),
+        ("library://sales_stats", "Aggregate sales statistics"),
     ]
 
     def __init__(self, config: MCPClientConfig | None = None):
@@ -314,7 +320,10 @@ class MCPClient:
             ", ".join(t[0] for t in self.MCP_TOOLS[:4]),
             "...",
         )
-        print("MCP Resources (3):", ", ".join(r[0].split("://")[1] for r in self.MCP_RESOURCES))
+        print(
+            f"MCP Resources ({len(self.MCP_RESOURCES)}):",
+            ", ".join(r[0].split("://")[1] for r in self.MCP_RESOURCES),
+        )
         print("=" * 60)
 
     def _create_assistant(self):
@@ -387,18 +396,8 @@ class MCPClient:
         for name, description in self.MCP_TOOLS:
             print(f"  {name:25} - {description}")
         print("-" * 50)
-        print(f"  Total: {len(self.MCP_TOOLS)} tools")
+        print(f"  Total: {len(self.MCP_TOOLS)} tools (8 book + 5 sales)")
 
-        # Show additional tools if enabled
-        if self.config.enable_rag:
-            print()
-            print("RAG Tools (6 additional):")
-            print("  + semantic_search           - Natural language book search")
-            print("  + search_sales              - Search sales records")
-            print("  + get_book_sales            - Get sales for a book")
-            print("  + get_sales_stats           - Aggregate sales statistics")
-            print("  + get_top_selling_books     - Best sellers by quantity")
-            print("  + search_sales_semantic     - Natural language sales search")
         if self.config.enable_dummy_tools:
             print()
             print("Enterprise Tools:")
