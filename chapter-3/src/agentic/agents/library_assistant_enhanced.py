@@ -59,13 +59,28 @@ class AssistantMode(Enum):
 # Base system prompt for code execution (without RAG)
 CODE_EXECUTION_SYSTEM_PROMPT_BASE = """You are a Library Data Analyst with Python code execution.
 
-**Database:** library.books (DuckDB, accessed via `_conn`)
+**Database Tables:** (DuckDB, accessed via `_conn`)
+
+**library.books:**
 - Columns: book_id, title, author, description, category, status, cabinet, rack, row, signal_strength, timestamp
 - Status: "Present", "Missing", "Checked Out"
 - Categories: "Programming", "History", "Science", "Fiction", "Thriller"
 
-**API Functions Available:**
-Use these directly: search_books(), get_book_details(), check_availability(), list_by_category(), list_by_status(), locate_book(), find_books_in_cabinet(), get_weak_signal_books()
+**API Functions Available (ALWAYS available):**
+- search_books(query, category=None) - Search by title/author
+- get_book_details(book_id) - Get full book info
+- check_availability(book_id) - Check if available
+- list_by_category(category, status=None) - List books in category
+- list_by_status(status, category=None) - List by availability status
+- locate_book(book_id) - Get physical location
+- find_books_in_cabinet(cabinet, rack=None) - Browse cabinet contents
+- get_weak_signal_books(threshold=-55) - RFID maintenance check
+- get_library_stats() - Library-wide statistics
+- get_popular_books(category=None, limit=10) - Top/popular books by category
+
+**IMPORTANT: Sales data requires RAG mode.**
+- For "top selling books by revenue" or sales analytics: Enable RAG mode with /rag
+- For "popular/top books in category" (catalog-based): Use get_popular_books() - works now!
 
 **CRITICAL INSTRUCTIONS:**
 1. **Write ALL code in a SINGLE block** - Do the ENTIRE task in one code generation, not multiple iterations
@@ -73,7 +88,17 @@ Use these directly: search_books(), get_book_details(), check_availability(), li
 3. **Chain operations together** - If you need search + availability, do BOTH in one block
 4. **Use loops for multiple items** - Don't generate code iteratively; use for-loops
 
-**Example - CORRECT (single block):**
+**Example - Get top books in a category:**
+```python
+# Get popular programming books (no sales data needed)
+books = get_popular_books("Programming", limit=5)
+print(f"Top {len(books)} Programming books:")
+for book in books:
+    status = "✓ Available" if book['status'] == 'Present' else f"✗ {book['status']}"
+    print(f"  {book['title']} by {book['author']} - {status}")
+```
+
+**Example - Search with availability check:**
 ```python
 # Do EVERYTHING in one code block
 results = search_books("Python", category="Programming")
@@ -83,24 +108,30 @@ for book in results:
     status = "✓" if avail['available'] else "✗"
     print(f"  {status} {book['title']} - {avail['status']} at {avail.get('location', 'N/A')}")
 ```
-
-**Example - WRONG (multiple iterations):**
-```python
-# Iteration 1 - INEFFICIENT
-results = search_books("Python")
-print(results)
-# Then waiting for another iteration to check availability - WASTEFUL!
-```
 """
 
 # RAG-specific additions to the system prompt
 CODE_EXECUTION_RAG_ADDITIONS = """
+**library.sales:** (ONLY AVAILABLE WITH RAG MODE)
+- Columns: sale_id, book_id, sale_date, quantity, unit_price, total_amount, discount, payment_method, customer_id, customer_segment, region, channel
+- Customer segments: "Individual", "Corporate", "Educational", "Government"
+- Regions: "Northeast", "Southeast", "Midwest", "West", "International"
+- Channels: "In-Store", "Online", "Phone Order", "Partner"
+
+**Sales API Functions:** (ONLY AVAILABLE WITH RAG MODE)
+- search_sales(book_id, customer_segment, region, channel, limit) - Filter sales records
+- get_book_sales(book_id) - Get all sales for a book
+- get_sales_stats() - Aggregate sales statistics
+- get_top_selling_books(limit) - Best-selling books by quantity
+- get_most_discounted_sales(limit) - Sales with highest discounts
+
 **RAG/Semantic Search - WHEN TO USE:**
 - `semantic_search(query, top_k=5)` - Find books by meaning, not just keywords
-- **RAG indexes**: title, author, description, category (conceptual/text data)
-- **NOT in RAG**: status, location, signal_strength, book_id (use tools/SQL instead)
-- Use for: "books about time travel", "something like Harry Potter", "adventure stories"
-- Do NOT use for: "available books", "missing books", "weak signal", "in cabinet 3"
+- `search_sales_semantic(query, top_k=10)` - Find sales by natural language
+- **Book RAG indexes**: title, author, description, category (conceptual/text data)
+- **Sales RAG indexes**: book info + customer segment, region, channel, discount status
+- Use for: "books about time travel", "bulk corporate purchases", "holiday online sales"
+- Do NOT use for: "available books", "missing books", "weak signal" (use tools/SQL instead)
 
 **Example - RAG + Availability in ONE block:**
 ```python
@@ -113,6 +144,16 @@ for book in results:
     print(f"  {status_icon} {book['title']} (similarity: {book['similarity']:.3f})")
     print(f"      Status: {avail['status']} | Location: {avail.get('location', 'N/A')}")
 ```
+
+**Example - Sales Semantic Search:**
+```python
+# Find bulk corporate purchases using semantic search
+results = search_sales_semantic("bulk corporate purchases")
+print(f"Found {len(results)} matching sales:\\n")
+for sale in results:
+    print(f"  {sale['book_title']} - {sale['quantity']} copies to {sale['customer_segment']}")
+    print(f"      Region: {sale['region']} | Channel: {sale['channel']} | Similarity: {sale['similarity']:.3f}")
+```
 """
 
 
@@ -120,16 +161,29 @@ def get_code_execution_system_prompt(include_rag: bool = False) -> str:
     """Get the system prompt for code execution mode.
 
     Args:
-        include_rag: Whether to include RAG/semantic search instructions
+        include_rag: Whether to include RAG/semantic search instructions and sales tools
 
     Returns:
         System prompt string
     """
     if include_rag:
         # Insert RAG additions after API functions list
+        # Add semantic_search to book tools and remove the sales warning
         base = CODE_EXECUTION_SYSTEM_PROMPT_BASE.replace(
             "get_weak_signal_books()",
             "get_weak_signal_books(), semantic_search()",
+        )
+        # Remove the "sales not available" warning when RAG is enabled
+        # Use the actual text from the base prompt
+        base = base.replace(
+            """**IMPORTANT: Sales data requires RAG mode.**
+- For "top selling books by revenue" or sales analytics: Enable RAG mode with /rag
+- For "popular/top books in category" (catalog-based): Use get_popular_books() - works now!""",
+            """**Sales data is NOW AVAILABLE (RAG mode enabled).**
+- Use get_top_selling_books(limit) for best-selling books by quantity/revenue
+- Use get_sales_stats() for aggregate sales statistics
+- Use search_sales(...) to filter sales by book, segment, region, or channel
+- Use get_book_sales(book_id) for a specific book's sales history""",
         )
         return base + CODE_EXECUTION_RAG_ADDITIONS
     return CODE_EXECUTION_SYSTEM_PROMPT_BASE
@@ -295,10 +349,10 @@ class EnhancedLibraryAssistant:
         if self._mode == AssistantMode.TRADITIONAL:
             return int(self._traditional_assistant.get_tool_count())
         else:
-            # Code execution mode: base tools + RAG + dummy tools
-            count = 8  # Base library tools
+            # Code execution mode: base tools + RAG tools + dummy tools
+            count = 10  # Base library tools (including get_library_stats and get_popular_books)
             if self._enable_rag:
-                count += 1
+                count += 6  # semantic_search + 5 sales tools
             if self._enable_dummy_tools:
                 count += get_total_tool_count()
             return count
@@ -394,10 +448,12 @@ class EnhancedLibraryAssistant:
 
             # If no code generated, this is the final response
             if not code:
-                self._code_exec_history.append(
-                    Message(role="assistant", content=response.content or "")
+                final_content = (
+                    response.content
+                    or "I couldn't generate a response. Please try rephrasing your question."
                 )
-                return str(response.content or "")
+                self._code_exec_history.append(Message(role="assistant", content=final_content))
+                return final_content
 
             if self._show_tool_calls:
                 print("\n" + "=" * 60)
@@ -476,10 +532,12 @@ class EnhancedLibraryAssistant:
                     )
                     self._token_usage.add(final_response)
 
-                    self._code_exec_history.append(
-                        Message(role="assistant", content=final_response.content or "")
+                    final_content = (
+                        final_response.content
+                        or "Based on the results above, I couldn't formulate a response."
                     )
-                    return str(final_response.content or "")
+                    self._code_exec_history.append(Message(role="assistant", content=final_content))
+                    return final_content
 
                 # Empty or minimal output - let LLM try again
                 result_message = f"Code executed but output was empty or minimal:\n```\n{output}\n```\n\nPlease try a different approach."
@@ -658,14 +716,23 @@ def run_interactive_cli() -> None:
                     new_rag_status = not assistant.is_rag_enabled()
                     assistant.set_rag_enabled(new_rag_status)
                     status = "ON" if new_rag_status else "OFF"
-                    print(f"Semantic search (RAG): {status}")
+                    tool_count = assistant.get_tool_count()
+                    print(f"RAG Mode: {status}")
+                    print(f"  Total tools available: {tool_count}")
                     if new_rag_status:
+                        print("  Now available:")
+                        print("    - semantic_search: Natural language book search")
                         print(
-                            "  The assistant can now use semantic_search for natural language queries."
+                            "    - Sales tools: search_sales, get_book_sales, get_sales_stats, get_top_selling_books"
                         )
+                        print("    - search_sales_semantic: Natural language sales search")
+                        print()
                         print(
-                            "  Try: 'Find books about time travel' or 'something like Harry Potter'"
+                            "  Try: 'Find books about time travel' or 'What are the top selling books?'"
                         )
+                        print("       'Find bulk corporate purchases' or 'Show sales statistics'")
+                    else:
+                        print("  Sales tools and semantic search are now disabled.")
 
                 elif cmd == "/dummy-tools":
                     new_dummy_status = not assistant.is_dummy_tools_enabled()

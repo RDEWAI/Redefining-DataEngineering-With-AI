@@ -1,8 +1,8 @@
 """Standardized tool functions for library operations.
 
-This module provides tool functions that wrap the BookRepository methods
-in a format suitable for LLM tool calling. Each function returns structured
-data that can be serialized to JSON.
+This module provides tool functions that wrap the BookRepository and
+SalesRepository methods in a format suitable for LLM tool calling.
+Each function returns structured data that can be serialized to JSON.
 
 All functions include user-friendly error messages and handle edge cases
 gracefully.
@@ -12,9 +12,11 @@ from typing import Any
 
 from .domain import BookStatus, Category
 from .repository import BookRepository, get_repository
+from .sales_repository import SalesRepository, get_sales_repository
 
-# Module-level repository instance (lazy initialization)
+# Module-level repository instances (lazy initialization)
 _repository: BookRepository | None = None
+_sales_repository: SalesRepository | None = None
 
 
 def _get_repo() -> BookRepository:
@@ -23,6 +25,14 @@ def _get_repo() -> BookRepository:
     if _repository is None:
         _repository = get_repository()
     return _repository
+
+
+def _get_sales_repo() -> SalesRepository:
+    """Get or create the module-level sales repository instance."""
+    global _sales_repository
+    if _sales_repository is None:
+        _sales_repository = get_sales_repository()
+    return _sales_repository
 
 
 def set_repository(repo: BookRepository) -> None:
@@ -35,31 +45,45 @@ def set_repository(repo: BookRepository) -> None:
     _repository = repo
 
 
+def set_sales_repository(repo: SalesRepository) -> None:
+    """Set the sales repository instance for testing.
+
+    Args:
+        repo: SalesRepository instance to use
+    """
+    global _sales_repository
+    _sales_repository = repo
+
+
 def close_repository() -> None:
-    """Close the module-level repository connection.
+    """Close the module-level repository connections.
 
     This releases file locks to allow subprocess access to the database.
     """
-    global _repository
+    global _repository, _sales_repository
     if _repository is not None:
         _repository.close()
+    if _sales_repository is not None:
+        _sales_repository.close()
 
 
 def reopen_repository(db_path: str | None = None, read_only: bool = True) -> None:
-    """Reopen the module-level repository connection.
+    """Reopen the module-level repository connections.
 
     Args:
         db_path: Optional database path (uses default if not provided)
         read_only: If True, open database in read-only mode
     """
-    global _repository
-    if _repository is not None and not _repository.is_open():
-        import os
+    global _repository, _sales_repository
+    import os
 
-        path: str = (
-            db_path or os.getenv("DB_PATH", "data/duckdb/chapter3.db") or "data/duckdb/chapter3.db"
-        )
+    path: str = (
+        db_path or os.getenv("DB_PATH", "data/duckdb/chapter3.db") or "data/duckdb/chapter3.db"
+    )
+    if _repository is not None and not _repository.is_open():
         _repository.reopen(path, read_only=read_only)
+    if _sales_repository is not None and not _sales_repository.is_open():
+        _sales_repository.reopen(path, read_only=read_only)
 
 
 def search_books(
@@ -520,6 +544,85 @@ def get_library_stats() -> dict[str, Any]:
         }
 
 
+def get_popular_books(
+    category: str | None = None,
+    limit: int = 10,
+) -> dict[str, Any]:
+    """Get popular/featured books, optionally filtered by category.
+
+    This returns books from the catalog as recommendations. Use this when users
+    ask for "top books", "popular books", "best books in category".
+
+    NOTE: This does NOT use sales data. For sales-based rankings (actual best sellers),
+    use get_top_selling_books() which requires RAG mode.
+
+    Args:
+        category: Optional category filter (Programming, History, Science, Fiction, Thriller)
+        limit: Maximum number of results (default 10)
+
+    Returns:
+        Dictionary with:
+        - success: bool indicating if operation was successful
+        - count: number of books found
+        - books: list of book dictionaries
+        - message: user-friendly message
+
+    Example:
+        >>> result = get_popular_books("Programming", limit=5)
+        >>> print(result["message"])
+        Top 5 Programming books (prioritizing available)
+    """
+    try:
+        repo = _get_repo()
+
+        # Validate category if provided
+        cat = None
+        if category:
+            cat = Category(category)
+
+        # Get books, prioritizing available ones
+        if cat:
+            books = repo.list_by_category(cat)
+        else:
+            # Get all books
+            books = []
+            for c in Category:
+                books.extend(repo.list_by_category(c))
+
+        # Sort: Available (Present) first, then alphabetically by title
+        sorted_books = sorted(
+            books, key=lambda b: (0 if b.status == BookStatus.PRESENT else 1, b.title)
+        )
+
+        # Limit results
+        limited_books = sorted_books[:limit]
+        book_list = [book.to_dict() for book in limited_books]
+
+        cat_msg = f" {category}" if category else ""
+        message = f"Top {len(book_list)}{cat_msg} books (prioritizing available)"
+
+        return {
+            "success": True,
+            "count": len(book_list),
+            "books": book_list,
+            "message": message,
+        }
+    except ValueError:
+        return {
+            "success": False,
+            "count": 0,
+            "books": [],
+            "message": f"Invalid category: {category}. Valid options are: Programming, History, Science, Fiction, Thriller",
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "count": 0,
+            "books": [],
+            "message": f"Error getting popular books: {str(e)}",
+        }
+
+
 # RAG components (lazy initialization)
 _embedding_generator = None
 _vector_store = None
@@ -632,8 +735,311 @@ def semantic_search(
         }
 
 
+# =============================================================================
+# Sales tools
+# =============================================================================
+
+# Sales RAG components (lazy initialization)
+_sales_embedding_generator = None
+_sales_vector_store = None
+
+
+def _get_sales_rag_components() -> tuple:
+    """Get or create sales RAG components (embedding generator and vector store)."""
+    global _sales_embedding_generator, _sales_vector_store
+
+    if _sales_embedding_generator is None:
+        try:
+            from rag.embeddings import EmbeddingGenerator
+        except ImportError:
+            from src.agentic.rag.embeddings import EmbeddingGenerator
+
+        _sales_embedding_generator = EmbeddingGenerator()
+
+    if _sales_vector_store is None:
+        from pathlib import Path
+
+        try:
+            from rag.vector_store import SalesVectorStore
+        except ImportError:
+            from src.agentic.rag.vector_store import SalesVectorStore
+
+        db_path = Path(__file__).parent.parent.parent.parent / "data" / "duckdb" / "chapter3.db"
+        _sales_vector_store = SalesVectorStore(db_path=str(db_path), read_only=True)
+
+    return _sales_embedding_generator, _sales_vector_store
+
+
+def search_sales(
+    book_id: str | None = None,
+    customer_segment: str | None = None,
+    region: str | None = None,
+    channel: str | None = None,
+    limit: int = 20,
+) -> dict[str, Any]:
+    """Search sales records with optional filters.
+
+    Args:
+        book_id: Filter by book ID
+        customer_segment: Filter by segment (Individual, Corporate, Educational, Government)
+        region: Filter by region (Northeast, Southeast, Midwest, West, International)
+        channel: Filter by channel (In-Store, Online, Phone Order, Partner)
+        limit: Maximum number of results (default 20)
+
+    Returns:
+        Dictionary with:
+        - success: bool indicating if search was successful
+        - count: number of results found
+        - sales: list of sale dictionaries
+        - message: user-friendly message
+    """
+    try:
+        repo = _get_sales_repo()
+        sales = repo.search_sales(
+            book_id=book_id,
+            customer_segment=customer_segment,
+            region=region,
+            channel=channel,
+            limit=limit,
+        )
+
+        sales_list = [sale.to_dict() for sale in sales]
+
+        filters = []
+        if book_id:
+            filters.append(f"book '{book_id}'")
+        if customer_segment:
+            filters.append(f"segment '{customer_segment}'")
+        if region:
+            filters.append(f"region '{region}'")
+        if channel:
+            filters.append(f"channel '{channel}'")
+
+        filter_msg = f" for {', '.join(filters)}" if filters else ""
+        message = f"Found {len(sales)} sale(s){filter_msg}"
+
+        return {
+            "success": True,
+            "count": len(sales_list),
+            "sales": sales_list,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "count": 0,
+            "sales": [],
+            "message": f"Error searching sales: {str(e)}",
+        }
+
+
+def get_book_sales(book_id: str) -> dict[str, Any]:
+    """Get all sales for a specific book.
+
+    Args:
+        book_id: Book ID (e.g., "B001")
+
+    Returns:
+        Dictionary with:
+        - success: bool indicating if operation was successful
+        - count: number of sales found
+        - sales: list of sale dictionaries
+        - book_info: book title and author if found
+        - message: user-friendly message
+    """
+    try:
+        sales_repo = _get_sales_repo()
+        book_repo = _get_repo()
+
+        book = book_repo.get_book_by_id(book_id)
+        if not book:
+            return {
+                "success": False,
+                "count": 0,
+                "sales": [],
+                "book_info": None,
+                "message": f"No book found with ID '{book_id}'",
+            }
+
+        sales = sales_repo.get_sales_for_book(book_id)
+        sales_list = [sale.to_dict() for sale in sales]
+
+        total_revenue = sum(float(sale.total_amount) for sale in sales)
+        total_units = sum(sale.quantity for sale in sales)
+
+        message = f"'{book.title}' has {len(sales)} sale(s): {total_units} units sold, ${total_revenue:.2f} total revenue"
+
+        return {
+            "success": True,
+            "count": len(sales_list),
+            "sales": sales_list,
+            "book_info": {"title": book.title, "author": book.author},
+            "total_units": total_units,
+            "total_revenue": total_revenue,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "count": 0,
+            "sales": [],
+            "book_info": None,
+            "message": f"Error getting book sales: {str(e)}",
+        }
+
+
+def get_sales_stats() -> dict[str, Any]:
+    """Get aggregate statistics about sales.
+
+    Returns:
+        Dictionary with:
+        - success: bool indicating if operation was successful
+        - stats: dictionary of sales statistics
+        - message: summary message
+    """
+    try:
+        repo = _get_sales_repo()
+        stats = repo.get_sales_stats()
+
+        message = (
+            f"Total: {stats['total_sales']} sales, ${stats['total_revenue']:,.2f} revenue, "
+            f"{stats['total_units']} units sold, {stats['unique_customers']} unique customers"
+        )
+
+        return {
+            "success": True,
+            "stats": stats,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "stats": None,
+            "message": f"Error retrieving sales statistics: {str(e)}",
+        }
+
+
+def get_top_selling_books(limit: int = 10) -> dict[str, Any]:
+    """Get best-selling books ranked by total quantity sold.
+
+    Args:
+        limit: Maximum number of results (default 10)
+
+    Returns:
+        Dictionary with:
+        - success: bool indicating if operation was successful
+        - count: number of results
+        - books: list of top-selling book dictionaries
+        - message: user-friendly message
+    """
+    try:
+        repo = _get_sales_repo()
+        top_books = repo.get_top_selling_books(limit=limit)
+
+        if top_books:
+            top_book = top_books[0]
+            message = f"Top {len(top_books)} best-selling books. #1: '{top_book['title']}' with {top_book['total_quantity']} copies sold (${top_book['total_revenue']:.2f})"
+        else:
+            message = "No sales data found"
+
+        return {
+            "success": True,
+            "count": len(top_books),
+            "books": top_books,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "count": 0,
+            "books": [],
+            "message": f"Error getting top selling books: {str(e)}",
+        }
+
+
+def search_sales_semantic(
+    query: str,
+    top_k: int = 10,
+) -> dict[str, Any]:
+    """Search sales using natural language semantic similarity.
+
+    Uses RAG with vector embeddings to find sales semantically similar to the query.
+    This is useful for queries like "bulk corporate purchases", "holiday online sales",
+    "discounted programming books".
+
+    Args:
+        query: Natural language search query
+        top_k: Maximum number of results (default 10)
+
+    Returns:
+        Dictionary with:
+        - success: bool indicating if search was successful
+        - count: number of results found
+        - sales: list of sale dictionaries with similarity scores
+        - message: user-friendly message
+    """
+    try:
+        generator, store = _get_sales_rag_components()
+
+        # Check if embeddings exist
+        if store.get_embedding_count() == 0:
+            return {
+                "success": False,
+                "count": 0,
+                "sales": [],
+                "message": "Sales semantic search not available. Run 'make generate-sales-embeddings' first.",
+            }
+
+        # Generate query embedding
+        query_embedding = generator.embed_text(query)
+
+        # Search for similar sales
+        results = store.semantic_search(query_embedding, top_k=top_k)
+
+        if not results:
+            return {
+                "success": True,
+                "count": 0,
+                "sales": [],
+                "message": f"No sales found semantically similar to '{query}'",
+            }
+
+        # Enrich results with sale and book details
+        sales_repo = _get_sales_repo()
+        book_repo = _get_repo()
+        enriched_results = []
+        for result in results:
+            sale = sales_repo.get_sale_by_id(result["sale_id"])
+            if sale:
+                sale_dict = sale.to_dict()
+                sale_dict["similarity"] = round(result["similarity"], 3)
+                # Add book info
+                book = book_repo.get_book_by_id(sale.book_id)
+                if book:
+                    sale_dict["book_title"] = book.title
+                    sale_dict["book_author"] = book.author
+                enriched_results.append(sale_dict)
+
+        message = f"Found {len(enriched_results)} sale(s) semantically similar to '{query}'"
+
+        return {
+            "success": True,
+            "count": len(enriched_results),
+            "sales": enriched_results,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "count": 0,
+            "sales": [],
+            "message": f"Error in sales semantic search: {str(e)}",
+        }
+
+
 # Export all tool functions
 __all__ = [
+    # Book tools (always available)
     "search_books",
     "get_book_details",
     "check_availability",
@@ -643,6 +1049,18 @@ __all__ = [
     "find_books_in_cabinet",
     "get_weak_signal_books",
     "get_library_stats",
+    "get_popular_books",  # Top books by category (no sales data needed)
+    # RAG book tools (requires RAG mode)
     "semantic_search",
+    # Sales tools (requires RAG mode)
+    "search_sales",
+    "get_book_sales",
+    "get_sales_stats",
+    "get_top_selling_books",
+    "search_sales_semantic",
+    # Repository management
     "set_repository",
+    "set_sales_repository",
+    "close_repository",
+    "reopen_repository",
 ]

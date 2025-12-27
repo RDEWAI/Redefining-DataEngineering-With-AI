@@ -1,7 +1,7 @@
 """Unified MCP Client with Configuration and Assistant.
 
 This module provides a unified entry point for the MCP client that:
-1. Configures code execution mode (on by default) vs traditional JSON tools
+1. Configures code execution mode (off by default) vs traditional JSON tools
 2. Toggles features like RAG and dummy tools
 3. Provides both interactive menu and CLI flag interfaces
 4. Launches the EnhancedLibraryAssistant with the configured settings
@@ -10,16 +10,16 @@ Usage:
     # Interactive mode (shows settings menu)
     python -m src.mcp.client
 
-    # Direct chat (skips menu, code execution enabled by default)
+    # Direct chat (skips menu, code execution disabled by default)
     python -m src.mcp.client --no-menu
 
     # With CLI flags
     python -m src.mcp.client --no-menu --rag
-    python -m src.mcp.client --no-menu --no-code-execution  # Traditional mode
+    python -m src.mcp.client --no-menu --code-execution  # Code execution mode
     python -m src.mcp.client --no-menu --dummy-tools
 
     # Interactive menu with pre-configured settings
-    python -m src.mcp.client -i --no-code-execution
+    python -m src.mcp.client -i --code-execution
 """
 
 import argparse
@@ -46,14 +46,17 @@ class MCPClientConfig:
     """Configuration for MCP Client.
 
     Attributes:
-        enable_code_execution: Enable code execution mode (default True, token efficient)
-        enable_rag: Enable semantic search/RAG functionality
+        enable_code_execution: Enable code execution mode (default False)
+        enable_rag: Enable RAG functionality (semantic search + sales data tools).
+                   When enabled: semantic_search, search_sales, get_book_sales,
+                   get_sales_stats, get_top_selling_books, search_sales_semantic.
+                   When disabled: only basic library tools are available.
         enable_dummy_tools: Enable 100 enterprise dummy tools for scale testing
         show_tool_calls: Display tool calls/generated code during execution
         verbose: Enable verbose debug output
     """
 
-    enable_code_execution: bool = True
+    enable_code_execution: bool = False
     enable_rag: bool = False
     enable_dummy_tools: bool = False
     show_tool_calls: bool = True
@@ -96,7 +99,7 @@ class MCPClient:
         >>> client.run()
     """
 
-    # Available MCP tools (from library_server.py)
+    # Available MCP tools (book tools always available)
     MCP_TOOLS = [
         ("search_books", "Search books by title, author, or keyword"),
         ("get_book_details", "Get complete details for a specific book"),
@@ -106,6 +109,8 @@ class MCPClient:
         ("locate_book", "Get physical location of a book"),
         ("find_books_in_cabinet", "List books in a specific cabinet"),
         ("get_weak_signal_books", "Get books with weak RFID signals"),
+        ("get_library_stats", "Get aggregate library statistics"),
+        ("get_popular_books", "Get top/popular books by category"),
     ]
 
     # Available MCP resources (from library_server.py)
@@ -144,12 +149,13 @@ class MCPClient:
             print("=" * 50)
             print()
             print(f"  [1] Code Execution: {code_exec_status}")
-            print(f"  [2] RAG (Semantic Search): {rag_status}")
+            print(f"  [2] RAG (Semantic Search + Sales): {rag_status}")
             print(f"  [3] Dummy Tools (100 enterprise): {dummy_status}")
             print(f"  [4] Show Tool Calls: {tools_status}")
             print()
             print("-" * 50)
             print("  [Enter] Start Assistant")
+            print("  [m] Monitor MCP (show available commands)")
             print("  [q] Quit")
             print("=" * 50)
             print()
@@ -163,9 +169,28 @@ class MCPClient:
             if choice == "":
                 # Save and start assistant
                 self.config.save()
+                # Apply config changes to existing assistant
+                if self._assistant is not None:
+                    # Update RAG setting
+                    if self._assistant.is_rag_enabled() != self.config.enable_rag:
+                        self._assistant.set_rag_enabled(self.config.enable_rag)
+                    # Update dummy tools setting
+                    if self._assistant.is_dummy_tools_enabled() != self.config.enable_dummy_tools:
+                        self._assistant.set_dummy_tools_enabled(self.config.enable_dummy_tools)
+                    # Update mode if changed
+                    new_mode = (
+                        "code_execution" if self.config.enable_code_execution else "traditional"
+                    )
+                    if self._assistant.get_mode() != new_mode:
+                        self._assistant.set_mode(new_mode)
+                        self._assistant.reset_conversation()
+                    # Update tool call display
+                    self._assistant._show_tool_calls = self.config.show_tool_calls
                 return True
             elif choice == "q":
                 return False
+            elif choice == "m":
+                self._show_monitor_mcp()
             elif choice == "1":
                 # Toggle code execution
                 self.config.enable_code_execution = not self.config.enable_code_execution
@@ -182,6 +207,115 @@ class MCPClient:
             else:
                 print(f"Unknown option: {choice}")
                 input("Press Enter to continue...")
+
+    def _show_monitor_mcp(self) -> None:
+        """Interactive MCP monitor with command execution."""
+        # Ensure assistant is created for command execution
+        if self._assistant is None:
+            self._create_assistant()
+
+        while True:
+            print("\033[H\033[J", end="")  # Clear screen
+            self._display_monitor_header()
+
+            try:
+                user_input = input("\nMonitor> ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print("\n")
+                return
+
+            if not user_input:
+                continue
+
+            # Return to main menu
+            if user_input.lower() in ("back", "menu", "b", "m", "/menu", "/back"):
+                return
+
+            # Exit completely
+            if user_input.lower() in ("quit", "exit", "q", "/quit", "/exit"):
+                print("Goodbye!")
+                sys.exit(0)
+
+            # Handle slash commands
+            if user_input.startswith("/"):
+                cmd = user_input.lower()
+
+                if cmd == "/help":
+                    self._show_help()
+                elif cmd == "/tools":
+                    self._show_tools()
+                elif cmd == "/stats":
+                    self._show_stats()
+                elif cmd == "/resources":
+                    self._show_resources()
+                elif cmd == "/settings":
+                    self._show_settings()
+                elif cmd == "/clear":
+                    self._clear_conversation()
+                elif cmd == "/code":
+                    self._toggle_code_execution()
+                elif cmd == "/rag":
+                    self._toggle_rag()
+                elif cmd == "/dummy":
+                    self._toggle_dummy_tools()
+                else:
+                    print(f"Unknown command: {user_input}")
+                    print("Type /help for available commands")
+
+                input("\nPress Enter to continue...")
+                continue
+
+            # Process as a query to the assistant
+            try:
+                print("\nProcessing query...")
+                response = self._assistant.query(user_input)
+                print(f"\nAssistant: {response}")
+            except Exception as e:
+                print(f"\nError: {e}")
+                if self.config.verbose:
+                    import traceback
+
+                    traceback.print_exc()
+
+            input("\nPress Enter to continue...")
+
+    def _display_monitor_header(self) -> None:
+        """Display the monitor header with available commands."""
+        code_status = "ON" if self.config.enable_code_execution else "OFF"
+        rag_status = "ON" if self.config.enable_rag else "OFF"
+        dummy_status = "ON" if self.config.enable_dummy_tools else "OFF"
+
+        print("=" * 60)
+        print("       MCP Monitor - Interactive Mode")
+        print("=" * 60)
+        print(f"  Code Execution: {code_status} | RAG: {rag_status} | Dummy Tools: {dummy_status}")
+        print("-" * 60)
+        print()
+        print("Commands:")
+        print("  /help       - Show all available commands")
+        print("  /tools      - Toggle tool display & list MCP tools")
+        print("  /stats      - Show token usage statistics")
+        print("  /resources  - List available MCP resources")
+        print("  /settings   - Show current configuration")
+        print("  /code       - Toggle code execution ON/OFF")
+        print("  /rag        - Toggle RAG (semantic search + sales)")
+        print("  /dummy      - Toggle 100 dummy tools")
+        print("  /clear      - Clear conversation history")
+        print()
+        print("Navigation:")
+        print("  back, menu  - Return to main settings menu")
+        print("  quit        - Exit the application")
+        print()
+        print("Or type a query to ask the library assistant.")
+        print("-" * 60)
+        print()
+        print(
+            f"MCP Tools ({len(self.MCP_TOOLS)}):",
+            ", ".join(t[0] for t in self.MCP_TOOLS[:4]),
+            "...",
+        )
+        print("MCP Resources (3):", ", ".join(r[0].split("://")[1] for r in self.MCP_RESOURCES))
+        print("=" * 60)
 
     def _create_assistant(self):
         """Create the EnhancedLibraryAssistant with current config."""
@@ -222,12 +356,13 @@ class MCPClient:
         print("Configuration:")
         print("-" * 40)
         print(f"  /code       - Toggle code execution ({code_status})")
-        print(f"  /rag        - Toggle RAG/semantic search ({rag_status})")
+        print(f"  /rag        - Toggle RAG: semantic search + sales ({rag_status})")
         print(f"  /dummy      - Toggle 100 dummy tools ({dummy_status})")
         print("  /settings   - Show current settings")
         print()
-        print("Session:")
+        print("Navigation:")
         print("-" * 40)
+        print("  /menu       - Return to settings menu")
         print("  /clear      - Clear conversation history")
         print("  /help       - Show this help message")
         print("  /quit       - Exit the assistant")
@@ -256,9 +391,18 @@ class MCPClient:
 
         # Show additional tools if enabled
         if self.config.enable_rag:
-            print("  + semantic_search (RAG enabled)")
+            print()
+            print("RAG Tools (6 additional):")
+            print("  + semantic_search           - Natural language book search")
+            print("  + search_sales              - Search sales records")
+            print("  + get_book_sales            - Get sales for a book")
+            print("  + get_sales_stats           - Aggregate sales statistics")
+            print("  + get_top_selling_books     - Best sellers by quantity")
+            print("  + search_sales_semantic     - Natural language sales search")
         if self.config.enable_dummy_tools:
-            print("  + 100 enterprise dummy tools")
+            print()
+            print("Enterprise Tools:")
+            print("  + 100 dummy tools across 10 domains")
 
     def _show_stats(self) -> None:
         """Show token usage statistics."""
@@ -303,10 +447,14 @@ class MCPClient:
         print("Current Settings:")
         print("-" * 40)
         print(f"  Code Execution: {code_exec_status}")
-        print(f"  RAG:            {rag_status}")
+        print(f"  RAG (Search + Sales): {rag_status}")
         print(f"  Dummy Tools:    {dummy_status}")
         print(f"  Tool Display:   {tools_status}")
         print("-" * 40)
+        if self.config.enable_rag:
+            print("  RAG includes: semantic_search, sales tools")
+        else:
+            print("  RAG disabled: no semantic search or sales tools")
 
     def _clear_conversation(self) -> None:
         """Clear conversation history and reset token counters."""
@@ -332,18 +480,29 @@ class MCPClient:
             print("  Conversation reset for new mode.")
 
     def _toggle_rag(self) -> None:
-        """Toggle RAG/semantic search."""
+        """Toggle RAG (semantic search + sales data)."""
         self.config.enable_rag = not self.config.enable_rag
         self.config.save()
 
         status = "ON" if self.config.enable_rag else "OFF"
-        print(f"\nRAG (Semantic Search): {status}")
+        print(f"\nRAG (Semantic Search + Sales): {status}")
 
         # Update assistant
         if self._assistant is not None:
             self._assistant.set_rag_enabled(self.config.enable_rag)
-            if self.config.enable_rag:
-                print("  Use natural language queries like 'books about time travel'")
+
+        if self.config.enable_rag:
+            print("  Now available:")
+            print("    - semantic_search: Natural language book search")
+            print(
+                "    - Sales tools: search_sales, get_book_sales, get_sales_stats, get_top_selling_books"
+            )
+            print("    - search_sales_semantic: Natural language sales search")
+            print()
+            print("  Try: 'Find books about time travel' or 'What are the top selling books?'")
+        else:
+            print("  Disabled: semantic_search, all sales tools")
+            print("  Only basic library tools are available.")
 
     def _toggle_dummy_tools(self) -> None:
         """Toggle 100 enterprise dummy tools."""
@@ -361,8 +520,12 @@ class MCPClient:
             if self.config.enable_dummy_tools:
                 print("  Compare /stats between /code ON vs OFF for token savings.")
 
-    def run_assistant(self) -> None:
-        """Run the assistant interactive loop (pure chat interface)."""
+    def run_assistant(self) -> bool:
+        """Run the assistant interactive loop (pure chat interface).
+
+        Returns:
+            True to return to main menu, False to quit completely.
+        """
         if self._assistant is None:
             self._create_assistant()
 
@@ -375,14 +538,14 @@ class MCPClient:
         print("MCP Library Assistant")
         print("=" * 60)
         print(f"  Code Execution: {code_exec_status}")
-        print(f"  RAG: {rag_status}")
+        print(f"  RAG (Search + Sales): {rag_status}")
         print(f"  Dummy Tools: {dummy_status}")
         print("-" * 60)
         print()
         print("Type your query to ask questions about the library.")
         print("Example: 'What programming books are available?'")
         print()
-        print("Type /help for commands or 'quit' to exit.")
+        print("Type /help for commands, /menu for settings, or 'quit' to exit.")
         print("-" * 60)
 
         while True:
@@ -390,7 +553,7 @@ class MCPClient:
                 user_input = input("\nYou: ").strip()
             except (EOFError, KeyboardInterrupt):
                 print("\n\nGoodbye!")
-                break
+                return False
 
             if not user_input:
                 continue
@@ -398,7 +561,12 @@ class MCPClient:
             # Exit commands
             if user_input.lower() in ("quit", "exit", "q", "/quit", "/exit"):
                 print("Goodbye!")
-                break
+                return False
+
+            # Return to menu commands
+            if user_input.lower() in ("/menu", "/back", "menu", "back"):
+                print("\nReturning to settings menu...")
+                return True
 
             # Handle slash commands
             if user_input.startswith("/"):
@@ -430,7 +598,12 @@ class MCPClient:
             # Process query
             try:
                 response = self._assistant.query(user_input)
-                print(f"\nAssistant: {response}")
+                if response:
+                    print(f"\nAssistant: {response}")
+                else:
+                    print(
+                        "\nAssistant: I couldn't generate a response. Please try rephrasing your question."
+                    )
             except Exception as e:
                 print(f"\nError: {e}")
                 if self.config.verbose:
@@ -444,22 +617,30 @@ class MCPClient:
         Args:
             interactive: If True, show settings menu first. If False, start assistant directly.
         """
-        if interactive:
-            should_continue = self.show_settings_menu()
-            if not should_continue:
-                print("Goodbye!")
-                return
+        while True:
+            if interactive:
+                should_continue = self.show_settings_menu()
+                if not should_continue:
+                    print("Goodbye!")
+                    return
 
-        try:
-            self.run_assistant()
-        except Exception as e:
-            print(f"Error: {e}")
-            print()
-            print("Please ensure your LLM configuration is set in .env:")
-            print("  LLM_BASE_URL=your-api-base-url")
-            print("  LLM_API_KEY=your-api-key")
-            print("  LLM_MODEL=your-model-name")
-            sys.exit(1)
+            try:
+                return_to_menu = self.run_assistant()
+                if return_to_menu:
+                    # User requested to return to menu
+                    interactive = True
+                    continue
+                else:
+                    # User quit
+                    return
+            except Exception as e:
+                print(f"Error: {e}")
+                print()
+                print("Please ensure your LLM configuration is set in .env:")
+                print("  LLM_BASE_URL=your-api-base-url")
+                print("  LLM_API_KEY=your-api-key")
+                print("  LLM_MODEL=your-model-name")
+                sys.exit(1)
 
 
 def main() -> None:
@@ -472,22 +653,22 @@ Examples:
   python -m src.mcp.client                       # Interactive settings menu
   python -m src.mcp.client --no-menu             # Start assistant directly
   python -m src.mcp.client --no-menu --rag       # Start with RAG enabled
-  python -m src.mcp.client --no-menu --no-code-execution  # Traditional mode
-  python -m src.mcp.client -i --no-code-execution  # Menu with code exec disabled
+  python -m src.mcp.client --no-menu --code-execution  # Code execution mode
+  python -m src.mcp.client -i --code-execution   # Menu with code exec enabled
         """,
     )
     parser.add_argument(
         "--code-execution",
         action="store_true",
-        default=True,
+        default=False,
         dest="code_execution",
-        help="Enable code execution mode (default: enabled)",
+        help="Enable code execution mode (default: disabled)",
     )
     parser.add_argument(
         "--no-code-execution",
         action="store_false",
         dest="code_execution",
-        help="Disable code execution (use traditional JSON tools)",
+        help="Disable code execution (use traditional JSON tools, this is the default)",
     )
     parser.add_argument(
         "--rag",
@@ -527,10 +708,10 @@ Examples:
     config = MCPClientConfig.load()
 
     # CLI args override saved config
-    # Check if --no-code-execution was explicitly passed (code_execution will be False)
+    # Check if --code-execution was explicitly passed (code_execution will be True)
     # or if any other feature flags were explicitly passed
-    if not args.code_execution:
-        config.enable_code_execution = False
+    if args.code_execution:
+        config.enable_code_execution = True
     if args.rag:
         config.enable_rag = True
     if args.dummy_tools:

@@ -180,6 +180,33 @@ class ToolAPIGenerator:
 
     Returns:
         List of books with signal below threshold""",
+            "get_library_stats": """get_library_stats() -> Dict[str, Any]
+    Get aggregate statistics about the library.
+
+    Returns:
+        Dictionary with total_books, available_count, by_status, by_category, weak_signal_count
+
+    Example:
+        stats = get_library_stats()
+        print(f"Total books: {stats['total_books']}")""",
+            "get_popular_books": """get_popular_books(category: Optional[str] = None, limit: int = 10) -> List[Dict[str, Any]]
+    Get popular/featured books, optionally filtered by category.
+
+    Use this to recommend books when users ask for "top books", "popular books",
+    "best books in category", etc. This works WITHOUT sales data.
+    For sales-based rankings, use get_top_selling_books() which requires RAG mode.
+
+    Args:
+        category: Optional category filter (Programming, History, Science, Fiction, Thriller)
+        limit: Maximum number of results (default: 10)
+
+    Returns:
+        List of featured books with their details
+
+    Example:
+        top_programming = get_popular_books("Programming", limit=5)
+        for book in top_programming:
+            print(f"{book['title']} by {book['author']}")""",
         }
 
         # Conditionally add semantic_search if RAG is enabled
@@ -203,6 +230,102 @@ class ToolAPIGenerator:
         results = semantic_search("books about time travel")
         for book in results:
             print(f"{book['title']} - similarity: {book['similarity']}")"""
+
+            # Add sales tools when RAG is enabled
+            tool_help_map[
+                "search_sales"
+            ] = """search_sales(book_id: Optional[str] = None, customer_segment: Optional[str] = None, region: Optional[str] = None, channel: Optional[str] = None, limit: int = 20) -> List[Dict[str, Any]]
+    Search sales records with optional filters.
+
+    Args:
+        book_id: Filter by book ID
+        customer_segment: Filter by segment (Individual, Corporate, Educational, Government)
+        region: Filter by region (Northeast, Southeast, Midwest, West, International)
+        channel: Filter by channel (In-Store, Online, Phone Order, Partner)
+        limit: Maximum results (default: 20)
+
+    Returns:
+        List of sale dictionaries
+
+    Example:
+        sales = search_sales(customer_segment="Corporate", region="Northeast")"""
+
+            tool_help_map["get_book_sales"] = """get_book_sales(book_id: str) -> Dict[str, Any]
+    Get all sales for a specific book.
+
+    Args:
+        book_id: Book ID (e.g., "B001")
+
+    Returns:
+        Dictionary with sales list, total units, and total revenue
+
+    Example:
+        result = get_book_sales("B001")
+        print(f"{result['total_units']} copies sold, ${result['total_revenue']:.2f}")"""
+
+            tool_help_map["get_sales_stats"] = """get_sales_stats() -> Dict[str, Any]
+    Get aggregate statistics about sales.
+
+    Returns:
+        Dictionary with total_sales, total_revenue, total_units, by_segment, by_region, by_channel
+
+    Example:
+        stats = get_sales_stats()
+        print(f"Total revenue: ${stats['total_revenue']:,.2f}")"""
+
+            tool_help_map[
+                "get_top_selling_books"
+            ] = """get_top_selling_books(limit: int = 10) -> List[Dict[str, Any]]
+    Get best-selling books ranked by total quantity sold.
+
+    Args:
+        limit: Number of results (default: 10)
+
+    Returns:
+        List of books with total_quantity, total_revenue, sale_count
+
+    Example:
+        top = get_top_selling_books(5)
+        for book in top:
+            print(f"{book['title']}: {book['total_quantity']} copies sold")"""
+
+            tool_help_map[
+                "get_most_discounted_sales"
+            ] = """get_most_discounted_sales(limit: int = 10) -> List[Dict[str, Any]]
+    Get sales with the highest discount percentages.
+
+    Use this for "most discounted", "highest discount", "best deals" queries.
+
+    Args:
+        limit: Number of results (default: 10)
+
+    Returns:
+        List of sales with book info, sorted by discount (highest first)
+
+    Example:
+        discounted = get_most_discounted_sales(5)
+        for sale in discounted:
+            print(f"{sale['title']}: {sale['discount_percent']} off")"""
+
+            tool_help_map[
+                "search_sales_semantic"
+            ] = """search_sales_semantic(query: str, top_k: int = 10) -> List[Dict[str, Any]]
+    Search sales using natural language semantic similarity.
+
+    Use for queries like "bulk corporate purchases", "holiday online sales",
+    "discounted programming books".
+
+    Args:
+        query: Natural language query describing sales patterns
+        top_k: Number of results (default: 10)
+
+    Returns:
+        List of sales with similarity scores
+
+    Example:
+        results = search_sales_semantic("bulk corporate purchases")
+        for sale in results:
+            print(f"{sale['book_title']} - {sale['quantity']} copies")"""
 
         # Generate the discovery functions
         code = f'''
@@ -278,6 +401,8 @@ def get_tool_help(tool_name: str) -> str:
             "locate_book": self._generate_locate_book,
             "find_books_in_cabinet": self._generate_find_books_in_cabinet,
             "get_weak_signal_books": self._generate_get_weak_signal_books,
+            "get_library_stats": self._generate_get_library_stats,
+            "get_popular_books": self._generate_get_popular_books,
         }
 
         # Add tools based on filtering
@@ -288,6 +413,20 @@ def get_tool_help(tool_name: str) -> str:
         # Conditionally add semantic_search if RAG is enabled AND tool is allowed
         if self.include_rag and self._should_include_tool("semantic_search"):
             code_parts.append(self._generate_semantic_search())
+
+        # Conditionally add sales tools if RAG is enabled
+        if self.include_rag:
+            sales_tool_generators = {
+                "search_sales": self._generate_search_sales,
+                "get_book_sales": self._generate_get_book_sales,
+                "get_sales_stats": self._generate_get_sales_stats,
+                "get_top_selling_books": self._generate_get_top_selling_books,
+                "get_most_discounted_sales": self._generate_get_most_discounted_sales,
+                "search_sales_semantic": self._generate_search_sales_semantic,
+            }
+            for tool_name, generator in sales_tool_generators.items():
+                if self._should_include_tool(tool_name):
+                    code_parts.append(generator())
 
         # Conditionally add dummy tool stubs if enabled
         if self.include_dummy_tools:
@@ -686,6 +825,132 @@ def get_weak_signal_books(threshold: float = -55.0) -> List[Dict[str, Any]]:
     return books
 '''
 
+    def _generate_get_library_stats(self) -> str:
+        """Generate get_library_stats function."""
+        return '''
+def get_library_stats() -> Dict[str, Any]:
+    """Get aggregate statistics about the library.
+
+    Returns:
+        Dictionary with:
+        - total_books: Total number of books
+        - available_count: Number of available (Present) books
+        - by_status: Count by status (Present, Missing, Checked Out)
+        - by_category: Count by category
+        - weak_signal_count: Books with weak RFID signal
+
+    Example:
+        >>> stats = get_library_stats()
+        >>> print(f"Total: {stats['total_books']}, Available: {stats['available_count']}")
+    """
+    # Total books and counts by status
+    status_counts = _conn.execute("""
+        SELECT status, COUNT(*) as count
+        FROM library.books
+        GROUP BY status
+    """).fetchall()
+
+    by_status = {}
+    total_books = 0
+    available_count = 0
+    for status, count in status_counts:
+        by_status[status] = count
+        total_books += count
+        if status == "Present":
+            available_count = count
+
+    # Counts by category
+    category_counts = _conn.execute("""
+        SELECT category, COUNT(*) as count
+        FROM library.books
+        GROUP BY category
+    """).fetchall()
+
+    by_category = {}
+    for category, count in category_counts:
+        by_category[category] = count
+
+    # Weak signal count
+    weak_signal = _conn.execute("""
+        SELECT COUNT(*) FROM library.books WHERE signal_strength < -55
+    """).fetchone()[0]
+
+    return {
+        "total_books": total_books,
+        "available_count": available_count,
+        "by_status": by_status,
+        "by_category": by_category,
+        "weak_signal_count": weak_signal
+    }
+'''
+
+    def _generate_get_popular_books(self) -> str:
+        """Generate get_popular_books function for top books by category."""
+        return '''
+def get_popular_books(category: Optional[str] = None, limit: int = 10) -> List[Dict[str, Any]]:
+    """Get popular/featured books, optionally filtered by category.
+
+    This returns books from the catalog as recommendations. Use this when users
+    ask for "top books", "popular books", "best books in category", "recommended books".
+
+    NOTE: This does NOT use sales data. For sales-based rankings (actual best sellers),
+    use get_top_selling_books() which requires RAG mode.
+
+    Args:
+        category: Optional category filter (Programming, History, Science, Fiction, Thriller)
+        limit: Maximum number of results (default: 10)
+
+    Returns:
+        List of featured books with their details
+
+    Example:
+        >>> top_programming = get_popular_books("Programming", limit=5)
+        >>> for book in top_programming:
+        ...     print(f"{book['title']} by {book['author']}")
+    """
+    # Get books, prioritizing available ones
+    sql = """
+        SELECT book_id, title, author, category, description,
+               cabinet, rack, row, signal_strength,
+               timestamp, status
+        FROM library.books
+        WHERE 1=1
+    """
+    params = []
+
+    if category:
+        sql += " AND category = ?"
+        params.append(category)
+
+    # Prioritize available books (Present status first)
+    sql += " ORDER BY CASE WHEN status = 'Present' THEN 0 ELSE 1 END, title"
+    sql += " LIMIT ?"
+    params.append(limit)
+
+    results = _conn.execute(sql, params).fetchall()
+
+    books = []
+    for row in results:
+        books.append({
+            "book_id": row[0],
+            "title": row[1],
+            "author": row[2],
+            "category": row[3],
+            "description": row[4],
+            "location": {
+                "cabinet": row[5],
+                "rack": row[6],
+                "row": row[7]
+            },
+            "signal_strength": row[8],
+            "timestamp": str(row[9]),
+            "status": row[10],
+            "is_available": row[10] == "Present"
+        })
+
+    return books
+'''
+
     def _generate_semantic_search(self) -> str:
         """Generate semantic_search function for RAG."""
         return '''
@@ -740,6 +1005,387 @@ def semantic_search(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
             books.append(book)
 
     return books
+'''
+
+    def _generate_search_sales(self) -> str:
+        """Generate search_sales function for sales queries."""
+        return '''
+def search_sales(book_id: Optional[str] = None, customer_segment: Optional[str] = None,
+                 region: Optional[str] = None, channel: Optional[str] = None,
+                 limit: int = 20) -> List[Dict[str, Any]]:
+    """Search sales records with optional filters.
+
+    Args:
+        book_id: Filter by book ID
+        customer_segment: Filter by segment (Individual, Corporate, Educational, Government)
+        region: Filter by region (Northeast, Southeast, Midwest, West, International)
+        channel: Filter by channel (In-Store, Online, Phone Order, Partner)
+        limit: Maximum number of results (default: 20)
+
+    Returns:
+        List of sale dictionaries
+
+    Example:
+        >>> sales = search_sales(customer_segment="Corporate", region="Northeast")
+        >>> print(f"Found {len(sales)} corporate sales in Northeast")
+    """
+    sql = """
+        SELECT sale_id, book_id, sale_date, quantity, unit_price, total_amount,
+               discount, payment_method, customer_id, customer_segment, region, channel
+        FROM library.sales
+        WHERE 1=1
+    """
+    params = []
+
+    if book_id:
+        sql += " AND book_id = ?"
+        params.append(book_id)
+    if customer_segment:
+        sql += " AND customer_segment = ?"
+        params.append(customer_segment)
+    if region:
+        sql += " AND region = ?"
+        params.append(region)
+    if channel:
+        sql += " AND channel = ?"
+        params.append(channel)
+
+    sql += " ORDER BY sale_date DESC LIMIT ?"
+    params.append(limit)
+
+    results = _conn.execute(sql, params).fetchall()
+
+    sales = []
+    for row in results:
+        sales.append({
+            "sale_id": row[0],
+            "book_id": row[1],
+            "sale_date": str(row[2]),
+            "quantity": row[3],
+            "unit_price": float(row[4]),
+            "total_amount": float(row[5]),
+            "discount": float(row[6]),
+            "payment_method": row[7],
+            "customer_id": row[8],
+            "customer_segment": row[9],
+            "region": row[10],
+            "channel": row[11]
+        })
+
+    return sales
+'''
+
+    def _generate_get_book_sales(self) -> str:
+        """Generate get_book_sales function."""
+        return '''
+def get_book_sales(book_id: str) -> Dict[str, Any]:
+    """Get all sales for a specific book.
+
+    Args:
+        book_id: Book ID (e.g., "B001")
+
+    Returns:
+        Dictionary with sales list, total units sold, and total revenue
+
+    Example:
+        >>> result = get_book_sales("B001")
+        >>> print(f"{result['total_units']} copies sold, ${result['total_revenue']:.2f}")
+    """
+    # Get book info
+    book = get_book_details(book_id)
+    if not book:
+        return {"success": False, "message": f"Book {book_id} not found"}
+
+    # Get all sales
+    results = _conn.execute("""
+        SELECT sale_id, book_id, sale_date, quantity, unit_price, total_amount,
+               discount, payment_method, customer_id, customer_segment, region, channel
+        FROM library.sales
+        WHERE book_id = ?
+        ORDER BY sale_date DESC
+    """, [book_id]).fetchall()
+
+    sales = []
+    total_units = 0
+    total_revenue = 0
+
+    for row in results:
+        total_units += row[3]
+        total_revenue += float(row[5])
+        sales.append({
+            "sale_id": row[0],
+            "sale_date": str(row[2]),
+            "quantity": row[3],
+            "unit_price": float(row[4]),
+            "total_amount": float(row[5]),
+            "customer_segment": row[9],
+            "region": row[10],
+            "channel": row[11]
+        })
+
+    return {
+        "success": True,
+        "book_id": book_id,
+        "book_title": book["title"],
+        "book_author": book["author"],
+        "sales": sales,
+        "total_units": total_units,
+        "total_revenue": total_revenue,
+        "sale_count": len(sales)
+    }
+'''
+
+    def _generate_get_sales_stats(self) -> str:
+        """Generate get_sales_stats function."""
+        return '''
+def get_sales_stats() -> Dict[str, Any]:
+    """Get aggregate statistics about sales.
+
+    Returns:
+        Dictionary with total_sales, total_revenue, total_units, by_segment, by_region, by_channel
+
+    Example:
+        >>> stats = get_sales_stats()
+        >>> print(f"Total revenue: ${stats['total_revenue']:,.2f}")
+    """
+    # Get totals
+    totals = _conn.execute("""
+        SELECT
+            COUNT(*) as total_sales,
+            SUM(total_amount) as total_revenue,
+            SUM(quantity) as total_units,
+            COUNT(DISTINCT customer_id) as unique_customers
+        FROM library.sales
+    """).fetchone()
+
+    # By segment
+    by_segment = {}
+    segment_results = _conn.execute("""
+        SELECT customer_segment, COUNT(*) as count, SUM(total_amount) as revenue
+        FROM library.sales
+        GROUP BY customer_segment
+    """).fetchall()
+    for row in segment_results:
+        by_segment[row[0]] = {"count": row[1], "revenue": float(row[2])}
+
+    # By region
+    by_region = {}
+    region_results = _conn.execute("""
+        SELECT region, COUNT(*) as count, SUM(total_amount) as revenue
+        FROM library.sales
+        GROUP BY region
+    """).fetchall()
+    for row in region_results:
+        by_region[row[0]] = {"count": row[1], "revenue": float(row[2])}
+
+    # By channel
+    by_channel = {}
+    channel_results = _conn.execute("""
+        SELECT channel, COUNT(*) as count, SUM(total_amount) as revenue
+        FROM library.sales
+        GROUP BY channel
+    """).fetchall()
+    for row in channel_results:
+        by_channel[row[0]] = {"count": row[1], "revenue": float(row[2])}
+
+    return {
+        "total_sales": totals[0],
+        "total_revenue": float(totals[1]) if totals[1] else 0.0,
+        "total_units": totals[2] if totals[2] else 0,
+        "unique_customers": totals[3] if totals[3] else 0,
+        "by_segment": by_segment,
+        "by_region": by_region,
+        "by_channel": by_channel
+    }
+'''
+
+    def _generate_get_top_selling_books(self) -> str:
+        """Generate get_top_selling_books function."""
+        return '''
+def get_top_selling_books(limit: int = 10) -> List[Dict[str, Any]]:
+    """Get best-selling books ranked by total quantity sold.
+
+    Args:
+        limit: Number of results (default: 10)
+
+    Returns:
+        List of books with total_quantity, total_revenue, sale_count
+
+    Example:
+        >>> top = get_top_selling_books(5)
+        >>> for book in top:
+        ...     print(f"{book['title']}: {book['total_quantity']} copies sold")
+    """
+    results = _conn.execute("""
+        SELECT
+            s.book_id,
+            b.title,
+            b.author,
+            b.category,
+            SUM(s.quantity) as total_quantity,
+            SUM(s.total_amount) as total_revenue,
+            COUNT(s.sale_id) as sale_count
+        FROM library.sales s
+        JOIN library.books b ON s.book_id = b.book_id
+        GROUP BY s.book_id, b.title, b.author, b.category
+        ORDER BY total_quantity DESC
+        LIMIT ?
+    """, [limit]).fetchall()
+
+    books = []
+    for row in results:
+        books.append({
+            "book_id": row[0],
+            "title": row[1],
+            "author": row[2],
+            "category": row[3],
+            "total_quantity": row[4],
+            "total_revenue": float(row[5]),
+            "sale_count": row[6]
+        })
+
+    return books
+'''
+
+    def _generate_get_most_discounted_sales(self) -> str:
+        """Generate get_most_discounted_sales function."""
+        return '''
+def get_most_discounted_sales(limit: int = 10) -> List[Dict[str, Any]]:
+    """Get sales with the highest discount percentages.
+
+    Use this when users ask about "most discounted", "highest discount",
+    "biggest discount", or "best deals".
+
+    Args:
+        limit: Number of results (default: 10)
+
+    Returns:
+        List of sales with book info, sorted by discount (highest first)
+
+    Example:
+        >>> top_discounts = get_most_discounted_sales(5)
+        >>> for sale in top_discounts:
+        ...     print(f"{sale['title']}: {sale['discount_percent']} off")
+    """
+    results = _conn.execute("""
+        SELECT
+            s.sale_id,
+            s.book_id,
+            b.title,
+            b.author,
+            b.category,
+            s.discount,
+            s.unit_price,
+            s.total_amount,
+            s.quantity,
+            s.customer_segment,
+            s.region,
+            s.channel
+        FROM library.sales s
+        JOIN library.books b ON s.book_id = b.book_id
+        ORDER BY s.discount DESC
+        LIMIT ?
+    """, [limit]).fetchall()
+
+    sales = []
+    for row in results:
+        discount_val = float(row[5])
+        sales.append({
+            "sale_id": row[0],
+            "book_id": row[1],
+            "title": row[2],
+            "book_title": row[2],  # Alias for LLM convenience
+            "author": row[3],
+            "category": row[4],
+            "discount": discount_val,
+            "discount_percent": f"{discount_val:.0f}%",  # Already stored as percentage
+            "unit_price": float(row[6]),
+            "total_amount": float(row[7]),
+            "quantity": row[8],
+            "customer_segment": row[9],
+            "region": row[10],
+            "channel": row[11]
+        })
+
+    return sales
+'''
+
+    def _generate_search_sales_semantic(self) -> str:
+        """Generate search_sales_semantic function for sales RAG."""
+        return '''
+def search_sales_semantic(query: str, top_k: int = 10) -> List[Dict[str, Any]]:
+    """Search sales using natural language semantic similarity.
+
+    Use for queries like "bulk corporate purchases", "holiday online sales",
+    "discounted programming books".
+
+    Args:
+        query: Natural language query describing sales patterns
+        top_k: Number of results (default: 10)
+
+    Returns:
+        List of sales with similarity scores
+
+    Example:
+        >>> results = search_sales_semantic("bulk corporate purchases")
+        >>> for sale in results:
+        ...     print(f"{sale['book_title']} - {sale['quantity']} copies")
+    """
+    from sentence_transformers import SentenceTransformer
+
+    # Load embedding model (cached after first load)
+    model = SentenceTransformer("all-MiniLM-L6-v2")
+
+    # Generate query embedding
+    query_embedding = model.encode(query, convert_to_numpy=True, normalize_embeddings=True)
+    query_list = query_embedding.tolist()
+
+    # Search sales embeddings
+    results = _conn.execute("""
+        SELECT
+            se.sale_id,
+            array_cosine_similarity(se.embedding, ?::FLOAT[384]) as similarity
+        FROM library.sales_embeddings se
+        ORDER BY similarity DESC
+        LIMIT ?
+    """, [query_list, top_k]).fetchall()
+
+    if not results:
+        return []
+
+    # Enrich with sale and book details
+    sales = []
+    for sale_id, similarity in results:
+        sale_row = _conn.execute("""
+            SELECT s.sale_id, s.book_id, s.sale_date, s.quantity, s.unit_price,
+                   s.total_amount, s.discount, s.payment_method, s.customer_id,
+                   s.customer_segment, s.region, s.channel,
+                   b.title, b.author
+            FROM library.sales s
+            JOIN library.books b ON s.book_id = b.book_id
+            WHERE s.sale_id = ?
+        """, [sale_id]).fetchone()
+
+        if sale_row:
+            sales.append({
+                "sale_id": sale_row[0],
+                "book_id": sale_row[1],
+                "sale_date": str(sale_row[2]),
+                "quantity": sale_row[3],
+                "unit_price": float(sale_row[4]),
+                "total_amount": float(sale_row[5]),
+                "discount": float(sale_row[6]),
+                "payment_method": sale_row[7],
+                "customer_id": sale_row[8],
+                "customer_segment": sale_row[9],
+                "region": sale_row[10],
+                "channel": sale_row[11],
+                "book_title": sale_row[12],
+                "book_author": sale_row[13],
+                "similarity": round(similarity, 3)
+            })
+
+    return sales
 '''
 
     def _generate_dummy_tool_stubs(self) -> str:
@@ -833,6 +1479,8 @@ def semantic_search(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
             "locate_book": "Get the physical location of a book",
             "find_books_in_cabinet": "Find all books in a specific cabinet or rack",
             "get_weak_signal_books": "Find books with weak RFID signal strength",
+            "get_library_stats": "Get aggregate statistics about the library",
+            "get_popular_books": "Get popular/top books, optionally filtered by category (no sales needed)",
         }
 
         # Filter descriptions based on tools parameter
@@ -845,6 +1493,20 @@ def semantic_search(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
             descriptions["semantic_search"] = (
                 "Search books using natural language semantic similarity (RAG)"
             )
+
+        # Conditionally add sales tools if RAG is enabled
+        if self.include_rag:
+            sales_descriptions = {
+                "search_sales": "Search sales records with optional filters",
+                "get_book_sales": "Get all sales for a specific book",
+                "get_sales_stats": "Get aggregate statistics about sales",
+                "get_top_selling_books": "Get best-selling books by quantity",
+                "get_most_discounted_sales": "Get sales with highest discounts",
+                "search_sales_semantic": "Search sales using natural language similarity",
+            }
+            for name, desc in sales_descriptions.items():
+                if self._should_include_tool(name):
+                    descriptions[name] = desc
 
         # Conditionally add dummy tool descriptions if enabled
         if self.include_dummy_tools:

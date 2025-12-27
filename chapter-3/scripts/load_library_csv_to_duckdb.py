@@ -7,10 +7,12 @@ and validates the data during loading.
 
 Usage:
     python scripts/load_library_csv_to_duckdb.py [--db-path PATH] [--csv-path PATH]
+    python scripts/load_library_csv_to_duckdb.py --include-sales
 
 Example:
     python scripts/load_library_csv_to_duckdb.py
     python scripts/load_library_csv_to_duckdb.py --db-path data/duckdb/library.db
+    python scripts/load_library_csv_to_duckdb.py --include-sales  # Also load sales data
 """
 
 import argparse
@@ -23,6 +25,7 @@ import duckdb
 SCRIPT_DIR = Path(__file__).parent
 CHAPTER_DIR = SCRIPT_DIR.parent
 DEFAULT_CSV_PATH = CHAPTER_DIR / "data" / "raw" / "library" / "library_dataset_random.csv"
+DEFAULT_SALES_CSV_PATH = CHAPTER_DIR / "data" / "raw" / "library" / "sales_data.csv"
 DEFAULT_DB_PATH = CHAPTER_DIR / "data" / "duckdb" / "chapter3.db"
 
 
@@ -34,7 +37,11 @@ def create_schema(conn: duckdb.DuckDBPyConnection) -> None:
 
 def create_table(conn: duckdb.DuckDBPyConnection) -> None:
     """Create the library.books table with all constraints."""
-    # Drop existing table if it exists (for fresh load)
+    # Drop existing tables if they exist (for fresh load)
+    # Must drop sales tables first due to foreign key constraint on books
+    conn.execute("DROP TABLE IF EXISTS library.sales_embeddings")
+    conn.execute("DROP TABLE IF EXISTS library.sales")
+    conn.execute("DROP TABLE IF EXISTS library.book_embeddings")
     conn.execute("DROP TABLE IF EXISTS library.books")
 
     # Create table with constraints
@@ -217,6 +224,208 @@ def print_summary(conn: duckdb.DuckDBPyConnection) -> None:
     print(f"  Books with weak signal: {result[0]}")
 
 
+# =============================================================================
+# Sales data functions
+# =============================================================================
+
+
+def create_sales_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Create the library.sales table with all constraints."""
+    # Drop existing table if it exists (for fresh load)
+    conn.execute("DROP TABLE IF EXISTS library.sales")
+
+    # Create table with constraints
+    conn.execute("""
+        CREATE TABLE library.sales (
+            sale_id VARCHAR PRIMARY KEY,
+            book_id VARCHAR NOT NULL REFERENCES library.books(book_id),
+            sale_date DATE NOT NULL,
+            quantity INTEGER NOT NULL CHECK (quantity >= 1),
+            unit_price DECIMAL(10,2) NOT NULL CHECK (unit_price > 0),
+            total_amount DECIMAL(10,2) NOT NULL,
+            discount DECIMAL(5,2) NOT NULL DEFAULT 0 CHECK (discount >= 0 AND discount <= 100),
+            payment_method VARCHAR NOT NULL CHECK (payment_method IN ('Credit Card', 'Debit Card', 'Cash', 'Digital Wallet')),
+            customer_id VARCHAR NOT NULL,
+            customer_segment VARCHAR NOT NULL CHECK (customer_segment IN ('Individual', 'Corporate', 'Educational', 'Government')),
+            region VARCHAR NOT NULL CHECK (region IN ('Northeast', 'Southeast', 'Midwest', 'West', 'International')),
+            channel VARCHAR NOT NULL CHECK (channel IN ('In-Store', 'Online', 'Phone Order', 'Partner'))
+        )
+    """)
+    print("✓ Created table 'library.sales'")
+
+
+def create_sales_indexes(conn: duckdb.DuckDBPyConnection) -> None:
+    """Create indexes for common sales query patterns."""
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sales_book_id ON library.sales(book_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sales_date ON library.sales(sale_date)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sales_segment ON library.sales(customer_segment)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sales_region ON library.sales(region)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sales_channel ON library.sales(channel)")
+    print("✓ Created sales indexes")
+
+
+def load_sales_csv(conn: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
+    """Load sales CSV data into the library.sales table.
+
+    Args:
+        conn: DuckDB connection
+        csv_path: Path to the sales CSV file
+
+    Returns:
+        Number of records loaded
+
+    Raises:
+        FileNotFoundError: If CSV file doesn't exist
+    """
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Sales CSV file not found: {csv_path}")
+
+    # Load CSV - column names match directly
+    conn.execute(f"""
+        INSERT INTO library.sales
+        SELECT
+            sale_id,
+            book_id,
+            sale_date,
+            quantity,
+            unit_price,
+            total_amount,
+            discount,
+            payment_method,
+            customer_id,
+            customer_segment,
+            region,
+            channel
+        FROM read_csv('{csv_path}', header=true, auto_detect=true)
+    """)
+
+    # Get record count
+    result = conn.execute("SELECT COUNT(*) FROM library.sales").fetchone()
+    count = result[0] if result else 0
+
+    print(f"✓ Loaded {count} sales records from CSV")
+    return count
+
+
+def validate_sales_data(conn: duckdb.DuckDBPyConnection) -> bool:
+    """Validate loaded sales data meets expected constraints.
+
+    Returns:
+        True if validation passes, False otherwise
+    """
+    errors = []
+
+    # Check record count (should be > 0)
+    result = conn.execute("SELECT COUNT(*) FROM library.sales").fetchone()
+    count = result[0] if result else 0
+    if count == 0:
+        errors.append("No sales records found")
+
+    # Check for duplicate sale IDs
+    result = conn.execute("""
+        SELECT COUNT(*) - COUNT(DISTINCT sale_id) as duplicates
+        FROM library.sales
+    """).fetchone()
+    if result and result[0] > 0:
+        errors.append(f"Found {result[0]} duplicate sale IDs")
+
+    # Check foreign key integrity (all book_ids exist)
+    result = conn.execute("""
+        SELECT COUNT(*) FROM library.sales s
+        WHERE NOT EXISTS (SELECT 1 FROM library.books b WHERE b.book_id = s.book_id)
+    """).fetchone()
+    if result and result[0] > 0:
+        errors.append(f"Found {result[0]} sales with invalid book_id references")
+
+    # Check customer segments
+    result = conn.execute("""
+        SELECT DISTINCT customer_segment FROM library.sales
+        WHERE customer_segment NOT IN ('Individual', 'Corporate', 'Educational', 'Government')
+    """).fetchall()
+    if result:
+        invalid = [row[0] for row in result]
+        errors.append(f"Invalid customer segments: {invalid}")
+
+    # Check regions
+    result = conn.execute("""
+        SELECT DISTINCT region FROM library.sales
+        WHERE region NOT IN ('Northeast', 'Southeast', 'Midwest', 'West', 'International')
+    """).fetchall()
+    if result:
+        invalid = [row[0] for row in result]
+        errors.append(f"Invalid regions: {invalid}")
+
+    # Check channels
+    result = conn.execute("""
+        SELECT DISTINCT channel FROM library.sales
+        WHERE channel NOT IN ('In-Store', 'Online', 'Phone Order', 'Partner')
+    """).fetchall()
+    if result:
+        invalid = [row[0] for row in result]
+        errors.append(f"Invalid channels: {invalid}")
+
+    if errors:
+        print("✗ Sales validation failed:")
+        for error in errors:
+            print(f"  - {error}")
+        return False
+
+    print("✓ Sales data validation passed")
+    return True
+
+
+def print_sales_summary(conn: duckdb.DuckDBPyConnection) -> None:
+    """Print summary statistics about the loaded sales data."""
+    print("\n📊 Sales Data Summary:")
+
+    # Total sales
+    result = conn.execute("""
+        SELECT
+            COUNT(*) as total_sales,
+            SUM(total_amount) as total_revenue,
+            SUM(quantity) as total_units,
+            COUNT(DISTINCT customer_id) as unique_customers
+        FROM library.sales
+    """).fetchone()
+    print(f"  Total sales: {result[0]}")
+    print(f"  Total revenue: ${result[1]:,.2f}")
+    print(f"  Total units sold: {result[2]}")
+    print(f"  Unique customers: {result[3]}")
+
+    # By segment
+    result = conn.execute("""
+        SELECT customer_segment, COUNT(*) as count, SUM(total_amount) as revenue
+        FROM library.sales
+        GROUP BY customer_segment
+        ORDER BY revenue DESC
+    """).fetchall()
+    print("  By customer segment:")
+    for segment, count, revenue in result:
+        print(f"    - {segment}: {count} sales (${revenue:,.2f})")
+
+    # By region
+    result = conn.execute("""
+        SELECT region, COUNT(*) as count
+        FROM library.sales
+        GROUP BY region
+        ORDER BY count DESC
+    """).fetchall()
+    print("  By region:")
+    for region, count in result:
+        print(f"    - {region}: {count}")
+
+    # By channel
+    result = conn.execute("""
+        SELECT channel, COUNT(*) as count
+        FROM library.sales
+        GROUP BY channel
+        ORDER BY count DESC
+    """).fetchall()
+    print("  By channel:")
+    for channel, count in result:
+        print(f"    - {channel}: {count}")
+
+
 def main() -> int:
     """Main entry point for the script.
 
@@ -236,10 +445,23 @@ def main() -> int:
         default=DEFAULT_CSV_PATH,
         help=f"Path to CSV file (default: {DEFAULT_CSV_PATH})",
     )
+    parser.add_argument(
+        "--sales-csv-path",
+        type=Path,
+        default=DEFAULT_SALES_CSV_PATH,
+        help=f"Path to sales CSV file (default: {DEFAULT_SALES_CSV_PATH})",
+    )
+    parser.add_argument(
+        "--include-sales",
+        action="store_true",
+        help="Also load sales data into the database",
+    )
     args = parser.parse_args()
 
     print(f"Loading library data from: {args.csv_path}")
     print(f"Into database: {args.db_path}")
+    if args.include_sales:
+        print(f"Also loading sales from: {args.sales_csv_path}")
     print()
 
     try:
@@ -268,12 +490,39 @@ def main() -> int:
         # Print summary
         print_summary(conn)
 
+        # Load sales data if requested
+        sales_count = 0
+        if args.include_sales:
+            print("\n" + "=" * 50)
+            print("Loading sales data...")
+            print("=" * 50)
+
+            # Create sales table (after books so FK works)
+            create_sales_table(conn)
+
+            # Load sales CSV
+            sales_count = load_sales_csv(conn, args.sales_csv_path)
+
+            # Create sales indexes
+            create_sales_indexes(conn)
+
+            # Validate sales data
+            if not validate_sales_data(conn):
+                print("\n⚠️  Sales data loaded but validation failed.")
+                conn.close()
+                return 1
+
+            # Print sales summary
+            print_sales_summary(conn)
+
         # Close connection
         conn.close()
 
         print("\n✅ Data loading complete!")
         print(f"   Database: {args.db_path}")
-        print(f"   Records: {record_count}")
+        print(f"   Book records: {record_count}")
+        if args.include_sales:
+            print(f"   Sales records: {sales_count}")
 
         return 0
 

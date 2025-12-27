@@ -214,6 +214,26 @@ TOOL_DEFINITIONS: list[ToolDefinition] = [
             "required": [],
         },
     ),
+    ToolDefinition(
+        name="get_popular_books",
+        description="Get popular/featured books, optionally filtered by category. Use this when users ask for 'top books', 'popular books', 'best books in category', or recommendations. This does NOT require sales data - for actual best sellers by revenue, use get_top_selling_books with RAG mode.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "enum": ["Programming", "History", "Science", "Fiction", "Thriller"],
+                    "description": "Optional category filter",
+                },
+                "limit": {
+                    "type": "integer",
+                    "default": 10,
+                    "description": "Maximum number of results (default 10)",
+                },
+            },
+            "required": [],
+        },
+    ),
 ]
 
 # RAG tool definition (added separately so it can be toggled)
@@ -237,8 +257,106 @@ SEMANTIC_SEARCH_TOOL = ToolDefinition(
     },
 )
 
+# Sales tool definitions (only available when RAG is enabled)
+SALES_TOOL_DEFINITIONS: list[ToolDefinition] = [
+    ToolDefinition(
+        name="search_sales",
+        description="Search sales records with optional filters for book, customer segment, region, or channel. Use this for queries about sales data, transactions, or purchases.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "book_id": {
+                    "type": "string",
+                    "description": "Filter by book ID (e.g., 'B001')",
+                },
+                "customer_segment": {
+                    "type": "string",
+                    "enum": ["Individual", "Corporate", "Educational", "Government"],
+                    "description": "Filter by customer segment",
+                },
+                "region": {
+                    "type": "string",
+                    "enum": ["Northeast", "Southeast", "Midwest", "West", "International"],
+                    "description": "Filter by geographic region",
+                },
+                "channel": {
+                    "type": "string",
+                    "enum": ["In-Store", "Online", "Phone Order", "Partner"],
+                    "description": "Filter by sales channel",
+                },
+                "limit": {
+                    "type": "integer",
+                    "default": 20,
+                    "description": "Maximum number of results",
+                },
+            },
+            "required": [],
+        },
+    ),
+    ToolDefinition(
+        name="get_book_sales",
+        description="Get all sales records for a specific book, including total revenue and units sold.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "book_id": {
+                    "type": "string",
+                    "description": "Book ID (e.g., 'B001')",
+                },
+            },
+            "required": ["book_id"],
+        },
+    ),
+    ToolDefinition(
+        name="get_sales_stats",
+        description="Get aggregate statistics about sales: total revenue, units sold, counts by segment/region/channel, unique customers.",
+        parameters={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    ToolDefinition(
+        name="get_top_selling_books",
+        description="Get the best-selling books ranked by total quantity sold.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "default": 10,
+                    "description": "Maximum number of results (default 10)",
+                },
+            },
+            "required": [],
+        },
+    ),
+]
+
+# Sales semantic search tool (RAG-enabled)
+SALES_SEMANTIC_SEARCH_TOOL = ToolDefinition(
+    name="search_sales_semantic",
+    description="Search sales data using natural language semantic similarity. Use for queries like 'bulk corporate purchases', 'holiday online sales', 'discounted programming books', 'high-performing regional sales'. Returns sales with similarity scores.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Natural language query describing sales patterns (e.g., 'bulk purchases by corporate customers')",
+            },
+            "top_k": {
+                "type": "integer",
+                "default": 10,
+                "description": "Maximum number of results (default 10)",
+            },
+        },
+        "required": ["query"],
+    },
+)
+
 # Mapping from tool names to implementation functions
 TOOL_FUNCTION_MAP: dict[str, Callable[..., dict[str, Any]]] = {
+    # Book tools (always available)
     "search_books": library_tools.search_books,
     "get_book_details": library_tools.get_book_details,
     "check_availability": library_tools.check_availability,
@@ -248,7 +366,15 @@ TOOL_FUNCTION_MAP: dict[str, Callable[..., dict[str, Any]]] = {
     "find_books_in_cabinet": library_tools.find_books_in_cabinet,
     "get_weak_signal_books": library_tools.get_weak_signal_books,
     "get_library_stats": library_tools.get_library_stats,
+    "get_popular_books": library_tools.get_popular_books,  # Top books by category (no sales needed)
+    # RAG book tools (only used when RAG is enabled)
     "semantic_search": library_tools.semantic_search,
+    # Sales tools (only used when RAG is enabled)
+    "search_sales": library_tools.search_sales,
+    "get_book_sales": library_tools.get_book_sales,
+    "get_sales_stats": library_tools.get_sales_stats,
+    "get_top_selling_books": library_tools.get_top_selling_books,
+    "search_sales_semantic": library_tools.search_sales_semantic,
 }
 
 
@@ -259,7 +385,7 @@ def get_tools_for_llm(
     """Get tool definitions in OpenAI/LLM format.
 
     Args:
-        include_rag: If True, include the semantic_search RAG tool.
+        include_rag: If True, include RAG tools (semantic_search, sales tools, search_sales_semantic).
         include_dummy_tools: If True, include 100 enterprise dummy tools.
 
     Returns:
@@ -267,7 +393,11 @@ def get_tools_for_llm(
     """
     tools = [tool.to_openai_format() for tool in TOOL_DEFINITIONS]
     if include_rag:
+        # Add book semantic search
         tools.append(SEMANTIC_SEARCH_TOOL.to_openai_format())
+        # Add sales tools (only available with RAG)
+        tools.extend([tool.to_openai_format() for tool in SALES_TOOL_DEFINITIONS])
+        tools.append(SALES_SEMANTIC_SEARCH_TOOL.to_openai_format())
     if include_dummy_tools:
         dummy_defs = generate_dummy_tool_definitions()
         tools.extend([t.to_openai_format() for t in dummy_defs])
@@ -398,7 +528,11 @@ class LibraryAssistant:
         """Get the list of tool definitions based on RAG and dummy tools settings."""
         tools = list(TOOL_DEFINITIONS)
         if self._enable_rag:
+            # Add book semantic search
             tools.append(SEMANTIC_SEARCH_TOOL)
+            # Add sales tools (only available with RAG)
+            tools.extend(SALES_TOOL_DEFINITIONS)
+            tools.append(SALES_SEMANTIC_SEARCH_TOOL)
         if self._enable_dummy_tools:
             tools.extend(generate_dummy_tool_definitions())
         return tools
@@ -807,12 +941,23 @@ def interactive_repl(enable_rag: bool = False, enable_dummy_tools: bool = False)
                 new_rag_status = not assistant.is_rag_enabled()
                 assistant.set_rag_enabled(new_rag_status)
                 status = "ON" if new_rag_status else "OFF"
-                print(f"Semantic search (RAG): {status}")
+                tool_count = assistant.get_tool_count()
+                print(f"RAG Mode: {status}")
+                print(f"  Total tools available: {tool_count}")
                 if new_rag_status:
+                    print("  Now available:")
+                    print("    - semantic_search: Natural language book search")
                     print(
-                        "  The assistant can now use semantic_search for natural language queries."
+                        "    - Sales tools: search_sales, get_book_sales, get_sales_stats, get_top_selling_books"
                     )
-                    print("  Try: 'Find books about time travel' or 'something like Harry Potter'")
+                    print("    - search_sales_semantic: Natural language sales search")
+                    print()
+                    print(
+                        "  Try: 'Find books about time travel' or 'What are the top selling books?'"
+                    )
+                    print("       'Find bulk corporate purchases' or 'Show sales statistics'")
+                else:
+                    print("  Sales tools and semantic search are now disabled.")
                 print()
                 continue
 

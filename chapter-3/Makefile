@@ -11,7 +11,7 @@ ifeq ($(UNAME_S),Darwin)
     endif
 endif
 
-.PHONY: help dev-setup load-data verify-data mcp-server mcp-dev mcp-client mcp-assistant mcp-compare-modes mcp-benchmark mcp-compare-modes-enterprise mcp-compare-modes-enterprise-all assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew llm llm-rag
+.PHONY: help dev-setup load-data verify-data generate-sales-data mcp-server mcp-dev mcp-client mcp-assistant mcp-compare-modes mcp-benchmark mcp-compare-modes-enterprise mcp-compare-modes-enterprise-all assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew llm llm-rag
 
 
 help:
@@ -26,12 +26,12 @@ help:
 	@echo "  llm                        - Chat with LLM (no RAG) - see hallucinations"
 	@echo "  llm-rag                    - Chat with LLM + RAG - see accurate answers"
 	@echo "  --- Production RAG (requires load-data first) ---"
-	@echo "  generate-embeddings        - Generate book embeddings for semantic search"
+	@echo "  generate-embeddings        - Generate embeddings for books AND sales"
 	@echo "  semantic-search            - Interactive semantic search CLI"
 	@echo "  assistant-rag              - Library Assistant with RAG enabled"
 	@echo ""
 	@echo "=== Section 2: MCP (requires load-data first) ==="
-	@echo "  load-data                  - Load 200 books into DuckDB"
+	@echo "  load-data                  - Load 200 books + 750 sales into DuckDB"
 	@echo "  verify-data                - Verify data loaded correctly"
 	@echo "  mcp-client                 - Settings menu to configure MCP options"
 	@echo "  mcp-assistant              - AI Chat (code execution ON by default)"
@@ -89,9 +89,13 @@ dev-setup: install-brew install-uv
 	@echo "  1. Copy .env.example to .env and add your OPENROUTER_API_KEY"
 	@echo "  2. Run 'make load-data' to load CSV into DuckDB"
 
-load-data:
-	@echo "Loading CSV data into DuckDB..."
-	uv run python scripts/load_library_csv_to_duckdb.py
+load-data: generate-sales-data
+	@echo "Loading CSV data (books + sales) into DuckDB..."
+	uv run python scripts/load_library_csv_to_duckdb.py --include-sales
+
+generate-sales-data:
+	@echo "Generating synthetic sales data..."
+	uv run python scripts/generate_sales_data.py
 
 verify-data:
 	@echo "Verifying data load..."
@@ -195,6 +199,9 @@ benchmark:
 generate-embeddings:
 	@echo "Generating book embeddings..."
 	uv run python -c "from src.agentic.rag.embeddings import generate_all_embeddings; generate_all_embeddings()"
+	@echo ""
+	@echo "Generating sales embeddings..."
+	uv run python -c "from src.agentic.rag.embeddings import generate_sales_embeddings; generate_sales_embeddings()"
 
 semantic-search:
 	@echo "Starting semantic search CLI..."

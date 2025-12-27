@@ -54,13 +54,13 @@ class TestLibraryAssistantWithDummyTools:
         assert assistant.is_dummy_tools_enabled() is True
 
         # Verify tool count includes dummy tools
-        # Base library tools (9) + RAG (0 if disabled) + Dummy tools (100) = 109
-        base_tools = 9  # 8 library + 0 RAG (disabled by default)
+        # Base library tools (10) + RAG (0 if disabled) + Dummy tools (100) = 110
+        base_tools = 10  # 10 library tools (including get_library_stats and get_popular_books)
         expected_count = base_tools + get_total_tool_count()
         actual_count = assistant.get_tool_count()
 
         assert actual_count == expected_count, (
-            f"Expected {expected_count} tools (9 base + 100 dummy), got {actual_count}"
+            f"Expected {expected_count} tools (10 base + 100 dummy), got {actual_count}"
         )
 
     @SKIP_IF_NO_DB
@@ -80,7 +80,9 @@ class TestLibraryAssistantWithDummyTools:
 
         base_count = assistant.get_tool_count()
         assert assistant.is_dummy_tools_enabled() is False
-        assert base_count == 9  # 8 library tools + 0 RAG (disabled)
+        assert (
+            base_count == 10
+        )  # 10 library tools (including get_library_stats and get_popular_books)
 
         # Enable dummy tools
         assistant.set_dummy_tools_enabled(True)
@@ -113,12 +115,12 @@ class TestLibraryAssistantWithDummyTools:
             enable_dummy_tools=True,
         )
 
-        # 9 base + 1 RAG + 100 dummy = 110
-        expected_count = 9 + 1 + 100
+        # 10 base + 6 RAG/sales tools + 100 dummy = 116
+        expected_count = 10 + 6 + 100
         actual_count = assistant.get_tool_count()
 
         assert actual_count == expected_count, (
-            f"Expected {expected_count} tools (9 base + 1 RAG + 100 dummy), got {actual_count}"
+            f"Expected {expected_count} tools (10 base + 6 RAG/sales + 100 dummy), got {actual_count}"
         )
 
 
@@ -148,8 +150,8 @@ class TestEnhancedLibraryAssistantWithDummyTools:
         assistant.set_mode("traditional")
         traditional_count = assistant.get_tool_count()
 
-        # 9 base + 0 RAG + 100 dummy = 109 (traditional uses 9 base tools including get_library_stats)
-        expected_traditional = 9 + 100
+        # 10 base + 0 RAG + 100 dummy = 110 (traditional uses 10 base tools)
+        expected_traditional = 10 + 100
         assert traditional_count == expected_traditional, (
             f"Expected {expected_traditional} tools in traditional mode, got {traditional_count}"
         )
@@ -176,8 +178,8 @@ class TestEnhancedLibraryAssistantWithDummyTools:
         # In code execution mode, tool count should still include dummy tools
         code_count = assistant.get_tool_count()
         expected_code = (
-            8 + 100
-        )  # 8 library API tools + dummy (get_library_stats is not in code exec)
+            10 + 100
+        )  # 10 library API tools + dummy (includes get_library_stats and get_popular_books)
         assert code_count == expected_code, (
             f"Expected {expected_code} tools in code mode, got {code_count}"
         )
@@ -232,6 +234,7 @@ class TestLibraryQueriesWithDummyTools:
             "find_books_in_cabinet",
             "get_weak_signal_books",
             "get_library_stats",
+            "get_popular_books",
         ]
 
         for tool_name in library_tools:
@@ -297,11 +300,11 @@ class TestTokenUsageWithDummyTools:
         tools_with_dummy = get_tools_for_llm(include_rag=False, include_dummy_tools=True)
 
         # Verify counts
-        assert len(tools_without_dummy) == 9, (
-            f"Expected 9 base tools, got {len(tools_without_dummy)}"
+        assert len(tools_without_dummy) == 10, (
+            f"Expected 10 base tools, got {len(tools_without_dummy)}"
         )
-        assert len(tools_with_dummy) == 109, (
-            f"Expected 109 tools (9 + 100), got {len(tools_with_dummy)}"
+        assert len(tools_with_dummy) == 110, (
+            f"Expected 110 tools (10 + 100), got {len(tools_with_dummy)}"
         )
 
         # Verify difference is exactly 100
