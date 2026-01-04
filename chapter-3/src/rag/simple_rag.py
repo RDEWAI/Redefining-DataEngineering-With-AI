@@ -10,6 +10,10 @@ proving that the answers come from the retrieved context, not training data.
 
 import os
 from dataclasses import dataclass
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 # =============================================================================
 # SAMPLE LIBRARY DATA (Private data the LLM has never seen)
