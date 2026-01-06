@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 from typing import Any
 
 from nicegui import ui
@@ -41,13 +42,78 @@ class CSVViewer:
         self.rows_per_page = rows_per_page
         self._container: ui.element | None = None
 
+    def _clean_csv_content(self, content: str) -> str:
+        """Clean CSV content by removing markdown fences and explanatory text.
+
+        Handles LLM-generated CSV that may include:
+        - Explanatory text before the CSV
+        - Markdown code fences (```csv ... ```)
+        - Explanatory text after the CSV
+
+        Args:
+            content: Raw CSV content that may contain markdown formatting.
+
+        Returns:
+            Clean CSV content ready for parsing.
+        """
+        # Check if content contains markdown code fences
+        csv_fence_pattern = r"```(?:csv)?\s*\n(.*?)\n```"
+        match = re.search(csv_fence_pattern, content, re.DOTALL | re.IGNORECASE)
+
+        if match:
+            # Extract content between code fences
+            return match.group(1).strip()
+
+        # If no code fences, try to find where the actual CSV starts
+        # Look for a line that looks like a CSV header (multiple comma-separated values)
+        lines = content.strip().split("\n")
+        csv_start_idx = 0
+
+        for i, line in enumerate(lines):
+            # Skip empty lines
+            if not line.strip():
+                continue
+            # Check if line looks like a CSV header (has multiple commas and no markdown)
+            if (
+                "," in line
+                and not line.startswith("#")
+                and not line.startswith("```")
+                and not line.lower().startswith("here is")
+                and not line.lower().startswith("this is")
+            ):
+                # Count commas - a real CSV header should have multiple
+                comma_count = line.count(",")
+                if comma_count >= 2:  # At least 3 columns
+                    csv_start_idx = i
+                    break
+
+        # Find where CSV ends (look for lines that don't match CSV pattern)
+        csv_end_idx = len(lines)
+        if csv_start_idx > 0:
+            # Get expected column count from header
+            header_commas = lines[csv_start_idx].count(",")
+            for i in range(csv_start_idx + 1, len(lines)):
+                line = lines[i].strip()
+                if not line:
+                    continue
+                # If line has significantly different comma count, might be end of CSV
+                if line.startswith("```") or line.lower().startswith("this csv"):
+                    csv_end_idx = i
+                    break
+
+        # Return cleaned CSV
+        cleaned_lines = lines[csv_start_idx:csv_end_idx]
+        return "\n".join(cleaned_lines).strip()
+
     def _parse_csv(self) -> tuple[list[str], list[dict[str, str]]]:
         """Parse CSV content into headers and rows.
 
         Returns:
             Tuple of (headers list, rows as list of dicts).
         """
-        reader = csv.reader(io.StringIO(self.content))
+        # Clean the content first to remove markdown fences and explanatory text
+        cleaned_content = self._clean_csv_content(self.content)
+        reader = csv.reader(io.StringIO(cleaned_content))
         rows_list = list(reader)
 
         if not rows_list:

@@ -16,8 +16,9 @@ from rich.panel import Panel
 from rich.table import Table
 
 from pwi.config.loader import load_config
+from pwi.openhands.agents import AGENT_SEQUENCE
 from pwi.workflow.session import Session, SessionManager
-from pwi.workflow.states import AGENT_ORDER, WorkflowState
+from pwi.workflow.states import WorkflowState
 
 if TYPE_CHECKING:
     from pwi.config.schema import PWIConfig
@@ -98,18 +99,20 @@ def run_plan(
 
     console.print(
         Panel.fit(
-            f"[bold blue]Starting PWI Workflow[/bold blue]\n\n"
+            f"[bold blue]Starting PWI Workflow (OpenHands)[/bold blue]\n\n"
             f"[dim]Session ID:[/dim] {session.session_id}\n"
             f"[dim]Request:[/dim] {request_path.name}\n"
-            f"[dim]Project:[/dim] {config.project.name}",
+            f"[dim]Project:[/dim] {config.project.name}\n"
+            f"[dim]Mode:[/dim] [green]OpenHands SDK (with tool-use)[/green]",
             title="PWI Plan",
         )
     )
 
-    # Show agent pipeline
-    table = Table(title="Agent Pipeline", show_header=True)
+    # Show agent pipeline with tools info
+    table = Table(title="Agent Pipeline (OpenHands)", show_header=True)
     table.add_column("Agent", style="cyan")
     table.add_column("Output", style="green")
+    table.add_column("Tools", style="magenta")
     table.add_column("Status", style="yellow")
 
     agent_outputs = {
@@ -121,8 +124,22 @@ def run_plan(
         "sync_agent": "Final Package",
     }
 
-    for agent in AGENT_ORDER:
-        table.add_row(agent.replace("_", " ").title(), agent_outputs[agent], "Pending")
+    agent_tools = {
+        "data_analyst": "DuckDB, CSV",
+        "data_architect": "Schema, Validate",
+        "mapping_engineer": "CSV, Metadata",
+        "dq_engineer": "DuckDB, Validate",
+        "story_writer": "Artifact",
+        "sync_agent": "All",
+    }
+
+    for agent in AGENT_SEQUENCE:
+        table.add_row(
+            agent.replace("_", " ").title(),
+            agent_outputs[agent],
+            agent_tools.get(agent, "-"),
+            "Pending",
+        )
 
     console.print(table)
     console.print()
@@ -173,12 +190,13 @@ async def _run_workflow(
     auto_approve: bool,
     skip_review: bool,
 ) -> None:
-    """Run the workflow asynchronously.
+    """Run the workflow asynchronously using OpenHands SDK.
 
-    Executes all agents in sequence using the orchestrator.
+    Executes all agents in sequence using the OpenHands workflow controller
+    with tool-use capabilities for external system integration.
     """
     from pwi.llm.client import LLMClient
-    from pwi.workflow.orchestrator import WorkflowOrchestrator
+    from pwi.openhands.workflow.controller import PWIWorkflowController
 
     # Initialize LLM client
     llm_client = LLMClient(
@@ -188,18 +206,19 @@ async def _run_workflow(
     )
 
     try:
-        # Initialize orchestrator
-        orchestrator = WorkflowOrchestrator(
+        # Initialize OpenHands workflow controller
+        controller = PWIWorkflowController(
             session=session,
             session_manager=session_manager,
             config=config,
             llm_client=llm_client,
             auto_approve=auto_approve,
             skip_review=skip_review,
+            review_mode=config.review.default_mode,
         )
 
         # Run the workflow
-        success = await orchestrator.run()
+        success = await controller.run()
 
         if not success:
             console.print("\n[yellow]Workflow did not complete successfully.[/yellow]")

@@ -8,7 +8,10 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    pass
 
 from openai import AsyncOpenAI, OpenAI
 from openai.types.chat import ChatCompletionMessageParam
@@ -293,3 +296,56 @@ class LLMClient:
     async def aclose(self) -> None:
         """Close the async client connections."""
         await self._async_client.close()
+
+    async def acomplete_with_tools(
+        self,
+        messages: list[dict[str, Any]],
+        model: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+        tools: list[dict[str, Any]] | None = None,
+    ) -> Any:
+        """Send a completion request with tool support (for OpenHands agents).
+
+        This method supports the full OpenAI Chat Completions API including
+        function/tool calling, which is required for OpenHands-based agents.
+
+        Args:
+            messages: List of message dictionaries with role and content.
+            model: Model to use (defaults to client's default_model).
+            temperature: Sampling temperature (0.0 to 2.0).
+            max_tokens: Maximum tokens in response.
+            tools: Optional list of tool definitions for function calling.
+
+        Returns:
+            Raw OpenAI ChatCompletion response object (for tool call parsing).
+
+        Raises:
+            LLMClientError: If the request fails.
+        """
+        model = model or self.default_model
+
+        try:
+            # Build request kwargs
+            kwargs: dict[str, Any] = {
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+
+            # Add tools if provided
+            if tools:
+                kwargs["tools"] = tools
+                kwargs["tool_choice"] = "auto"
+
+            response = await self._async_client.chat.completions.create(**kwargs)
+            return response
+
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "rate limit" in error_msg or "429" in error_msg:
+                raise LLMRateLimitError(f"Rate limited: {e}") from e
+            if "authentication" in error_msg or "401" in error_msg:
+                raise LLMAuthenticationError(f"Authentication failed: {e}") from e
+            raise LLMClientError(f"LLM request failed: {e}") from e

@@ -10,8 +10,30 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from dotenv import load_dotenv
 
 from pwi.config.schema import PWIConfig
+
+
+def _load_env_files() -> None:
+    """Load .env files from current directory and parent directories.
+
+    Searches for .env files in the current directory and parent directories,
+    loading them in order from most distant to most local (so local overrides).
+    """
+    env_files: list[Path] = []
+
+    # Search from current directory upward
+    current = Path.cwd()
+    while current != current.parent:
+        env_file = current / ".env"
+        if env_file.exists():
+            env_files.append(env_file)
+        current = current.parent
+
+    # Load in reverse order (parent first, then local overrides)
+    for env_file in reversed(env_files):
+        load_dotenv(env_file, override=True)
 
 
 class ConfigurationError(Exception):
@@ -90,6 +112,9 @@ def load_config(
     Raises:
         ConfigurationError: If configuration cannot be loaded or is invalid.
     """
+    # Load .env files first so environment variables are available
+    _load_env_files()
+
     path: Path
     if config_path is not None:
         path = Path(config_path)
