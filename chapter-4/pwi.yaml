@@ -1,0 +1,51 @@
+# PWI Configuration
+# Works with any OpenAI API-compatible provider (OpenAI, OpenRouter, Azure, Ollama, etc.)
+
+version: "1.0"
+
+project:
+  name: "managua-data-project"
+  type: "data_engineering"
+  output_dir: "./output"
+  session_dir: "./.pwi/sessions"
+
+llm:
+  # OpenAI API compatible settings - resolved from environment variables
+  base_url: "${LLM_BASE_URL}"
+  api_key: "${LLM_API_KEY}"
+  default_model: "${LLM_MODEL}"
+  enable_usage_tracking: true
+
+  # Model aliases for agent configuration
+  models:
+    fast: "${LLM_MODEL}"
+    balanced: "${LLM_MODEL}"
+    powerful: "${LLM_MODEL}"
+
+agents:
+  data_analyst:
+    model: "balanced"
+    temperature: 0.7
+  data_architect:
+    model: "powerful"
+    temperature: 0.5
+  mapping_engineer:
+    model: "balanced"
+    temperature: 0.3
+  dq_engineer:
+    model: "balanced"
+    temperature: 0.3
+  story_writer:
+    model: "balanced"
+    temperature: 0.8
+  sync_agent:
+    model: "fast"
+    temperature: 0.2
+
+review:
+  default_mode: "cli"
+  timeout_minutes: 60
+
+logging:
+  level: "INFO"
+  format: "json"

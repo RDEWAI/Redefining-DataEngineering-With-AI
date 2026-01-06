@@ -1,0 +1,87 @@
+[project]
+name = "pwi"
+version = "0.1.0"
+description = "Planning with Intent - Transform business requests into Data Engineering artifacts"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Data Engineering Team" }
+]
+keywords = ["data-engineering", "planning", "agents", "workflow", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    # CLI Framework
+    "typer[all]>=0.12.0",
+    "rich>=13.0.0",
+    # Web Dashboard
+    "nicegui>=2.0.0",
+    # State Machine
+    "transitions>=0.9.0",
+    # LLM Integration
+    "openai>=1.0.0",
+    "httpx>=0.27.0",
+    # Configuration & Validation
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "pyyaml>=6.0.0",
+    # Templates
+    "jinja2>=3.1.0",
+    # Utilities
+    "python-dateutil>=2.8.0",
+    "aiofiles>=23.0.0",
+    # Markdown Validation & Processing
+    "markdown-it-py>=3.0.0",
+    "mdformat>=0.7.0",
+    "mdit-py-plugins>=0.4.0",
+    "markdown2>=2.4.0",
+    "playwright>=1.57.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+    "types-PyYAML>=6.0.0",
+]
+
+[project.scripts]
+pwi = "pwi.cli.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pwi"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --cov=pwi --cov-report=term-missing"
