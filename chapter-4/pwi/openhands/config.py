@@ -2,15 +2,23 @@
 
 This module adapts the existing PWI configuration to work with
 the OpenHands SDK configuration system.
+
+Supports three runtime types:
+- "sdk": Uses OpenHands SDK Conversation class (recommended)
+- "local": Uses local execution without sandboxing
+- "docker": Uses Docker-based sandboxed runtime
 """
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+
+# Runtime type literal for type safety
+RuntimeType = Literal["sdk", "local", "docker"]
 
 
 class OpenHandsLLMConfig(BaseModel):
@@ -52,9 +60,9 @@ class OpenHandsLLMConfig(BaseModel):
 class OpenHandsRuntimeConfig(BaseModel):
     """Runtime configuration for OpenHands agents."""
 
-    runtime_type: str = Field(
-        default="local",
-        description="Runtime type: 'local' or 'docker'",
+    runtime_type: RuntimeType = Field(
+        default="sdk",
+        description="Runtime type: 'sdk' (recommended), 'local', or 'docker'",
     )
     workspace_base: Path = Field(
         default=Path("./workspace"),
@@ -129,13 +137,29 @@ class OpenHandsConfig(BaseModel):
 
     @classmethod
     def from_env(cls) -> OpenHandsConfig:
-        """Create configuration from environment variables."""
+        """Create configuration from environment variables.
+
+        Supported environment variables:
+        - USE_OPENHANDS: Enable OpenHands mode (default: false)
+        - OPENHANDS_RUNTIME: Runtime type - "sdk", "local", or "docker" (default: sdk)
+        - LLM_API_KEY: API key for LLM provider
+        - LLM_BASE_URL: Base URL for LLM API
+        - LLM_MODEL: Model identifier (default: anthropic/claude-sonnet-4-5-20250929)
+        """
+        # Get runtime type from env, default to "sdk"
+        runtime_type_str = os.getenv("OPENHANDS_RUNTIME", "sdk").lower()
+        if runtime_type_str not in ("sdk", "local", "docker"):
+            runtime_type_str = "sdk"
+
         return cls(
             feature_flag_enabled=os.getenv("USE_OPENHANDS", "false").lower() == "true",
             llm=OpenHandsLLMConfig(
                 api_key=os.getenv("LLM_API_KEY"),
                 base_url=os.getenv("LLM_BASE_URL"),
-                model=os.getenv("LLM_MODEL", "anthropic/claude-3-5-sonnet"),
+                model=os.getenv("LLM_MODEL", "anthropic/claude-sonnet-4-5-20250929"),
+            ),
+            runtime=OpenHandsRuntimeConfig(
+                runtime_type=runtime_type_str,  # type: ignore[arg-type]
             ),
         )
 

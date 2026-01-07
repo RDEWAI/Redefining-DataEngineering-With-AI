@@ -1,143 +1,81 @@
-"""Metadata API tools for PWI OpenHands agents.
+"""Metadata API tools for PWI OpenHands agents using SDK pattern.
 
 This module provides tools for querying external metadata catalogs:
 - query_metadata_catalog: Query data catalogs (Atlas, DataHub, OpenMetadata)
 - get_lineage: Get data lineage information
 - get_tags: Get data classification tags
+
+Usage:
+    from pwi.openhands.tools.metadata_tool import QueryMetadataCatalogTool
+    # Tools are auto-registered on import
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
-from pwi.openhands.tools.base import create_tool, register_tool
+from pydantic import Field
+
+from openhands.sdk import Action, Observation
+from openhands.sdk.tool import ToolDefinition, ToolExecutor, register_tool
+
 from pwi.utils.logging import get_logger
 
 logger = get_logger("openhands.tools.metadata")
 
 
 # =============================================================================
-# Tool Definitions
+# Query Metadata Catalog Tool
 # =============================================================================
 
-QueryMetadataCatalogTool = create_tool(
-    name="query_metadata_catalog",
-    description="Query an external metadata/data catalog API for entity information",
-    parameters={
-        "catalog_type": {
-            "type": "string",
-            "enum": ["atlas", "datahub", "openmetadata", "custom"],
-            "description": "Type of metadata catalog to query",
-        },
-        "query_type": {
-            "type": "string",
-            "enum": ["search", "entity", "schema", "lineage", "tags"],
-            "description": "Type of query to perform",
-        },
-        "entity_name": {
-            "type": "string",
-            "description": "Name of the entity to query (table, column, etc.)",
-        },
-        "catalog_url": {
-            "type": "string",
-            "description": "URL of the catalog API (optional, uses default if not provided)",
-        },
-    },
-    required=["catalog_type", "query_type", "entity_name"],
-)
 
-GetLineageTool = create_tool(
-    name="get_lineage",
-    description="Get data lineage information for a table or column",
-    parameters={
-        "entity_name": {
-            "type": "string",
-            "description": "Name of the entity to get lineage for",
-        },
-        "direction": {
-            "type": "string",
-            "enum": ["upstream", "downstream", "both"],
-            "description": "Direction of lineage to retrieve (default: both)",
-        },
-        "depth": {
-            "type": "integer",
-            "description": "How many levels of lineage to retrieve (default: 3)",
-        },
-    },
-    required=["entity_name"],
-)
+class QueryMetadataCatalogAction(Action):
+    """Schema for metadata catalog query action."""
 
-GetTagsTool = create_tool(
-    name="get_tags",
-    description="Get data classification tags for an entity",
-    parameters={
-        "entity_name": {
-            "type": "string",
-            "description": "Name of the entity to get tags for",
-        },
-        "tag_types": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Types of tags to retrieve (e.g., 'pii', 'sensitive', 'classification')",
-        },
-    },
-    required=["entity_name"],
-)
+    catalog_type: Literal["atlas", "datahub", "openmetadata", "custom"] = Field(
+        description="Type of metadata catalog to query"
+    )
+    query_type: Literal["search", "entity", "schema", "lineage", "tags"] = Field(
+        description="Type of query to perform"
+    )
+    entity_name: str = Field(
+        description="Name of the entity to query (table, column, etc.)"
+    )
+    catalog_url: str | None = Field(
+        default=None,
+        description="URL of the catalog API (optional, uses default if not provided)",
+    )
 
 
-# =============================================================================
-# Tool Executors
-# =============================================================================
+class QueryMetadataCatalogObservation(Observation):
+    """Schema for metadata catalog query result."""
 
-def execute_query_metadata_catalog(
-    catalog_type: str,
-    query_type: str,
-    entity_name: str,
-    catalog_url: str | None = None,
-) -> dict[str, Any]:
-    """Query a metadata catalog.
+    success: bool = Field(default=True)
+    catalog: str = Field(default="")
+    query_type: str = Field(default="")
+    entity_name: str = Field(default="")
+    result: dict[str, Any] = Field(default_factory=dict)
+    error: str | None = Field(default=None)
+    note: str | None = Field(default=None)
 
-    Args:
-        catalog_type: Type of catalog (atlas, datahub, etc.).
-        query_type: Type of query to perform.
-        entity_name: Entity to query.
-        catalog_url: Optional catalog URL.
 
-    Returns:
-        Query results dictionary.
-    """
-    logger.info(f"Querying {catalog_type} catalog for {entity_name} ({query_type})")
+class QueryMetadataCatalogExecutor(
+    ToolExecutor[QueryMetadataCatalogAction, QueryMetadataCatalogObservation]
+):
+    """Executor for metadata catalog queries."""
 
-    # Note: In production, this would make actual API calls
-    # For now, return mock data structure showing the expected format
-
-    if catalog_type == "atlas":
-        return _mock_atlas_response(query_type, entity_name)
-    elif catalog_type == "datahub":
-        return _mock_datahub_response(query_type, entity_name)
-    elif catalog_type == "openmetadata":
-        return _mock_openmetadata_response(query_type, entity_name)
-    else:
+    def _mock_atlas_response(
+        self, query_type: str, entity_name: str
+    ) -> dict[str, Any]:
+        """Generate mock Atlas API response."""
         return {
-            "success": False,
-            "error": f"Unsupported catalog type: {catalog_type}",
-            "supported_types": ["atlas", "datahub", "openmetadata"],
-        }
-
-
-def _mock_atlas_response(query_type: str, entity_name: str) -> dict[str, Any]:
-    """Generate mock Atlas API response."""
-    return {
-        "success": True,
-        "catalog": "atlas",
-        "query_type": query_type,
-        "entity_name": entity_name,
-        "result": {
             "guid": f"atlas-{hash(entity_name) % 10000}",
             "typeName": "hive_table",
             "attributes": {
                 "qualifiedName": entity_name,
-                "name": entity_name.split(".")[-1] if "." in entity_name else entity_name,
+                "name": (
+                    entity_name.split(".")[-1] if "." in entity_name else entity_name
+                ),
                 "description": f"Metadata for {entity_name}",
                 "owner": "data_team",
                 "createTime": 1704067200000,
@@ -145,19 +83,13 @@ def _mock_atlas_response(query_type: str, entity_name: str) -> dict[str, Any]:
             "classifications": [
                 {"typeName": "PII", "propagate": True},
             ],
-        },
-        "note": "Mock response - connect to actual Atlas API for real data",
-    }
+        }
 
-
-def _mock_datahub_response(query_type: str, entity_name: str) -> dict[str, Any]:
-    """Generate mock DataHub API response."""
-    return {
-        "success": True,
-        "catalog": "datahub",
-        "query_type": query_type,
-        "entity_name": entity_name,
-        "result": {
+    def _mock_datahub_response(
+        self, query_type: str, entity_name: str
+    ) -> dict[str, Any]:
+        """Generate mock DataHub API response."""
+        return {
             "urn": f"urn:li:dataset:(urn:li:dataPlatform:duckdb,{entity_name},PROD)",
             "aspects": {
                 "datasetProperties": {
@@ -170,125 +102,272 @@ def _mock_datahub_response(query_type: str, entity_name: str) -> dict[str, Any]:
                 },
             },
             "tags": ["tier:gold"],
-        },
-        "note": "Mock response - connect to actual DataHub API for real data",
-    }
+        }
 
-
-def _mock_openmetadata_response(query_type: str, entity_name: str) -> dict[str, Any]:
-    """Generate mock OpenMetadata API response."""
-    return {
-        "success": True,
-        "catalog": "openmetadata",
-        "query_type": query_type,
-        "entity_name": entity_name,
-        "result": {
+    def _mock_openmetadata_response(
+        self, query_type: str, entity_name: str
+    ) -> dict[str, Any]:
+        """Generate mock OpenMetadata API response."""
+        return {
             "id": f"om-{hash(entity_name) % 10000}",
             "fullyQualifiedName": entity_name,
-            "displayName": entity_name.split(".")[-1] if "." in entity_name else entity_name,
+            "displayName": (
+                entity_name.split(".")[-1] if "." in entity_name else entity_name
+            ),
             "tableType": "Regular",
             "columns": [],
             "tags": [],
-        },
-        "note": "Mock response - connect to actual OpenMetadata API for real data",
-    }
+        }
+
+    def __call__(
+        self, action: QueryMetadataCatalogAction, conversation: Any = None
+    ) -> QueryMetadataCatalogObservation:
+        """Execute metadata catalog query."""
+        logger.info(
+            f"Querying {action.catalog_type} catalog for "
+            f"{action.entity_name} ({action.query_type})"
+        )
+
+        # Note: In production, this would make actual API calls
+        # For now, return mock data structure showing the expected format
+
+        if action.catalog_type == "atlas":
+            result = self._mock_atlas_response(action.query_type, action.entity_name)
+        elif action.catalog_type == "datahub":
+            result = self._mock_datahub_response(action.query_type, action.entity_name)
+        elif action.catalog_type == "openmetadata":
+            result = self._mock_openmetadata_response(
+                action.query_type, action.entity_name
+            )
+        else:
+            return QueryMetadataCatalogObservation(
+                success=False,
+                error=f"Unsupported catalog type: {action.catalog_type}",
+                note="Supported types: atlas, datahub, openmetadata",
+            )
+
+        return QueryMetadataCatalogObservation(
+            success=True,
+            catalog=action.catalog_type,
+            query_type=action.query_type,
+            entity_name=action.entity_name,
+            result=result,
+            note="Mock response - connect to actual catalog API for real data",
+        )
 
 
-def execute_get_lineage(
-    entity_name: str,
-    direction: str = "both",
-    depth: int = 3,
-) -> dict[str, Any]:
-    """Get data lineage information.
+class QueryMetadataCatalogTool(
+    ToolDefinition[QueryMetadataCatalogAction, QueryMetadataCatalogObservation]
+):
+    """Tool definition for metadata catalog queries."""
 
-    Args:
-        entity_name: Entity to get lineage for.
-        direction: Lineage direction.
-        depth: Levels of lineage.
+    name = "query_metadata_catalog"
 
-    Returns:
-        Lineage information dictionary.
-    """
-    logger.info(f"Getting {direction} lineage for {entity_name} (depth={depth})")
-
-    # Mock lineage response
-    return {
-        "success": True,
-        "entity_name": entity_name,
-        "direction": direction,
-        "depth": depth,
-        "lineage": {
-            "upstream": [
-                {
-                    "name": f"{entity_name}_source_1",
-                    "type": "table",
-                    "level": 1,
-                },
-                {
-                    "name": f"{entity_name}_source_2",
-                    "type": "table",
-                    "level": 1,
-                },
-            ] if direction in ("upstream", "both") else [],
-            "downstream": [
-                {
-                    "name": f"{entity_name}_derived_1",
-                    "type": "table",
-                    "level": 1,
-                },
-            ] if direction in ("downstream", "both") else [],
-        },
-        "note": "Mock response - connect to actual lineage service for real data",
-    }
-
-
-def execute_get_tags(
-    entity_name: str,
-    tag_types: list[str] | None = None,
-) -> dict[str, Any]:
-    """Get tags for an entity.
-
-    Args:
-        entity_name: Entity to get tags for.
-        tag_types: Types of tags to retrieve.
-
-    Returns:
-        Tags dictionary.
-    """
-    logger.info(f"Getting tags for {entity_name}")
-
-    # Mock tags response
-    all_tags = {
-        "pii": ["email", "phone_number", "ssn"],
-        "sensitive": ["salary", "health_data"],
-        "classification": ["internal", "confidential", "public"],
-        "tier": ["gold", "silver", "bronze"],
-    }
-
-    filtered_tags = {}
-    for tag_type in (tag_types or all_tags.keys()):
-        if tag_type in all_tags:
-            filtered_tags[tag_type] = all_tags[tag_type]
-
-    return {
-        "success": True,
-        "entity_name": entity_name,
-        "tags": filtered_tags,
-        "note": "Mock response - connect to actual catalog for real tags",
-    }
+    @classmethod
+    def create(cls, conv_state: Any = None, **kwargs: Any) -> list[ToolDefinition]:
+        """Create the tool instance."""
+        return [
+            cls(
+                action_type=QueryMetadataCatalogAction,
+                observation_type=QueryMetadataCatalogObservation,
+                description="Query an external metadata/data catalog API for entity information",
+                executor=QueryMetadataCatalogExecutor(),
+            )
+        ]
 
 
 # =============================================================================
-# Register Tools
+# Get Lineage Tool
 # =============================================================================
 
-def register_metadata_tools() -> None:
-    """Register all metadata tools with the global registry."""
-    register_tool(QueryMetadataCatalogTool, execute_query_metadata_catalog)
-    register_tool(GetLineageTool, execute_get_lineage)
-    register_tool(GetTagsTool, execute_get_tags)
-    logger.info("Metadata tools registered")
+
+class GetLineageAction(Action):
+    """Schema for lineage query action."""
+
+    entity_name: str = Field(description="Name of the entity to get lineage for")
+    direction: Literal["upstream", "downstream", "both"] = Field(
+        default="both", description="Direction of lineage to retrieve"
+    )
+    depth: int = Field(default=3, description="How many levels of lineage to retrieve")
+
+
+class GetLineageObservation(Observation):
+    """Schema for lineage query result."""
+
+    success: bool = Field(default=True)
+    entity_name: str = Field(default="")
+    direction: str = Field(default="")
+    depth: int = Field(default=0)
+    lineage: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
+    error: str | None = Field(default=None)
+    note: str | None = Field(default=None)
+
+
+class GetLineageExecutor(ToolExecutor[GetLineageAction, GetLineageObservation]):
+    """Executor for lineage queries."""
+
+    def __call__(
+        self, action: GetLineageAction, conversation: Any = None
+    ) -> GetLineageObservation:
+        """Execute lineage query."""
+        logger.info(
+            f"Getting {action.direction} lineage for "
+            f"{action.entity_name} (depth={action.depth})"
+        )
+
+        # Mock lineage response
+        upstream = []
+        downstream = []
+
+        if action.direction in ("upstream", "both"):
+            upstream = [
+                {
+                    "name": f"{action.entity_name}_source_1",
+                    "type": "table",
+                    "level": 1,
+                },
+                {
+                    "name": f"{action.entity_name}_source_2",
+                    "type": "table",
+                    "level": 1,
+                },
+            ]
+
+        if action.direction in ("downstream", "both"):
+            downstream = [
+                {
+                    "name": f"{action.entity_name}_derived_1",
+                    "type": "table",
+                    "level": 1,
+                },
+            ]
+
+        return GetLineageObservation(
+            success=True,
+            entity_name=action.entity_name,
+            direction=action.direction,
+            depth=action.depth,
+            lineage={"upstream": upstream, "downstream": downstream},
+            note="Mock response - connect to actual lineage service for real data",
+        )
+
+
+class GetLineageTool(ToolDefinition[GetLineageAction, GetLineageObservation]):
+    """Tool definition for lineage queries."""
+
+    name = "get_lineage"
+
+    @classmethod
+    def create(cls, conv_state: Any = None, **kwargs: Any) -> list[ToolDefinition]:
+        """Create the tool instance."""
+        return [
+            cls(
+                action_type=GetLineageAction,
+                observation_type=GetLineageObservation,
+                description="Get data lineage information for a table or column",
+                executor=GetLineageExecutor(),
+            )
+        ]
+
+
+# =============================================================================
+# Get Tags Tool
+# =============================================================================
+
+
+class GetTagsAction(Action):
+    """Schema for tags query action."""
+
+    entity_name: str = Field(description="Name of the entity to get tags for")
+    tag_types: list[str] | None = Field(
+        default=None,
+        description="Types of tags to retrieve (e.g., 'pii', 'sensitive', 'classification')",
+    )
+
+
+class GetTagsObservation(Observation):
+    """Schema for tags query result."""
+
+    success: bool = Field(default=True)
+    entity_name: str = Field(default="")
+    tags: dict[str, list[str]] = Field(default_factory=dict)
+    error: str | None = Field(default=None)
+    note: str | None = Field(default=None)
+
+
+class GetTagsExecutor(ToolExecutor[GetTagsAction, GetTagsObservation]):
+    """Executor for tags queries."""
+
+    def __call__(
+        self, action: GetTagsAction, conversation: Any = None
+    ) -> GetTagsObservation:
+        """Execute tags query."""
+        logger.info(f"Getting tags for {action.entity_name}")
+
+        # Mock tags response
+        all_tags = {
+            "pii": ["email", "phone_number", "ssn"],
+            "sensitive": ["salary", "health_data"],
+            "classification": ["internal", "confidential", "public"],
+            "tier": ["gold", "silver", "bronze"],
+        }
+
+        filtered_tags = {}
+        for tag_type in action.tag_types or all_tags.keys():
+            if tag_type in all_tags:
+                filtered_tags[tag_type] = all_tags[tag_type]
+
+        return GetTagsObservation(
+            success=True,
+            entity_name=action.entity_name,
+            tags=filtered_tags,
+            note="Mock response - connect to actual catalog for real tags",
+        )
+
+
+class GetTagsTool(ToolDefinition[GetTagsAction, GetTagsObservation]):
+    """Tool definition for tags queries."""
+
+    name = "get_tags"
+
+    @classmethod
+    def create(cls, conv_state: Any = None, **kwargs: Any) -> list[ToolDefinition]:
+        """Create the tool instance."""
+        return [
+            cls(
+                action_type=GetTagsAction,
+                observation_type=GetTagsObservation,
+                description="Get data classification tags for an entity",
+                executor=GetTagsExecutor(),
+            )
+        ]
+
+
+# =============================================================================
+# Register Tools with SDK
+# =============================================================================
+
+
+def _register_metadata_tools() -> None:
+    """Register all metadata tools with the OpenHands SDK registry."""
+    register_tool("query_metadata_catalog", QueryMetadataCatalogTool)
+    register_tool("get_lineage", GetLineageTool)
+    register_tool("get_tags", GetTagsTool)
+    logger.info("Metadata tools registered with OpenHands SDK")
 
 
 # Auto-register on import
-register_metadata_tools()
+_register_metadata_tools()
+
+
+__all__ = [
+    "QueryMetadataCatalogAction",
+    "QueryMetadataCatalogObservation",
+    "QueryMetadataCatalogTool",
+    "GetLineageAction",
+    "GetLineageObservation",
+    "GetLineageTool",
+    "GetTagsAction",
+    "GetTagsObservation",
+    "GetTagsTool",
+]

@@ -1,58 +1,76 @@
 """OpenHands-based PWI agents.
 
-This module contains the OpenHands SDK implementations of the 6 PWI agents:
-- DataAnalystAgent: Generates Data Requirements Documents (DRD)
-- DataArchitectAgent: Generates Pipeline Architecture Documents (PAD)
-- MappingEngineerAgent: Generates Data Mapping Documents (DMD)
-- DQEngineerAgent: Generates Data Quality Specifications (DQS)
-- StoryWriterAgent: Generates User Stories
-- SyncAgent: Consolidates all artifacts into a package
+This module provides the PWI (Planning with Intent) agent system using
+the OpenHands SDK. Agents are created from microagent markdown files
+located in .openhands/microagents/.
+
+Available agents:
+- data_analyst: Generates Data Requirements Documents (DRD)
+- data_architect: Generates Pipeline Architecture Documents (PAD)
+- mapping_engineer: Generates Data Mapping Documents (DMD)
+- dq_engineer: Generates Data Quality Specifications (DQS)
+- story_writer: Generates User Stories
+- sync_agent: Consolidates all artifacts into a package
+- validator_agent: Validates artifact format and content
 
 Usage:
     from pwi.openhands.agents import (
-        DataAnalystAgent,
-        DataArchitectAgent,
-        MappingEngineerAgent,
-        DQEngineerAgent,
-        StoryWriterAgent,
-        SyncAgent,
-        get_agent,
-        get_agent_sequence,
+        create_pwi_agent,
+        create_pwi_conversation,
+        load_microagent_prompt,
     )
 
-    # Create an agent
-    config = PWIAgentConfig(name="data_analyst", model="gpt-4o")
-    agent = DataAnalystAgent(config=config, llm_client=llm)
+    # Create an agent using SDK pattern
+    agent = create_pwi_agent(
+        "data_analyst",
+        llm_config={"model": "anthropic/claude-sonnet-4-5-20250929"}
+    )
+    conversation = create_pwi_conversation(agent, workspace="/path/to/workspace")
+    conversation.send_message("Analyze the healthcare data")
+    conversation.run()
 
-    # Or get agent by name
-    agent = get_agent("data_analyst", config, llm)
+    # Or load just the prompt from microagent file
+    prompt = load_microagent_prompt("data_analyst")
 """
 
-from typing import Any
-
-from pwi.openhands.agents.base import (
-    BasePWIAgent,
-    PWIAgentConfig,
-    PWIAgentResult,
-    PWIAgentState,
+# SDK Factory Functions
+from pwi.openhands.agents.factory import (
+    # Configuration
+    MICROAGENTS_DIR,
+    SKILLS_DIR,
+    AGENT_MICROAGENT_MAP,
+    DEFAULT_MODEL,
+    DEFAULT_AGENT_TOOLS,
+    # Auto-discovery (Microagents)
+    MicroagentInfo,
+    discover_microagents,
+    get_microagent_info,
+    # Auto-discovery (Skills)
+    SkillInfo,
+    discover_skills,
+    get_skill_info,
+    build_agent_context,
+    # SDK Context re-exports
+    AgentContext,
+    Skill,
+    KeywordTrigger,
+    # Microagent loading
+    parse_microagent_file,
+    load_microagent_prompt,
+    # LLM
+    create_llm,
+    get_llm_config_from_env,
+    # Agent factory
+    create_pwi_agent,
+    create_pwi_conversation,
+    run_agent_task,
+    get_available_agent_types,
+    # Legacy placeholder (empty dict for backward compatibility)
+    AGENT_PROMPTS,
+    # Re-exports from tools
+    AGENT_TOOL_MAP,
 )
-from pwi.openhands.agents.data_analyst import DataAnalystAgent
-from pwi.openhands.agents.data_architect import DataArchitectAgent
-from pwi.openhands.agents.mapping_engineer import MappingEngineerAgent
-from pwi.openhands.agents.dq_engineer import DQEngineerAgent
-from pwi.openhands.agents.story_writer import StoryWriterAgent
-from pwi.openhands.agents.sync_agent import SyncAgent
 
-
-# Agent registry for dynamic instantiation
-AGENT_REGISTRY: dict[str, type[BasePWIAgent]] = {
-    "data_analyst": DataAnalystAgent,
-    "data_architect": DataArchitectAgent,
-    "mapping_engineer": MappingEngineerAgent,
-    "dq_engineer": DQEngineerAgent,
-    "story_writer": StoryWriterAgent,
-    "sync_agent": SyncAgent,
-}
 
 # Default workflow sequence
 AGENT_SEQUENCE = [
@@ -65,32 +83,6 @@ AGENT_SEQUENCE = [
 ]
 
 
-def get_agent(
-    agent_name: str,
-    config: PWIAgentConfig,
-    llm_client: Any = None,
-) -> BasePWIAgent:
-    """Get an agent instance by name.
-
-    Args:
-        agent_name: Name of the agent (e.g., 'data_analyst').
-        config: Agent configuration.
-        llm_client: LLM client for completions.
-
-    Returns:
-        Instantiated agent.
-
-    Raises:
-        ValueError: If agent name is not recognized.
-    """
-    agent_class = AGENT_REGISTRY.get(agent_name)
-    if agent_class is None:
-        valid_names = ", ".join(AGENT_REGISTRY.keys())
-        raise ValueError(f"Unknown agent: {agent_name}. Valid agents: {valid_names}")
-
-    return agent_class(config=config, llm_client=llm_client)
-
-
 def get_agent_sequence() -> list[str]:
     """Get the default agent execution sequence.
 
@@ -100,65 +92,41 @@ def get_agent_sequence() -> list[str]:
     return AGENT_SEQUENCE.copy()
 
 
-def get_agent_info(agent_name: str) -> dict[str, Any]:
-    """Get information about an agent.
-
-    Args:
-        agent_name: Name of the agent.
-
-    Returns:
-        Dictionary with agent information.
-
-    Raises:
-        ValueError: If agent name is not recognized.
-    """
-    agent_class = AGENT_REGISTRY.get(agent_name)
-    if agent_class is None:
-        raise ValueError(f"Unknown agent: {agent_name}")
-
-    return {
-        "name": agent_class.AGENT_NAME,
-        "artifact_type": agent_class.ARTIFACT_TYPE,
-        "artifact_format": agent_class.ARTIFACT_FORMAT,
-        "version": agent_class.VERSION,
-    }
-
-
-def list_agents() -> list[dict[str, str]]:
-    """List all available agents with their information.
-
-    Returns:
-        List of agent information dictionaries.
-    """
-    agents = []
-    for name, agent_class in AGENT_REGISTRY.items():
-        agents.append({
-            "name": name,
-            "artifact_type": agent_class.ARTIFACT_TYPE,
-            "artifact_format": agent_class.ARTIFACT_FORMAT,
-            "version": agent_class.VERSION,
-        })
-    return agents
-
-
 __all__ = [
-    # Base classes
-    "BasePWIAgent",
-    "PWIAgentConfig",
-    "PWIAgentResult",
-    "PWIAgentState",
-    # Agent implementations
-    "DataAnalystAgent",
-    "DataArchitectAgent",
-    "MappingEngineerAgent",
-    "DQEngineerAgent",
-    "StoryWriterAgent",
-    "SyncAgent",
-    # Registry and utilities
-    "AGENT_REGISTRY",
+    # Configuration
+    "MICROAGENTS_DIR",
+    "SKILLS_DIR",
+    "AGENT_MICROAGENT_MAP",
+    "DEFAULT_MODEL",
+    "DEFAULT_AGENT_TOOLS",
     "AGENT_SEQUENCE",
-    "get_agent",
+    # Auto-discovery (Microagents)
+    "MicroagentInfo",
+    "discover_microagents",
+    "get_microagent_info",
+    # Auto-discovery (Skills)
+    "SkillInfo",
+    "discover_skills",
+    "get_skill_info",
+    "build_agent_context",
+    # SDK Context re-exports
+    "AgentContext",
+    "Skill",
+    "KeywordTrigger",
+    # Microagent loading
+    "parse_microagent_file",
+    "load_microagent_prompt",
+    # LLM
+    "create_llm",
+    "get_llm_config_from_env",
+    # Agent factory
+    "create_pwi_agent",
+    "create_pwi_conversation",
+    "run_agent_task",
+    "get_available_agent_types",
     "get_agent_sequence",
-    "get_agent_info",
-    "list_agents",
+    # Tool configuration
+    "AGENT_TOOL_MAP",
+    # Legacy placeholder (deprecated - use load_microagent_prompt instead)
+    "AGENT_PROMPTS",
 ]

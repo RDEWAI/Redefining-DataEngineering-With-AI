@@ -1,28 +1,118 @@
 """Workflow controller for OpenHands-based PWI.
 
 This module provides the main orchestration layer that:
-- Manages sequential agent execution
+- Manages sequential agent execution using SDK Conversation
 - Handles review gates via EventStream
 - Integrates with session persistence
 - Exports artifacts to output directory
+
+Supports both SDK runtime (recommended) and legacy runtime modes.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
+from dataclasses import dataclass, field
+
 from pwi.openhands.agents import (
     AGENT_SEQUENCE,
-    PWIAgentConfig,
-    PWIAgentResult,
-    PWIAgentState,
-    get_agent,
-    get_agent_info,
+    # SDK Factory Functions
+    create_pwi_agent,
+    create_pwi_conversation,
+    create_llm,
+    load_microagent_prompt,
+    # Auto-discovery
+    discover_microagents,
 )
+
+
+# =============================================================================
+# Simple dataclasses for workflow state (replaces legacy BasePWIAgent types)
+# =============================================================================
+
+
+@dataclass
+class PWIAgentConfig:
+    """Configuration for a PWI agent."""
+
+    name: str
+    model: str = "gpt-4o-mini"
+    temperature: float = 0.7
+    max_tokens: int = 4096
+
+
+@dataclass
+class PWIAgentState:
+    """Execution state for a PWI agent."""
+
+    agent_name: str
+    status: str = "pending"
+    tool_calls: list[dict] = field(default_factory=list)
+    messages: list[dict] = field(default_factory=list)
+    error: str | None = None
+
+
+@dataclass
+class PWIAgentResult:
+    """Result from a PWI agent execution."""
+
+    agent_name: str
+    artifact_type: str
+    artifact_content: str
+    artifact_format: str = "markdown"
+    success: bool = True
+    error: str | None = None
+    error_message: str | None = None
+    tool_calls_count: int = 0
+    duration_seconds: float = 0.0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    tool_calls: list[dict] = field(default_factory=list)
+
+
+def get_agent_info(agent_name: str) -> dict[str, str]:
+    """Get information about an agent from microagent files.
+
+    Args:
+        agent_name: Name of the agent.
+
+    Returns:
+        Dictionary with agent information.
+
+    Raises:
+        ValueError: If agent name is not recognized.
+    """
+    # Use auto-discovery instead of static map
+    microagents = discover_microagents()
+    if agent_name not in microagents:
+        raise ValueError(f"Unknown agent: {agent_name}")
+
+    # Map agent names to artifact info
+    artifact_info = {
+        "data_analyst": ("drd", "markdown"),
+        "data_architect": ("pad", "markdown"),
+        "mapping_engineer": ("dmd", "csv"),
+        "dq_engineer": ("dqs", "yaml"),
+        "story_writer": ("stories", "markdown"),
+        "sync_agent": ("package", "markdown"),
+        "validator_agent": ("validation", "markdown"),
+    }
+
+    artifact_type, artifact_format = artifact_info.get(
+        agent_name, ("unknown", "text")
+    )
+
+    return {
+        "name": agent_name,
+        "artifact_type": artifact_type,
+        "artifact_format": artifact_format,
+        "version": "2.0.0",
+    }
 from pwi.openhands.workflow.events import (
     AgentFailedEvent,
     AgentStartedEvent,
@@ -38,10 +128,15 @@ from pwi.openhands.workflow.review_handler import (
     BaseReviewHandler,
     get_review_handler,
 )
+from pwi.openhands.tools.artifact_tool import (
+    ValidateArtifactExecutor,
+    ValidateArtifactAction,
+)
 from pwi.openhands.workflow.session_adapter import SessionEventAdapter
 from pwi.utils.logging import get_logger
 
 if TYPE_CHECKING:
+    from openhands.sdk import Agent, Conversation, Event
     from pwi.config.schema import PWIConfig
     from pwi.llm.client import LLMClient
     from pwi.workflow.session import Session, SessionManager
@@ -55,6 +150,10 @@ class PWIWorkflowController:
 
     This controller manages the execution of PWI agents using the
     OpenHands SDK patterns with event-sourced state management.
+
+    Supports two execution modes:
+    - SDK mode (runtime_mode="sdk"): Uses SDK Agent and Conversation
+    - Legacy mode (runtime_mode="legacy"): Uses custom BasePWIAgent
     """
 
     def __init__(
@@ -66,7 +165,10 @@ class PWIWorkflowController:
         auto_approve: bool = False,
         skip_review: bool = False,
         review_mode: str = "cli",
+        runtime_mode: Literal["sdk", "legacy"] = "sdk",
+        workspace_path: Path | None = None,
         on_agent_complete: Callable[[str, PWIAgentResult], None] | None = None,
+        strict_validation: bool = False,
     ) -> None:
         """Initialize the workflow controller.
 
@@ -74,11 +176,14 @@ class PWIWorkflowController:
             session: Current workflow session.
             session_manager: Session persistence manager.
             config: PWI configuration.
-            llm_client: LLM client for agent calls.
+            llm_client: LLM client for agent calls (used in legacy mode).
             auto_approve: Auto-approve all review gates.
             skip_review: Skip all review gates entirely.
             review_mode: Review mode ('cli', 'file', 'auto', 'skip').
+            runtime_mode: Execution mode - 'sdk' (recommended) or 'legacy'.
+            workspace_path: Workspace directory for SDK conversations.
             on_agent_complete: Optional callback when agent completes.
+            strict_validation: If True, block workflow on validation failures.
         """
         self.session = session
         self.session_manager = session_manager
@@ -87,7 +192,10 @@ class PWIWorkflowController:
         self.auto_approve = auto_approve
         self.skip_review = skip_review
         self.review_mode = review_mode
+        self.runtime_mode = runtime_mode
+        self.workspace_path = workspace_path or config.project.output_dir
         self.on_agent_complete = on_agent_complete
+        self.strict_validation = strict_validation
 
         # Initialize event stream and session adapter
         self.event_stream = EventStream(session.session_id)
@@ -106,6 +214,12 @@ class PWIWorkflowController:
         # Tracking state
         self._current_agent: str | None = None
         self._is_running: bool = False
+        self._sdk_llm = None  # Cached SDK LLM instance
+
+        logger.info(
+            f"Workflow controller initialized in {runtime_mode} mode",
+            extra={"session_id": session.session_id, "runtime_mode": runtime_mode},
+        )
 
     def _init_review_handler(self) -> None:
         """Initialize the review handler based on configuration."""
@@ -161,88 +275,306 @@ class PWIWorkflowController:
             },
         )
 
-    async def _execute_agent(self, agent_name: str) -> PWIAgentResult:
+    async def _execute_agent(
+        self, agent_name: str, validation_feedback: str | None = None
+    ) -> PWIAgentResult:
         """Execute a single agent.
+
+        Dispatches to SDK or legacy execution based on runtime_mode.
 
         Args:
             agent_name: Name of the agent to execute.
+            validation_feedback: Optional feedback from previous validation failure.
 
         Returns:
             Agent execution result.
         """
         self._current_agent = agent_name
 
-        # Emit start event
-        config = self._create_agent_config(agent_name)
-        agent = get_agent(agent_name, config, self.llm_client)
+        if self.runtime_mode == "sdk":
+            result = await self._execute_agent_sdk(agent_name, validation_feedback)
+        else:
+            result = await self._execute_agent_legacy(agent_name)
 
+        self._current_agent = None
+        return result
+
+    async def _execute_agent_sdk(
+        self, agent_name: str, validation_feedback: str | None = None
+    ) -> PWIAgentResult:
+        """Execute agent using OpenHands SDK Conversation.
+
+        Args:
+            agent_name: Name of the agent to execute.
+            validation_feedback: Optional feedback from previous validation failure.
+
+        Returns:
+            Agent execution result.
+        """
+        from openhands.sdk import Event
+
+        # Get LLM config from PWI config
+        agent_config = self.config.get_agent_config(agent_name)
+        resolved_model = self.config.get_resolved_model(agent_name)
+
+        llm_config = {
+            "model": resolved_model,
+            "temperature": agent_config.temperature,
+            "max_tokens": agent_config.max_tokens,
+        }
+
+        # Emit start event
         start_event = AgentStartedEvent(
             session_id=self.session.session_id,
             agent_name=agent_name,
-            model=config.model,
-            tool_count=len(agent.tools),
+            model=resolved_model,
+            tool_count=0,  # Updated after agent creation
         )
         self.event_stream.append(start_event)
 
-        logger.info(f"Starting agent {agent_name} with model {config.model}")
+        logger.info(f"Starting SDK agent {agent_name} with model {resolved_model}")
 
-        # Create initial state
-        state = self._create_agent_state(agent_name)
+        try:
+            # Create SDK agent and conversation
+            agent = create_pwi_agent(agent_name, llm_config=llm_config)
 
-        # Subscribe to tool calls for event emission
-        original_execute_tool = agent.execute_tool
+            # Event callback to capture tool calls
+            def sdk_event_callback(event: Event) -> None:
+                event_type = type(event).__name__
+                if "ToolCall" in event_type or "Action" in event_type:
+                    tool_event = AgentToolCallEvent(
+                        session_id=self.session.session_id,
+                        agent_name=agent_name,
+                        tool_name=getattr(event, "tool", "unknown"),
+                        arguments=getattr(event, "arguments", {}),
+                    )
+                    self.event_stream.append(tool_event)
 
-        def tracked_execute_tool(tool_name: str, arguments: dict) -> dict:
-            # Emit tool call event
-            call_event = AgentToolCallEvent(
-                session_id=self.session.session_id,
-                agent_name=agent_name,
-                tool_name=tool_name,
-                arguments=arguments,
+            conversation = create_pwi_conversation(
+                agent=agent,
+                workspace=self.workspace_path,
+                callbacks=[sdk_event_callback],
             )
-            self.event_stream.append(call_event)
 
-            # Execute tool
-            result = original_execute_tool(tool_name, arguments)
+            # Build message with context
+            context = {
+                atype: artifact.content
+                for atype, artifact in self.session.artifacts.items()
+            }
+            message = self._build_agent_message(agent_name, context)
 
-            # Emit tool result event
-            result_event = AgentToolResultEvent(
-                session_id=self.session.session_id,
-                agent_name=agent_name,
-                tool_name=tool_name,
-                success=result.get("success", False),
-                result=result,
+            # Add validation feedback if this is a retry
+            if validation_feedback:
+                message += f"""
+
+## VALIDATION FEEDBACK - PLEASE FIX THE FOLLOWING ISSUES
+
+Your previous output failed validation. Please regenerate the artifact addressing these issues:
+
+{validation_feedback}
+
+IMPORTANT: Generate the complete artifact again with these issues fixed. Do NOT just describe what you would change - output the full corrected artifact.
+"""
+
+            # Run conversation
+            logger.info(f"Starting conversation.run() with max_iterations={conversation.max_iteration_per_run}")
+            conversation.send_message(message)
+            conversation.run()
+            logger.info(f"conversation.run() completed")
+
+            # Extract result from conversation
+            artifact_content = self._extract_artifact_from_conversation(
+                agent_name, conversation
             )
-            self.event_stream.append(result_event)
 
-            return result
+            # Get agent info for artifact type
+            agent_info = get_agent_info(agent_name)
 
-        agent.execute_tool = tracked_execute_tool
+            result = PWIAgentResult(
+                agent_name=agent_name,
+                artifact_type=agent_info["artifact_type"],
+                artifact_content=artifact_content,
+                artifact_format=agent_info["artifact_format"],
+                success=True,
+                prompt_tokens=0,  # SDK tracks internally
+                completion_tokens=0,
+                tool_calls=[],
+            )
 
-        # Run agent to completion
-        result = await agent.run(state)
-
-        # Emit completion or failure event
-        if result.success:
+            # Emit completion
             self.session_adapter.emit_agent_completed(
                 agent_name=agent_name,
                 artifact_type=result.artifact_type or "",
                 artifact_format=result.artifact_format,
                 prompt_tokens=result.prompt_tokens,
                 completion_tokens=result.completion_tokens,
-                tool_calls_count=len(result.tool_calls),
-                model=config.model,
+                tool_calls_count=0,
+                model=resolved_model,
             )
-        else:
+
+            # Cleanup
+            conversation.close()
+
+            return result
+
+        except Exception as e:
+            logger.exception(f"SDK agent {agent_name} failed")
             fail_event = AgentFailedEvent(
                 session_id=self.session.session_id,
                 agent_name=agent_name,
-                error_message=result.error_message or "Unknown error",
+                error_message=str(e),
             )
             self.event_stream.append(fail_event)
 
-        self._current_agent = None
-        return result
+            return PWIAgentResult(
+                agent_name=agent_name,
+                artifact_type="error",
+                artifact_content="",
+                artifact_format="text",
+                success=False,
+                error_message=str(e),
+            )
+
+    def _build_agent_message(
+        self, agent_name: str, context: dict[str, str]
+    ) -> str:
+        """Build the message to send to the SDK agent.
+
+        Args:
+            agent_name: Name of the agent.
+            context: Context from previous agents (artifacts).
+
+        Returns:
+            Formatted message for the agent.
+        """
+        # Artifact type mapping
+        artifact_types = {
+            "data_analyst": ("DRD", "Data Requirements Document"),
+            "data_architect": ("PAD", "Pipeline Architecture Document"),
+            "mapping_engineer": ("DMD", "Data Mapping Document"),
+            "dq_engineer": ("DQS", "Data Quality Specification"),
+            "story_writer": ("Stories", "User Stories"),
+            "sync_agent": ("Package", "Data Engineering Delivery Package"),
+        }
+
+        artifact_code, artifact_name = artifact_types.get(
+            agent_name, ("Artifact", "Artifact")
+        )
+
+        # Get business request
+        message = f"## Business Request\n\n{self.session.request_content}\n"
+
+        # Add context from previous artifacts
+        if context:
+            message += "\n## Context from Previous Agents\n\n"
+            for artifact_type, content in context.items():
+                message += f"### {artifact_type.upper()}\n\n{content}\n\n"
+
+        # Add critical instructions for artifact generation
+        message += f"""
+## YOUR TASK - IMPORTANT
+
+You MUST generate a complete {artifact_name} ({artifact_code}) based on the business request above.
+
+**CRITICAL INSTRUCTIONS:**
+1. Use tools to explore the data FIRST (duckdb_tables, duckdb_schema, etc.)
+2. Then generate the COMPLETE {artifact_code} document following your system prompt format
+3. Your FINAL message must be the FULL {artifact_code} content - NOT a summary or question
+4. Do NOT ask for confirmation or next steps - just generate the artifact
+5. Do NOT wrap the output in code fences - output the raw content directly
+6. The artifact should be comprehensive and follow the exact format in your system prompt
+
+Generate the {artifact_code} now.
+"""
+
+        return message
+
+    def _extract_artifact_from_conversation(
+        self, agent_name: str, conversation: "Conversation"
+    ) -> str:
+        """Extract artifact content from SDK conversation.
+
+        Uses the SDK's get_agent_final_response utility to extract
+        the agent's final message from the conversation events.
+        Also applies post-processing to clean the artifact content.
+
+        Args:
+            agent_name: Name of the agent.
+            conversation: SDK Conversation instance.
+
+        Returns:
+            Extracted and cleaned artifact content.
+        """
+        from openhands.sdk.conversation import get_agent_final_response
+
+        # Get events from conversation state
+        events = list(conversation.state.events)
+
+        # Extract final response using SDK utility
+        response = get_agent_final_response(events)
+
+        if not response:
+            logger.warning(
+                f"No final response found in conversation for {agent_name}"
+            )
+            return f"[No artifact extracted from {agent_name}]"
+
+        # Clean the response - remove code fence wrapping if present
+        cleaned = self._clean_artifact_content(response)
+
+        logger.info(
+            f"Extracted artifact from {agent_name}",
+            extra={"content_length": len(cleaned)},
+        )
+
+        return cleaned
+
+    def _clean_artifact_content(self, content: str) -> str:
+        """Clean artifact content by removing code fence wrappers.
+
+        Args:
+            content: Raw content from the agent.
+
+        Returns:
+            Cleaned content without code fence wrappers.
+        """
+        content = content.strip()
+
+        # Remove markdown code fence wrapper
+        if content.startswith("```markdown"):
+            content = content[11:]
+        elif content.startswith("```yaml"):
+            content = content[7:]
+        elif content.startswith("```csv"):
+            content = content[6:]
+        elif content.startswith("```"):
+            content = content[3:]
+
+        if content.endswith("```"):
+            content = content[:-3]
+
+        return content.strip()
+
+    async def _execute_agent_legacy(self, agent_name: str) -> PWIAgentResult:
+        """Execute agent using legacy custom agent system.
+
+        DEPRECATED: Legacy agent system has been removed.
+        Use runtime_mode="sdk" instead.
+
+        Args:
+            agent_name: Name of the agent to execute.
+
+        Raises:
+            NotImplementedError: Legacy mode is no longer supported.
+        """
+        raise NotImplementedError(
+            "Legacy agent execution mode is no longer supported. "
+            "The custom BasePWIAgent classes have been removed. "
+            "Please use runtime_mode='sdk' instead, which uses the "
+            "OpenHands SDK with microagent-based prompts. "
+            f"To run agent '{agent_name}' with SDK mode, set "
+            "runtime_mode='sdk' in the controller configuration."
+        )
 
     async def _handle_review_gate(self, agent_name: str) -> bool:
         """Handle review gate after agent completes.
@@ -297,6 +629,154 @@ class PWIWorkflowController:
             artifact_format=result.artifact_format,
             content=result.artifact_content,
         )
+
+    async def _validate_artifact(
+        self, agent_name: str, result: PWIAgentResult
+    ) -> tuple[bool, list[str]]:
+        """Validate artifact against template requirements.
+
+        Performs automatic validation after agent execution to catch
+        format issues before the next agent runs.
+
+        Args:
+            agent_name: Name of the agent.
+            result: Agent execution result.
+
+        Returns:
+            Tuple of (is_valid, list_of_issues).
+        """
+        if not result.success or not result.artifact_content:
+            return True, []  # Nothing to validate
+
+        if not result.artifact_type:
+            return True, []  # No artifact type to validate against
+
+        # Use ValidateArtifactTool executor directly
+        executor = ValidateArtifactExecutor()
+        action = ValidateArtifactAction(
+            artifact_type=result.artifact_type,
+            content=result.artifact_content,
+        )
+        observation = executor(action)
+
+        if not observation.valid:
+            logger.warning(
+                f"Artifact validation failed for {agent_name}",
+                extra={"issues": observation.issues, "artifact_type": result.artifact_type},
+            )
+
+        return observation.valid, observation.issues
+
+    async def _run_validator_agent(
+        self, agent_name: str, result: PWIAgentResult
+    ) -> tuple[str, list[str]]:
+        """Run ValidatorAgent to comprehensively validate an artifact.
+
+        Uses LLM reasoning to validate format, content quality, and
+        cross-references with previous artifacts.
+
+        Args:
+            agent_name: Name of the agent whose output is being validated.
+            result: Agent execution result containing the artifact.
+
+        Returns:
+            Tuple of (validation_status, list_of_issues) where status is
+            'PASS', 'WARN', or 'FAIL'.
+        """
+        if not result.success or not result.artifact_content:
+            return "PASS", []  # Nothing to validate
+
+        if not result.artifact_type:
+            return "PASS", []  # No artifact type to validate
+
+        # Get LLM config for validator agent
+        agent_config = self.config.get_agent_config("validator_agent")
+        resolved_model = self.config.get_resolved_model("validator_agent")
+
+        llm_config = {
+            "model": resolved_model,
+            "temperature": 0.3,  # Lower temperature for consistent validation
+            "max_tokens": agent_config.max_tokens,
+        }
+
+        try:
+            # Create validator agent
+            validator = create_pwi_agent("validator_agent", llm_config=llm_config)
+
+            conversation = create_pwi_conversation(
+                agent=validator,
+                workspace=self.workspace_path,
+            )
+
+            # Build validation message with context
+            context = {
+                atype: artifact.content
+                for atype, artifact in self.session.artifacts.items()
+            }
+
+            message = f"""## Validation Task
+
+Validate the following {result.artifact_type.upper()} artifact produced by {agent_name}:
+
+### Artifact to Validate ({result.artifact_type.upper()})
+{result.artifact_content}
+
+### Previous Artifacts (for cross-reference)
+"""
+            for atype, content in context.items():
+                if atype != result.artifact_type:
+                    # Include summary of previous artifacts, not full content
+                    preview = content[:500] + "..." if len(content) > 500 else content
+                    message += f"\n#### {atype.upper()} (preview)\n{preview}\n"
+
+            message += """
+
+Perform comprehensive validation and output a validation report.
+"""
+
+            # Run validation
+            conversation.send_message(message)
+            conversation.run()
+
+            # Extract validation result
+            from openhands.sdk.conversation import get_agent_final_response
+
+            events = list(conversation.state.events)
+            response = get_agent_final_response(events) or ""
+
+            # Parse validation result
+            status = "PASS"
+            issues = []
+
+            if "VALIDATION_RESULT: FAIL" in response:
+                status = "FAIL"
+            elif "VALIDATION_RESULT: WARN" in response:
+                status = "WARN"
+
+            # Extract issues from the response
+            for line in response.split("\n"):
+                line = line.strip()
+                if line.startswith("- ") and any(
+                    word in line.lower()
+                    for word in ["issue", "missing", "error", "fail", "warn", "invalid"]
+                ):
+                    issues.append(line[2:])  # Remove "- " prefix
+
+            # Cleanup
+            conversation.close()
+
+            logger.info(
+                f"ValidatorAgent completed for {agent_name}",
+                extra={"status": status, "issue_count": len(issues)},
+            )
+
+            return status, issues
+
+        except Exception as e:
+            logger.exception(f"ValidatorAgent failed for {agent_name}")
+            # Fall back to basic validation on error
+            is_valid, basic_issues = await self._validate_artifact(agent_name, result)
+            return "PASS" if is_valid else "WARN", basic_issues
 
     def _export_artifacts(self) -> None:
         """Export all artifacts to the output directory."""
@@ -376,28 +856,120 @@ class PWIWorkflowController:
                 )
 
                 try:
-                    # Execute agent
-                    result = await self._execute_agent(agent_name)
+                    # Retry loop with validation feedback
+                    max_retries = 2  # Number of retries after initial attempt
+                    retry_count = 0
+                    validation_feedback: str | None = None
 
-                    if not result.success:
+                    while True:
+                        # Execute agent (with feedback on retry)
+                        if retry_count > 0:
+                            progress.update(
+                                task,
+                                description=f"Retrying {agent_name.replace('_', ' ').title()} ({retry_count}/{max_retries})...",
+                            )
+                        result = await self._execute_agent(agent_name, validation_feedback)
+
+                        if not result.success:
+                            progress.update(
+                                task,
+                                description=f"[red]✗ {agent_name} failed: {result.error_message}[/red]",
+                            )
+                            self.session_adapter.emit_workflow_failed(
+                                error_message=result.error_message or "Unknown error",
+                                failed_at_agent=agent_name,
+                            )
+                            self._is_running = False
+                            return False
+
+                        # Run ValidatorAgent for comprehensive validation
                         progress.update(
                             task,
-                            description=f"[red]✗ {agent_name} failed: {result.error_message}[/red]",
+                            description=f"Validating {agent_name.replace('_', ' ').title()}...",
                         )
-                        self.session_adapter.emit_workflow_failed(
-                            error_message=result.error_message or "Unknown error",
-                            failed_at_agent=agent_name,
+                        validation_status, validation_issues = await self._run_validator_agent(
+                            agent_name, result
                         )
-                        self._is_running = False
-                        return False
 
-                    # Save artifact
+                        # If validation passed or we've exhausted retries, break
+                        if validation_status == "PASS":
+                            break
+                        if retry_count >= max_retries:
+                            break
+
+                        # Validation failed - prepare feedback for retry
+                        console.print(
+                            f"\n[yellow]⚠ Validation issues for {agent_name} (retry {retry_count + 1}/{max_retries}):[/yellow]"
+                        )
+                        for issue in validation_issues:
+                            console.print(f"  [dim]- {issue}[/dim]")
+                        console.print()
+
+                        # Build feedback message for retry
+                        validation_feedback = f"""Validation Status: {validation_status}
+
+Issues found:
+"""
+                        for issue in validation_issues:
+                            validation_feedback += f"- {issue}\n"
+
+                        retry_count += 1
+
+                    # Display final validation results
+                    if validation_status == "FAIL":
+                        console.print(
+                            f"\n[red]✗ Validation FAILED for {agent_name} after {retry_count} retries:[/red]"
+                        )
+                        for issue in validation_issues:
+                            console.print(f"  [red]- {issue}[/red]")
+                        console.print()
+
+                        # In strict mode, stop workflow on FAIL
+                        if self.strict_validation:
+                            self.session_adapter.emit_workflow_failed(
+                                error_message=f"Validation failed for {agent_name}",
+                                failed_at_agent=agent_name,
+                            )
+                            self._is_running = False
+                            return False
+
+                    elif validation_status == "WARN":
+                        if retry_count > 0:
+                            console.print(
+                                f"\n[yellow]⚠ Validation warnings remain for {agent_name} after {retry_count} retries:[/yellow]"
+                            )
+                        else:
+                            console.print(
+                                f"\n[yellow]⚠ Validation warnings for {agent_name}:[/yellow]"
+                            )
+                        for issue in validation_issues:
+                            console.print(f"  [dim]- {issue}[/dim]")
+                        console.print()
+                    elif retry_count > 0:
+                        # PASS after retries
+                        console.print(
+                            f"\n[green]✓ Validation passed for {agent_name} after {retry_count} retry(ies)[/green]\n"
+                        )
+
+                    # Save artifact (even with validation warnings)
                     self._save_artifact(agent_name, result)
 
-                    progress.update(
-                        task,
-                        description=f"[green]✓ {agent_name.replace('_', ' ').title()} complete[/green]",
-                    )
+                    # Update progress with validation status
+                    if validation_status == "PASS":
+                        progress.update(
+                            task,
+                            description=f"[green]✓ {agent_name.replace('_', ' ').title()} complete[/green]",
+                        )
+                    elif validation_status == "WARN":
+                        progress.update(
+                            task,
+                            description=f"[yellow]✓ {agent_name.replace('_', ' ').title()} complete (with warnings)[/yellow]",
+                        )
+                    else:  # FAIL but not strict mode
+                        progress.update(
+                            task,
+                            description=f"[red]✓ {agent_name.replace('_', ' ').title()} complete (validation failed)[/red]",
+                        )
 
                     # Callback if provided
                     if self.on_agent_complete:

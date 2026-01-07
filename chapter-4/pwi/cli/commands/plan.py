@@ -52,6 +52,12 @@ def run_plan(
         "--skip-review",
         help="Skip all review gates (not recommended)",
     ),
+    strict_validation: bool = typer.Option(
+        False,
+        "--strict-validation",
+        "--strict",
+        help="Block workflow if validation fails (default: warn only)",
+    ),
 ) -> None:
     """Run the planning workflow on a business request.
 
@@ -153,6 +159,7 @@ def run_plan(
                 config=config,
                 auto_approve=auto_approve,
                 skip_review=skip_review,
+                strict_validation=strict_validation,
             )
         )
     except KeyboardInterrupt:
@@ -189,6 +196,7 @@ async def _run_workflow(
     config: PWIConfig,
     auto_approve: bool,
     skip_review: bool,
+    strict_validation: bool = False,
 ) -> None:
     """Run the workflow asynchronously using OpenHands SDK.
 
@@ -215,6 +223,7 @@ async def _run_workflow(
             auto_approve=auto_approve,
             skip_review=skip_review,
             review_mode=config.review.default_mode,
+            strict_validation=strict_validation,
         )
 
         # Run the workflow

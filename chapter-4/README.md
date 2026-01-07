@@ -29,7 +29,9 @@ pwi session list
 - **Session Persistence**: Resume workflows, track progress
 - **Review Gates**: CLI, file-based, or web review
 - **Multi-Model Support**: Configure different LLM models per agent via OpenRouter
-- **Tool-Use Capabilities**: Agents can query DuckDB, analyze CSVs, and call external APIs (OpenHands SDK)
+- **Tool-Use Capabilities**: Exploration agents can query DuckDB, analyze CSVs (OpenHands SDK)
+- **Skills/Context Injection**: DuckDB knowledge skill auto-triggers for relevant queries
+- **Artifact-Only Agents**: Some agents generate artifacts directly without tools to prevent exploration loops
 
 ## Architecture
 
@@ -50,14 +52,16 @@ DRD → PAD → DMD → DQS → Stories → Package
 
 ## Agent Pipeline
 
-| Agent | Artifact | Format | Description |
-|-------|----------|--------|-------------|
-| Data Analyst | DRD | Markdown | Data Requirements Document |
-| Data Architect | PAD | Markdown | Pipeline Architecture Document |
-| Mapping Engineer | DMD | CSV | Data Mapping Document |
-| DQ Engineer | DQS | YAML | Data Quality Specification |
-| Story Writer | Stories | Markdown | User Stories & Epics |
-| Sync Agent | Package | Markdown | Delivery Package Summary |
+| Agent | Artifact | Format | Tools | Description |
+|-------|----------|--------|-------|-------------|
+| Data Analyst | DRD | Markdown | DuckDB, CSV | Explores data schema and generates requirements |
+| Data Architect | PAD | Markdown | file_editor | Generates architecture from DRD context |
+| Mapping Engineer | DMD | CSV | DuckDB, CSV, Metadata | Maps source to target fields |
+| DQ Engineer | DQS | YAML | None | Outputs YAML directly from DRD+DMD context |
+| Story Writer | Stories | Markdown | file_editor | Generates stories from all artifacts |
+| Sync Agent | Package | Markdown | None | Consolidates all artifacts into package |
+
+**Note**: Agents with "None" tools output artifacts directly as text to prevent exploration loops.
 
 ## Configuration
 
@@ -94,21 +98,42 @@ review:
 
 ## OpenHands SDK Integration
 
-PWI now includes OpenHands SDK integration for tool-use capabilities:
+PWI uses the OpenHands SDK for agent orchestration with tool-use capabilities:
 
 ```python
-from pwi.openhands.agents import DataAnalystAgent, PWIAgentConfig
-from pwi.openhands.tools import get_tools_for_agent
+from pwi.openhands.agents import create_pwi_agent, create_pwi_conversation
+from pwi.openhands.tools import AGENT_TOOL_MAP
 
-# Agents have access to tools
-config = PWIAgentConfig(name="data_analyst", model="gpt-4o")
-agent = DataAnalystAgent(config=config, llm_client=llm)
+# Create an agent with auto-configured tools
+agent = create_pwi_agent("data_analyst", llm_config={"model": "openai/gpt-4o-mini"})
+conversation = create_pwi_conversation(agent, workspace="./output")
 
-print(agent.tool_names)
-# ['duckdb_query', 'duckdb_schema', 'duckdb_tables', 'analyze_csv', 'csv_stats']
+# Check available tools for each agent
+print(AGENT_TOOL_MAP["data_analyst"])
+# ['terminal', 'file_editor', 'task_tracker', 'duckdb_query', 'duckdb_schema', ...]
+
+print(AGENT_TOOL_MAP["dq_engineer"])
+# []  # No tools - outputs artifact directly
 ```
 
-### Available Tools (14)
+### Agent Tool Configuration
+
+| Agent | Tools | Behavior |
+|-------|-------|----------|
+| data_analyst | DuckDB, CSV, terminal, file_editor | Explores data, generates DRD |
+| data_architect | file_editor, task_tracker | Generates PAD from DRD context |
+| mapping_engineer | DuckDB, CSV, Metadata, terminal | Maps fields with schema exploration |
+| dq_engineer | **None** | Outputs DQS YAML directly |
+| story_writer | file_editor, task_tracker | Generates stories from context |
+| sync_agent | **None** | Outputs Package directly |
+
+### Skills (Contextual Knowledge)
+
+Agents receive contextual knowledge via Skills that auto-trigger on keywords:
+
+- **duckdb**: DuckDB query patterns, table schemas, SQL syntax
+
+### Available Domain Tools (14)
 
 | Category | Tools |
 |----------|-------|
@@ -117,7 +142,7 @@ print(agent.tool_names)
 | Metadata | `query_metadata_catalog`, `get_lineage`, `get_tags` |
 | Artifact | `generate_artifact`, `save_artifact`, `validate_artifact`, `list_artifact_types` |
 
-See [docs/openhands_migration.md](docs/openhands_migration.md) for full documentation.
+See [docs/OPENHANDS_SDK_REFERENCE.md](docs/OPENHANDS_SDK_REFERENCE.md) for SDK documentation.
 
 ## Development
 

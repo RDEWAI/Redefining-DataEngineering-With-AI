@@ -6,37 +6,43 @@ and external system integration.
 
 Phase 8 of PWI development - OpenHands SDK Migration.
 
-Usage:
-    # Agents
-    from pwi.openhands.agents import (
-        DataAnalystAgent,
-        get_agent,
-        AGENT_SEQUENCE,
-    )
+Usage (SDK Pattern - Recommended):
+    from openhands.sdk import LLM, Agent, Conversation, Tool
+    from pwi.openhands.agents import create_pwi_agent, create_pwi_conversation
+    from pwi.openhands.tools import AGENT_TOOL_MAP
 
-    # Tools
-    from pwi.openhands.tools import (
-        get_all_tools,
-        get_tools_for_agent,
-    )
+    # Create an agent with SDK pattern
+    agent = create_pwi_agent("data_analyst")
+    conversation = create_pwi_conversation(agent, workspace="/path/to/workspace")
+    conversation.send_message("Analyze the healthcare data")
+    conversation.run()
 
-    # Workflow
-    from pwi.openhands.workflow import (
-        PWIWorkflowController,
-        EventStream,
-    )
-
-    # Configuration
-    from pwi.openhands.config import OpenHandsConfig
+Legacy Usage:
+    from pwi.openhands.agents import get_agent, PWIAgentConfig
+    from pwi.openhands.tools import get_tools_for_agent
 """
 
-from pwi.openhands.config import OpenHandsConfig
+# SDK imports
+from openhands.sdk import LLM, Agent, Conversation
+from openhands.sdk.tool import Tool
+
+from pwi.openhands.config import OpenHandsConfig, RuntimeType
+from pwi.openhands.runtime import PWIRuntime, create_runtime
 
 # Re-export from submodules for convenience
 # These are imported lazily to avoid circular imports
 __all__ = [
+    # SDK Classes
+    "LLM",
+    "Agent",
+    "Conversation",
+    "Tool",
     # Configuration
     "OpenHandsConfig",
+    "RuntimeType",
+    # Runtime
+    "PWIRuntime",
+    "create_runtime",
     # Submodule access
     "agents",
     "tools",

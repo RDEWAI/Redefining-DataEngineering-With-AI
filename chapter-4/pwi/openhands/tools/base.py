@@ -1,11 +1,23 @@
 """Base tool definitions and registry for PWI OpenHands agents.
 
+.. deprecated:: 0.8.0
+    This module uses the legacy litellm tool format. New tools should
+    use the OpenHands SDK pattern with ToolDefinition and register_tool.
+
+    Migration guide:
+    - Replace `create_tool()` with SDK `ToolDefinition` class
+    - Replace `ToolRegistry` with SDK `register_tool()` function
+    - Replace `ChatCompletionToolParam` with `Action` and `Observation` schemas
+
+    See `pwi/openhands/tools/duckdb_tool.py` for the SDK pattern example.
+
 This module provides the foundation for custom tool definitions using
 the litellm ChatCompletionToolParam format.
 """
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, Callable
 
 from litellm import ChatCompletionToolParam, ChatCompletionToolParamFunctionChunk
@@ -13,6 +25,14 @@ from litellm import ChatCompletionToolParam, ChatCompletionToolParamFunctionChun
 from pwi.utils.logging import get_logger
 
 logger = get_logger("openhands.tools.base")
+
+# Emit deprecation warning when module is imported
+warnings.warn(
+    "pwi.openhands.tools.base is deprecated. Use OpenHands SDK ToolDefinition pattern instead. "
+    "See docs/OPENHANDS_SDK_REFERENCE.md for migration guide.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 class ToolRegistry:
