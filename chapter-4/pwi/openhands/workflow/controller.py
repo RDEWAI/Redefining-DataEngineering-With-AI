@@ -527,13 +527,30 @@ Generate the {artifact_code} now.
         # Get events from conversation state
         events = list(conversation.state.events)
 
+        # Log event statistics for debugging
+        event_stats = {}
+        for event in events:
+            event_type = type(event).__name__
+            event_stats[event_type] = event_stats.get(event_type, 0) + 1
+        logger.info(
+            f"Conversation events for {agent_name}: {event_stats}",
+            extra={"event_count": len(events), "agent": agent_name},
+        )
+
         # Extract final response using SDK utility
         response = get_agent_final_response(events)
 
-        # FALLBACK: If no finish call found, try to extract from message events
+        # FALLBACK 1: Try to extract from tool outputs (file_editor, etc.)
         if not response:
             logger.info(
-                f"No finish call found for {agent_name}, trying fallback extraction"
+                f"No finish call found for {agent_name}, trying tool output extraction"
+            )
+            response = self._extract_from_tool_outputs(events, agent_name)
+
+        # FALLBACK 2: If no tool output found, try to extract from message events
+        if not response:
+            logger.info(
+                f"No tool output found for {agent_name}, trying message extraction"
             )
             response = self._extract_last_substantial_message(events, agent_name)
 
@@ -541,6 +558,8 @@ Generate the {artifact_code} now.
             logger.warning(
                 f"No final response found in conversation for {agent_name}"
             )
+            # Save debug events for failed extractions
+            self._save_debug_events(agent_name, events)
             return f"[No artifact extracted from {agent_name}]"
 
         # Get artifact type for format-specific cleaning
@@ -552,18 +571,77 @@ Generate the {artifact_code} now.
 
         logger.info(
             f"Extracted artifact from {agent_name}",
-            extra={"content_length": len(cleaned), "artifact_type": artifact_type},
+            extra={
+                "raw_length": len(response),
+                "cleaned_length": len(cleaned),
+                "artifact_type": artifact_type,
+            },
         )
 
         return cleaned
 
+    def _save_debug_events(
+        self, agent_name: str, events: list, output_dir: Path | None = None
+    ) -> Path | None:
+        """Save raw conversation events for debugging.
+
+        Creates a JSON file with all events from the conversation,
+        useful for post-mortem analysis of extraction failures.
+
+        Args:
+            agent_name: Name of the agent.
+            events: List of conversation events.
+            output_dir: Optional output directory.
+
+        Returns:
+            Path to saved file, or None if save failed.
+        """
+        import json
+        from datetime import datetime
+
+        output_dir = output_dir or self.config.project.output_dir / "debug"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        debug_file = output_dir / f"{self.session.session_id}_{agent_name}_{timestamp}_events.json"
+
+        try:
+            events_data = []
+            for event in events:
+                event_dict = {
+                    "type": type(event).__name__,
+                    "source": getattr(event, "source", "unknown"),
+                }
+                # Capture content from various attributes
+                for attr in ("content", "thought", "output", "message", "llm_message"):
+                    if hasattr(event, attr):
+                        val = getattr(event, attr)
+                        if val:
+                            if hasattr(val, "content"):  # LLM message object
+                                event_dict[attr] = str(val.content)[:2000]
+                            else:
+                                event_dict[attr] = str(val)[:2000]
+
+                events_data.append(event_dict)
+
+            debug_file.write_text(json.dumps(events_data, indent=2, default=str))
+            logger.info(f"Debug events saved to {debug_file}")
+            return debug_file
+
+        except Exception as e:
+            logger.warning(f"Failed to save debug events: {e}")
+            return None
+
     def _extract_last_substantial_message(
         self, events: list, agent_name: str
     ) -> str | None:
-        """Fallback extraction: find the last substantial message from agent.
+        """Multi-tier fallback extraction for artifact content.
 
-        Looks for MessageEvent or ActionEvent with long text content that looks
-        like an artifact (markdown headers, CSV rows, or YAML structure).
+        Uses a tiered approach to extract artifact content:
+        - Tier 1: MessageEvent with artifact markers (>100 chars) - lowered threshold
+        - Tier 2: Longest message with reasonable structure (>150 chars)
+        - Tier 3: Last substantial message (>75 chars)
+        - Tier 4: Concatenate last few messages (last resort)
 
         Args:
             events: List of conversation events.
@@ -578,111 +656,421 @@ Generate the {artifact_code} now.
         agent_info = get_agent_info(agent_name)
         artifact_format = agent_info.get("artifact_format", "")
 
-        # Patterns that indicate artifact content by format
+        # Expanded format-specific markers - more inclusive for weaker models
         artifact_markers = {
-            "markdown": ["# ", "## ", "### ", "**"],
-            "csv": ["source_system,", ",source_table,", ",target_table,"],
-            "yaml": ["version:", "metadata:", "rules:", "checks:"],
+            "markdown": [
+                "# ", "## ", "### ", "#### ",  # Headers
+                "**", "| ", "- ", "1. ", "---",  # Formatting
+                "|---", "| ---",  # Markdown tables
+                "Executive Summary", "Overview", "Data Requirements",  # Common sections
+                "Pipeline Architecture", "User Stories",  # Document titles
+            ],
+            "csv": [
+                "source_system,", "source_system\t", ",source_table",
+                "source_column,", "target_table,", "target_column,",
+                "source_system|", "|source_table",  # Markdown table format
+                "synthea,", "bronze.", "silver.", "gold.",  # Common values
+            ],
+            "yaml": [
+                "version:", "metadata:", "rules:", "checks:",
+                "quality_dimensions:", "quality_gates:", "config:",
+                "name:", "description:", "type:",  # Common YAML keys
+            ],
         }
         markers = artifact_markers.get(artifact_format, artifact_markers["markdown"])
 
-        for event in reversed(events):
+        # Collect all agent messages for analysis
+        agent_messages: list[tuple[int, str]] = []  # (index, content)
+
+        for idx, event in enumerate(events):
             content = ""
             if isinstance(event, MessageEvent) and event.source == "agent":
                 text_parts = content_to_str(event.llm_message.content)
                 content = "".join(text_parts) if text_parts else ""
             elif isinstance(event, ActionEvent) and event.source == "agent":
-                # Check if action has thought content (agent's reasoning/output)
-                if hasattr(event, "thought") and event.thought:
-                    content = event.thought
+                # Check multiple attributes for content
+                for attr in ("thought", "output", "content", "message", "result"):
+                    if hasattr(event, attr) and getattr(event, attr):
+                        val = getattr(event, attr)
+                        if isinstance(val, str) and len(val) > len(content):
+                            content = val
 
-            # Check if content looks like an artifact (>500 chars with markers)
-            if content and len(content) > 500:
+            if content and len(content.strip()) > 30:  # Lowered from 50
+                agent_messages.append((idx, content.strip()))
+
+        if not agent_messages:
+            logger.warning(f"No agent messages found for {agent_name}")
+            return None
+
+        # Tier 1: Find message with artifact markers (reverse order - latest first)
+        # Lowered threshold from 200 to 100
+        for idx, content in reversed(agent_messages):
+            if len(content) > 100:
                 for marker in markers:
-                    if marker in content:
+                    if marker.lower() in content.lower():
                         logger.info(
-                            f"Fallback extraction found artifact for {agent_name}",
-                            extra={"content_length": len(content), "marker": marker},
+                            f"Tier 1 extraction for {agent_name}: found marker '{marker}'",
+                            extra={"content_length": len(content), "tier": 1},
                         )
                         return content
+
+        # Tier 2: Find longest message with reasonable structure
+        # Lowered threshold from 300 to 150
+        longest_msg = max(agent_messages, key=lambda x: len(x[1]))
+        if len(longest_msg[1]) > 150:
+            logger.info(
+                f"Tier 2 extraction for {agent_name}: using longest message",
+                extra={"content_length": len(longest_msg[1]), "tier": 2},
+            )
+            return longest_msg[1]
+
+        # Tier 3: Return last substantial message
+        # Lowered threshold from 100 to 75
+        for idx, content in reversed(agent_messages):
+            if len(content) > 75:
+                logger.info(
+                    f"Tier 3 extraction for {agent_name}: using last substantial message",
+                    extra={"content_length": len(content), "tier": 3},
+                )
+                return content
+
+        # Tier 4: Concatenate last few messages
+        last_messages = [content for _, content in agent_messages[-3:]]
+        if last_messages:
+            combined = "\n\n".join(last_messages)
+            logger.warning(
+                f"Tier 4 extraction for {agent_name}: concatenated {len(last_messages)} messages",
+                extra={"content_length": len(combined), "tier": 4},
+            )
+            return combined
+
+        return None
+
+    def _extract_from_tool_outputs(
+        self, events: list, agent_name: str
+    ) -> str | None:
+        """Extract artifact content from file_editor tool outputs.
+
+        Scans conversation events for FileEditorAction write operations
+        that may contain the artifact content. This catches cases where
+        the agent wrote the artifact to a file but didn't call finish properly.
+
+        Args:
+            events: List of conversation events.
+            agent_name: Name of the agent (for artifact format lookup).
+
+        Returns:
+            Extracted content if found, None otherwise.
+        """
+        from openhands.sdk.event import ActionEvent
+
+        agent_info = get_agent_info(agent_name)
+        artifact_format = agent_info.get("artifact_format", "")
+        artifact_type = agent_info.get("artifact_type", "")
+
+        # Format-specific content indicators
+        content_indicators = {
+            "markdown": ["# ", "## ", "### "],
+            "csv": ["source_system,", "source_system\t", ",source_table"],
+            "yaml": ["version:", "metadata:", "quality_dimensions:"],
+        }
+        indicators = content_indicators.get(artifact_format, content_indicators["markdown"])
+
+        # Search for file_editor write operations (reverse order - latest first)
+        for event in reversed(events):
+            if not isinstance(event, ActionEvent):
+                continue
+
+            # Check for FileEditorAction with str_replace or write command
+            action_type = type(event).__name__
+            if "FileEditor" not in action_type and "file_editor" not in str(getattr(event, "action", "")):
+                continue
+
+            # Extract content from various attributes
+            content = ""
+            for attr in ("new_str", "content", "output", "result"):
+                if hasattr(event, attr):
+                    val = getattr(event, attr)
+                    if val and isinstance(val, str) and len(val) > len(content):
+                        content = val
+
+            # Check if content looks like our artifact
+            if content and len(content) > 100:
+                content_lower = content.lower()
+                for indicator in indicators:
+                    if indicator.lower() in content_lower:
+                        logger.info(
+                            f"Extracted artifact from tool output for {agent_name}",
+                            extra={
+                                "content_length": len(content),
+                                "indicator": indicator,
+                                "source": "file_editor",
+                            },
+                        )
+                        return content
+
+        # Also check for artifact content in any ActionEvent output
+        for event in reversed(events):
+            if not isinstance(event, ActionEvent):
+                continue
+
+            # Check output attribute for substantial content
+            output = getattr(event, "output", None) or getattr(event, "result", None)
+            if output and isinstance(output, str) and len(output) > 200:
+                output_lower = output.lower()
+                for indicator in indicators:
+                    if indicator.lower() in output_lower:
+                        logger.info(
+                            f"Extracted artifact from action output for {agent_name}",
+                            extra={
+                                "content_length": len(output),
+                                "indicator": indicator,
+                                "source": "action_output",
+                            },
+                        )
+                        return output
 
         return None
 
     def _clean_artifact_content(self, content: str, artifact_type: str = "") -> str:
-        """Clean artifact content by removing code fence wrappers and preamble text.
+        """Clean artifact content with format-specific processing.
 
         Args:
             content: Raw content from the agent.
-            artifact_type: Type of artifact (dmd, dqs, etc.) for format-specific cleaning.
+            artifact_type: Type of artifact (dmd, dqs, drd, pad, stories, package).
 
         Returns:
-            Cleaned content without code fence wrappers or preamble.
+            Cleaned content appropriate for the artifact format.
         """
         content = content.strip()
 
-        # Remove code fence wrappers - handle various patterns
-        fence_patterns = [
-            "```markdown\n",
-            "```markdown",
-            "```yaml\n",
-            "```yaml",
-            "```yml\n",
-            "```yml",
-            "```csv\n",
-            "```csv",
-            "```\n",
-            "```",
-        ]
+        # Step 1: Remove code fences (all variations)
+        content = self._strip_code_fences(content)
 
-        for pattern in fence_patterns:
-            if content.startswith(pattern):
-                content = content[len(pattern):]
-                break
-
-        # Remove trailing fence
-        if content.endswith("```"):
-            content = content[:-3]
-        content = content.strip()
-
-        # Handle leading 'yaml' or 'csv' text artifacts (from partial fence removal)
-        if content.lower().startswith("yaml\n"):
-            content = content[5:]
-        elif content.lower().startswith("csv\n"):
-            content = content[4:]
-
-        # For CSV/DMD: Strip preamble text before the actual CSV header
-        if artifact_type == "dmd" or (
-            "source_system" in content.lower() and "," in content
-        ):
-            lines = content.split("\n")
-            csv_start = 0
-            for i, line in enumerate(lines):
-                line_lower = line.lower().strip()
-                # Look for the CSV header line
-                if line_lower.startswith("source_system,") or (
-                    "source_system" in line_lower and line.count(",") >= 5
-                ):
-                    csv_start = i
-                    break
-            if csv_start > 0:
-                content = "\n".join(lines[csv_start:])
-                logger.debug(f"Stripped {csv_start} preamble lines from CSV content")
-
-        # For YAML/DQS: Ensure content starts with valid YAML
-        if artifact_type == "dqs" or content.strip().startswith("version:"):
-            lines = content.split("\n")
-            yaml_start = 0
-            for i, line in enumerate(lines):
-                stripped = line.strip()
-                # Look for YAML starting key
-                if stripped.startswith("version:") or stripped.startswith("metadata:"):
-                    yaml_start = i
-                    break
-            if yaml_start > 0:
-                content = "\n".join(lines[yaml_start:])
-                logger.debug(f"Stripped {yaml_start} preamble lines from YAML content")
+        # Step 2: Format-specific cleaning
+        if artifact_type == "dmd":
+            content = self._clean_csv_content(content)
+        elif artifact_type == "dqs":
+            content = self._clean_yaml_content(content)
+        elif artifact_type in ("drd", "pad", "stories", "package"):
+            content = self._clean_markdown_content(content)
 
         return content.strip()
+
+    def _strip_code_fences(self, content: str) -> str:
+        """Remove all code fence wrappers from content."""
+        import re
+
+        # Pattern to match code fences with optional language tag at start
+        fence_pattern = r'^```(?:markdown|yaml|yml|csv|json|python|sql|text)?\s*\n?'
+        content = re.sub(fence_pattern, '', content, flags=re.MULTILINE)
+
+        # Remove trailing fence
+        if content.rstrip().endswith('```'):
+            content = content.rstrip()[:-3]
+
+        # Remove standalone fence on its own line
+        content = re.sub(r'\n```\s*$', '', content)
+
+        # Handle leading language tag artifacts (from partial fence removal)
+        for lang in ('yaml', 'csv', 'json', 'markdown'):
+            if content.lower().startswith(f"{lang}\n"):
+                content = content[len(lang) + 1:]
+                break
+
+        return content.strip()
+
+    def _clean_csv_content(self, content: str) -> str:
+        """Clean CSV content by extracting actual CSV from markdown wrapper.
+
+        Handles multiple input formats:
+        - Raw CSV with commas
+        - Markdown tables (|col|col|)
+        - CSV wrapped in markdown prose
+        """
+        lines = content.split('\n')
+        csv_lines = []
+        in_csv = False
+        is_markdown_table = False
+
+        # Phrases that indicate preamble text to skip
+        skip_phrases = [
+            'here is', 'below is', 'the following', 'data mapping document',
+            'this document', 'let me', 'i will', 'i have', 'overview',
+            'entity definitions', 'business rules', 'conclusion', 'created',
+            'generated', 'complete'
+        ]
+
+        # First check if this is a markdown table format
+        for line in lines:
+            if line.strip().startswith('|') and 'source_system' in line.lower():
+                is_markdown_table = True
+                break
+
+        if is_markdown_table:
+            # Convert markdown table to CSV
+            return self._markdown_table_to_csv(content)
+
+        for line in lines:
+            line_stripped = line.strip()
+            line_lower = line_stripped.lower()
+
+            # Skip markdown headers and prose
+            if line_stripped.startswith('#'):
+                continue
+            if line_stripped.startswith('**') and line_stripped.endswith('**'):
+                continue
+            if any(phrase in line_lower for phrase in skip_phrases):
+                continue
+            # Skip markdown table formatting lines
+            if line_stripped.startswith('|') and '---' in line_stripped:
+                continue
+
+            # Detect CSV header or data
+            if 'source_system' in line_lower and ',' in line_stripped:
+                in_csv = True
+                csv_lines = [line]  # Reset and start fresh
+                continue
+
+            # Continue collecting CSV lines
+            if in_csv and line_stripped:
+                # Stop if we hit markdown again
+                if line_stripped.startswith('#') or line_stripped.startswith('**'):
+                    break
+                csv_lines.append(line)
+
+        if csv_lines:
+            logger.debug(f"Extracted {len(csv_lines)} CSV lines from content")
+            return '\n'.join(csv_lines)
+
+        # Fallback: find source_system line and return from there
+        for i, line in enumerate(lines):
+            if 'source_system' in line.lower() and ',' in line:
+                logger.debug(f"Fallback CSV extraction from line {i}")
+                return '\n'.join(lines[i:])
+
+        return content
+
+    def _markdown_table_to_csv(self, content: str) -> str:
+        """Convert a markdown table to CSV format.
+
+        Args:
+            content: Markdown content containing a table.
+
+        Returns:
+            CSV formatted content.
+        """
+        lines = content.split('\n')
+        csv_lines = []
+        in_table = False
+
+        for line in lines:
+            line_stripped = line.strip()
+
+            # Skip non-table content
+            if not line_stripped.startswith('|'):
+                if in_table and csv_lines:
+                    # End of table
+                    break
+                continue
+
+            # Skip separator lines (|---|---|)
+            if '---' in line_stripped:
+                continue
+
+            # This is a table row
+            in_table = True
+
+            # Convert table row to CSV
+            # Remove leading/trailing pipes and split by |
+            cells = line_stripped.strip('|').split('|')
+            # Clean each cell and join with commas
+            csv_row = ','.join(cell.strip() for cell in cells)
+            csv_lines.append(csv_row)
+
+        if csv_lines:
+            logger.debug(f"Converted markdown table to {len(csv_lines)} CSV lines")
+            return '\n'.join(csv_lines)
+
+        return content
+
+    def _clean_yaml_content(self, content: str) -> str:
+        """Clean YAML content by extracting actual YAML from markdown wrapper.
+
+        Handles multiple input formats:
+        - Raw YAML starting with version:
+        - YAML embedded in markdown prose
+        - YAML starting with other common keys (metadata:, rules:, quality_dimensions:)
+        """
+        lines = content.split('\n')
+        yaml_lines = []
+        yaml_started = False
+
+        # Common YAML start keys (expanded for flexibility)
+        yaml_start_keys = [
+            'version:', 'metadata:', 'rules:', 'quality_dimensions:',
+            'quality_rules:', 'checks:', 'config:', 'name:', 'description:',
+        ]
+
+        # Phrases that indicate preamble text to skip
+        skip_phrases = [
+            'here is', 'below is', 'the following', 'data quality',
+            'this document', 'let me', 'i will', 'i have', 'created',
+            'generated', 'specification'
+        ]
+
+        for line in lines:
+            line_stripped = line.strip()
+            line_lower = line_stripped.lower()
+
+            # Skip markdown headers (# or ## but not YAML comments)
+            if line_stripped.startswith('## ') or line_stripped.startswith('# '):
+                if not yaml_started:  # Skip only preamble headers
+                    continue
+
+            # Skip preamble prose lines
+            if not yaml_started and any(phrase in line_lower for phrase in skip_phrases):
+                continue
+
+            # Detect YAML start - common starting keys (case-insensitive check)
+            if not yaml_started:
+                for start_key in yaml_start_keys:
+                    if line_stripped.lower().startswith(start_key.lower()):
+                        yaml_started = True
+                        break
+
+            if yaml_started:
+                # Stop if we hit markdown prose after YAML started
+                if line_stripped.startswith('## ') or line_stripped.startswith('# '):
+                    break
+                yaml_lines.append(line)
+
+        if yaml_lines:
+            logger.debug(f"Extracted {len(yaml_lines)} YAML lines from content")
+            return '\n'.join(yaml_lines)
+
+        # Fallback: find any YAML start key
+        for i, line in enumerate(lines):
+            line_lower = line.strip().lower()
+            for start_key in yaml_start_keys:
+                if line_lower.startswith(start_key.lower()):
+                    logger.debug(f"Fallback YAML extraction from line {i} (key: {start_key})")
+                    return '\n'.join(lines[i:])
+
+        return content
+
+    def _clean_markdown_content(self, content: str) -> str:
+        """Clean markdown content by removing preamble text before first heading."""
+        lines = content.split('\n')
+
+        # Find first markdown heading
+        for i, line in enumerate(lines):
+            if line.strip().startswith('# '):
+                if i > 0:
+                    logger.debug(f"Stripped {i} preamble lines from markdown")
+                return '\n'.join(lines[i:])
+
+        return content
 
     async def _execute_agent_legacy(self, agent_name: str) -> PWIAgentResult:
         """Execute agent using legacy custom agent system.

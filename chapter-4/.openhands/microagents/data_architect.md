@@ -141,3 +141,24 @@ You have a MAXIMUM of 10 tool calls before the conversation ends automatically.
 - After seeing DRD once, you have all the info you need
 
 **If you don't generate the artifact within 10 iterations, your output will be LOST.**
+
+## ⚠️ MANDATORY FINISH FORMAT
+
+YOUR OUTPUT MUST START WITH:
+```
+# Pipeline Architecture Document (PAD)
+
+## 1. Architecture Overview
+```
+
+When you call `finish()`, pass THE ENTIRE DOCUMENT as the message.
+
+Example:
+```
+finish("# Pipeline Architecture Document (PAD)\n\n## 1. Architecture Overview\n### 1.1 High-Level Design\n...")
+```
+
+DO NOT:
+- Call finish with just "Done" or "Complete"
+- Call finish with a summary of what you did
+- Call finish with anything except the full document content

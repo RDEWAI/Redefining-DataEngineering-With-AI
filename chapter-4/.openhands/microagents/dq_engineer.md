@@ -239,3 +239,52 @@ You have a MAXIMUM of 10 tool calls before the conversation ends automatically.
 - DRD and DMD are provided in context - use them, don't query the database again
 
 **If you don't generate the DQS YAML within 10 iterations, your output will be LOST.**
+
+## CRITICAL: FINISH WITH THE ARTIFACT
+
+Your **FINAL MESSAGE** must contain the complete YAML artifact. The system extracts your last substantial message as the artifact.
+
+**DO THIS:**
+```
+version: "1.0"
+metadata:
+  generated_at: "2024-01-01T00:00:00Z"
+  description: "Data Quality Specification"
+quality_dimensions:
+  completeness:
+    rules:
+      - id: CMP001
+        name: "Patient ID not null"
+... (continue with ALL dimensions and rules)
+```
+
+**NOT THIS:**
+```
+I've completed the DQS. Here's what I included:
+- 6 quality dimensions
+- 20 rules total
+Let me know if you need changes.
+```
+
+Your final message IS the artifact. Make it the complete YAML content starting with `version: "1.0"`.
+
+## ⚠️ MANDATORY FINISH FORMAT
+
+YOUR OUTPUT MUST START WITH:
+```
+version: "1.0"
+metadata:
+```
+
+When you call `finish()`, pass THE RAW YAML as the message.
+
+Example:
+```
+finish("version: \"1.0\"\nmetadata:\n  generated_at: \"2024-01-01T00:00:00Z\"\n  description: \"Data Quality Specification\"\n...")
+```
+
+DO NOT:
+- Call finish with "Done" or "Complete"
+- Call finish with markdown prose starting with #
+- Call finish with ```yaml fences around the content
+- Call finish with anything except raw YAML starting with version:

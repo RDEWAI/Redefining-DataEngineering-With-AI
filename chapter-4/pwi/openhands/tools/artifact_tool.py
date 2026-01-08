@@ -23,6 +23,7 @@ import yaml
 from pydantic import Field
 
 from openhands.sdk import Action, Observation
+from openhands.sdk.llm import TextContent
 from openhands.sdk.tool import ToolDefinition, ToolExecutor, register_tool
 
 from pwi.utils.logging import get_logger
@@ -92,9 +93,11 @@ class GenerateArtifactExecutor(
     ) -> GenerateArtifactObservation:
         """Execute artifact generation."""
         if action.artifact_type not in ARTIFACT_TYPES:
+            error_msg = f"Unknown artifact type: {action.artifact_type}"
             return GenerateArtifactObservation(
                 success=False,
-                error=f"Unknown artifact type: {action.artifact_type}",
+                error=error_msg,
+                content=[TextContent(text=f"Error: {error_msg}")],
             )
 
         type_info = ARTIFACT_TYPES[action.artifact_type]
@@ -114,7 +117,16 @@ class GenerateArtifactExecutor(
 
         logger.info(f"Generated {action.artifact_type} artifact")
 
-        return GenerateArtifactObservation(success=True, artifact=artifact)
+        result_text = (
+            f"Generated {type_info['name']} ({action.artifact_type})\n"
+            f"Format: {type_info['format']}\n"
+            f"Content length: {len(action.content)} chars"
+        )
+        return GenerateArtifactObservation(
+            success=True,
+            artifact=artifact,
+            content=[TextContent(text=result_text)],
+        )
 
 
 class GenerateArtifactTool(
@@ -171,8 +183,11 @@ class SaveArtifactExecutor(ToolExecutor[SaveArtifactAction, SaveArtifactObservat
     ) -> SaveArtifactObservation:
         """Execute artifact saving."""
         if action.artifact_type not in ARTIFACT_TYPES:
+            error_msg = f"Unknown artifact type: {action.artifact_type}"
             return SaveArtifactObservation(
-                success=False, error=f"Unknown artifact type: {action.artifact_type}"
+                success=False,
+                error=error_msg,
+                content=[TextContent(text=f"Error: {error_msg}")],
             )
 
         type_info = ARTIFACT_TYPES[action.artifact_type]
@@ -191,16 +206,27 @@ class SaveArtifactExecutor(ToolExecutor[SaveArtifactAction, SaveArtifactObservat
             file_path.write_text(action.content, encoding="utf-8")
             logger.info(f"Saved artifact to {file_path}")
 
+            size_bytes = len(action.content.encode("utf-8"))
+            result_text = (
+                f"Saved {type_info['name']} ({action.artifact_type})\n"
+                f"Path: {file_path}\n"
+                f"Size: {size_bytes} bytes"
+            )
             return SaveArtifactObservation(
                 success=True,
                 file_path=str(file_path),
                 artifact_type=action.artifact_type,
-                size_bytes=len(action.content.encode("utf-8")),
+                size_bytes=size_bytes,
+                content=[TextContent(text=result_text)],
             )
 
         except Exception as e:
             logger.error(f"Failed to save artifact: {e}")
-            return SaveArtifactObservation(success=False, error=str(e))
+            return SaveArtifactObservation(
+                success=False,
+                error=str(e),
+                content=[TextContent(text=f"Error saving artifact: {e}")],
+            )
 
 
 class SaveArtifactTool(ToolDefinition[SaveArtifactAction, SaveArtifactObservation]):
@@ -438,10 +464,12 @@ class ValidateArtifactExecutor(
     ) -> ValidateArtifactObservation:
         """Execute artifact validation."""
         if action.artifact_type not in ARTIFACT_TYPES:
+            error_msg = f"Unknown artifact type: {action.artifact_type}"
             return ValidateArtifactObservation(
                 success=False,
                 valid=False,
-                error=f"Unknown artifact type: {action.artifact_type}",
+                error=error_msg,
+                content=[TextContent(text=f"Error: {error_msg}")],
             )
 
         type_info = ARTIFACT_TYPES[action.artifact_type]
@@ -455,13 +483,26 @@ class ValidateArtifactExecutor(
         elif type_info["format"] == "yaml":
             issues.extend(self._validate_yaml(action.content))
 
+        # Build text result for content field
+        is_valid = len(issues) == 0
+        result_lines = [
+            f"Validation Result for {action.artifact_type.upper()} ({type_info['format']})",
+            f"Status: {'VALID' if is_valid else 'INVALID'}",
+            f"Issues found: {len(issues)}",
+        ]
+        if issues:
+            result_lines.append("\nIssues:")
+            for i, issue in enumerate(issues, 1):
+                result_lines.append(f"  {i}. {issue}")
+
         return ValidateArtifactObservation(
             success=True,
-            valid=len(issues) == 0,
+            valid=is_valid,
             artifact_type=action.artifact_type,
             format=type_info["format"],
             issues=issues,
             issue_count=len(issues),
+            content=[TextContent(text="\n".join(result_lines))],
         )
 
 
@@ -513,10 +554,16 @@ class ListArtifactTypesExecutor(
         self, action: ListArtifactTypesAction, conversation: Any = None
     ) -> ListArtifactTypesObservation:
         """Execute artifact types listing."""
+        # Build text representation
+        lines = [f"Available PWI Artifact Types ({len(ARTIFACT_TYPES)}):", ""]
+        for atype, info in ARTIFACT_TYPES.items():
+            lines.append(f"  - {atype}: {info['name']} ({info['format']}, {info['extension']})")
+
         return ListArtifactTypesObservation(
             success=True,
             artifact_types=ARTIFACT_TYPES,
             count=len(ARTIFACT_TYPES),
+            content=[TextContent(text="\n".join(lines))],
         )
 
 

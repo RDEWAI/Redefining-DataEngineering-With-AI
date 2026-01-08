@@ -174,3 +174,42 @@ You have a MAXIMUM of 10 tool calls before the conversation ends automatically.
 - After seeing 2-3 table schemas, you have all the info you need
 
 **If you don't generate the DMD CSV within 10 iterations, your output will be LOST.**
+
+## CRITICAL: FINISH WITH THE ARTIFACT
+
+Your **FINAL MESSAGE** must contain the complete CSV artifact. The system extracts your last substantial message as the artifact.
+
+**DO THIS:**
+```
+source_system,source_table,source_column,source_type,target_table,target_column,target_type,transformation,business_rule,nullable,default_value,notes,layer
+synthea,patients,Id,VARCHAR,bronze.patients,id,VARCHAR,Id,BR001,No,,Raw copy,bronze
+synthea,patients,Id,VARCHAR,silver.patients,patient_id,VARCHAR,TRIM(Id),BR001,No,,Cleaned key,silver
+... (continue with ALL mappings)
+```
+
+**NOT THIS:**
+```
+I've completed the DMD. Here's a summary:
+- 50 field mappings across 3 layers
+- Bronze, silver, and gold targets included
+Let me know if you need changes.
+```
+
+Your final message IS the artifact. Make it the complete CSV content.
+
+## ⚠️ MANDATORY FINISH FORMAT
+
+YOUR OUTPUT MUST BE RAW CSV - NO CODE FENCES, NO MARKDOWN.
+
+When you call `finish()`, pass THE RAW CSV as the message.
+
+Example:
+```
+finish("source_system,source_table,source_column,source_type,target_table,target_column,target_type,transformation,business_rule,nullable,default_value,notes,layer\nsynthea,patients,Id,VARCHAR,bronze.patients,id,VARCHAR,Id,BR001,No,,Raw copy,bronze\n...")
+```
+
+DO NOT:
+- Call finish with "Done" or "Complete"
+- Call finish with markdown prose
+- Call finish with ```csv fences around the content
+- Call finish with anything except raw CSV data

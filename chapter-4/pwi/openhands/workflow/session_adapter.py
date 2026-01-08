@@ -237,7 +237,18 @@ class SessionEventAdapter:
 
         Artifacts are stored in separate files within the session directory.
         The session metadata (session.json) contains artifact metadata but not content.
+        Performs pre-save validation and logs any issues found.
         """
+        # Pre-save validation
+        validation_issues = self._validate_artifact_content(
+            artifact_type, artifact_format, content
+        )
+        if validation_issues:
+            logger.warning(
+                f"Artifact {artifact_type} has validation issues: {validation_issues}",
+                extra={"agent": agent_name, "issue_count": len(validation_issues)},
+            )
+
         # Add artifact metadata to session (file_based=True by default)
         artifact = self.session.add_artifact(
             artifact_type=artifact_type,
@@ -272,6 +283,57 @@ class SessionEventAdapter:
             size_bytes=len(content.encode("utf-8")),
         )
         self.event_stream.append(event)
+
+    def _validate_artifact_content(
+        self, artifact_type: str, artifact_format: str, content: str
+    ) -> list[str]:
+        """Validate artifact content before saving.
+
+        Performs lenient validation to support weaker models that may not
+        follow format instructions precisely. Issues are logged as warnings
+        but don't block artifact saving.
+
+        Args:
+            artifact_type: Type of artifact (drd, pad, dmd, dqs, etc.).
+            artifact_format: Format (markdown, csv, yaml).
+            content: Content to validate.
+
+        Returns:
+            List of validation issues found (empty if valid).
+        """
+        issues = []
+
+        # Check for placeholder content - this is a hard failure
+        if content.startswith("[No artifact extracted"):
+            issues.append("Content is a placeholder - extraction failed")
+            return issues
+
+        # Check minimum content length - lowered from 100 to 50
+        if len(content.strip()) < 50:
+            issues.append(f"Content too short ({len(content)} chars)")
+
+        # Format-specific validation - more lenient for weaker models
+        if artifact_format == "csv" or artifact_type == "dmd":
+            # Check for source_system anywhere in content (not just at start)
+            if "source_system" not in content.lower():
+                # Check for alternative indicators that this is mapping data
+                if not any(ind in content.lower() for ind in ["source_table", "target_table", "synthea"]):
+                    issues.append("CSV missing required 'source_system' header (warning)")
+            # Note: markdown header at start is now handled by cleaning logic
+
+        elif artifact_format == "yaml" or artifact_type == "dqs":
+            # Check for common YAML keys anywhere (not just at start)
+            yaml_indicators = ["version:", "metadata:", "rules:", "quality_dimensions:", "checks:"]
+            if not any(ind in content.lower() for ind in yaml_indicators):
+                issues.append("YAML missing expected keys (warning)")
+            # Note: markdown header at start is now handled by cleaning logic
+
+        elif artifact_format == "markdown":
+            # Check for heading anywhere in content
+            if "#" not in content:
+                issues.append("Markdown should contain at least one heading (warning)")
+
+        return issues
 
     def emit_artifact_saved(
         self,

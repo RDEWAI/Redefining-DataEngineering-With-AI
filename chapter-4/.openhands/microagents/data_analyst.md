@@ -99,3 +99,24 @@ Generate this EXACT structure:
 - Call `duckdb_schema` for only 2-3 relevant tables
 - NEVER call the same tool more than twice
 - After 3-5 tool calls, GENERATE THE ARTIFACT
+
+## ⚠️ MANDATORY FINISH FORMAT
+
+YOUR OUTPUT MUST START WITH:
+```
+# Data Requirements Document (DRD)
+
+## 1. Executive Summary
+```
+
+When you call `finish()`, pass THE ENTIRE DOCUMENT as the message.
+
+Example:
+```
+finish("# Data Requirements Document (DRD)\n\n## 1. Executive Summary\nThis document outlines...\n\n## 2. Data Sources\n...")
+```
+
+DO NOT:
+- Call finish with just "Done" or "Complete"
+- Call finish with a summary of what you did
+- Call finish with anything except the full document content

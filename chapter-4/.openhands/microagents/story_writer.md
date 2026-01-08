@@ -187,3 +187,24 @@ As a Data Engineer, I want to ingest patients data into the bronze layer, so tha
 - Complete in 0 tool calls - just synthesize the provided artifacts
 - Generate the artifact immediately - don't explore, just create stories
 - Create stories that cover 100% of the DMD mappings and DQS quality rules
+
+## ⚠️ MANDATORY FINISH FORMAT
+
+YOUR OUTPUT MUST START WITH:
+```
+# User Stories
+
+## Project Overview
+```
+
+When you call `finish()`, pass THE ENTIRE DOCUMENT as the message.
+
+Example:
+```
+finish("# User Stories\n\n## Project Overview\nThis document outlines the user stories...\n\n## Epic 1: Infrastructure Setup\n...")
+```
+
+DO NOT:
+- Call finish with just "Done" or "Complete"
+- Call finish with a summary of what you did
+- Call finish with anything except the full document content
