@@ -182,6 +182,11 @@ chapter-4/
 
 ## Documentation
 
-- [Quick Start Guide](docs/quickstart.md)
-- [CLI Reference](docs/cli-reference.md)
-- [OpenHands Migration Guide](docs/openhands_migration.md)
+| Guide | Description |
+|-------|-------------|
+| [Quick Start](docs/quickstart.md) | Get up and running in 5 minutes |
+| [CLI Reference](docs/cli-reference.md) | Complete command reference |
+| [Workflow Guide](docs/WORKFLOW_GUIDE.md) | Pipeline execution, state machine, review gates, sessions |
+| [Extensibility Guide](docs/EXTENSIBILITY.md) | Add custom tools, skills, and agents (step-by-step tutorials) |
+| [OpenHands SDK Reference](docs/OPENHANDS_SDK_REFERENCE.md) | SDK integration details |
+| [Migration Guide](docs/openhands_migration.md) | Migrate from legacy agents |
