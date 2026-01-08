@@ -266,13 +266,21 @@ class PWIWorkflowController:
         Returns:
             Initial agent state.
         """
+        # Build artifacts dict with file-based content support
+        artifacts = {}
+        for atype, artifact in self.session.artifacts.items():
+            content = self.session.read_artifact_content(
+                self.session_manager.session_dir, atype
+            )
+            if content:
+                artifacts[atype] = content
+            elif artifact.content:
+                artifacts[atype] = artifact.content
+
         return PWIAgentState(
             session_id=self.session.session_id,
             business_request=self.session.request_content,
-            artifacts={
-                atype: artifact.content
-                for atype, artifact in self.session.artifacts.items()
-            },
+            artifacts=artifacts,
         )
 
     async def _execute_agent(
@@ -356,11 +364,17 @@ class PWIWorkflowController:
                 callbacks=[sdk_event_callback],
             )
 
-            # Build message with context
-            context = {
-                atype: artifact.content
-                for atype, artifact in self.session.artifacts.items()
-            }
+            # Build message with context (read from files for file-based artifacts)
+            context = {}
+            for atype, artifact in self.session.artifacts.items():
+                # Read content from file if file-based, otherwise use inline
+                content = self.session.read_artifact_content(
+                    self.session_manager.session_dir, atype
+                )
+                if content:
+                    context[atype] = content
+                elif artifact.content:  # Fallback to inline content
+                    context[atype] = artifact.content
             message = self._build_agent_message(agent_name, context)
 
             # Add validation feedback if this is a retry
@@ -498,6 +512,9 @@ Generate the {artifact_code} now.
         the agent's final message from the conversation events.
         Also applies post-processing to clean the artifact content.
 
+        If no finish call is found, falls back to searching for substantial
+        message content that looks like an artifact.
+
         Args:
             agent_name: Name of the agent.
             conversation: SDK Conversation instance.
@@ -513,45 +530,157 @@ Generate the {artifact_code} now.
         # Extract final response using SDK utility
         response = get_agent_final_response(events)
 
+        # FALLBACK: If no finish call found, try to extract from message events
+        if not response:
+            logger.info(
+                f"No finish call found for {agent_name}, trying fallback extraction"
+            )
+            response = self._extract_last_substantial_message(events, agent_name)
+
         if not response:
             logger.warning(
                 f"No final response found in conversation for {agent_name}"
             )
             return f"[No artifact extracted from {agent_name}]"
 
+        # Get artifact type for format-specific cleaning
+        agent_info = get_agent_info(agent_name)
+        artifact_type = agent_info.get("artifact_type", "")
+
         # Clean the response - remove code fence wrapping if present
-        cleaned = self._clean_artifact_content(response)
+        cleaned = self._clean_artifact_content(response, artifact_type=artifact_type)
 
         logger.info(
             f"Extracted artifact from {agent_name}",
-            extra={"content_length": len(cleaned)},
+            extra={"content_length": len(cleaned), "artifact_type": artifact_type},
         )
 
         return cleaned
 
-    def _clean_artifact_content(self, content: str) -> str:
-        """Clean artifact content by removing code fence wrappers.
+    def _extract_last_substantial_message(
+        self, events: list, agent_name: str
+    ) -> str | None:
+        """Fallback extraction: find the last substantial message from agent.
+
+        Looks for MessageEvent or ActionEvent with long text content that looks
+        like an artifact (markdown headers, CSV rows, or YAML structure).
+
+        Args:
+            events: List of conversation events.
+            agent_name: Name of the agent (for artifact format lookup).
+
+        Returns:
+            Extracted content if found, None otherwise.
+        """
+        from openhands.sdk.event import ActionEvent, MessageEvent
+        from openhands.sdk.llm.message import content_to_str
+
+        agent_info = get_agent_info(agent_name)
+        artifact_format = agent_info.get("artifact_format", "")
+
+        # Patterns that indicate artifact content by format
+        artifact_markers = {
+            "markdown": ["# ", "## ", "### ", "**"],
+            "csv": ["source_system,", ",source_table,", ",target_table,"],
+            "yaml": ["version:", "metadata:", "rules:", "checks:"],
+        }
+        markers = artifact_markers.get(artifact_format, artifact_markers["markdown"])
+
+        for event in reversed(events):
+            content = ""
+            if isinstance(event, MessageEvent) and event.source == "agent":
+                text_parts = content_to_str(event.llm_message.content)
+                content = "".join(text_parts) if text_parts else ""
+            elif isinstance(event, ActionEvent) and event.source == "agent":
+                # Check if action has thought content (agent's reasoning/output)
+                if hasattr(event, "thought") and event.thought:
+                    content = event.thought
+
+            # Check if content looks like an artifact (>500 chars with markers)
+            if content and len(content) > 500:
+                for marker in markers:
+                    if marker in content:
+                        logger.info(
+                            f"Fallback extraction found artifact for {agent_name}",
+                            extra={"content_length": len(content), "marker": marker},
+                        )
+                        return content
+
+        return None
+
+    def _clean_artifact_content(self, content: str, artifact_type: str = "") -> str:
+        """Clean artifact content by removing code fence wrappers and preamble text.
 
         Args:
             content: Raw content from the agent.
+            artifact_type: Type of artifact (dmd, dqs, etc.) for format-specific cleaning.
 
         Returns:
-            Cleaned content without code fence wrappers.
+            Cleaned content without code fence wrappers or preamble.
         """
         content = content.strip()
 
-        # Remove markdown code fence wrapper
-        if content.startswith("```markdown"):
-            content = content[11:]
-        elif content.startswith("```yaml"):
-            content = content[7:]
-        elif content.startswith("```csv"):
-            content = content[6:]
-        elif content.startswith("```"):
-            content = content[3:]
+        # Remove code fence wrappers - handle various patterns
+        fence_patterns = [
+            "```markdown\n",
+            "```markdown",
+            "```yaml\n",
+            "```yaml",
+            "```yml\n",
+            "```yml",
+            "```csv\n",
+            "```csv",
+            "```\n",
+            "```",
+        ]
 
+        for pattern in fence_patterns:
+            if content.startswith(pattern):
+                content = content[len(pattern):]
+                break
+
+        # Remove trailing fence
         if content.endswith("```"):
             content = content[:-3]
+        content = content.strip()
+
+        # Handle leading 'yaml' or 'csv' text artifacts (from partial fence removal)
+        if content.lower().startswith("yaml\n"):
+            content = content[5:]
+        elif content.lower().startswith("csv\n"):
+            content = content[4:]
+
+        # For CSV/DMD: Strip preamble text before the actual CSV header
+        if artifact_type == "dmd" or (
+            "source_system" in content.lower() and "," in content
+        ):
+            lines = content.split("\n")
+            csv_start = 0
+            for i, line in enumerate(lines):
+                line_lower = line.lower().strip()
+                # Look for the CSV header line
+                if line_lower.startswith("source_system,") or (
+                    "source_system" in line_lower and line.count(",") >= 5
+                ):
+                    csv_start = i
+                    break
+            if csv_start > 0:
+                content = "\n".join(lines[csv_start:])
+                logger.debug(f"Stripped {csv_start} preamble lines from CSV content")
+
+        # For YAML/DQS: Ensure content starts with valid YAML
+        if artifact_type == "dqs" or content.strip().startswith("version:"):
+            lines = content.split("\n")
+            yaml_start = 0
+            for i, line in enumerate(lines):
+                stripped = line.strip()
+                # Look for YAML starting key
+                if stripped.startswith("version:") or stripped.startswith("metadata:"):
+                    yaml_start = i
+                    break
+            if yaml_start > 0:
+                content = "\n".join(lines[yaml_start:])
+                logger.debug(f"Stripped {yaml_start} preamble lines from YAML content")
 
         return content.strip()
 
@@ -708,11 +837,16 @@ Generate the {artifact_code} now.
                 workspace=self.workspace_path,
             )
 
-            # Build validation message with context
-            context = {
-                atype: artifact.content
-                for atype, artifact in self.session.artifacts.items()
-            }
+            # Build validation message with context (file-based support)
+            context = {}
+            for atype, artifact in self.session.artifacts.items():
+                content = self.session.read_artifact_content(
+                    self.session_manager.session_dir, atype
+                )
+                if content:
+                    context[atype] = content
+                elif artifact.content:
+                    context[atype] = artifact.content
 
             message = f"""## Validation Task
 
@@ -793,9 +927,20 @@ Perform comprehensive validation and output a validation report.
         }
 
         for artifact_type, artifact in self.session.artifacts.items():
+            # Read content from file if file-based, otherwise use inline
+            content = self.session.read_artifact_content(
+                self.session_manager.session_dir, artifact_type
+            )
+            if not content:
+                content = artifact.content  # Fallback to inline
+
+            if not content:
+                logger.warning(f"No content found for artifact: {artifact_type}")
+                continue
+
             ext = artifact_extensions.get(artifact_type, "txt")
             filename = output_dir / f"{artifact_type}.{ext}"
-            filename.write_text(artifact.content, encoding="utf-8")
+            filename.write_text(content, encoding="utf-8")
 
             self.session_adapter.emit_artifact_saved(
                 artifact_type=artifact_type,

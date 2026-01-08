@@ -701,16 +701,31 @@ class Session(BaseModel):
 
 ### 6.2 Session Persistence
 
-Sessions are stored as JSON files in `.pwi/sessions/`:
+Sessions use **file-based storage** with each session stored as a directory containing individual artifact files:
 
 ```
 .pwi/sessions/
-├── abc12345.json
-├── def67890.json
-└── ghi11111.json
+├── abc12345/                    # Session directory
+│   ├── session.json             # Metadata only (~600 bytes)
+│   ├── drd.md                   # Data Requirements Document
+│   ├── pad.md                   # Pipeline Architecture Document
+│   ├── dmd.csv                  # Data Mapping Document
+│   ├── dqs.yaml                 # Data Quality Specification
+│   ├── stories.md               # User Stories
+│   └── package.md               # Final Package
+├── def67890/
+│   └── ...
+└── ghi11111/
+    └── ...
 ```
 
-Example session file:
+**Benefits of file-based storage:**
+- Artifacts viewable/editable directly in filesystem
+- Smaller JSON files (metadata only)
+- Clean git diffs
+- Individual artifact versioning
+
+Example session.json (metadata only):
 ```json
 {
   "session_id": "abc12345",
@@ -719,8 +734,8 @@ Example session file:
   "artifacts": {
     "drd": {
       "type": "drd",
-      "content": "# Data Requirements Document...",
       "format": "markdown",
+      "filename": "drd.md",
       "agent": "data_analyst",
       "version": 1
     }
@@ -744,6 +759,21 @@ Example session file:
     }
   ]
 }
+```
+
+### 6.3 Migrating Existing Sessions
+
+If you have sessions in the legacy inline format, migrate them:
+
+```bash
+# Preview changes
+python scripts/migrate_sessions.py --dry-run
+
+# Execute migration
+python scripts/migrate_sessions.py
+
+# Migrate specific session
+python scripts/migrate_sessions.py --session abc12345
 ```
 
 ### 6.3 Tutorial: Resuming a Paused Workflow
@@ -923,31 +953,44 @@ High-level architecture description.
 
 ### 7.3 DMD (Data Mapping Document)
 
-**Format:** CSV
+**Format:** CSV (13 columns)
 **Agent:** mapping_engineer
-**Purpose:** Map source fields to target fields
+**Purpose:** Map source fields to target fields with layer information
 
 **Structure:**
 ```csv
-source_table,source_field,source_type,target_table,target_field,target_type,transformation,notes
-synthea.patients,Id,VARCHAR,dim_patient,patient_id,VARCHAR,CAST AS VARCHAR,Primary key
-synthea.patients,BIRTHDATE,DATE,dim_patient,birth_date,DATE,CAST AS DATE,
-synthea.patients,GENDER,VARCHAR,dim_patient,gender,VARCHAR,UPPER(),Standardize case
-synthea.encounters,START,TIMESTAMP,fact_encounter,start_timestamp,TIMESTAMP,,
-synthea.encounters,PATIENT,VARCHAR,fact_encounter,patient_id,VARCHAR,,FK to dim_patient
+source_system,source_table,source_column,source_type,target_table,target_column,target_type,transformation,business_rule,nullable,default_value,notes,layer
+synthea,patients,Id,VARCHAR,bronze.patients,id,VARCHAR,Id,BR001,No,,Raw copy from source,bronze
+synthea,patients,Id,VARCHAR,silver.patients,patient_id,VARCHAR,TRIM(Id),BR001,No,,Primary key cleaned,silver
+synthea,patients,BIRTHDATE,DATE,bronze.patients,birthdate,DATE,BIRTHDATE,BR002,No,,Raw date,bronze
+synthea,patients,BIRTHDATE,DATE,silver.patients,birth_date,DATE,CAST(BIRTHDATE AS DATE),BR002,No,,Date conversion,silver
+synthea,patients,GENDER,VARCHAR,silver.patients,gender,VARCHAR,UPPER(GENDER),BR003,No,,Standardize case,silver
+synthea,encounters,START,TIMESTAMP,silver.encounters,start_timestamp,TIMESTAMP,CAST(START AS TIMESTAMP),BR004,No,,,silver
+synthea,encounters,PATIENT,VARCHAR,gold.fact_encounter,patient_id,VARCHAR,PATIENT,BR005,No,,FK to dim_patient,gold
 ```
 
-**Columns:**
-| Column | Description |
-|--------|-------------|
-| source_table | Source table name (schema.table) |
-| source_field | Source column name |
-| source_type | Source data type |
-| target_table | Target table name |
-| target_field | Target column name |
-| target_type | Target data type |
-| transformation | SQL transformation expression |
-| notes | Additional notes |
+**Required Columns (13 total):**
+
+| # | Column | Description |
+|---|--------|-------------|
+| 1 | source_system | Source system identifier (e.g., synthea) |
+| 2 | source_table | Source table name |
+| 3 | source_column | Source column name |
+| 4 | source_type | Source data type |
+| 5 | target_table | Target table name (e.g., bronze.patients) |
+| 6 | target_column | Target column name |
+| 7 | target_type | Target data type |
+| 8 | transformation | SQL/DuckDB transformation expression |
+| 9 | business_rule | Business rule reference (e.g., BR001) |
+| 10 | nullable | Whether field allows nulls (Yes/No) |
+| 11 | default_value | Default value if null |
+| 12 | notes | Additional documentation |
+| 13 | layer | Target layer: `bronze`, `silver`, or `gold` |
+
+**Layer Values:**
+- **bronze**: Raw source data with minimal transformation
+- **silver**: Cleaned, standardized, type-converted data
+- **gold**: Aggregated, business-ready, dimensional data
 
 ### 7.4 DQS (Data Quality Specification)
 

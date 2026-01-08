@@ -138,6 +138,14 @@ def load_config(
     except Exception as e:
         raise ConfigurationError(f"Invalid configuration: {e}") from e
 
+    # Resolve relative paths in project config relative to config file location
+    # This ensures paths work correctly regardless of where the command is run from
+    config_dir = path.parent.resolve()
+    if not config.project.output_dir.is_absolute():
+        config.project.output_dir = (config_dir / config.project.output_dir).resolve()
+    if not config.project.session_dir.is_absolute():
+        config.project.session_dir = (config_dir / config.project.session_dir).resolve()
+
     return config
 
 

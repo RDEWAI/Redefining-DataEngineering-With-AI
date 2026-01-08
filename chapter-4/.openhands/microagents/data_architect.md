@@ -132,3 +132,12 @@ Generate this EXACT structure:
 - **NEVER call the same tool more than twice**
 - After reviewing DRD, GENERATE THE ARTIFACT immediately
 - Complete in 0-3 tool calls max - you already have DRD with full details
+
+## ⚠️ ITERATION LIMIT WARNING
+
+You have a MAXIMUM of 10 tool calls before the conversation ends automatically.
+- If you've made 3+ tool calls, STOP exploring and generate the artifact NOW
+- DO NOT repeat the same tool call - you already have that information
+- After seeing DRD once, you have all the info you need
+
+**If you don't generate the artifact within 10 iterations, your output will be LOST.**

@@ -105,31 +105,64 @@ class CSVViewer:
         cleaned_lines = lines[csv_start_idx:csv_end_idx]
         return "\n".join(cleaned_lines).strip()
 
-    def _parse_csv(self) -> tuple[list[str], list[dict[str, str]]]:
+    def _parse_csv(self) -> tuple[list[str], list[dict[str, str]], str | None]:
         """Parse CSV content into headers and rows.
 
         Returns:
-            Tuple of (headers list, rows as list of dicts).
+            Tuple of (headers list, rows as list of dicts, error message or None).
         """
-        # Clean the content first to remove markdown fences and explanatory text
-        cleaned_content = self._clean_csv_content(self.content)
-        reader = csv.reader(io.StringIO(cleaned_content))
-        rows_list = list(reader)
+        try:
+            # Check if content looks like markdown instead of CSV
+            content_stripped = self.content.strip()
+            if content_stripped.startswith("#") or content_stripped.startswith("## "):
+                return [], [], (
+                    "Content appears to be markdown, not CSV. "
+                    f"First 100 chars: {content_stripped[:100]}..."
+                )
 
-        if not rows_list:
-            return [], []
+            # Check for placeholder text
+            if "[No artifact extracted" in content_stripped:
+                return [], [], (
+                    "Artifact was not extracted properly. "
+                    f"Content: {content_stripped}"
+                )
 
-        headers = rows_list[0]
-        data_rows = []
+            # Clean the content first to remove markdown fences and explanatory text
+            cleaned_content = self._clean_csv_content(self.content)
 
-        for row in rows_list[1:]:
-            if row:  # Skip empty rows
-                row_dict = {}
-                for i, header in enumerate(headers):
-                    row_dict[header] = row[i] if i < len(row) else ""
-                data_rows.append(row_dict)
+            if not cleaned_content.strip():
+                return [], [], "CSV content is empty after cleaning"
 
-        return headers, data_rows
+            reader = csv.reader(io.StringIO(cleaned_content))
+            rows_list = list(reader)
+
+            if not rows_list:
+                return [], [], "No rows found in CSV"
+
+            headers = rows_list[0]
+
+            # Validate we have reasonable number of columns
+            if len(headers) < 2:
+                return [], [], (
+                    f"CSV has only {len(headers)} column(s). Expected at least 2. "
+                    f"First line: {rows_list[0]}"
+                )
+
+            data_rows = []
+
+            for row in rows_list[1:]:
+                if row:  # Skip empty rows
+                    row_dict = {}
+                    for i, header in enumerate(headers):
+                        row_dict[header] = row[i] if i < len(row) else ""
+                    data_rows.append(row_dict)
+
+            return headers, data_rows, None
+
+        except csv.Error as e:
+            return [], [], f"CSV parsing error: {e}"
+        except Exception as e:
+            return [], [], f"Unexpected error parsing CSV: {e}"
 
     def render(self) -> ui.element:
         """Render the CSV viewer component.
@@ -137,10 +170,21 @@ class CSVViewer:
         Returns:
             The container element.
         """
-        headers, rows = self._parse_csv()
+        headers, rows, error = self._parse_csv()
 
         with ui.column().classes("w-full") as container:
             self._container = container
+
+            if error:
+                # Display error with details for debugging
+                with ui.card().classes("w-full bg-red-50 border-red-200"):
+                    ui.label("CSV Parsing Error").classes("text-red-700 font-bold")
+                    ui.label(error).classes("text-red-600 text-sm")
+                    with ui.expansion("Show Raw Content", icon="code").classes("mt-2"):
+                        # Show first 500 chars of raw content for debugging
+                        preview = self.content[:500] + ("..." if len(self.content) > 500 else "")
+                        ui.code(preview, language="text").classes("text-xs")
+                return container
 
             if not headers:
                 ui.label("No data to display").classes("text-grey")

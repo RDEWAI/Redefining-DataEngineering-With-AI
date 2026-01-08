@@ -239,10 +239,20 @@ def session_detail_page(session_id: str) -> None:
                 for artifact_type in session.artifacts:
                     ui.tab(artifact_type.upper())
 
+            # Get session manager for file-based artifact reading
+            session_manager = get_session_manager()
+
             with ui.tab_panels(
                 tabs, value=list(session.artifacts.keys())[0].upper()
             ).classes("w-full"):
                 for artifact_type, artifact in session.artifacts.items():
+                    # Load content from file if file-based, otherwise use inline
+                    content = session.read_artifact_content(
+                        session_manager.session_dir, artifact_type
+                    )
+                    if not content:
+                        content = artifact.content  # Fallback to inline
+
                     with ui.tab_panel(artifact_type.upper()):
                         with ui.card().classes("w-full"):
                             # Header with maximize button
@@ -252,14 +262,16 @@ def session_detail_page(session_id: str) -> None:
                                 ui.label(f"v{artifact.version}").classes("text-grey")
                                 ui.label(f"| {artifact.format}").classes("text-grey")
                                 ui.label(
-                                    f"| {len(artifact.content):,} chars"
+                                    f"| {len(content):,} chars" if content else "| empty"
                                 ).classes("text-grey")
+                                if artifact.is_file_based:
+                                    ui.label("| file-based").classes("text-grey text-xs")
 
                                 # Create modal for this artifact
                                 modal = _create_maximize_modal(
                                     artifact_type=artifact_type,
                                     artifact_format=artifact.format,
-                                    content=artifact.content,
+                                    content=content or "",
                                     version=artifact.version,
                                 )
 
@@ -273,7 +285,7 @@ def session_detail_page(session_id: str) -> None:
                             with ui.column().classes("w-full p-2"):
                                 _render_artifact_content(
                                     artifact_format=artifact.format,
-                                    content=artifact.content,
+                                    content=content or "[No content available]",
                                     max_height="600px",
                                     is_modal=False,
                                 )

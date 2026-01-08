@@ -26,11 +26,14 @@ pwi session list
 
 - **6 Specialized Agents**: Data Analyst, Data Architect, Mapping Engineer, DQ Engineer, Story Writer, Sync Agent
 - **Artifact Generation**: DRD, PAD, DMD (CSV), DQS (YAML), Epics & Stories
+- **File-Based Session Storage**: Each session stored as a directory with individual artifact files
+- **Modular Validation System**: Artifact-specific validators (DMD, DQS, DRD, PAD) with format and content checks
 - **Session Persistence**: Resume workflows, track progress
 - **Review Gates**: CLI, file-based, or web review
 - **Multi-Model Support**: Configure different LLM models per agent via OpenRouter
 - **Tool-Use Capabilities**: Exploration agents can query DuckDB, analyze CSVs (OpenHands SDK)
 - **Skills/Context Injection**: DuckDB knowledge skill auto-triggers for relevant queries
+- **Validation Skills**: Auto-triggered validation knowledge for each artifact type
 - **Artifact-Only Agents**: Some agents generate artifacts directly without tools to prevent exploration loops
 
 ## Architecture
@@ -132,8 +135,12 @@ print(AGENT_TOOL_MAP["dq_engineer"])
 Agents receive contextual knowledge via Skills that auto-trigger on keywords:
 
 - **duckdb**: DuckDB query patterns, table schemas, SQL syntax
+- **drd_validation**: DRD format requirements, required sections
+- **dmd_validation**: DMD 13-column CSV format, layer values
+- **dqs_validation**: DQS YAML structure, quality dimensions
+- **pad_validation**: PAD sections, Mermaid diagram requirements
 
-### Available Domain Tools (14)
+### Available Domain Tools (18)
 
 | Category | Tools |
 |----------|-------|
@@ -141,8 +148,71 @@ Agents receive contextual knowledge via Skills that auto-trigger on keywords:
 | CSV | `analyze_csv`, `csv_stats`, `csv_sample` |
 | Metadata | `query_metadata_catalog`, `get_lineage`, `get_tags` |
 | Artifact | `generate_artifact`, `save_artifact`, `validate_artifact`, `list_artifact_types` |
+| Validation | `validate_drd`, `validate_pad`, `validate_dmd`, `validate_dqs` |
 
 See [docs/OPENHANDS_SDK_REFERENCE.md](docs/OPENHANDS_SDK_REFERENCE.md) for SDK documentation.
+
+## Session Storage
+
+Sessions use file-based storage with each session as a directory containing individual artifact files:
+
+```
+.pwi/sessions/
+└── abc12345/                 # Session directory
+    ├── session.json          # Metadata (state, timestamps, agent info)
+    ├── drd.md                # Data Requirements Document
+    ├── pad.md                # Pipeline Architecture Document
+    ├── dmd.csv               # Data Mapping Document (13 columns)
+    ├── dqs.yaml              # Data Quality Specification
+    ├── stories.md            # User Stories
+    └── package.md            # Final Delivery Package
+```
+
+**Benefits:**
+- Artifacts viewable/editable directly in filesystem
+- Smaller JSON files (metadata only)
+- Clean git diffs
+- Individual artifact versioning
+
+### Migrating Existing Sessions
+
+If you have existing sessions in the old inline format, run the migration script:
+
+```bash
+# Preview changes
+python scripts/migrate_sessions.py --dry-run
+
+# Execute migration
+python scripts/migrate_sessions.py
+
+# Migrate specific session
+python scripts/migrate_sessions.py --session abc12345
+```
+
+## Artifact Validation
+
+PWI includes a modular validation system for checking artifact quality:
+
+```python
+from pwi.openhands.tools.validation import validate_artifact
+
+# Validate a DMD artifact
+result = validate_artifact("dmd", csv_content)
+print(f"Valid: {result.is_valid}")
+print(f"Errors: {result.error_count}, Warnings: {result.warning_count}")
+
+# With cross-reference validation
+result = validate_artifact("dmd", csv_content, context={"drd": drd_content})
+```
+
+### Validation Checks by Artifact Type
+
+| Artifact | Format Checks | Content Checks |
+|----------|--------------|----------------|
+| DRD | Markdown header, no code fences | Required sections, no placeholders |
+| PAD | Markdown header, Mermaid diagrams | Layer definitions, technology stack |
+| DMD | 13-column CSV, column order | Layer values (bronze/silver/gold) |
+| DQS | YAML syntax, version header | Quality dimensions, gates |
 
 ## Development
 
@@ -169,12 +239,17 @@ chapter-4/
 │   ├── openhands/          # OpenHands SDK integration
 │   │   ├── agents/         # Tool-enabled agents
 │   │   ├── tools/          # Custom tools (DuckDB, CSV, etc.)
+│   │   │   └── validation/ # Artifact validators (DMD, DQS, DRD, PAD)
 │   │   └── workflow/       # Event-sourced orchestration
 │   ├── cli/                # Command-line interface
 │   ├── dashboard/          # NiceGUI web interface
 │   └── workflow/           # Session & state management
 ├── .openhands/
-│   └── microagents/        # Skills/Microagents for OpenHands
+│   ├── microagents/        # Agent prompts/personas
+│   └── skills/             # Contextual knowledge (DuckDB, validation)
+├── .pwi/
+│   └── sessions/           # Session storage (directory per session)
+├── scripts/                # Utility scripts (migration, etc.)
 ├── docs/                   # Documentation
 ├── tests/                  # Test suite
 └── requests/               # Sample business requests

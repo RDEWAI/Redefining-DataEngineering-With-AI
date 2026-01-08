@@ -9,9 +9,10 @@ This guide provides step-by-step tutorials for extending the PWI (Planning with 
 3. [Tutorial: Adding a Custom Tool](#3-tutorial-adding-a-custom-tool)
 4. [Tutorial: Adding a Custom Skill](#4-tutorial-adding-a-custom-skill)
 5. [Tutorial: Adding a Custom Agent](#5-tutorial-adding-a-custom-agent)
-6. [Advanced Patterns](#6-advanced-patterns)
-7. [Best Practices & Troubleshooting](#7-best-practices--troubleshooting)
-8. [Reference](#8-reference)
+6. [Artifact Validation System](#6-artifact-validation-system)
+7. [Advanced Patterns](#7-advanced-patterns)
+8. [Best Practices & Troubleshooting](#8-best-practices--troubleshooting)
+9. [Reference](#9-reference)
 
 ---
 
@@ -1093,9 +1094,157 @@ For standalone agents (not in the pipeline), these steps aren't needed.
 
 ---
 
-## 6. Advanced Patterns
+## 6. Artifact Validation System
 
-### 6.1 Tool Composition
+PWI includes a modular validation system for artifact quality assurance. Each artifact type has dedicated validators and skills.
+
+### 6.1 Validation Architecture
+
+```mermaid
+flowchart TB
+    subgraph Validators["Validation Tools"]
+        VD["validate_drd"]
+        VP["validate_pad"]
+        VM["validate_dmd"]
+        VQ["validate_dqs"]
+    end
+
+    subgraph Skills["Validation Skills"]
+        SD[".openhands/skills/drd_validation.md"]
+        SP[".openhands/skills/pad_validation.md"]
+        SM[".openhands/skills/dmd_validation.md"]
+        SQ[".openhands/skills/dqs_validation.md"]
+    end
+
+    subgraph Agent["Validator Agent"]
+        VA["validator_agent"]
+    end
+
+    VA --> Validators
+    Skills -.->|"Knowledge"| VA
+
+    Validators --> Result["ValidationResult"]
+
+    style Validators fill:#e1f5fe
+    style Skills fill:#fff3e0
+    style Agent fill:#e8f5e9
+```
+
+### 6.2 Built-in Validators
+
+| Tool | Artifact | Checks |
+|------|----------|--------|
+| `validate_drd` | DRD | Markdown format, required sections, no ASCII art |
+| `validate_pad` | PAD | Markdown format, Mermaid diagrams, layer definitions |
+| `validate_dmd` | DMD | 13-column CSV format, layer values (bronze/silver/gold) |
+| `validate_dqs` | DQS | YAML syntax, quality dimensions, version header |
+| `validate_artifact` | Any | Generic validation (format + content checks) |
+
+### 6.3 Validation Skills
+
+Skills provide domain knowledge for validation. Located in `.openhands/skills/`:
+
+| Skill File | Triggers | Knowledge |
+|------------|----------|-----------|
+| `drd_validation.md` | validate drd, data requirements | DRD format, required sections |
+| `pad_validation.md` | validate pad, architecture | PAD format, Mermaid requirements |
+| `dmd_validation.md` | validate dmd, mapping | 13-column CSV format, layer values |
+| `dqs_validation.md` | validate dqs, quality | YAML structure, quality dimensions |
+
+### 6.4 Using Validators in Code
+
+```python
+from pwi.openhands.tools.validation import validate_artifact, ValidationResult
+
+# Validate DMD content
+result: ValidationResult = validate_artifact("dmd", dmd_content)
+
+if result.is_valid:
+    print("DMD validation passed")
+else:
+    for issue in result.errors:
+        print(f"[{issue.severity}] {issue.message}")
+        if issue.suggestion:
+            print(f"   Suggestion: {issue.suggestion}")
+```
+
+### 6.5 Validation Result Structure
+
+```python
+@dataclass
+class ValidationIssue:
+    severity: Literal["error", "warning", "info"]
+    category: Literal["format", "content", "cross_reference"]
+    message: str
+    suggestion: str | None = None
+    line_number: int | None = None
+
+@dataclass
+class ValidationResult:
+    artifact_type: str
+    is_valid: bool           # True if no errors
+    errors: list[ValidationIssue]
+    warnings: list[ValidationIssue]
+```
+
+### 6.6 Creating Custom Validators
+
+Create a new validator by extending `ArtifactValidator`:
+
+```python
+# pwi/openhands/tools/validation/my_validator.py
+
+from pwi.openhands.tools.validation.base import (
+    ArtifactValidator, ValidationIssue, ValidationResult
+)
+
+class MyArtifactValidator(ArtifactValidator):
+    """Custom validator for my artifact type."""
+
+    artifact_type = "my_artifact"
+    format = "json"
+
+    def validate_format(self, content: str) -> list[ValidationIssue]:
+        issues = []
+        # Check format requirements
+        try:
+            import json
+            json.loads(content)
+        except json.JSONDecodeError as e:
+            issues.append(ValidationIssue(
+                severity="error",
+                category="format",
+                message=f"Invalid JSON: {e}",
+                suggestion="Ensure content is valid JSON"
+            ))
+        return issues
+
+    def validate_content(self, content: str) -> list[ValidationIssue]:
+        issues = []
+        # Check content requirements
+        data = json.loads(content)
+        if "required_field" not in data:
+            issues.append(ValidationIssue(
+                severity="error",
+                category="content",
+                message="Missing required_field"
+            ))
+        return issues
+```
+
+Register in `validation/__init__.py`:
+
+```python
+from .my_validator import MyArtifactValidator
+
+VALIDATORS["my_artifact"] = MyArtifactValidator
+```
+
+---
+
+## 7. Advanced Patterns
+
+### 7.1 Tool Composition
 
 Tools can call other tools by sharing executors:
 
@@ -1112,7 +1261,7 @@ class CompositeExecutor(ToolExecutor):
         return combine_results(db_result, csv_result)
 ```
 
-### 6.2 Skill Layering
+### 7.2 Skill Layering
 
 Multiple skills can be active simultaneously:
 
@@ -1131,7 +1280,7 @@ triggers:
 
 When an agent message contains "patient query", both `duckdb` and `healthcare` skills may trigger.
 
-### 6.3 Conditional Tool Assignment
+### 7.3 Conditional Tool Assignment
 
 Use environment variables for dynamic tool configuration:
 
@@ -1152,9 +1301,9 @@ def get_tools_for_env():
 
 ---
 
-## 7. Best Practices & Troubleshooting
+## 8. Best Practices & Troubleshooting
 
-### 7.1 Error Handling Patterns
+### 8.1 Error Handling Patterns
 
 Always return a valid Observation, even on failure:
 
@@ -1174,7 +1323,7 @@ def __call__(self, action, conversation=None):
         return MyObservation(success=False, error=f"Unexpected error: {e}")
 ```
 
-### 7.2 Performance Considerations
+### 8.2 Performance Considerations
 
 | Practice | Benefit |
 |----------|---------|
@@ -1193,7 +1342,7 @@ class MyExecutor(ToolExecutor):
         return execute_with_connection(self._connection, action)
 ```
 
-### 7.3 Common Issues
+### 8.3 Common Issues
 
 #### Tool not found
 ```
@@ -1217,9 +1366,9 @@ print(skills['my_skill'].triggers)
 
 ---
 
-## 8. Reference
+## 9. Reference
 
-### 8.1 Tool API Reference
+### 9.1 Tool API Reference
 
 #### ToolDefinition Fields
 
@@ -1242,7 +1391,7 @@ print(skills['my_skill'].triggers)
 | `idempotentHint` | `bool` | Same input = same output |
 | `openWorldHint` | `bool` | Interacts with external systems |
 
-### 8.2 Skill Format Reference
+### 9.2 Skill Format Reference
 
 #### Frontmatter Fields
 
@@ -1259,7 +1408,7 @@ print(skills['my_skill'].triggers)
 - Keep focused on actionable knowledge
 - Include tool usage limits/guidelines
 
-### 8.3 Agent Format Reference
+### 9.3 Agent Format Reference
 
 #### Frontmatter Fields
 

@@ -283,7 +283,7 @@ class ValidateArtifactExecutor(
 
         return issues
 
-    # Expected DMD columns (12 columns in exact order)
+    # Expected DMD columns (13 columns in exact order, including layer)
     DMD_EXPECTED_COLUMNS = [
         "source_system",
         "source_table",
@@ -297,23 +297,36 @@ class ValidateArtifactExecutor(
         "nullable",
         "default_value",
         "notes",
+        "layer",  # Required: bronze, silver, or gold
     ]
+
+    # Valid layer values
+    VALID_LAYERS = {"bronze", "silver", "gold"}
 
     def _validate_csv(self, content: str, artifact_type: str = "dmd") -> list[str]:
         """Validate CSV content."""
         issues = []
+        content_stripped = content.strip()
+
+        # CRITICAL: Check if content is markdown instead of CSV
+        if content_stripped.startswith("#") or content_stripped.startswith("## "):
+            issues.append(
+                "CRITICAL: Content is markdown prose, not CSV. "
+                "Expected raw CSV starting with header row: source_system,source_table,..."
+            )
+            return issues  # Don't continue if completely wrong format
 
         # Check for code fence wrapping (should not be wrapped)
-        if content.strip().startswith("```csv") or content.strip().startswith("```"):
+        if content_stripped.startswith("```csv") or content_stripped.startswith("```"):
             issues.append("Content should not be wrapped in ```csv code fences - output raw CSV only")
 
         # Check for preamble text before CSV
-        lines = content.strip().split("\n")
+        lines = content_stripped.split("\n")
         if lines and not lines[0].startswith(("source_", "target_", '"')):
             # First line doesn't look like CSV header
             first_line = lines[0][:50] + "..." if len(lines[0]) > 50 else lines[0]
-            if not "," in lines[0] or any(
-                word in lines[0].lower() for word in ["here", "document", "mapping", "data"]
+            if "," not in lines[0] or any(
+                word in lines[0].lower() for word in ["here is", "document", "mapping document", "below"]
             ):
                 issues.append(f"CSV should start with header row, not preamble text: '{first_line}'")
 
@@ -338,12 +351,43 @@ class ValidateArtifactExecutor(
 
             # DMD-specific: Check expected columns
             if artifact_type == "dmd" and rows:
-                header = rows[0]
-                if header != self.DMD_EXPECTED_COLUMNS:
+                header = [col.strip().lower() for col in rows[0]]
+                expected_lower = [col.lower() for col in self.DMD_EXPECTED_COLUMNS]
+
+                if header != expected_lower:
                     issues.append(
-                        f"DMD header mismatch. Expected 12 columns: {self.DMD_EXPECTED_COLUMNS}"
+                        f"DMD header mismatch. Expected 13 columns in this order: {self.DMD_EXPECTED_COLUMNS}"
                     )
-                    issues.append(f"Got {len(header)} columns: {header}")
+                    issues.append(f"Got {len(header)} columns: {rows[0]}")
+
+                # Check that header starts with source_system (not target_table)
+                if header and header[0] != "source_system":
+                    issues.append(
+                        f"DMD header must start with 'source_system', not '{rows[0][0]}'"
+                    )
+
+                # Check that last column is 'layer'
+                if header and header[-1] != "layer":
+                    issues.append(
+                        f"DMD header must end with 'layer' column, not '{rows[0][-1]}'"
+                    )
+
+                # Validate layer column values
+                if len(rows) > 1 and len(header) >= 13:
+                    layer_idx = 12  # 0-indexed, 13th column
+                    invalid_layers = []
+                    for i, row in enumerate(rows[1:], 2):
+                        if len(row) > layer_idx:
+                            layer = row[layer_idx].strip().lower()
+                            if layer and layer not in self.VALID_LAYERS:
+                                invalid_layers.append((i, layer))
+                                if len(invalid_layers) >= 3:  # Only report first 3
+                                    break
+
+                    for row_num, layer_val in invalid_layers:
+                        issues.append(
+                            f"Row {row_num}: Invalid layer value '{layer_val}' - must be bronze, silver, or gold"
+                        )
 
         except csv.Error as e:
             issues.append(f"Invalid CSV format: {e}")
@@ -353,11 +397,37 @@ class ValidateArtifactExecutor(
     def _validate_yaml(self, content: str) -> list[str]:
         """Validate YAML content."""
         issues = []
+        content_stripped = content.strip()
+
+        # CRITICAL: Check if content is markdown instead of YAML
+        if content_stripped.startswith("#") and not content_stripped.startswith("# "):
+            # YAML comments start with # but markdown headers have # followed by space
+            pass
+        elif content_stripped.startswith("# ") or content_stripped.startswith("## "):
+            issues.append(
+                "CRITICAL: Content appears to be markdown prose, not YAML. "
+                "Expected YAML starting with 'version:' key."
+            )
+            return issues
+
+        # Check for code fence wrapping
+        if content_stripped.startswith("```yaml") or content_stripped.startswith("```"):
+            issues.append("Content should not be wrapped in ```yaml code fences - output raw YAML only")
+
+        # Check for leading 'yaml' text (from code fence artifact)
+        if content_stripped.lower().startswith("yaml\n") or content_stripped.lower().startswith("yaml "):
+            issues.append("Content starts with 'yaml' text - remove code fence artifacts")
 
         try:
             data = yaml.safe_load(content)
             if data is None:
                 issues.append("YAML is empty or invalid")
+            elif isinstance(data, dict):
+                # DQS-specific: Check for expected top-level keys
+                if "version" not in data:
+                    issues.append("DQS YAML should have 'version' key at top level")
+                if "quality_dimensions" not in data and "quality_rules" not in data:
+                    issues.append("DQS YAML should have 'quality_dimensions' or 'quality_rules' section")
         except yaml.YAMLError as e:
             issues.append(f"Invalid YAML format: {e}")
 

@@ -233,14 +233,34 @@ class SessionEventAdapter:
         artifact_format: str,
         content: str,
     ) -> None:
-        """Emit artifact generated event and add to session."""
-        # Add artifact to session
-        self.session.add_artifact(
+        """Emit artifact generated event and add to session.
+
+        Artifacts are stored in separate files within the session directory.
+        The session metadata (session.json) contains artifact metadata but not content.
+        """
+        # Add artifact metadata to session (file_based=True by default)
+        artifact = self.session.add_artifact(
             artifact_type=artifact_type,
-            content=content,
+            content=content,  # Passed for file saving, not stored in model
             format=artifact_format,
             agent=agent_name,
+            file_based=True,
         )
+
+        # Save artifact content to file
+        if artifact.is_file_based:
+            try:
+                artifact_path = self.session_manager.save_artifact(
+                    self.session, artifact_type, content
+                )
+                logger.info(f"Artifact saved to file: {artifact_path}")
+            except Exception as e:
+                logger.error(f"Failed to save artifact file: {e}")
+                # Fallback: store content inline
+                artifact.content = content
+                artifact.filename = None
+
+        # Save session metadata
         self._save()
 
         # Emit event

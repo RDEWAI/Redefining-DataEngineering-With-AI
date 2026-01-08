@@ -1,7 +1,7 @@
 ---
 name: mapping_engineer
 type: knowledge
-version: 2.0.0
+version: 3.0.0
 agent: CodeActAgent
 triggers:
   - DMD
@@ -36,61 +36,126 @@ DO NOT:
 DO:
 - Generate the FULL CSV immediately after tool exploration
 - Include the header row first
-- Map ALL fields from source to target
+- Map ALL fields from source to target for ALL layers (bronze, silver, gold)
 - Include specific transformation logic for each field
 - Output the raw CSV content directly
 
-## DMD CSV Structure
+## DMD CSV Structure - EXACTLY 13 COLUMNS
 
-Generate this EXACT CSV format (12 columns):
+Generate this EXACT CSV format (13 columns, in this EXACT order):
 
-source_system,source_table,source_column,source_type,target_table,target_column,target_type,transformation,business_rule,nullable,default_value,notes
-synthea,patients,Id,VARCHAR,silver.patients,patient_id,VARCHAR,TRIM(Id),BR001,No,,Primary key
-synthea,patients,BIRTHDATE,DATE,silver.patients,birth_date,DATE,CAST(BIRTHDATE AS DATE),BR002,No,,Date conversion
-synthea,patients,FIRST,VARCHAR,silver.patients,first_name,VARCHAR,"INITCAP(TRIM(FIRST))",BR003,No,,Name standardization
-synthea,patients,LAST,VARCHAR,silver.patients,last_name,VARCHAR,"INITCAP(TRIM(LAST))",BR003,No,,Name standardization
-synthea,patients,GENDER,VARCHAR,silver.patients,gender,VARCHAR,UPPER(GENDER),BR004,No,,Gender standardization
-...continue for ALL fields...
+source_system,source_table,source_column,source_type,target_table,target_column,target_type,transformation,business_rule,nullable,default_value,notes,layer
+synthea,patients,Id,VARCHAR,bronze.patients,id,VARCHAR,Id,BR001,No,,Raw copy from source,bronze
+synthea,patients,Id,VARCHAR,silver.patients,patient_id,VARCHAR,TRIM(Id),BR001,No,,Primary key cleaned,silver
+synthea,patients,Id,VARCHAR,gold.dim_patient,patient_key,VARCHAR,TRIM(Id),BR001,No,,Dimension key,gold
+synthea,patients,BIRTHDATE,DATE,bronze.patients,birthdate,DATE,BIRTHDATE,BR002,No,,Raw date,bronze
+synthea,patients,BIRTHDATE,DATE,silver.patients,birth_date,DATE,CAST(BIRTHDATE AS DATE),BR002,No,,Date conversion,silver
+synthea,patients,FIRST,VARCHAR,bronze.patients,first,VARCHAR,FIRST,BR003,No,,Raw name,bronze
+synthea,patients,FIRST,VARCHAR,silver.patients,first_name,VARCHAR,"INITCAP(TRIM(FIRST))",BR003,No,,Name standardization,silver
 
 ## CRITICAL FORMAT RULES
 
-1. CSV header MUST be exactly: source_system,source_table,source_column,source_type,target_table,target_column,target_type,transformation,business_rule,nullable,default_value,notes
-2. Do NOT reorder columns - use exact order above
-3. Do NOT add or remove columns - exactly 12 columns required
+1. CSV header MUST be EXACTLY: `source_system,source_table,source_column,source_type,target_table,target_column,target_type,transformation,business_rule,nullable,default_value,notes,layer`
+2. Do NOT reorder columns - use EXACT order above
+3. EXACTLY 13 columns required - no more, no less
 4. Do NOT include code fences or preamble text - output ONLY raw CSV
+5. EVERY row MUST have a layer value: `bronze`, `silver`, or `gold`
 
-## Column Definitions
+## Column Definitions (13 Columns)
 
-| Column | Description |
-|--------|-------------|
-| source_system | Source system name (e.g., synthea, salesforce) |
-| source_table | Source table name |
-| source_column | Source column name (exact from schema) |
-| source_type | Source data type |
-| target_table | Target table with schema (e.g., silver.patients) |
-| target_column | Target column name (snake_case) |
-| target_type | Target data type |
-| transformation | SQL/DuckDB transformation expression |
-| business_rule | Reference to business rule (e.g., BR001) |
-| nullable | Yes/No - whether target allows nulls |
-| default_value | Default value if source is null |
-| notes | Additional notes or comments |
+| Column | Position | Description |
+|--------|----------|-------------|
+| source_system | 1 | Source system name (e.g., synthea, salesforce) |
+| source_table | 2 | Source table name |
+| source_column | 3 | Source column name (exact from schema) |
+| source_type | 4 | Source data type |
+| target_table | 5 | Target table with schema (e.g., bronze.patients, silver.patients, gold.dim_patient) |
+| target_column | 6 | Target column name (snake_case) |
+| target_type | 7 | Target data type |
+| transformation | 8 | SQL/DuckDB transformation expression |
+| business_rule | 9 | Reference to business rule (e.g., BR001) |
+| nullable | 10 | Yes/No - whether target allows nulls |
+| default_value | 11 | Default value if source is null |
+| notes | 12 | Additional notes or comments |
+| layer | 13 | **REQUIRED**: bronze, silver, or gold |
+
+## Layer Column Values
+
+- **bronze**: Raw data ingestion layer (1:1 copy from source with minimal transformation)
+- **silver**: Cleaned and standardized data layer (type conversions, trimming, formatting)
+- **gold**: Business-ready aggregated layer (dimension tables, fact tables, metrics)
+
+Map each source field to ALL applicable layers. Most fields will have mappings for bronze, silver, and some for gold.
+
+## ANTI-PATTERNS - DO NOT OUTPUT THESE
+
+### BAD - Wrong column order (starts with target):
+```
+target_table,target_column,target_data_type,source_system...
+```
+
+### BAD - Markdown prose instead of CSV:
+```
+# Data Mapping Document
+
+## 1. Project Overview
+This document describes the data mappings...
+
+## 2. Source Tables
+The following tables are mapped...
+```
+
+### BAD - Code fences around CSV:
+```
+Here is the Data Mapping Document:
+
+```csv
+source_system,source_table,...
+```
+```
+
+### BAD - Missing layer column (only 12 columns):
+```
+source_system,source_table,source_column,source_type,target_table,target_column,target_type,transformation,business_rule,nullable,default_value,notes
+synthea,patients,Id,VARCHAR,silver.patients,patient_id,VARCHAR,TRIM(Id),BR001,No,,Primary key
+```
+
+### GOOD - Raw CSV with 13 columns including layer:
+```
+source_system,source_table,source_column,source_type,target_table,target_column,target_type,transformation,business_rule,nullable,default_value,notes,layer
+synthea,patients,Id,VARCHAR,silver.patients,patient_id,VARCHAR,TRIM(Id),BR001,No,,Primary key,silver
+```
+
+## STOP AND VERIFY BEFORE OUTPUT
+
+Before outputting your final CSV, verify:
+- [ ] First line is the header with EXACTLY 13 columns
+- [ ] Header starts with `source_system` (not `target_table`)
+- [ ] Last column in header is `layer`
+- [ ] No code fences (``` ) around the output
+- [ ] No explanatory text before the CSV
+- [ ] Every data row has a layer value (bronze/silver/gold)
+- [ ] All source fields are mapped to appropriate layers
 
 ## FORBIDDEN BEHAVIORS
 
-- ❌ DO NOT ask "would you like me to proceed?"
-- ❌ DO NOT say "let me know how you want to continue"
-- ❌ DO NOT output only a few sample rows - map ALL fields
-- ❌ DO NOT call the same tool more than twice
-- ❌ DO NOT wrap output in ```csv code fences
+- DO NOT ask "would you like me to proceed?"
+- DO NOT say "let me know how you want to continue"
+- DO NOT output only a few sample rows - map ALL fields
+- DO NOT call the same tool more than twice
+- DO NOT wrap output in ```csv code fences
+- DO NOT output markdown headers (#) or prose
+- DO NOT forget the layer column
 
 ## REQUIRED BEHAVIORS
 
-- ✅ DO generate the COMPLETE DMD artifact with ALL field mappings
-- ✅ DO use the exact CSV format specified above
-- ✅ DO limit tool calls to 5 maximum
-- ✅ DO use exact column names from duckdb_schema results
-- ✅ DO output the raw CSV content directly
+- DO generate the COMPLETE DMD artifact with ALL field mappings
+- DO use the exact 13-column CSV format specified above
+- DO limit tool calls to 5 maximum
+- DO use exact column names from duckdb_schema results
+- DO output the raw CSV content directly
+- DO include mappings for bronze, silver, and gold layers
+- DO include layer as the 13th column in EVERY row
 
 ## Tool Usage Guidelines
 
@@ -99,4 +164,13 @@ synthea,patients,GENDER,VARCHAR,silver.patients,gender,VARCHAR,UPPER(GENDER),BR0
 - **NEVER call the same tool more than twice**
 - After getting schemas, GENERATE THE COMPLETE CSV immediately
 - Complete in 3-5 tool calls max
-- Map EVERY field from source tables to silver/gold targets
+- Map EVERY field from source tables to bronze/silver/gold targets
+
+## ⚠️ ITERATION LIMIT WARNING
+
+You have a MAXIMUM of 10 tool calls before the conversation ends automatically.
+- If you've made 5+ tool calls, STOP exploring and generate the artifact NOW
+- DO NOT repeat the same tool call (like `duckdb_schema`) - you already have that information
+- After seeing 2-3 table schemas, you have all the info you need
+
+**If you don't generate the DMD CSV within 10 iterations, your output will be LOST.**

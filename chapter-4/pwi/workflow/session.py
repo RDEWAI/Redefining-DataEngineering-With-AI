@@ -18,15 +18,52 @@ from pydantic import BaseModel, Field
 from pwi.workflow.states import WorkflowState
 
 
+def _generate_session_id() -> str:
+    """Generate timestamp-based session ID.
+
+    Format: YYYY-MM-DD_HH-MM-SS_xxxx
+    Example: 2024-01-15_10-30-45_a7b3
+
+    Benefits:
+    - Human readable ISO-like date/time
+    - Chronological sorting in filesystem
+    - 4-char suffix prevents collisions
+    """
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    suffix = str(uuid.uuid4())[:4]
+    return f"{timestamp}_{suffix}"
+
+
 class SessionArtifact(BaseModel):
-    """An artifact produced by an agent."""
+    """An artifact produced by an agent.
+
+    Artifacts can be stored either:
+    - Inline (legacy): content stored directly in the JSON
+    - File-based (new): content stored in separate files within session directory
+    """
 
     type: str  # drd, pad, dmd, dqs, stories, package
-    content: str
+    content: str = ""  # Legacy inline content (empty when file-based)
     format: str  # markdown, csv, yaml, json
     created_at: datetime = Field(default_factory=datetime.utcnow)
     agent: str
     version: int = 1
+    filename: str | None = None  # File name when stored separately (e.g., "drd.md")
+
+    @property
+    def is_file_based(self) -> bool:
+        """Check if artifact is stored in a separate file."""
+        return self.filename is not None
+
+    def get_file_extension(self) -> str:
+        """Get file extension for this artifact format."""
+        extensions = {
+            "markdown": ".md",
+            "csv": ".csv",
+            "yaml": ".yaml",
+            "json": ".json",
+        }
+        return extensions.get(self.format, ".txt")
 
 
 class SessionReview(BaseModel):
@@ -59,7 +96,7 @@ class Session(BaseModel):
     - Token usage for cost tracking
     """
 
-    session_id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
+    session_id: str = Field(default_factory=_generate_session_id)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     project_name: str = ""
@@ -87,21 +124,43 @@ class Session(BaseModel):
         content: str,
         format: str,
         agent: str,
+        file_based: bool = True,
     ) -> SessionArtifact:
         """Add or update an artifact.
 
         If an artifact of this type already exists, increment the version.
+
+        Args:
+            artifact_type: Type of artifact (drd, pad, dmd, etc.).
+            content: Artifact content (stored inline if not file_based).
+            format: Format of the artifact (markdown, csv, yaml, json).
+            agent: Name of the agent that produced the artifact.
+            file_based: If True, content is stored in a separate file.
+
+        Returns:
+            The created SessionArtifact.
         """
         version = 1
         if artifact_type in self.artifacts:
             version = self.artifacts[artifact_type].version + 1
 
+        # Determine filename for file-based storage
+        extensions = {
+            "markdown": ".md",
+            "csv": ".csv",
+            "yaml": ".yaml",
+            "json": ".json",
+        }
+        ext = extensions.get(format, ".txt")
+        filename = f"{artifact_type}{ext}" if file_based else None
+
         artifact = SessionArtifact(
             type=artifact_type,
-            content=content,
+            content="" if file_based else content,  # Empty if file-based
             format=format,
             agent=agent,
             version=version,
+            filename=filename,
         )
         self.artifacts[artifact_type] = artifact
         self.updated_at = datetime.utcnow()
@@ -166,6 +225,58 @@ class Session(BaseModel):
         """Get an artifact by type."""
         return self.artifacts.get(artifact_type)
 
+    def get_session_dir(self, base_dir: Path) -> Path:
+        """Get session directory path for file-based storage.
+
+        Args:
+            base_dir: Base sessions directory.
+
+        Returns:
+            Path to this session's directory.
+        """
+        return base_dir / self.session_id
+
+    def get_artifact_path(self, base_dir: Path, artifact_type: str) -> Path | None:
+        """Get file path for an artifact.
+
+        Args:
+            base_dir: Base sessions directory.
+            artifact_type: Type of artifact (drd, pad, etc.).
+
+        Returns:
+            Path to artifact file, or None if artifact doesn't exist.
+        """
+        if artifact_type not in self.artifacts:
+            return None
+        artifact = self.artifacts[artifact_type]
+        if artifact.filename:
+            return self.get_session_dir(base_dir) / artifact.filename
+        return None
+
+    def read_artifact_content(self, base_dir: Path, artifact_type: str) -> str | None:
+        """Read artifact content, supporting both inline and file-based storage.
+
+        Args:
+            base_dir: Base sessions directory.
+            artifact_type: Type of artifact to read.
+
+        Returns:
+            Artifact content string, or None if not found.
+        """
+        artifact = self.artifacts.get(artifact_type)
+        if not artifact:
+            return None
+
+        # If file-based, read from file
+        if artifact.is_file_based:
+            path = self.get_artifact_path(base_dir, artifact_type)
+            if path and path.exists():
+                return path.read_text(encoding="utf-8")
+            return None
+
+        # Otherwise return inline content
+        return artifact.content if artifact.content else None
+
     def is_complete(self) -> bool:
         """Check if the session has completed successfully."""
         return self.current_state == WorkflowState.COMPLETED.value
@@ -182,22 +293,48 @@ class Session(BaseModel):
 class SessionManager:
     """Manages session persistence to the filesystem.
 
-    Sessions are stored as JSON files in the session directory,
-    with the filename being the session ID.
+    Sessions can be stored in two formats:
+    - Legacy: Single JSON file per session (<session_id>.json)
+    - File-based: Directory per session with session.json + artifact files
+
+    The manager automatically detects which format a session uses.
+    New sessions use the file-based format.
     """
 
-    def __init__(self, session_dir: Path) -> None:
+    def __init__(self, session_dir: Path, use_file_based: bool = True) -> None:
         """Initialize the session manager.
 
         Args:
             session_dir: Directory where sessions are stored.
+            use_file_based: If True, new sessions use directory-based storage.
         """
         self.session_dir = session_dir
         self.session_dir.mkdir(parents=True, exist_ok=True)
+        self.use_file_based = use_file_based
+
+    def _session_dir_path(self, session_id: str) -> Path:
+        """Get session directory path (for file-based storage)."""
+        return self.session_dir / session_id
+
+    def _session_json_path(self, session_id: str) -> Path:
+        """Get session.json path within session directory (file-based)."""
+        return self._session_dir_path(session_id) / "session.json"
+
+    def _legacy_session_path(self, session_id: str) -> Path:
+        """Get legacy session file path (<session_id>.json)."""
+        return self.session_dir / f"{session_id}.json"
+
+    def _is_file_based_session(self, session_id: str) -> bool:
+        """Check if session uses file-based storage."""
+        return self._session_dir_path(session_id).is_dir()
 
     def _session_path(self, session_id: str) -> Path:
-        """Get the path to a session file."""
-        return self.session_dir / f"{session_id}.json"
+        """Get the path to a session file (auto-detect format)."""
+        # Check file-based first (directory exists)
+        if self._is_file_based_session(session_id):
+            return self._session_json_path(session_id)
+        # Fall back to legacy
+        return self._legacy_session_path(session_id)
 
     def create(
         self,
@@ -220,6 +357,12 @@ class SessionManager:
             request_path=request_path,
             request_content=request_content,
         )
+
+        # Create session directory for file-based storage
+        if self.use_file_based:
+            session_dir = self._session_dir_path(session.session_id)
+            session_dir.mkdir(parents=True, exist_ok=True)
+
         self.save(session)
         return session
 
@@ -229,9 +372,56 @@ class SessionManager:
         Args:
             session: Session to save.
         """
-        path = self._session_path(session.session_id)
+        # Determine storage format
+        if self._is_file_based_session(session.session_id) or (
+            self.use_file_based and not self._legacy_session_path(session.session_id).exists()
+        ):
+            # File-based: ensure directory exists
+            session_dir = self._session_dir_path(session.session_id)
+            session_dir.mkdir(parents=True, exist_ok=True)
+            path = self._session_json_path(session.session_id)
+        else:
+            # Legacy: single JSON file
+            path = self._legacy_session_path(session.session_id)
+
         with open(path, "w", encoding="utf-8") as f:
             f.write(session.model_dump_json(indent=2))
+
+    def save_artifact(
+        self,
+        session: Session,
+        artifact_type: str,
+        content: str,
+    ) -> Path:
+        """Save artifact content to a separate file.
+
+        Args:
+            session: Session containing the artifact.
+            artifact_type: Type of artifact (drd, pad, etc.).
+            content: Artifact content to save.
+
+        Returns:
+            Path to the saved artifact file.
+
+        Raises:
+            ValueError: If artifact not found in session.
+        """
+        artifact = session.artifacts.get(artifact_type)
+        if not artifact:
+            raise ValueError(f"Artifact '{artifact_type}' not found in session")
+
+        if not artifact.filename:
+            raise ValueError(f"Artifact '{artifact_type}' has no filename set")
+
+        # Ensure session directory exists
+        session_dir = self._session_dir_path(session.session_id)
+        session_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write artifact content to file
+        artifact_path = session_dir / artifact.filename
+        artifact_path.write_text(content, encoding="utf-8")
+
+        return artifact_path
 
     def load(self, session_id: str) -> Session:
         """Load a session from disk.
@@ -250,6 +440,23 @@ class SessionManager:
             data = json.load(f)
         return Session.model_validate(data)
 
+    def load_artifact_content(
+        self,
+        session_id: str,
+        artifact_type: str,
+    ) -> str | None:
+        """Load artifact content from file.
+
+        Args:
+            session_id: ID of the session.
+            artifact_type: Type of artifact to load.
+
+        Returns:
+            Artifact content, or None if not found.
+        """
+        session = self.load(session_id)
+        return session.read_artifact_content(self.session_dir, artifact_type)
+
     def exists(self, session_id: str) -> bool:
         """Check if a session exists.
 
@@ -259,7 +466,11 @@ class SessionManager:
         Returns:
             True if the session exists, False otherwise.
         """
-        return self._session_path(session_id).exists()
+        # Check both file-based and legacy formats
+        return (
+            self._session_json_path(session_id).exists()
+            or self._legacy_session_path(session_id).exists()
+        )
 
     def delete(self, session_id: str) -> bool:
         """Delete a session.
@@ -270,10 +481,20 @@ class SessionManager:
         Returns:
             True if deleted, False if didn't exist.
         """
-        path = self._session_path(session_id)
-        if path.exists():
-            path.unlink()
+        import shutil
+
+        # Try file-based first
+        session_dir = self._session_dir_path(session_id)
+        if session_dir.is_dir():
+            shutil.rmtree(session_dir)
             return True
+
+        # Try legacy
+        legacy_path = self._legacy_session_path(session_id)
+        if legacy_path.exists():
+            legacy_path.unlink()
+            return True
+
         return False
 
     def list_sessions(self) -> list[Session]:
@@ -283,13 +504,26 @@ class SessionManager:
             List of all sessions, sorted by creation date (newest first).
         """
         sessions = []
+        seen_ids: set[str] = set()
+
+        # Find file-based sessions (directories with session.json)
+        for path in self.session_dir.iterdir():
+            if path.is_dir() and (path / "session.json").exists():
+                try:
+                    session = self.load(path.name)
+                    sessions.append(session)
+                    seen_ids.add(path.name)
+                except Exception:
+                    continue
+
+        # Find legacy sessions (*.json files)
         for path in self.session_dir.glob("*.json"):
-            try:
-                session = self.load(path.stem)
-                sessions.append(session)
-            except Exception:
-                # Skip invalid session files
-                continue
+            if path.stem not in seen_ids:
+                try:
+                    session = self.load(path.stem)
+                    sessions.append(session)
+                except Exception:
+                    continue
 
         # Sort by creation date, newest first
         sessions.sort(key=lambda s: s.created_at, reverse=True)

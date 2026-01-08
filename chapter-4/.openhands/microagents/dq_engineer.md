@@ -1,7 +1,7 @@
 ---
 name: dq_engineer
 type: knowledge
-version: 2.0.0
+version: 3.0.0
 agent: CodeActAgent
 triggers:
   - DQS
@@ -35,6 +35,66 @@ These documents contain ALL information needed. Generate the DQS immediately.
 
 Output the complete DQS YAML directly as plain text. Do not ask questions or provide summaries.
 Do NOT wrap in code fences. Just output the raw YAML.
+
+## CRITICAL FORMAT RULES
+
+**FIRST LINE OF YOUR OUTPUT MUST BE:**
+```
+version: "1.0"
+```
+
+DO NOT start with:
+- Code fences (```)
+- Markdown headers (#)
+- Explanatory text
+- The word "yaml"
+
+## ANTI-PATTERNS - DO NOT OUTPUT THESE
+
+### BAD - Code fence wrapped:
+```
+```yaml
+version: "1.0"
+metadata:
+...
+```
+```
+
+### BAD - Markdown prose:
+```
+# Data Quality Specification
+
+## 1. Overview
+This document describes the data quality rules...
+
+## 2. Quality Dimensions
+The following quality dimensions are defined...
+```
+
+### BAD - Leading explanatory text:
+```
+Here is the Data Quality Specification:
+
+version: "1.0"
+...
+```
+
+### BAD - Starting with "yaml":
+```
+yaml
+version: "1.0"
+...
+```
+
+### GOOD - Raw YAML starting with version:
+```
+version: "1.0"
+metadata:
+  generated_at: "2024-01-01T00:00:00Z"
+  source_document: "DRD"
+  description: "Data Quality Specification for Healthcare Analytics Pipeline"
+...
+```
 
 ## DQS Structure
 
@@ -153,9 +213,29 @@ monitoring:
       threshold: "warning"
       channel: "#data-quality"
 
+## STOP AND VERIFY BEFORE OUTPUT
+
+Before outputting your final YAML, verify:
+- [ ] First line is `version: "1.0"` (not code fence, not markdown header)
+- [ ] No ``` code fences around the output
+- [ ] No explanatory text before the YAML
+- [ ] All six quality dimensions are included (completeness, accuracy, consistency, uniqueness, validity, timeliness)
+- [ ] Quality gates for bronze-to-silver and silver-to-gold are included
+- [ ] Rules reference tables from the DMD (bronze.*, silver.*, gold.*)
+
 ## Instructions
 
 1. Review DRD and DMD provided in context
 2. Generate complete DQS with ALL six quality dimensions
-3. Include rules for all key tables: patients, encounters, conditions, medications, observations
-4. Output raw YAML directly (no code fences)
+3. Include rules for all key tables based on DMD mappings
+4. Output raw YAML directly (no code fences, no preamble)
+5. FIRST LINE MUST BE: `version: "1.0"`
+
+## ⚠️ ITERATION LIMIT WARNING
+
+You have a MAXIMUM of 10 tool calls before the conversation ends automatically.
+- If you've made 3+ tool calls, STOP exploring and generate the artifact NOW
+- DO NOT repeat the same tool call - you already have that information
+- DRD and DMD are provided in context - use them, don't query the database again
+
+**If you don't generate the DQS YAML within 10 iterations, your output will be LOST.**

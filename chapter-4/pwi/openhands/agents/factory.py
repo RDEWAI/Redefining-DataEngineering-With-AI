@@ -701,7 +701,7 @@ def create_pwi_conversation(
     agent: Agent,
     workspace: str | Path,
     callbacks: list | None = None,
-    max_iteration_per_run: int = 50,
+    max_iteration_per_run: int = 15,
 ) -> Conversation:
     """Create a conversation with a PWI agent.
 
@@ -709,7 +709,7 @@ def create_pwi_conversation(
         agent: Configured Agent instance.
         workspace: Workspace directory path.
         callbacks: Optional list of callback functions.
-        max_iteration_per_run: Maximum number of agent iterations per run (default: 100).
+        max_iteration_per_run: Maximum number of agent iterations per run (default: 15).
             This prevents runaway agents that get stuck in loops.
 
     Returns:
