@@ -59,19 +59,19 @@ Quality checks:
 Brief description of the data pipeline project...
 
 ## 2. Data Sources
-### 2.1 Source System: Synthea
-- Connection: DuckDB at ../data/duckdb/raw.db
-- Schema: synthea
-- Tables: patients, encounters, conditions
+### 2.1 Source System: <source_system>
+- Connection: <connection_details>
+- Schema: <schema_name>
+- Tables: <table1>, <table2>, <table3>
 
 ## 3. Entity Definitions
-### 3.1 Patients
+### 3.1 <Entity Name>
 | Field | Type | Description | Nullable |
 |-------|------|-------------|----------|
-| id | VARCHAR | Unique patient identifier | No |
-| birthdate | DATE | Patient date of birth | No |
+| <id_field> | VARCHAR | Unique identifier | No |
+| <date_field> | DATE | Date field | No |
 
 ## 4. Business Rules
-- BR001: Patient ID must be unique
-- BR002: Birthdate must be in the past
+- BR001: <Primary key> must be unique
+- BR002: <Date field> must be valid
 ```

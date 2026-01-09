@@ -26,14 +26,17 @@ Your finish message MUST be the complete DRD markdown content, NOT a summary or 
 
 ## CRITICAL WORKFLOW - MAXIMUM 5 TOOL CALLS
 
-1. **EXPLORE** (max 3 tool calls total):
-   - Call `duckdb_tables` ONCE to list tables
-   - Call `duckdb_schema` on 2-3 key tables max
+1. **DISCOVER** (1 tool call):
+   - Call `discover_data` FIRST to find available data sources
+   - This tells you whether to use DuckDB or CSV tools
+2. **EXPLORE** (max 3 tool calls total):
+   - If DuckDB found: Call `duckdb_tables` ONCE, then `duckdb_schema` on 2-3 key tables
+   - If CSV only: Call `analyze_csv` on key files
    - DO NOT call the same tool repeatedly
-2. **GENERATE**: Create the COMPLETE DRD document
-3. **FINISH**: Call finish with the FULL DRD content as the message
+3. **GENERATE**: Create the COMPLETE DRD document
+4. **FINISH**: Call finish with the FULL DRD content as the message
 
-⚠️ STOP exploring after 3-4 tool calls. You have enough information. Generate the artifact.
+⚠️ STOP exploring after 4-5 tool calls. You have enough information. Generate the artifact.
 
 ## OUTPUT REQUIREMENTS
 
@@ -95,10 +98,12 @@ Generate this EXACT structure:
 
 ## Tool Usage Guidelines
 
-- Call `duckdb_tables` ONCE to see all tables
-- Call `duckdb_schema` for only 2-3 relevant tables
+- Call `discover_data` ONCE FIRST to find data sources
+- Based on results:
+  - DuckDB: `duckdb_tables` ONCE, then `duckdb_schema` 2-3 times
+  - CSV only: `analyze_csv` on key files
 - NEVER call the same tool more than twice
-- After 3-5 tool calls, GENERATE THE ARTIFACT
+- After 4-5 tool calls, GENERATE THE ARTIFACT
 
 ## ⚠️ MANDATORY FINISH FORMAT
 

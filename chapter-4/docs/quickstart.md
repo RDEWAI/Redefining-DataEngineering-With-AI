@@ -135,6 +135,48 @@ Open http://127.0.0.1:8080 in your browser to:
 - Review and approve artifacts
 - Export results
 
+## Using the OpenHands GUI (Alternative)
+
+For a more interactive experience, you can use the OpenHands web interface to run individual PWI agents on-demand. This is a full alternative to the CLI.
+
+### Quick Start
+
+```bash
+# Configure your LLM API key in .env
+echo 'LLM_API_KEY=your-key-here' > .env
+echo 'LLM_BASE_URL=https://openrouter.ai/api/v1' >> .env
+echo 'LLM_MODEL=openrouter/anthropic/claude-3.5-haiku' >> .env
+
+# Start the OpenHands GUI
+./scripts/start-openhands-gui.sh
+
+# Open http://localhost:3000 in your browser
+```
+
+### Example Prompts
+
+Once in the GUI, try these prompts to interact with PWI agents:
+
+| What You Want | Example Prompt |
+|--------------|----------------|
+| Generate DRD | "Generate a DRD for the data described in my request" |
+| Explore data | "List all tables in the database" |
+| Get schema | "Show me the schema for <schema>.<table>" |
+| Create PAD | "Create a PAD based on this DRD: [paste DRD content]" |
+| Validate | "Validate this DRD: [paste content]" |
+
+### When to Use GUI vs CLI
+
+| Use Case | Recommended |
+|----------|-------------|
+| Full pipeline workflow | CLI (`pwi plan run`) |
+| Individual agent on-demand | GUI |
+| Exploring data interactively | GUI |
+| Automated pipelines | CLI |
+| Real-time tool visualization | GUI |
+
+See [OpenHands GUI Guide](openhands-gui.md) for detailed documentation.
+
 ## Common Commands
 
 ```bash
@@ -166,4 +208,5 @@ uv run pwi dashboard --port 8080
 
 - Read the [CLI Reference](cli-reference.md) for detailed command documentation
 - See [Configuration Guide](configuration.md) for advanced configuration options
+- Try the [OpenHands GUI](openhands-gui.md) for an interactive web interface
 - Explore the generated artifacts in the `output/` directory

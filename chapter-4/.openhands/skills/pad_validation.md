@@ -90,16 +90,16 @@ flowchart LR
 ```mermaid
 flowchart LR
     subgraph Sources
-        S1[Synthea CSV]
+        S1[Source Data]
     end
     subgraph Bronze
-        B1[(bronze.patients)]
+        B1[(bronze.<table>)]
     end
     subgraph Silver
-        S2[(silver.patients)]
+        S2[(silver.<table>)]
     end
     subgraph Gold
-        G1[(gold.dim_patient)]
+        G1[(gold.dim_<entity>)]
     end
     S1 --> B1 --> S2 --> G1
 ```
@@ -112,36 +112,36 @@ flowchart LR
 ## 2. Data Layers
 ### 2.1 Bronze Layer (Raw)
 - **Purpose**: Landing zone for raw source data
-- **Tables**: bronze.patients, bronze.encounters
+- **Tables**: bronze.<table_1>, bronze.<table_2>
 
 ### 2.2 Silver Layer (Cleaned)
 - **Purpose**: Cleaned and standardized data
-- **Tables**: silver.patients, silver.encounters
+- **Tables**: silver.<table_1>, silver.<table_2>
 
 ### 2.3 Gold Layer (Business)
 - **Purpose**: Business-ready aggregates and dimensions
-- **Tables**: gold.dim_patient, gold.fact_encounter
+- **Tables**: gold.dim_<entity>, gold.fact_<entity>
 
 ## 3. Pipeline Components
 | Component | Description | Technology |
 |-----------|-------------|------------|
-| Ingestion | CSV to Bronze | Python + DuckDB |
+| Ingestion | Source to Bronze | Python + DuckDB |
 | Bronze→Silver | Data cleaning | SQL transforms |
 
 ## 4. Data Models
 ### 4.1 Entity Relationship Diagram
 ```mermaid
 erDiagram
-    PATIENT ||--o{ ENCOUNTER : has
-    PATIENT {
-        varchar patient_id PK
-        date birth_date
-        varchar gender
+    ENTITY_A ||--o{ ENTITY_B : has
+    ENTITY_A {
+        varchar <primary_key> PK
+        date <date_field>
+        varchar <attribute>
     }
-    ENCOUNTER {
-        varchar encounter_id PK
-        varchar patient_id FK
-        date encounter_date
+    ENTITY_B {
+        varchar <primary_key> PK
+        varchar <foreign_key> FK
+        date <date_field>
     }
 ```
 

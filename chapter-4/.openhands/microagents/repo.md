@@ -32,11 +32,21 @@ When asked to generate an artifact (DRD, PAD, DMD, DQS, Stories, Package), you M
 - ✅ DO call `finish` with the full artifact content
 - ✅ DO limit tool calls to 3-5 maximum
 
-## Data Sources
+## Data Source Discovery
 
-- **DuckDB Database**: `data/duckdb/raw.db` (or `../data/duckdb/raw.db`)
-- **Schema**: `synthea` (healthcare data)
-- **Tables**: patients, encounters, conditions, medications, procedures, etc.
+**IMPORTANT: Always call `discover_data` FIRST before any other data exploration.**
+
+The `discover_data` tool will:
+1. Search for CSV files in common locations
+2. Search for DuckDB databases in common locations
+3. Tell you which tools to use based on what's available
+
+Based on `discover_data` results:
+- If **DuckDB found**: Use `duckdb_tables`, `duckdb_schema`, `duckdb_query`
+- If **CSV files found**: Use `analyze_csv`, `csv_stats`, `csv_sample`
+- If **both found**: Prefer DuckDB (data is pre-loaded and queryable)
+
+Do NOT assume any specific data source, schema, or table names.
 
 ## Artifact Types (in sequence)
 
@@ -49,19 +59,23 @@ When asked to generate an artifact (DRD, PAD, DMD, DQS, Stories, Package), you M
 
 ## Tool Usage
 
-- `duckdb_tables`: List tables (call ONCE)
+- `discover_data`: **CALL FIRST** - discovers available data sources
+- `duckdb_tables`: List tables (call ONCE, only if DuckDB found)
 - `duckdb_schema`: Get table structure (call 2-3 times max)
 - `duckdb_query`: Sample data (call sparingly, LIMIT 5)
-- `analyze_csv`: Analyze CSV files
+- `analyze_csv`: Analyze CSV files (only if CSVs found, no DuckDB)
+- `csv_stats`: Get CSV statistics
+- `csv_sample`: Get sample CSV rows
 
 ## Example Correct Workflow
 
 1. User requests DRD
-2. You call `duckdb_tables` → see 18 tables
-3. You call `duckdb_schema` for patients → get structure
-4. You call `duckdb_schema` for encounters → get structure
-5. You generate the COMPLETE DRD document
-6. You call `finish` with the DRD content
+2. You call `discover_data` → see what data sources exist
+3. Based on recommendation, use appropriate tools:
+   - If DuckDB: `duckdb_tables` → `duckdb_schema` (2-3 times)
+   - If CSV only: `analyze_csv` for key files
+4. You generate the COMPLETE DRD document
+5. You call `finish` with the DRD content
 
 ## Example INCORRECT Workflow (DO NOT DO THIS)
 

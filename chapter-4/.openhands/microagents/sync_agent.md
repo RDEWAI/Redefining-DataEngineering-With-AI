@@ -157,11 +157,12 @@ Generate this EXACT structure:
 ## Appendix
 
 ### A. Artifact Locations
-- DRD: `output/session_id/drd.md`
-- PAD: `output/session_id/pad.md`
-- DMD: `output/session_id/dmd.csv`
-- DQS: `output/session_id/dqs.yaml`
-- Stories: `output/session_id/stories.md`
+Artifacts are saved in the session output directory:
+- DRD: `<output_dir>/drd.md`
+- PAD: `<output_dir>/pad.md`
+- DMD: `<output_dir>/dmd.csv`
+- DQS: `<output_dir>/dqs.yaml`
+- Stories: `<output_dir>/stories.md`
 
 ### B. Glossary
 | Term | Definition |

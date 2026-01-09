@@ -91,10 +91,10 @@ source_system,source_table...
 
 ```
 source_system,source_table,source_column,source_type,target_table,target_column,target_type,transformation,business_rule,nullable,default_value,notes,layer
-synthea,patients,Id,VARCHAR,bronze.patients,id,VARCHAR,Id,BR001,No,,Raw copy from source,bronze
-synthea,patients,Id,VARCHAR,silver.patients,patient_id,VARCHAR,TRIM(Id),BR001,No,,Primary key cleaned,silver
-synthea,patients,BIRTHDATE,DATE,bronze.patients,birthdate,DATE,BIRTHDATE,BR002,No,,Raw date,bronze
-synthea,patients,BIRTHDATE,DATE,silver.patients,birth_date,DATE,CAST(BIRTHDATE AS DATE),BR002,No,,Date conversion,silver
+<source>,<table>,<id_col>,VARCHAR,bronze.<table>,<id_col>,VARCHAR,<id_col>,BR001,No,,Raw copy from source,bronze
+<source>,<table>,<id_col>,VARCHAR,silver.<table>,<id_col>_id,VARCHAR,TRIM(<id_col>),BR001,No,,Primary key cleaned,silver
+<source>,<table>,<date_col>,DATE,bronze.<table>,<date_col>,DATE,<date_col>,BR002,No,,Raw date,bronze
+<source>,<table>,<date_col>,DATE,silver.<table>,<date_col>,DATE,CAST(<date_col> AS DATE),BR002,No,,Date conversion,silver
 ```
 
 ## Cross-Reference Validation

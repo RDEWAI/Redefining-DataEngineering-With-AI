@@ -92,7 +92,7 @@ version: "1.0"
 metadata:
   generated_at: "2024-01-01T00:00:00Z"
   source_document: "DRD"
-  description: "Data Quality Specification for Healthcare Analytics Pipeline"
+  description: "Data Quality Specification for <Project Name>"
 ...
 ```
 
@@ -100,20 +100,20 @@ metadata:
 
 version: "1.0"
 metadata:
-  generated_at: "2024-01-01T00:00:00Z"
+  generated_at: "<timestamp>"
   source_document: "DRD"
-  description: "Data Quality Specification for Healthcare Analytics Pipeline"
+  description: "Data Quality Specification for <project_name>"
 
 quality_dimensions:
   completeness:
     description: "Ensure required fields are populated"
     rules:
       - id: CMP001
-        name: "Patient ID not null"
-        table: "silver.patients"
-        column: "patient_id"
+        name: "<Primary key> not null"
+        table: "<layer>.<table>"
+        column: "<primary_key_column>"
         rule_type: "not_null"
-        sql_expression: "patient_id IS NOT NULL"
+        sql_expression: "<column> IS NOT NULL"
         threshold: 100.0
         severity: "error"
         action: "reject_record"
@@ -122,11 +122,11 @@ quality_dimensions:
     description: "Ensure data values are correct"
     rules:
       - id: ACC001
-        name: "Valid gender values"
-        table: "silver.patients"
-        column: "gender"
+        name: "Valid <column> values"
+        table: "<layer>.<table>"
+        column: "<column>"
         rule_type: "value_set"
-        sql_expression: "gender IN ('M', 'F', 'O')"
+        sql_expression: "<column> IN ('<valid_value_1>', '<valid_value_2>')"
         threshold: 100.0
         severity: "error"
         action: "reject_record"
@@ -135,11 +135,11 @@ quality_dimensions:
     description: "Ensure data is consistent across fields"
     rules:
       - id: CON001
-        name: "Birth date before death date"
-        table: "silver.patients"
-        columns: ["birth_date", "death_date"]
+        name: "<Column A> consistent with <Column B>"
+        table: "<layer>.<table>"
+        columns: ["<column_a>", "<column_b>"]
         rule_type: "cross_field"
-        sql_expression: "death_date IS NULL OR birth_date < death_date"
+        sql_expression: "<logical_expression>"
         threshold: 100.0
         severity: "error"
         action: "reject_record"
@@ -148,11 +148,11 @@ quality_dimensions:
     description: "Ensure no duplicate records"
     rules:
       - id: UNQ001
-        name: "Unique patient ID"
-        table: "silver.patients"
-        column: "patient_id"
+        name: "Unique <key_column>"
+        table: "<layer>.<table>"
+        column: "<key_column>"
         rule_type: "unique"
-        sql_expression: "COUNT(*) = COUNT(DISTINCT patient_id)"
+        sql_expression: "COUNT(*) = COUNT(DISTINCT <key_column>)"
         threshold: 100.0
         severity: "error"
         action: "reject_record"
@@ -161,11 +161,11 @@ quality_dimensions:
     description: "Ensure data format and ranges are valid"
     rules:
       - id: VAL001
-        name: "Valid date format"
-        table: "silver.patients"
-        column: "birth_date"
+        name: "Valid <column> format"
+        table: "<layer>.<table>"
+        column: "<column>"
         rule_type: "format"
-        sql_expression: "birth_date ~ '^\\d{4}-\\d{2}-\\d{2}$'"
+        sql_expression: "<column> ~ '<regex_pattern>'"
         threshold: 100.0
         severity: "error"
         action: "reject_record"
@@ -175,10 +175,10 @@ quality_dimensions:
     rules:
       - id: TML001
         name: "Data freshness check"
-        table: "silver.patients"
-        column: "updated_at"
+        table: "<layer>.<table>"
+        column: "<timestamp_column>"
         rule_type: "freshness"
-        sql_expression: "updated_at >= CURRENT_DATE - INTERVAL '7 days'"
+        sql_expression: "<timestamp_column> >= CURRENT_DATE - INTERVAL '7 days'"
         threshold: 95.0
         severity: "warning"
         action: "alert"
@@ -208,7 +208,7 @@ monitoring:
   alerts:
     - type: "email"
       threshold: "error"
-      recipients: ["data-team@example.com"]
+      recipients: ["<team>@example.com"]
     - type: "slack"
       threshold: "warning"
       channel: "#data-quality"
@@ -221,7 +221,7 @@ Before outputting your final YAML, verify:
 - [ ] No explanatory text before the YAML
 - [ ] All six quality dimensions are included (completeness, accuracy, consistency, uniqueness, validity, timeliness)
 - [ ] Quality gates for bronze-to-silver and silver-to-gold are included
-- [ ] Rules reference tables from the DMD (bronze.*, silver.*, gold.*)
+- [ ] Rules reference tables from the DMD (using appropriate layer prefixes)
 
 ## Instructions
 

@@ -99,6 +99,83 @@ review:
 | `pwi review approve <id>` | Approve artifact |
 | `pwi dashboard` | Start web UI |
 
+## Make Commands
+
+All commands can be run via `make`. Run `make help` for the full list.
+
+### PWI Commands
+
+| Command | Description |
+|---------|-------------|
+| `make run REQUEST=<file>` | Run PWI workflow on a request file |
+| `make run-auto REQUEST=<file>` | Run workflow with auto-approve |
+| `make dashboard` | Start PWI dashboard (http://localhost:8080) |
+| `make session-list` | List all PWI sessions |
+| `make session-status ID=<id>` | Show session status |
+
+### Development
+
+| Command | Description |
+|---------|-------------|
+| `make install` | Install dependencies with UV |
+| `make test` | Run all tests |
+| `make test-cov` | Run tests with coverage |
+| `make lint` | Run linting checks |
+| `make format` | Format code with ruff |
+| `make clean` | Clean build artifacts |
+| `make help` | Show all available commands |
+
+## OpenHands GUI (Web Interface)
+
+Run individual PWI agents on-demand through the OpenHands web interface as an alternative to the CLI.
+
+### Quick Start
+
+```bash
+# Configure LLM API key
+echo 'LLM_API_KEY=your-key' >> .env
+echo 'LLM_BASE_URL=https://openrouter.ai/api/v1' >> .env
+
+# Start the GUI
+make gui-start
+
+# Open http://localhost:3000 in your browser
+
+# Stop when done
+make gui-stop
+```
+
+### Make Commands
+
+| Command | Description |
+|---------|-------------|
+| `make gui-start` | Start OpenHands GUI (http://localhost:3000) |
+| `make gui-stop` | Stop OpenHands GUI |
+| `make gui-logs` | View GUI container logs |
+| `make gui-build` | Rebuild Docker image |
+| `make gui-status` | Check if GUI is running |
+
+### Example Prompts
+
+| What You Want | Example Prompt |
+|--------------|----------------|
+| Generate DRD | "Generate a DRD for the data described in my request" |
+| Explore data | "List all tables in the database" |
+| Get schema | "Show me the schema for <schema>.<table>" |
+| Create PAD | "Create a PAD based on this DRD: [paste content]" |
+| Validate | "Validate this DRD: [paste content]" |
+
+### When to Use GUI vs CLI
+
+| Use Case | Recommended |
+|----------|-------------|
+| Full pipeline workflow | CLI (`pwi plan run`) |
+| Individual agent on-demand | GUI |
+| Exploring data interactively | GUI |
+| Automated pipelines | CLI |
+
+See [docs/openhands-gui.md](docs/openhands-gui.md) for detailed documentation.
+
 ## OpenHands SDK Integration
 
 PWI uses the OpenHands SDK for agent orchestration with tool-use capabilities:
@@ -260,6 +337,7 @@ chapter-4/
 | Guide | Description |
 |-------|-------------|
 | [Quick Start](docs/quickstart.md) | Get up and running in 5 minutes |
+| [OpenHands GUI Guide](docs/openhands-gui.md) | Run agents via web interface |
 | [CLI Reference](docs/cli-reference.md) | Complete command reference |
 | [Workflow Guide](docs/WORKFLOW_GUIDE.md) | Pipeline execution, state machine, review gates, sessions |
 | [Extensibility Guide](docs/EXTENSIBILITY.md) | Add custom tools, skills, and agents (step-by-step tutorials) |

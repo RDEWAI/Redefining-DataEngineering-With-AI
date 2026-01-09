@@ -95,6 +95,13 @@ from pwi.openhands.tools.artifact_tool import (
     ValidateArtifactTool,
 )
 
+# Import Discovery tools (SDK pattern) - auto-registers on import
+from pwi.openhands.tools.discovery_tool import (
+    DataDiscoveryAction,
+    DataDiscoveryObservation,
+    DataDiscoveryTool,
+)
+
 # Legacy imports for backward compatibility during migration
 # Keep base.py available but deprecated
 try:
@@ -120,6 +127,8 @@ AGENT_TOOL_MAP: dict[str, list[str]] = {
         "terminal",
         "file_editor",
         "task_tracker",
+        # Discovery tool - CALL FIRST to determine which data tools to use
+        "discover_data",
         # Domain tools (DuckDB)
         "duckdb_query",
         "duckdb_schema",
@@ -138,6 +147,8 @@ AGENT_TOOL_MAP: dict[str, list[str]] = {
         "terminal",
         "file_editor",
         "task_tracker",
+        # Discovery tool - CALL FIRST to determine which data tools to use
+        "discover_data",
         "duckdb_schema",
         "duckdb_tables",
         "analyze_csv",
@@ -163,9 +174,12 @@ AGENT_TOOL_MAP: dict[str, list[str]] = {
         # Validation tools
         "validate_artifact",
         "list_artifact_types",
+        # Discovery tool - CALL FIRST to determine which data tools to use
+        "discover_data",
         # Schema tools for cross-reference validation
         "duckdb_schema",
         "duckdb_tables",
+        "analyze_csv",
         # No file editing - validator is read-only
     ],
 }
@@ -268,6 +282,10 @@ __all__ = [
     "ListArtifactTypesTool",
     "ListArtifactTypesAction",
     "ListArtifactTypesObservation",
+    # Discovery Tools
+    "DataDiscoveryTool",
+    "DataDiscoveryAction",
+    "DataDiscoveryObservation",
     # Legacy Compatibility
     "get_all_tools",
     "LEGACY_TOOLS_AVAILABLE",

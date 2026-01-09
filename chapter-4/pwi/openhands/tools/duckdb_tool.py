@@ -9,6 +9,7 @@ This module provides tools for interacting with DuckDB databases:
 
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -32,8 +33,9 @@ from pwi.utils.logging import get_logger
 
 logger = get_logger("openhands.tools.duckdb")
 
-# Default database path (relative to chapter-4/)
-DEFAULT_DB_PATH = "../data/duckdb/raw.db"
+# Default database path - supports environment variable override for Docker/GUI deployment
+# When running in Docker, set DUCKDB_PATH=/workspace/data/duckdb/raw.db
+DEFAULT_DB_PATH = os.getenv("DUCKDB_PATH", "../data/duckdb/raw.db")
 
 
 # =============================================================================
@@ -188,7 +190,8 @@ class DuckDBSchemaAction(Action):
     """Schema for DuckDB schema retrieval."""
 
     table_name: str = Field(
-        description="Table name (e.g., 'synthea.patients' or just 'patients')"
+        description="Table name with optional schema (e.g., 'schema.table' or just 'table'). "
+        "If schema is omitted, the tool will auto-resolve it from available schemas."
     )
     database_path: str | None = Field(
         default=None,
@@ -254,44 +257,64 @@ class DuckDBSchemaExecutor(ToolExecutor[DuckDBSchemaAction, DuckDBSchemaObservat
             conn = self._get_connection(action.database_path)
 
             # Parse schema and table
-            if "." in action.table_name:
-                schema, table = action.table_name.split(".", 1)
+            table_name = action.table_name
+            if "." in table_name:
+                schema, table = table_name.split(".", 1)
             else:
                 schema = None
-                table = action.table_name
+                table = table_name
+                # Try to find the table in available schemas
+                try:
+                    find_query = f"""
+                        SELECT table_schema, table_name
+                        FROM information_schema.tables
+                        WHERE table_name = '{table}'
+                        AND table_schema NOT IN ('information_schema', 'pg_catalog')
+                        LIMIT 1
+                    """
+                    result = conn.execute(find_query)
+                    row = result.fetchone()
+                    if row:
+                        schema = row[0]
+                        table_name = f"{schema}.{table}"
+                        logger.info(f"Auto-resolved table '{table}' to '{table_name}'")
+                except Exception:
+                    pass
 
-            # Get column information using PRAGMA
-            query = f"PRAGMA table_info('{action.table_name}')"
-            result = conn.execute(query)
+            # Get column information using information_schema (more reliable than PRAGMA)
+            schema_query = f"""
+                SELECT column_name, data_type, is_nullable, column_default
+                FROM information_schema.columns
+                WHERE table_name = '{table}'
+                {f"AND table_schema = '{schema}'" if schema else ""}
+                ORDER BY ordinal_position
+            """
+            result = conn.execute(schema_query)
             columns_info = result.fetchall()
-
-            if not columns_info and not schema:
-                result = conn.execute(f"PRAGMA table_info('{table}')")
-                columns_info = result.fetchall()
 
             columns = []
             for col in columns_info:
                 columns.append({
-                    "name": col[1],
-                    "type": col[2],
-                    "nullable": col[3] == 0,
-                    "default": col[4],
-                    "primary_key": col[5] == 1,
+                    "name": col[0],  # column_name
+                    "type": col[1],  # data_type
+                    "nullable": col[2] == "YES",  # is_nullable
+                    "default": col[3],  # column_default
+                    "primary_key": False,  # Not available from information_schema directly
                 })
 
-            # Get row count
+            # Get row count (use resolved table_name)
             row_count = None
             try:
-                count_result = conn.execute(f"SELECT COUNT(*) FROM {action.table_name}")
+                count_result = conn.execute(f"SELECT COUNT(*) FROM {table_name}")
                 row_count = count_result.fetchone()[0]
             except Exception:
                 pass
 
-            logger.info(f"Schema retrieved for {action.table_name}: {len(columns)} columns")
+            logger.info(f"Schema retrieved for {table_name}: {len(columns)} columns")
 
             return DuckDBSchemaObservation(
                 success=True,
-                table_name=action.table_name,
+                table_name=table_name,  # Return resolved name
                 schema_name=schema,
                 columns=columns,
                 column_count=len(columns),

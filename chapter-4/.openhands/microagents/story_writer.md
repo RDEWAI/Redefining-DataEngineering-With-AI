@@ -59,20 +59,20 @@ Brief summary of the implementation scope and total effort.
 
 ## Epic 1: Infrastructure Setup
 
-### Story 1.1: Set up DuckDB Database
+### Story 1.1: Set up Database Infrastructure
 **Story Points**: 3
 
 **User Story**:
-As a Data Engineer, I want to set up the DuckDB database infrastructure, so that we have a foundation for the data pipeline.
+As a Data Engineer, I want to set up the database infrastructure, so that we have a foundation for the data pipeline.
 
 **Acceptance Criteria**:
-- [ ] DuckDB database created with schemas (bronze, silver, gold)
+- [ ] Database created with schemas (bronze, silver, gold)
 - [ ] Connection configuration documented
 - [ ] Access permissions configured
 - [ ] Backup strategy defined
 
 **Technical Tasks**:
-1. Create DuckDB database file
+1. Create database
 2. Create bronze, silver, gold schemas
 3. Set up connection pooling
 4. Document connection parameters
@@ -89,20 +89,20 @@ As a Data Engineer, I want to set up the DuckDB database infrastructure, so that
 
 ## Epic 2: Data Ingestion (Bronze Layer)
 
-### Story 2.1: Patients Table Ingestion
+### Story 2.1: <Table> Ingestion
 **Story Points**: 3
 
 **User Story**:
-As a Data Engineer, I want to ingest patients data into the bronze layer, so that raw patient data is available for transformation.
+As a Data Engineer, I want to ingest <table> data into the bronze layer, so that raw data is available for transformation.
 
 **Acceptance Criteria**:
-- [ ] Patients data ingested from source
+- [ ] Data ingested from source
 - [ ] Schema matches source structure
 - [ ] Incremental loading implemented
 - [ ] Logging and monitoring enabled
 
 **Technical Tasks**:
-1. Create bronze.patients table DDL
+1. Create bronze.<table> table DDL
 2. Implement ingestion logic
 3. Add error handling
 4. Set up monitoring
@@ -111,19 +111,19 @@ As a Data Engineer, I want to ingest patients data into the bronze layer, so tha
 
 ---
 
-...continue for all source tables...
+...continue for all source tables from DMD...
 
 ## Epic 3: Data Transformation (Silver Layer)
 
-### Story 3.1: Patients Transformation
+### Story 3.1: <Table> Transformation
 **Story Points**: 5
-...continue with transformation stories...
+...continue with transformation stories based on DMD...
 
 ## Epic 4: Data Aggregation (Gold Layer)
 
-### Story 4.1: Patient 360 View
+### Story 4.1: <Entity> 360 View
 **Story Points**: 8
-...continue with gold layer stories...
+...continue with gold layer stories based on DMD...
 
 ## Epic 5: Data Quality Implementation
 

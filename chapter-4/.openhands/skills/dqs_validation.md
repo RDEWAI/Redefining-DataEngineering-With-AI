@@ -95,73 +95,73 @@ version: "1.0"
 
 ### 4. Rules don't reference actual tables
 **BAD:** Generic `table_name` placeholders
-**GOOD:** Specific tables like `silver.patients`
+**GOOD:** Specific tables like `silver.<table>` (based on your DMD)
 
 ## Example Valid DQS
 
 ```yaml
 version: "1.0"
 metadata:
-  name: "Healthcare Analytics DQS"
-  description: "Data quality specification for Synthea data pipeline"
+  name: "<Project Name> DQS"
+  description: "Data quality specification for <project> data pipeline"
 
 quality_dimensions:
   completeness:
     rules:
-      - name: patient_id_not_null
-        table: silver.patients
-        column: patient_id
-        check: "patient_id IS NOT NULL"
+      - name: <primary_key>_not_null
+        table: silver.<table>
+        column: <primary_key>
+        check: "<primary_key> IS NOT NULL"
         severity: critical
 
   accuracy:
     rules:
-      - name: valid_birthdate
-        table: silver.patients
-        column: birth_date
-        check: "birth_date <= CURRENT_DATE"
+      - name: valid_<date_field>
+        table: silver.<table>
+        column: <date_field>
+        check: "<date_field> <= CURRENT_DATE"
         severity: high
 
   consistency:
     rules:
-      - name: encounter_patient_exists
-        table: silver.encounters
-        check: "patient_id IN (SELECT patient_id FROM silver.patients)"
+      - name: <child_table>_<parent>_exists
+        table: silver.<child_table>
+        check: "<foreign_key> IN (SELECT <primary_key> FROM silver.<parent_table>)"
         severity: critical
 
   uniqueness:
     rules:
-      - name: unique_patient_id
-        table: silver.patients
-        column: patient_id
-        check: "COUNT(*) = COUNT(DISTINCT patient_id)"
+      - name: unique_<primary_key>
+        table: silver.<table>
+        column: <primary_key>
+        check: "COUNT(*) = COUNT(DISTINCT <primary_key>)"
         severity: critical
 
   validity:
     rules:
-      - name: valid_gender
-        table: silver.patients
-        column: gender
-        check: "gender IN ('M', 'F', 'O')"
+      - name: valid_<column>
+        table: silver.<table>
+        column: <column>
+        check: "<column> IN ('<valid_value_1>', '<valid_value_2>')"
         severity: medium
 
   timeliness:
     rules:
-      - name: recent_encounters
-        table: gold.fact_encounters
-        check: "MAX(encounter_date) >= CURRENT_DATE - INTERVAL '30 days'"
+      - name: recent_<table>
+        table: gold.fact_<table>
+        check: "MAX(<date_column>) >= CURRENT_DATE - INTERVAL '30 days'"
         severity: low
 
 quality_gates:
   - name: "Bronze to Silver Gate"
     threshold: 95
     rules:
-      - patient_id_not_null
-      - valid_birthdate
+      - <primary_key>_not_null
+      - valid_<date_field>
 
   - name: "Silver to Gold Gate"
     threshold: 99
     rules:
-      - unique_patient_id
-      - encounter_patient_exists
+      - unique_<primary_key>
+      - <child_table>_<parent>_exists
 ```

@@ -10,40 +10,24 @@ triggers:
 
 # DuckDB Knowledge
 
-## Database Location
+## IMPORTANT: Data Source Discovery
 
-- **Path**: `data/duckdb/raw.db` (or `../data/duckdb/raw.db` from chapter-4)
-- **Schema**: `synthea`
+**Before using DuckDB tools, call `discover_data` first** to verify a DuckDB database exists.
+
+The `discover_data` tool will:
+- Tell you if a DuckDB database is available and where
+- List schemas and tables found
+- Recommend which tools to use
+
+If `discover_data` returns `duckdb_found: false`, use CSV tools instead.
 
 ## Query Patterns
 
-- Tables are accessed as `synthea.<table_name>` (e.g., `synthea.patients`)
-- Always use `LIMIT` clause for data exploration (e.g., `LIMIT 5` or `LIMIT 10`)
-- Use `duckdb_tables` tool first to list available tables
+- Call `discover_data` FIRST to find the database
+- Use `duckdb_tables` tool to list available tables
 - Use `duckdb_schema` tool to inspect table structure before querying
-
-## Available Tables (Synthea Healthcare Data)
-
-| Table | Description |
-|-------|-------------|
-| `synthea.patients` | Patient demographics (Id, BIRTHDATE, GENDER, etc.) |
-| `synthea.encounters` | Healthcare encounters/visits |
-| `synthea.conditions` | Diagnoses and conditions |
-| `synthea.medications` | Prescribed medications |
-| `synthea.procedures` | Medical procedures |
-| `synthea.observations` | Clinical observations (vital signs, lab results) |
-| `synthea.immunizations` | Vaccination records |
-| `synthea.allergies` | Patient allergies |
-| `synthea.careplans` | Care plan information |
-| `synthea.providers` | Healthcare provider information |
-| `synthea.organizations` | Healthcare organizations |
-| `synthea.payers` | Insurance/payer information |
-| `synthea.payer_transitions` | Insurance coverage changes |
-| `synthea.claims` | Healthcare claims |
-| `synthea.claims_transactions` | Claim line items |
-| `synthea.devices` | Medical devices |
-| `synthea.supplies` | Medical supplies |
-| `synthea.imaging_studies` | Imaging study records |
+- Tables are accessed as `<schema>.<table_name>` format
+- Always use `LIMIT` clause for data exploration (e.g., `LIMIT 5` or `LIMIT 10`)
 
 ## Common Query Examples
 
@@ -52,18 +36,18 @@ triggers:
 SHOW TABLES;
 
 -- Get table schema
-DESCRIBE synthea.patients;
+DESCRIBE <schema>.<table>;
 
--- Sample patient data
-SELECT * FROM synthea.patients LIMIT 5;
+-- Sample data
+SELECT * FROM <schema>.<table> LIMIT 5;
 
 -- Count records
-SELECT COUNT(*) FROM synthea.encounters;
+SELECT COUNT(*) FROM <schema>.<table>;
 
 -- Join example
-SELECT p.Id, p.FIRST, p.LAST, e.DESCRIPTION
-FROM synthea.patients p
-JOIN synthea.encounters e ON p.Id = e.PATIENT
+SELECT a.*, b.*
+FROM <schema>.<table_a> a
+JOIN <schema>.<table_b> b ON a.<key> = b.<key>
 LIMIT 10;
 ```
 
@@ -76,7 +60,20 @@ LIMIT 10;
 
 ## Tool Usage Limits
 
+- Call `discover_data` ONCE at the start
 - Call `duckdb_tables` ONCE to see all tables
 - Call `duckdb_schema` for 2-3 relevant tables only
 - Call `duckdb_query` sparingly with `LIMIT` clauses
 - After 3-5 tool calls, generate the artifact
+
+## Working with CSV Files
+
+If `discover_data` shows CSV files but no DuckDB database:
+- Use `analyze_csv` to get file structure and column types
+- Use `csv_stats` for null counts and cardinality
+- Use `csv_sample` to preview data
+
+DuckDB can also read CSV files directly:
+```sql
+SELECT * FROM read_csv_auto('<path_to_file.csv>') LIMIT 5;
+```

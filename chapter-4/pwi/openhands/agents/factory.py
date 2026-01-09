@@ -525,6 +525,9 @@ def create_llm(
     - LLM_API_KEY: API key (required)
     - LLM_BASE_URL: Base URL for API (e.g., https://openrouter.ai/api/v1)
     - LLM_MODEL: Model identifier (e.g., openai/gpt-4o-mini)
+    - LLM_CACHING_PROMPT: Enable Anthropic prompt caching (default: false)
+      Set to "true" only for direct Anthropic API access.
+      Keep "false" for proxies (OpenRouter, CLIProxyAPI, Ollama).
 
     Args:
         model: Model identifier (defaults to LLM_MODEL env var).
@@ -552,11 +555,16 @@ def create_llm(
             "API key required. Set LLM_API_KEY in .env file or pass api_key parameter."
         )
 
+    # Prompt caching: disabled by default for proxy compatibility (OpenRouter, CLIProxyAPI)
+    # Enable with LLM_CACHING_PROMPT=true for direct Anthropic API access
+    caching_prompt = os.getenv("LLM_CACHING_PROMPT", "false").lower() == "true"
+
     llm_kwargs: dict[str, Any] = {
         "model": final_model,
         "api_key": SecretStr(final_api_key),
         "temperature": temperature,
         "max_output_tokens": max_tokens,
+        "caching_prompt": caching_prompt,
     }
 
     if final_base_url:
