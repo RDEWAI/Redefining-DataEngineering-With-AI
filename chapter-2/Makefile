@@ -15,7 +15,7 @@ endif
 
 
 help:
-	@echo "Chapter 3: AI Engineering with Library Management Data"
+	@echo "Chapter 2: AI Engineering with Library Management Data"
 	@echo "Structure: RAG -> MCP -> Agentic AI"
 	@echo ""
 	@echo "=== Setup ==="

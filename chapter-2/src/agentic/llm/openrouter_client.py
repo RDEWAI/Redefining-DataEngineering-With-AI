@@ -95,7 +95,7 @@ class OpenRouterProvider(LLMProvider):
                 "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "https://github.com/rdewai",  # For OpenRouter attribution
-                "X-Title": "Chapter 3 AI Engineering",
+                "X-Title": "Chapter 2 AI Engineering",
             },
             timeout=60.0,
         )

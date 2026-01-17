@@ -1,7 +1,7 @@
 # Implementation Plan: Phase 7.5 - Enterprise Tool Simulation
 
-**Branch**: `003-chapter3-ai-engineering` | **Date**: 2025-12-16 | **Spec**: [spec.md](./spec.md)
-**Input**: Feature specification from `/specs/003-chapter3-ai-engineering/spec.md`
+**Branch**: `003-chapter2-ai-engineering` | **Date**: 2025-12-16 | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from `/specs/003-chapter2-ai-engineering/spec.md`
 
 **Note**: This plan adds Phase 7.5 before Phase 8 (Multi-Agent System) to demonstrate the token efficiency advantage of code execution over traditional tool use at enterprise scale.
 
@@ -18,7 +18,7 @@ This phase provides empirical evidence for the paper's claims with a realistic e
 
 **Language/Version**: Python 3.10-3.12 (aligned with existing project)
 **Primary Dependencies**: OpenAI SDK, DuckDB, sentence-transformers (existing)
-**Storage**: DuckDB at `chapter-2/data/duckdb/chapter3.db`
+**Storage**: DuckDB at `chapter-2/data/duckdb/chapter2.db`
 **Testing**: pytest with `uv run pytest`
 **Target Platform**: macOS/Linux development environment
 **Project Type**: Single project (chapter-2/)
@@ -43,7 +43,7 @@ This phase provides empirical evidence for the paper's claims with a realistic e
 ### Documentation (this feature)
 
 ```text
-specs/003-chapter3-ai-engineering/
+specs/003-chapter2-ai-engineering/
 ├── plan.md                    # This file (Phase 7.5 plan)
 ├── research.md                # Existing research
 ├── data-model.md              # Update with DummyTool entity
@@ -287,7 +287,7 @@ parser.add_argument(
 2. `chapter-2/src/agents/library_assistant_enhanced.py` - Add enable_dummy_tools
 3. `chapter-2/scripts/compare_modes.py` - Add --enable-dummy-tools flag
 4. `chapter-2/Makefile` - Add new targets
-5. `specs/003-chapter3-ai-engineering/tasks.md` - Add Phase 7.5 tasks
+5. `specs/003-chapter2-ai-engineering/tasks.md` - Add Phase 7.5 tasks
 
 ## References
 

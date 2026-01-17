@@ -1,4 +1,4 @@
-# Sample Queries for Chapter 3 Sub-Features
+# Sample Queries for Chapter 2 Sub-Features
 
 This document provides example queries for each sub-feature to help you test and explore the library management AI system.
 

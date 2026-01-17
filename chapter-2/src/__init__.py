@@ -1,4 +1,4 @@
-"""Chapter 3: AI Engineering with Library Management Data.
+"""Chapter 2: AI Engineering with Library Management Data.
 
 All components are now under the `agentic` subpackage.
 Import from `src.agentic.*` for all functionality.

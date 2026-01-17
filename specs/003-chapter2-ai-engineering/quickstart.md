@@ -1,6 +1,6 @@
 # Quickstart: Chapter 2 - AI Engineering with Library Management Data
 
-**Branch**: `003-chapter3-ai-engineering` | **Date**: 2025-12-14
+**Branch**: `003-chapter2-ai-engineering` | **Date**: 2025-12-14
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@
 
 ```bash
 cd /path/to/Redefining-DataEngineering-With-AI
-git checkout 003-chapter3-ai-engineering
+git checkout 003-chapter2-ai-engineering
 cd chapter-2
 ```
 
@@ -57,7 +57,7 @@ make test-unit
 **Quick Test:**
 ```python
 import duckdb
-conn = duckdb.connect('data/duckdb/chapter3.db')
+conn = duckdb.connect('data/duckdb/chapter2.db')
 print(conn.execute("SELECT COUNT(*) FROM library.books").fetchone())
 # Expected: (200,)
 ```
@@ -174,7 +174,7 @@ make multi-agent
 | `LLM_PROVIDER` | LLM provider (`openrouter` or `ollama`) | `openrouter` |
 | `LLM_MODEL` | Model identifier | `anthropic/claude-3.5-sonnet` |
 | `OLLAMA_HOST` | Ollama server URL | `http://localhost:11434` |
-| `DB_PATH` | DuckDB database path | `data/duckdb/chapter3.db` |
+| `DB_PATH` | DuckDB database path | `data/duckdb/chapter2.db` |
 | `LOG_LEVEL` | Logging level | `INFO` |
 
 ## Troubleshooting

@@ -1,4 +1,4 @@
-# Chapter 3: AI Engineering with Library Management Data
+# Chapter 2: AI Engineering with Library Management Data
 
 This chapter demonstrates modern AI engineering patterns using a Library Management dataset. The content follows the book structure: **RAG** → **MCP** → **Agentic AI**.
 
@@ -269,7 +269,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ---
 
-## All Make Commands (End of Chapter 3 excercise. From here it is for debugging or extra help)
+## All Make Commands (End of Chapter 2 excercise. From here it is for debugging or extra help)
 
 ### Setup
 

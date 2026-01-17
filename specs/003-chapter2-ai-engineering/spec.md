@@ -1,6 +1,6 @@
 # Feature Specification: Chapter 2 - AI Engineering with Library Management Data
 
-**Feature Branch**: `003-chapter3-ai-engineering`
+**Feature Branch**: `003-chapter2-ai-engineering`
 **Created**: 2025-12-13
 **Status**: Draft
 **Input**: User description: "Chapter 2: AI Engineering with Library Management Data - Epic covering MCP, tool use, code execution, RAG, and multi-agent systems"
