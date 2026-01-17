@@ -297,8 +297,8 @@ compare-modes:       # Run comparison script
 - Anthropic: [Code Execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp)
 - Anthropic: [Advanced Tool Use](https://www.anthropic.com/engineering/advanced-tool-use)
 - Existing Implementation: `specs/003-chapter3-ai-engineering/tasks.md` Phase 6
-- Code: `chapter-3/src/code_execution/` (sandbox, tool_api)
-- Tests: `chapter-3/tests/unit/test_sandbox.py`
+- Code: `chapter-2/src/code_execution/` (sandbox, tool_api)
+- Tests: `chapter-2/tests/unit/test_sandbox.py`
 
 ---
 

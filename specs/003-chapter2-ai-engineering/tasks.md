@@ -1,4 +1,4 @@
-# Tasks: Chapter 3 - AI Engineering with Library Management Data
+# Tasks: Chapter 2 - AI Engineering with Library Management Data
 
 **Input**: Design documents from `/specs/003-chapter3-ai-engineering/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
@@ -16,7 +16,7 @@
 
 ## Path Convention
 
-All paths relative to `chapter-3/` directory:
+All paths relative to `chapter-2/` directory:
 - **Source**: `src/`
 - **Tests**: `tests/unit/`, `tests/integration/`
 - **Scripts**: `scripts/`
@@ -28,12 +28,12 @@ All paths relative to `chapter-3/` directory:
 
 **Purpose**: Project initialization and directory structure
 
-- [X] T001 Create `chapter-3/` directory structure per plan.md
-- [X] T002 Create `chapter-3/pyproject.toml` with UV-managed dependencies (duckdb, fastmcp, openai, sentence-transformers, pandas, numpy, matplotlib, seaborn, pytest)
-- [X] T003 [P] Create `chapter-3/Makefile` with targets: dev-setup, data-copy, load-data, test, lint
-- [X] T004 [P] Create `chapter-3/.env.example` with OPENROUTER_API_KEY, LLM_PROVIDER, DB_PATH
-- [X] T005 [P] Create `chapter-3/README.md` with quickstart and overview
-- [X] T006 Initialize `chapter-3/src/__init__.py` and all sub-package `__init__.py` files
+- [X] T001 Create `chapter-2/` directory structure per plan.md
+- [X] T002 Create `chapter-2/pyproject.toml` with UV-managed dependencies (duckdb, fastmcp, openai, sentence-transformers, pandas, numpy, matplotlib, seaborn, pytest)
+- [X] T003 [P] Create `chapter-2/Makefile` with targets: dev-setup, data-copy, load-data, test, lint
+- [X] T004 [P] Create `chapter-2/.env.example` with OPENROUTER_API_KEY, LLM_PROVIDER, DB_PATH
+- [X] T005 [P] Create `chapter-2/README.md` with quickstart and overview
+- [X] T006 Initialize `chapter-2/src/__init__.py` and all sub-package `__init__.py` files
 
 ---
 
@@ -43,11 +43,11 @@ All paths relative to `chapter-3/` directory:
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [X] T007 [P] Create `chapter-3/src/library/__init__.py` with package exports
-- [X] T008 [P] Create `chapter-3/src/llm/__init__.py` with package exports
-- [X] T009 [P] Create `chapter-3/tests/__init__.py` and test package structure
-- [X] T010 Create `chapter-3/data/raw/library/` directory and verify CSV is accessible
-- [X] T011 Create `chapter-3/data/duckdb/` directory for database files
+- [X] T007 [P] Create `chapter-2/src/library/__init__.py` with package exports
+- [X] T008 [P] Create `chapter-2/src/llm/__init__.py` with package exports
+- [X] T009 [P] Create `chapter-2/tests/__init__.py` and test package structure
+- [X] T010 Create `chapter-2/data/raw/library/` directory and verify CSV is accessible
+- [X] T011 Create `chapter-2/data/duckdb/` directory for database files
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -61,23 +61,23 @@ All paths relative to `chapter-3/` directory:
 
 ### Unit Tests for User Story 1
 
-- [X] T012 [P] [US1] Create `chapter-3/tests/unit/test_domain.py` with tests for Book, Location, Status, Category domain classes
-- [X] T013 [P] [US1] Create `chapter-3/tests/unit/test_repository.py` with tests for BookRepository (search, filter, stats)
+- [X] T012 [P] [US1] Create `chapter-2/tests/unit/test_domain.py` with tests for Book, Location, Status, Category domain classes
+- [X] T013 [P] [US1] Create `chapter-2/tests/unit/test_repository.py` with tests for BookRepository (search, filter, stats)
 
 ### Integration Tests for User Story 1
 
-- [X] T014 [P] [US1] Create `chapter-3/tests/integration/test_data_load.py` with end-to-end CSV loading test
+- [X] T014 [P] [US1] Create `chapter-2/tests/integration/test_data_load.py` with end-to-end CSV loading test
 
 ### Domain Layer Implementation
 
-- [X] T015 [P] [US1] Create `chapter-3/src/library/domain.py` with BookStatus enum (Present, Missing, Checked Out)
-- [X] T016 [P] [US1] Add Category enum to `chapter-3/src/library/domain.py` (Programming, History, Science, Fiction, Thriller)
-- [X] T017 [P] [US1] Add Location dataclass to `chapter-3/src/library/domain.py` (cabinet, rack, row)
-- [X] T018 [US1] Add Book dataclass to `chapter-3/src/library/domain.py` with has_weak_signal and is_available properties
+- [X] T015 [P] [US1] Create `chapter-2/src/library/domain.py` with BookStatus enum (Present, Missing, Checked Out)
+- [X] T016 [P] [US1] Add Category enum to `chapter-2/src/library/domain.py` (Programming, History, Science, Fiction, Thriller)
+- [X] T017 [P] [US1] Add Location dataclass to `chapter-2/src/library/domain.py` (cabinet, rack, row)
+- [X] T018 [US1] Add Book dataclass to `chapter-2/src/library/domain.py` with has_weak_signal and is_available properties
 
 ### Repository Layer Implementation
 
-- [X] T019 [US1] Create `chapter-3/src/library/repository.py` with BookRepository class and DuckDB connection
+- [X] T019 [US1] Create `chapter-2/src/library/repository.py` with BookRepository class and DuckDB connection
 - [X] T020 [US1] Add search_books(query, category) method to BookRepository
 - [X] T021 [US1] Add get_book_by_id(book_id) method to BookRepository
 - [X] T022 [US1] Add list_by_category(category, status) method to BookRepository
@@ -88,33 +88,33 @@ All paths relative to `chapter-3/` directory:
 
 ### Tool Functions Implementation
 
-- [X] T027 [US1] Create `chapter-3/src/library/tools.py` with standardized tool functions wrapping repository
+- [X] T027 [US1] Create `chapter-2/src/library/tools.py` with standardized tool functions wrapping repository
 - [X] T028 [US1] Implement all 8 tool functions in tools.py: search_books, get_book_details, check_availability, list_by_category, list_by_status, locate_book, find_books_in_cabinet, get_weak_signal_books
 
 ### Data Loading Script
 
-- [X] T029 [US1] Create `chapter-3/scripts/load_library_csv_to_duckdb.py` following pattern from Feature 002
+- [X] T029 [US1] Create `chapter-2/scripts/load_library_csv_to_duckdb.py` following pattern from Feature 002
 - [X] T030 [US1] Add schema creation with library.books table and all constraints
 - [X] T031 [US1] Add CSV loading with validation and error handling
 - [X] T032 [US1] Add user-friendly error messages for data loading failures
 
 ### LLM Abstraction Layer
 
-- [X] T033 [P] [US1] Create `chapter-3/src/llm/base.py` with abstract LLMProvider interface (generate, stream_generate, count_tokens)
-- [X] T034 [US1] Create `chapter-3/src/llm/openrouter_client.py` implementing LLMProvider for OpenRouter API
-- [X] T035 [US1] Create `chapter-3/src/llm/ollama_client.py` implementing LLMProvider for local Ollama
+- [X] T033 [P] [US1] Create `chapter-2/src/llm/base.py` with abstract LLMProvider interface (generate, stream_generate, count_tokens)
+- [X] T034 [US1] Create `chapter-2/src/llm/openrouter_client.py` implementing LLMProvider for OpenRouter API
+- [X] T035 [US1] Create `chapter-2/src/llm/ollama_client.py` implementing LLMProvider for local Ollama
 - [X] T036 [US1] Add token counting implementation to both LLM clients
 
 ### Makefile Targets for US1
 
-- [X] T037 [US1] Add `make load-data` target to chapter-3/Makefile
+- [X] T037 [US1] Add `make load-data` target to chapter-2/Makefile
 - [X] T038 [US1] Add `make verify-data` target to check 200 records loaded
 - [X] T039 [US1] Add `make test-unit` target for unit tests
 
 ### Documentation for US1
 
-- [X] T040 [P] [US1] Create `chapter-3/docs/01-data-infrastructure.md` with setup instructions
-- [X] T041 [P] [US1] Create `chapter-3/docs/02-llm-abstraction.md` with provider configuration
+- [X] T040 [P] [US1] Create `chapter-2/docs/01-data-infrastructure.md` with setup instructions
+- [X] T041 [P] [US1] Create `chapter-2/docs/02-llm-abstraction.md` with provider configuration
 
 **Checkpoint**: User Story 1 complete - data infrastructure works independently
 
@@ -128,16 +128,16 @@ All paths relative to `chapter-3/` directory:
 
 ### Unit Tests for User Story 2
 
-- [X] T042 [P] [US2] Create `chapter-3/tests/unit/test_mcp_tools.py` with tests for MCP tool schema generation
+- [X] T042 [P] [US2] Create `chapter-2/tests/unit/test_mcp_tools.py` with tests for MCP tool schema generation
 
 ### Integration Tests for User Story 2
 
-- [X] T043 [P] [US2] Create `chapter-3/tests/integration/test_mcp_server.py` with in-memory MCP transport tests
+- [X] T043 [P] [US2] Create `chapter-2/tests/integration/test_mcp_server.py` with in-memory MCP transport tests
 
 ### MCP Server Implementation
 
-- [X] T044 [US2] Create `chapter-3/src/mcp_servers/__init__.py`
-- [X] T045 [US2] Create `chapter-3/src/mcp_servers/library_server.py` with FastMCP server initialization
+- [X] T044 [US2] Create `chapter-2/src/mcp_servers/__init__.py`
+- [X] T045 [US2] Create `chapter-2/src/mcp_servers/library_server.py` with FastMCP server initialization
 - [X] T046 [US2] Add @mcp.tool decorators for all 8 library tools in library_server.py
 - [X] T047 [US2] Add @mcp.resource decorators for library://stats, library://missing_books, library://location_map
 - [X] T048 [US2] Add @mcp.prompt decorators for book_search, library_status_report
@@ -152,7 +152,7 @@ All paths relative to `chapter-3/` directory:
 
 ### Documentation for US2
 
-- [X] T054 [P] [US2] Create `chapter-3/docs/03-mcp-basics.md` with MCP concepts and setup
+- [X] T054 [P] [US2] Create `chapter-2/docs/03-mcp-basics.md` with MCP concepts and setup
 
 **Checkpoint**: User Story 2 complete - MCP server works with Claude Desktop
 
@@ -166,16 +166,16 @@ All paths relative to `chapter-3/` directory:
 
 ### Unit Tests for User Story 3
 
-- [X] T055 [P] [US3] Create `chapter-3/tests/unit/test_tools.py` with tests for JSON schema tool definitions
+- [X] T055 [P] [US3] Create `chapter-2/tests/unit/test_tools.py` with tests for JSON schema tool definitions
 
 ### Integration Tests for User Story 3
 
-- [X] T056 [P] [US3] Create `chapter-3/tests/integration/test_assistant.py` with multi-turn conversation tests
+- [X] T056 [P] [US3] Create `chapter-2/tests/integration/test_assistant.py` with multi-turn conversation tests
 
 ### Library Assistant Implementation
 
-- [X] T057 [US3] Create `chapter-3/src/agents/__init__.py`
-- [X] T058 [US3] Create `chapter-3/src/agents/library_assistant.py` with LibraryAssistant class
+- [X] T057 [US3] Create `chapter-2/src/agents/__init__.py`
+- [X] T058 [US3] Create `chapter-2/src/agents/library_assistant.py` with LibraryAssistant class
 - [X] T059 [US3] Implement JSON schema tool definitions matching contracts/llm-tools.json
 - [X] T060 [US3] Implement tool execution loop with tool_calls handling
 - [X] T061 [US3] Add multi-turn conversation support with message history
@@ -190,7 +190,7 @@ All paths relative to `chapter-3/` directory:
 
 ### Documentation for US3
 
-- [X] T067 [P] [US3] Create `chapter-3/docs/04-traditional-tools.md` comparing MCP vs traditional patterns
+- [X] T067 [P] [US3] Create `chapter-2/docs/04-traditional-tools.md` comparing MCP vs traditional patterns
 
 **Checkpoint**: User Story 3 complete - Library Assistant works with token logging
 
@@ -211,8 +211,8 @@ All paths relative to `chapter-3/` directory:
 
 **Purpose**: Install and configure pre-commit hooks framework
 
-- [X] T5.5-001 Add `pre-commit>=3.0.0` to dev dependencies in `chapter-3/pyproject.toml`
-- [X] T5.5-002 Run `uv sync` to install pre-commit dependency in `chapter-3/`
+- [X] T5.5-001 Add `pre-commit>=3.0.0` to dev dependencies in `chapter-2/pyproject.toml`
+- [X] T5.5-002 Run `uv sync` to install pre-commit dependency in `chapter-2/`
 - [X] T5.5-003 Verify `uv run pre-commit --version` returns version >= 3.0.0
 
 ---
@@ -221,7 +221,7 @@ All paths relative to `chapter-3/` directory:
 
 **Purpose**: Configure pre-commit and pre-push hooks for automated quality checks
 
-- [X] T5.5-004 [P] Create `chapter-3/.pre-commit-config.yaml` with ruff-check hook (linting)
+- [X] T5.5-004 [P] Create `chapter-2/.pre-commit-config.yaml` with ruff-check hook (linting)
 - [X] T5.5-005 [P] Add ruff-format hook to `.pre-commit-config.yaml` (formatting check)
 - [X] T5.5-006 [P] Add mypy hook to `.pre-commit-config.yaml` (type checking)
 - [X] T5.5-007 [P] Add pytest-unit hook for pre-push stage to `.pre-commit-config.yaml` (unit tests)
@@ -237,7 +237,7 @@ All paths relative to `chapter-3/` directory:
 
 **Purpose**: Create OpenAI SDK-based unified client supporting OpenRouter, Ollama, and OpenAI
 
-- [X] T5.5-011 [P] Create `chapter-3/src/llm/unified_client.py` with UnifiedLLMClient class
+- [X] T5.5-011 [P] Create `chapter-2/src/llm/unified_client.py` with UnifiedLLMClient class
 - [X] T5.5-012 [P] Implement OpenAI SDK initialization with custom `base_url` parameter in `unified_client.py`
 - [X] T5.5-013 Add `from_env()` class method to load LLM_BASE_URL, LLM_API_KEY, LLM_MODEL from environment
 - [X] T5.5-014 Implement `generate()` method matching LLMProvider interface from `base.py`
@@ -253,7 +253,7 @@ All paths relative to `chapter-3/` directory:
 
 **Purpose**: Test coverage for unified LLM client
 
-- [X] T5.5-018 [P] Create `chapter-3/tests/unit/test_unified_client.py` with test fixtures
+- [X] T5.5-018 [P] Create `chapter-2/tests/unit/test_unified_client.py` with test fixtures
 - [X] T5.5-019 [P] Add test for OpenRouter initialization (base_url=https://openrouter.ai/api/v1)
 - [X] T5.5-020 [P] Add test for Ollama initialization (base_url=http://localhost:11434/v1, no API key)
 - [X] T5.5-021 [P] Add test for OpenAI initialization (base_url=https://api.openai.com/v1)
@@ -267,14 +267,14 @@ All paths relative to `chapter-3/` directory:
 
 **Purpose**: Update configuration and maintain backward compatibility
 
-- [X] T5.5-025 Update `chapter-3/.env.example` with unified LLM configuration variables:
+- [X] T5.5-025 Update `chapter-2/.env.example` with unified LLM configuration variables:
   - LLM_BASE_URL (with examples for all 3 providers)
   - LLM_API_KEY (note: optional for Ollama)
   - LLM_MODEL (with model examples)
   - LLM_ENABLE_USAGE_TRACKING (default: true)
-- [X] T5.5-026 Update `chapter-3/src/llm/__init__.py` to export UnifiedLLMClient
-- [X] T5.5-027 Add deprecation warning docstrings to `chapter-3/src/llm/openrouter_client.py`
-- [X] T5.5-028 Add deprecation warning docstrings to `chapter-3/src/llm/ollama_client.py`
+- [X] T5.5-026 Update `chapter-2/src/llm/__init__.py` to export UnifiedLLMClient
+- [X] T5.5-027 Add deprecation warning docstrings to `chapter-2/src/llm/openrouter_client.py`
+- [X] T5.5-028 Add deprecation warning docstrings to `chapter-2/src/llm/ollama_client.py`
 
 **Checkpoint**: Configuration updated, legacy clients deprecated but still functional
 
@@ -285,8 +285,8 @@ All paths relative to `chapter-3/` directory:
 **Purpose**: Verify all components work together
 
 - [X] T5.5-029 Run full verification: `uv run pre-commit run --all-files` passes
-- [X] T5.5-030 Run full verification: `uv run ruff check chapter-3/src/` passes with zero errors
-- [X] T5.5-031 Run full verification: `uv run pytest chapter-3/tests/unit/ -v` passes 100%
+- [X] T5.5-030 Run full verification: `uv run ruff check chapter-2/src/` passes with zero errors
+- [X] T5.5-031 Run full verification: `uv run pytest chapter-2/tests/unit/ -v` passes 100%
 - [X] T5.5-032 Verify git commit triggers pre-commit hooks automatically
 - [X] T5.5-033 Verify git push triggers pre-push hooks (unit tests) automatically
 
@@ -341,29 +341,29 @@ Task: T5.5-021 [P] Test OpenAI initialization
 
 ### Unit Tests for User Story 4
 
-- [X] T068 [P] [US4] Create `chapter-3/tests/unit/test_sandbox.py` with security constraint tests (import whitelist, timeout, memory)
+- [X] T068 [P] [US4] Create `chapter-2/tests/unit/test_sandbox.py` with security constraint tests (import whitelist, timeout, memory)
 
 ### Integration Tests for User Story 4
 
-- [X] T069 [P] [US4] Create `chapter-3/tests/integration/test_code_execution.py` with end-to-end code execution tests
+- [X] T069 [P] [US4] Create `chapter-2/tests/integration/test_code_execution.py` with end-to-end code execution tests
 
 ### Sandbox Implementation
 
-- [X] T070 [US4] Create `chapter-3/src/code_execution/__init__.py`
-- [X] T071 [US4] Create `chapter-3/src/code_execution/sandbox.py` with CodeSandbox class
+- [X] T070 [US4] Create `chapter-2/src/code_execution/__init__.py`
+- [X] T071 [US4] Create `chapter-2/src/code_execution/sandbox.py` with CodeSandbox class
 - [X] T072 [US4] Implement subprocess isolation with resource limits (30s timeout, memory limit)
 - [X] T073 [US4] Implement import whitelist enforcement (pandas, duckdb, numpy, matplotlib, seaborn)
 - [X] T074 [US4] Add user-friendly error messages for timeout and out-of-memory conditions
 
 ### Tool-to-API Transformer
 
-- [X] T075 [US4] Create `chapter-3/src/code_execution/tool_api.py` with tool-to-code wrapper generator
+- [X] T075 [US4] Create `chapter-2/src/code_execution/tool_api.py` with tool-to-code wrapper generator
 - [X] T076 [US4] Generate Python wrapper code for each library tool
 - [X] T077 [US4] Add type hints and docstrings for LLM understanding
 
 ### Benchmark Implementation
 
-- [X] T078 [US4] Create `chapter-3/benchmarks/token_comparison.py` with TokenBenchmark class
+- [X] T078 [US4] Create `chapter-2/benchmarks/token_comparison.py` with TokenBenchmark class
 - [X] T079 [US4] Implement fixed benchmark query: "Show top 5 categories by missing books with average signal strength"
 - [X] T080 [US4] Implement traditional tools measurement (multiple tool calls)
 - [X] T081 [US4] Implement code execution measurement (single code generation)
@@ -372,15 +372,15 @@ Task: T5.5-021 [P] Test OpenAI initialization
 
 ### Documentation for US4
 
-- [X] T084 [P] [US4] Create `chapter-3/docs/05-code-execution.md` documenting token reduction results
+- [X] T084 [P] [US4] Create `chapter-2/docs/05-code-execution.md` documenting token reduction results
 
 ### Dual-Mode Integration (Enhancement)
 
-- [X] T085 [US4] Create `chapter-3/src/agents/library_assistant_enhanced.py` with dual-mode support
+- [X] T085 [US4] Create `chapter-2/src/agents/library_assistant_enhanced.py` with dual-mode support
 - [X] T086 [US4] Implement AssistantMode enum (TRADITIONAL, CODE_EXECUTION)
 - [X] T087 [US4] Add mode switching capability with `/mode` command
 - [X] T088 [US4] Add token tracking unified across both modes
-- [X] T089 [US4] Create `chapter-3/scripts/compare_modes.py` for side-by-side comparison
+- [X] T089 [US4] Create `chapter-2/scripts/compare_modes.py` for side-by-side comparison
 - [X] T090 [US4] Add `make assistant-enhanced` target for interactive mode switching
 - [X] T091 [US4] Add `make assistant-code` target for code execution mode
 - [X] T092 [US4] Add `make compare-modes` target for automated comparison
@@ -404,41 +404,41 @@ Task: T5.5-021 [P] Test OpenAI initialization
 
 ### Description Generation
 
-- [X] T094 [P] Create `chapter-3/scripts/generate_descriptions.py` with hybrid template + LLM approach
+- [X] T094 [P] Create `chapter-2/scripts/generate_descriptions.py` with hybrid template + LLM approach
 - [X] T095 Implement category-specific description templates (Programming, Fiction, Thriller, Science, History)
 - [X] T096 Generate 200 unique descriptions (50-100 words each) based on book titles and categories
-- [X] T097 Write enhanced CSV with Description column (position 4, after Author) to `chapter-3/data/raw/library/library_dataset_random.csv`
+- [X] T097 Write enhanced CSV with Description column (position 4, after Author) to `chapter-2/data/raw/library/library_dataset_random.csv`
 - [X] T098 Validate: 200 books processed, no data loss, descriptions non-empty and semantically diverse
 
 ### Domain Model Updates
 
-- [X] T099 [P] Update `chapter-3/src/library/domain.py` Book dataclass - add `description: str` field after `author`
+- [X] T099 [P] Update `chapter-2/src/library/domain.py` Book dataclass - add `description: str` field after `author`
 - [X] T100 Update `Book.to_dict()` method in `domain.py` to include `"description": self.description`
 - [X] T101 Update `Book.from_row()` classmethod in `domain.py` to unpack description from tuple (position 3)
 - [X] T102 Update `Book.from_dict()` classmethod in `domain.py` to handle `description` key
 
 ### Database Schema & Loader Updates
 
-- [X] T103 [P] Update `chapter-3/scripts/load_library_csv_to_duckdb.py` - add `description VARCHAR NOT NULL` to CREATE TABLE statement (after author)
+- [X] T103 [P] Update `chapter-2/scripts/load_library_csv_to_duckdb.py` - add `description VARCHAR NOT NULL` to CREATE TABLE statement (after author)
 - [X] T104 Update INSERT statement in `load_library_csv_to_duckdb.py` to map CSV `Description` column to database `description` field
 - [X] T105 Add "description" to NULL value checks in `validate_data()` function in `load_library_csv_to_duckdb.py`
 - [X] T106 Add length validation for descriptions (50-300 characters) in `validate_data()` function
 
 ### Repository Query Updates
 
-- [X] T107 Update `chapter-3/src/library/repository.py` `search_books()` - add `description` to SELECT statement (line ~97)
-- [X] T108 Update `chapter-3/src/library/repository.py` `get_book_by_id()` - add `description` to SELECT statement (line ~125)
-- [X] T109 Update `chapter-3/src/library/repository.py` `list_by_category()` - add `description` to SELECT statement (line ~150)
-- [X] T110 Update `chapter-3/src/library/repository.py` `list_by_status()` - add `description` to SELECT statement (line ~180)
-- [X] T111 Update `chapter-3/src/library/repository.py` `get_weak_signal_books()` - add `description` to SELECT statement (line ~208)
-- [X] T112 Update `chapter-3/src/library/repository.py` `find_books_in_cabinet()` - add `description` to SELECT statement (line ~232)
+- [X] T107 Update `chapter-2/src/library/repository.py` `search_books()` - add `description` to SELECT statement (line ~97)
+- [X] T108 Update `chapter-2/src/library/repository.py` `get_book_by_id()` - add `description` to SELECT statement (line ~125)
+- [X] T109 Update `chapter-2/src/library/repository.py` `list_by_category()` - add `description` to SELECT statement (line ~150)
+- [X] T110 Update `chapter-2/src/library/repository.py` `list_by_status()` - add `description` to SELECT statement (line ~180)
+- [X] T111 Update `chapter-2/src/library/repository.py` `get_weak_signal_books()` - add `description` to SELECT statement (line ~208)
+- [X] T112 Update `chapter-2/src/library/repository.py` `find_books_in_cabinet()` - add `description` to SELECT statement (line ~232)
 
 ### Test Updates
 
-- [X] T113 [P] Update `chapter-3/tests/unit/test_domain.py` - add description field to all Book test fixtures
-- [X] T114 [P] Update `chapter-3/tests/unit/test_repository.py` - add description to test data and assertions
-- [X] T115 [P] Update `chapter-3/tests/unit/test_tools.py` - add assertions for description in tool responses
-- [X] T116 Update `chapter-3/tests/integration/test_data_load.py` - add description column existence validation
+- [X] T113 [P] Update `chapter-2/tests/unit/test_domain.py` - add description field to all Book test fixtures
+- [X] T114 [P] Update `chapter-2/tests/unit/test_repository.py` - add description to test data and assertions
+- [X] T115 [P] Update `chapter-2/tests/unit/test_tools.py` - add assertions for description in tool responses
+- [X] T116 Update `chapter-2/tests/integration/test_data_load.py` - add description column existence validation
 - [X] T117 Add description NULL check validation to `test_data_load.py`
 - [X] T118 Add description length constraint checks (50-300 chars) to `test_data_load.py`
 
@@ -446,14 +446,14 @@ Task: T5.5-021 [P] Test OpenAI initialization
 
 - [X] T119 [P] Update `specs/003-chapter3-ai-engineering/data-model.md` - add Description field to Book entity schema
 - [X] T120 [P] Update `specs/003-chapter3-ai-engineering/spec.md` FR-002 - add Description to list of book attributes
-- [X] T121 [P] Update `chapter-3/docs/01-data-infrastructure.md` - update code examples to show Description field
+- [X] T121 [P] Update `chapter-2/docs/01-data-infrastructure.md` - update code examples to show Description field
 
 ### End-to-End Validation
 
-- [X] T122 Delete existing database: `rm chapter-3/data/duckdb/chapter3.db`
-- [X] T123 Run enhanced CSV loader: `python chapter-3/scripts/load_library_csv_to_duckdb.py`
-- [X] T124 Run all unit tests: `uv run pytest chapter-3/tests/unit/ -v` - verify 100% pass
-- [X] T125 Run all integration tests: `uv run pytest chapter-3/tests/integration/ -v` - verify 100% pass
+- [X] T122 Delete existing database: `rm chapter-2/data/duckdb/chapter3.db`
+- [X] T123 Run enhanced CSV loader: `python chapter-2/scripts/load_library_csv_to_duckdb.py`
+- [X] T124 Run all unit tests: `uv run pytest chapter-2/tests/unit/ -v` - verify 100% pass
+- [X] T125 Run all integration tests: `uv run pytest chapter-2/tests/integration/ -v` - verify 100% pass
 - [X] T126 Verify 200 books loaded with descriptions: `SELECT COUNT(*), COUNT(description) FROM library.books`
 - [X] T127 Spot-check sample descriptions for quality and semantic diversity
 
@@ -486,19 +486,19 @@ Task: T121 [P] Update docs
 
 ### Unit Tests for User Story 5
 
-- [X] T128 [P] [US5] Create `chapter-3/tests/unit/test_embeddings.py` with embedding generation tests
-- [X] T129 [P] [US5] Create `chapter-3/tests/unit/test_tool_registry.py` with tool registry tests
+- [X] T128 [P] [US5] Create `chapter-2/tests/unit/test_embeddings.py` with embedding generation tests
+- [X] T129 [P] [US5] Create `chapter-2/tests/unit/test_tool_registry.py` with tool registry tests
 
 ### Integration Tests for User Story 5
 
-- [X] T130 [P] [US5] Create `chapter-3/tests/integration/test_semantic_search.py` with retrieval accuracy tests
+- [X] T130 [P] [US5] Create `chapter-2/tests/integration/test_semantic_search.py` with retrieval accuracy tests
 
 ### RAG Implementation
 
-- [X] T131 [US5] Create `chapter-3/src/rag/__init__.py`
-- [X] T132 [US5] Create `chapter-3/src/rag/embeddings.py` with EmbeddingGenerator class using sentence-transformers
+- [X] T131 [US5] Create `chapter-2/src/rag/__init__.py`
+- [X] T132 [US5] Create `chapter-2/src/rag/embeddings.py` with EmbeddingGenerator class using sentence-transformers
 - [X] T133 [US5] Implement embed_text(text) and embed_books(books) methods
-- [X] T134 [US5] Create `chapter-3/src/rag/vector_store.py` with DuckDBVectorStore class
+- [X] T134 [US5] Create `chapter-2/src/rag/vector_store.py` with DuckDBVectorStore class
 - [X] T178 [US5] Implement VSS extension setup and book_embeddings table creation
 - [X] T179 [US5] Implement semantic_search(query, top_k) using array_cosine_distance
 - [X] T180 [US5] Add HNSW index creation after data population
@@ -506,21 +506,21 @@ Task: T121 [P] Update docs
 
 ### Tool Registry Implementation
 
-- [X] T182 [US5] Create `chapter-3/src/tools/__init__.py`
-- [X] T183 [US5] Create `chapter-3/src/tools/tool_registry.py` with ToolRegistry class
+- [X] T182 [US5] Create `chapter-2/src/tools/__init__.py`
+- [X] T183 [US5] Create `chapter-2/src/tools/tool_registry.py` with ToolRegistry class
 - [X] T141 [US5] Implement register_tool(tool) with metadata (name, description, schema, capabilities)
 - [X] T142 [US5] Implement get_tool(name) for direct lookup
 - [X] T143 [US5] Implement list_tools(capability) for capability-based filtering
 
 ### Tool Search Implementation
 
-- [X] T144 [US5] Create `chapter-3/src/tools/tool_search.py` with ToolSearch class
+- [X] T144 [US5] Create `chapter-2/src/tools/tool_search.py` with ToolSearch class
 - [X] T145 [US5] Implement search_by_name(query) for name-based lookup
 - [X] T146 [US5] Implement search_by_description(query) using embedding similarity
 
 ### Data Analysis Agent
 
-- [X] T147 [US5] Create `chapter-3/src/agents/data_analysis_agent.py` with DataAnalysisAgent class
+- [X] T147 [US5] Create `chapter-2/src/agents/data_analysis_agent.py` with DataAnalysisAgent class
 - [X] T148 [US5] Integrate code execution for complex analytics
 - [X] T149 [US5] Integrate semantic search for book discovery
 
@@ -531,7 +531,7 @@ Task: T121 [P] Update docs
 
 ### Documentation for US5
 
-- [X] T152 [P] [US5] Create `chapter-3/docs/06-advanced-tools-rag.md` explaining RAG scope decisions
+- [X] T152 [P] [US5] Create `chapter-2/docs/06-advanced-tools-rag.md` explaining RAG scope decisions
 
 **Checkpoint**: User Story 5 complete - semantic search works with 70%+ top-3 precision
 
@@ -551,7 +551,7 @@ Task: T121 [P] Update docs
 
 **Purpose**: Create 100 enterprise dummy tools across 10 domains
 
-- [X] T7.5-001 [US4+] Create `chapter-3/src/tools/dummy_tools.py` with EnterpriseDomain enum and DummyTool dataclass
+- [X] T7.5-001 [US4+] Create `chapter-2/src/tools/dummy_tools.py` with EnterpriseDomain enum and DummyTool dataclass
 - [X] T7.5-002 [P] [US4+] Generate 10 tools for Engineering domain (CI/CD: run_build, check_ci_status, trigger_deployment, get_test_coverage, etc.)
 - [X] T7.5-003 [P] [US4+] Generate 10 tools for Data Platform domain (query_warehouse, get_data_lineage, validate_schema, refresh_dashboard, etc.)
 - [X] T7.5-004 [P] [US4+] Generate 10 tools for Security domain (scan_vulnerabilities, check_access_permissions, audit_logs, rotate_secrets, etc.)
@@ -576,10 +576,10 @@ Task: T121 [P] Update docs
 
 **Purpose**: Update assistants to support dummy tools
 
-- [X] T7.5-016 [US4+] Update `chapter-3/src/agents/library_assistant.py` - add `enable_dummy_tools: bool = False` parameter
+- [X] T7.5-016 [US4+] Update `chapter-2/src/agents/library_assistant.py` - add `enable_dummy_tools: bool = False` parameter
 - [X] T7.5-017 [US4+] Update `_get_tools()` method to optionally include dummy tools
 - [X] T7.5-018 [US4+] Update `_get_tool_functions()` method to include dummy tool mock implementations
-- [X] T7.5-019 [US4+] Update `chapter-3/src/agents/library_assistant_enhanced.py` - add `enable_dummy_tools: bool = False` parameter
+- [X] T7.5-019 [US4+] Update `chapter-2/src/agents/library_assistant_enhanced.py` - add `enable_dummy_tools: bool = False` parameter
 - [X] T7.5-020 [US4+] Update `ToolAPIGenerator` to optionally include dummy tool API stubs in code execution mode
 
 ### Phase 7.5.4: CLI Commands
@@ -595,7 +595,7 @@ Task: T121 [P] Update docs
 
 **Purpose**: Update compare_modes.py to demonstrate enterprise scale
 
-- [X] T7.5-025 [US4+] Update `chapter-3/scripts/compare_modes.py` - add `--enable-dummy-tools` argument
+- [X] T7.5-025 [US4+] Update `chapter-2/scripts/compare_modes.py` - add `--enable-dummy-tools` argument
 - [X] T7.5-026 [US4+] Add token breakdown display showing tool definition overhead
 - [X] T7.5-027 [US4+] Add summary showing percentage reduction with dummy tools vs without
 
@@ -611,7 +611,7 @@ Task: T121 [P] Update docs
 
 **Purpose**: Test dummy tool generation and integration
 
-- [X] T7.5-031 [P] [US4+] Create `chapter-3/tests/unit/test_dummy_tools.py`
+- [X] T7.5-031 [P] [US4+] Create `chapter-2/tests/unit/test_dummy_tools.py`
 - [X] T7.5-032 [P] [US4+] Test `generate_dummy_tools()` returns exactly 100 tools
 - [X] T7.5-033 [P] [US4+] Test tools are distributed across 10 domains (10 each)
 - [X] T7.5-034 [P] [US4+] Test `get_dummy_tool_functions()` returns matching function count
@@ -621,7 +621,7 @@ Task: T121 [P] Update docs
 
 **Purpose**: End-to-end tests with dummy tools enabled
 
-- [X] T7.5-036 [P] [US4+] Create `chapter-3/tests/integration/test_assistant_dummy.py`
+- [X] T7.5-036 [P] [US4+] Create `chapter-2/tests/integration/test_assistant_dummy.py`
 - [X] T7.5-037 [P] [US4+] Test LibraryAssistant initializes with dummy tools enabled
 - [X] T7.5-038 [P] [US4+] Test EnhancedLibraryAssistant initializes with dummy tools enabled
 - [X] T7.5-039 [P] [US4+] Test library queries still work correctly with dummy tools present
@@ -631,8 +631,8 @@ Task: T121 [P] Update docs
 
 **Purpose**: Verify implementation and record results
 
-- [X] T7.5-041 [US4+] Run `uv run pytest chapter-3/tests/unit/test_dummy_tools.py -v` - verify 100% pass (30/30 tests passed)
-- [X] T7.5-042 [US4+] Run `uv run pytest chapter-3/tests/integration/test_assistant_dummy.py -v` - verify 100% pass (16/16 tests passed)
+- [X] T7.5-041 [US4+] Run `uv run pytest chapter-2/tests/unit/test_dummy_tools.py -v` - verify 100% pass (30/30 tests passed)
+- [X] T7.5-042 [US4+] Run `uv run pytest chapter-2/tests/integration/test_assistant_dummy.py -v` - verify 100% pass (16/16 tests passed)
 - [X] T7.5-043 [US4+] Run `make compare-modes-enterprise` and record results (code execution works end-to-end)
 - [X] T7.5-044 [US4+] Verify traditional mode uses 15,000+ tokens for tool definitions (~131,710 total for 6 queries - PASS)
 - [X] T7.5-045 [US4+] Verify code execution mode uses < 2,000 tokens for tool definitions (~25,161 total for 6 queries, ~600-800 API stub overhead - PASS)
@@ -642,7 +642,7 @@ Task: T121 [P] Update docs
 
 **Purpose**: Document enterprise scale demonstration
 
-- [X] T7.5-047 [P] [US4+] Create `chapter-3/docs/05.5-enterprise-tool-scale.md`
+- [X] T7.5-047 [P] [US4+] Create `chapter-2/docs/05.5-enterprise-tool-scale.md`
 - [X] T7.5-048 [US4+] Document motivation (Anthropic paper reference)
 - [X] T7.5-049 [US4+] Document 10 enterprise domains and tool examples
 - [X] T7.5-050 [US4+] Document expected token reduction percentages
@@ -706,31 +706,31 @@ Task: T7.5-041 [P] Documentation
 
 ### Unit Tests for User Story 6
 
-- [X] T153 [P] [US6] Create `chapter-3/tests/unit/test_agents.py` with tests for each agent type
-- [X] T154 [P] [US6] Create `chapter-3/tests/unit/test_protocol.py` with A2A message protocol tests
+- [X] T153 [P] [US6] Create `chapter-2/tests/unit/test_agents.py` with tests for each agent type
+- [X] T154 [P] [US6] Create `chapter-2/tests/unit/test_protocol.py` with A2A message protocol tests
 
 ### Integration Tests for User Story 6
 
-- [X] T155 [P] [US6] Create `chapter-3/tests/integration/test_multi_agent.py` with end-to-end multi-step query tests
+- [X] T155 [P] [US6] Create `chapter-2/tests/integration/test_multi_agent.py` with end-to-end multi-step query tests
 
 ### A2A Protocol Implementation
 
-- [X] T156 [US6] Create `chapter-3/src/a2a/__init__.py`
-- [X] T157 [US6] Create `chapter-3/src/a2a/protocol.py` with QueryType enum and AgentMessage dataclass
-- [X] T158 [US6] Create `chapter-3/src/a2a/server.py` with in-process message routing
+- [X] T156 [US6] Create `chapter-2/src/a2a/__init__.py`
+- [X] T157 [US6] Create `chapter-2/src/a2a/protocol.py` with QueryType enum and AgentMessage dataclass
+- [X] T158 [US6] Create `chapter-2/src/a2a/server.py` with in-process message routing
 
 ### Specialized Agents Implementation
 
-- [X] T159 [US6] Create `chapter-3/src/agents/search_agent.py` with SearchAgent class
+- [X] T159 [US6] Create `chapter-2/src/agents/search_agent.py` with SearchAgent class
 - [X] T160 [US6] Implement search_agent with tools: search_books, get_book_details, locate_book, semantic_search
-- [X] T161 [US6] Create `chapter-3/src/agents/analytics_agent.py` with AnalyticsAgent class
+- [X] T161 [US6] Create `chapter-2/src/agents/analytics_agent.py` with AnalyticsAgent class
 - [X] T162 [US6] Implement analytics_agent with tools: get_library_stats, list_by_category, list_by_status, execute_analytics
-- [X] T163 [US6] Create `chapter-3/src/agents/recommendation_agent.py` with RecommendationAgent class
+- [X] T163 [US6] Create `chapter-2/src/agents/recommendation_agent.py` with RecommendationAgent class
 - [X] T164 [US6] Implement recommendation_agent with signal strength consideration ("avoid weak signal books")
 
 ### Orchestrator Implementation
 
-- [X] T165 [US6] Create `chapter-3/src/agents/orchestrator_agent.py` with OrchestratorAgent class
+- [X] T165 [US6] Create `chapter-2/src/agents/orchestrator_agent.py` with OrchestratorAgent class
 - [X] T166 [US6] Implement query classification (search / analytics / multi-step)
 - [X] T167 [US6] Implement agent discovery and routing
 - [X] T168 [US6] Implement result aggregation from multiple agents
@@ -745,7 +745,7 @@ Task: T7.5-041 [P] Documentation
 
 ### Documentation for US6
 
-- [X] T174 [P] [US6] Create `chapter-3/docs/08-multi-agent-system.md` explaining multi-agent architecture
+- [X] T174 [P] [US6] Create `chapter-2/docs/08-multi-agent-system.md` explaining multi-agent architecture
 
 **Checkpoint**: User Story 6 complete - multi-agent system routes queries at 85%+ accuracy
 
@@ -755,14 +755,14 @@ Task: T7.5-041 [P] Documentation
 
 **Purpose**: Final quality improvements affecting all user stories
 
-- [X] T175 [P] Run ruff linting on all chapter-3/ Python files and fix issues
-- [X] T176 [P] Run mypy type checking on all chapter-3/ Python files and fix issues
+- [X] T175 [P] Run ruff linting on all chapter-2/ Python files and fix issues
+- [X] T176 [P] Run mypy type checking on all chapter-2/ Python files and fix issues
 - [X] T177 [P] Verify all docstrings follow Google style
 - [X] T178 Add structured logging (JSON) across all modules
 - [X] T179 Verify all edge cases have user-friendly error messages
 - [X] T180 Run `make test` and ensure 80%+ unit test coverage
 - [X] T181 Run quickstart.md validation - execute all steps and verify
-- [X] T182 Update chapter-3/README.md with final instructions
+- [X] T182 Update chapter-2/README.md with final instructions
 - [X] T183 Create sample queries document for each sub-feature
 
 **Checkpoint**: Phase 9 complete - all quality gates pass, documentation updated
@@ -852,18 +852,18 @@ Phase 1 (Setup) ───► Phase 2 (Foundational) ───► User Stories
 
 ```bash
 # Launch all parallelizable setup tasks:
-Task: "Create chapter-3/Makefile with targets"
-Task: "Create chapter-3/.env.example"
-Task: "Create chapter-3/README.md"
+Task: "Create chapter-2/Makefile with targets"
+Task: "Create chapter-2/.env.example"
+Task: "Create chapter-2/README.md"
 ```
 
 ### User Story 1 Tests (Parallel)
 
 ```bash
 # Launch all US1 tests together:
-Task: "Create chapter-3/tests/unit/test_domain.py"
-Task: "Create chapter-3/tests/unit/test_repository.py"
-Task: "Create chapter-3/tests/integration/test_data_load.py"
+Task: "Create chapter-2/tests/unit/test_domain.py"
+Task: "Create chapter-2/tests/unit/test_repository.py"
+Task: "Create chapter-2/tests/integration/test_data_load.py"
 ```
 
 ### User Story 1 Domain (Parallel)

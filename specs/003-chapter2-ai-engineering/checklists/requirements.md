@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Chapter 3 - AI Engineering with Library Management Data
+# Specification Quality Checklist: Chapter 2 - AI Engineering with Library Management Data
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2025-12-13

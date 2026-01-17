@@ -1,4 +1,4 @@
-# Data Model: Chapter 3 - AI Engineering with Library Management Data
+# Data Model: Chapter 2 - AI Engineering with Library Management Data
 
 **Branch**: `003-chapter3-ai-engineering` | **Date**: 2025-12-14
 
