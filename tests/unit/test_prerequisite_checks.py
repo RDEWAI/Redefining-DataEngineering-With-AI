@@ -10,9 +10,6 @@ These are unit tests that mock system commands to test validation logic.
 
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -48,7 +45,7 @@ class TestUVDetection:
         """Test that UV error message contains installation instructions."""
         # This test verifies the error message format is correct
         # We check that the script contains the expected error message
-        with open(VALIDATE_SCRIPT, 'r') as f:
+        with open(VALIDATE_SCRIPT, "r") as f:
             script_content = f.read()
 
         # Verify error message contains installation instructions
@@ -74,12 +71,14 @@ class TestPythonVersionValidation:
             assert "3.1" in result.stdout  # Should be 3.10, 3.11, or 3.12
         else:
             # If unsupported version, should have clear error
-            assert "ERROR: Unsupported Python version" in result.stdout or \
-                   "ERROR: Python 3 not found" in result.stdout
+            assert (
+                "ERROR: Unsupported Python version" in result.stdout
+                or "ERROR: Python 3 not found" in result.stdout
+            )
 
     def test_python_version_check_error_message(self):
         """Test that Python version error message is helpful."""
-        with open(VALIDATE_SCRIPT, 'r') as f:
+        with open(VALIDATE_SCRIPT, "r") as f:
             script_content = f.read()
 
         # Verify error message contains version requirements
@@ -89,7 +88,7 @@ class TestPythonVersionValidation:
 
     def test_python_version_range_validation(self):
         """Test that validation logic checks for correct version range."""
-        with open(VALIDATE_SCRIPT, 'r') as f:
+        with open(VALIDATE_SCRIPT, "r") as f:
             script_content = f.read()
 
         # Check that the script validates versions 3.10-3.12
@@ -122,7 +121,7 @@ class TestDockerDetection:
 
     def test_docker_error_messages(self):
         """Test that Docker error messages contain helpful information."""
-        with open(VALIDATE_SCRIPT, 'r') as f:
+        with open(VALIDATE_SCRIPT, "r") as f:
             script_content = f.read()
 
         # Verify Docker not found error
@@ -131,12 +130,14 @@ class TestDockerDetection:
 
         # Verify Docker daemon not running error
         assert "ERROR: Docker daemon is not running" in script_content
-        assert "sudo systemctl start docker" in script_content or \
-               "systemctl start docker" in script_content
+        assert (
+            "sudo systemctl start docker" in script_content
+            or "systemctl start docker" in script_content
+        )
 
     def test_docker_daemon_check_uses_docker_info(self):
         """Test that daemon check uses 'docker info' command."""
-        with open(VALIDATE_SCRIPT, 'r') as f:
+        with open(VALIDATE_SCRIPT, "r") as f:
             script_content = f.read()
 
         # Should use 'docker info' to check daemon status
@@ -149,12 +150,14 @@ class TestValidateEnvironmentScript:
     def test_script_has_execute_permissions(self):
         """Verify script has execute permissions."""
         import os
-        assert os.access(VALIDATE_SCRIPT, os.X_OK), \
+
+        assert os.access(VALIDATE_SCRIPT, os.X_OK), (
             "validate-environment.sh should be executable"
+        )
 
     def test_script_supports_multiple_check_types(self):
         """Verify script supports different check types."""
-        with open(VALIDATE_SCRIPT, 'r') as f:
+        with open(VALIDATE_SCRIPT, "r") as f:
             script_content = f.read()
 
         # Should support different check types
@@ -191,7 +194,7 @@ class TestValidateEnvironmentScript:
 
     def test_script_exit_codes(self):
         """Test that script uses documented exit codes."""
-        with open(VALIDATE_SCRIPT, 'r') as f:
+        with open(VALIDATE_SCRIPT, "r") as f:
             script_content = f.read()
 
         # Verify exit codes are documented in comments
@@ -207,23 +210,23 @@ class TestErrorMessageQuality:
 
     def test_error_messages_are_actionable(self):
         """Verify all error messages contain actionable instructions."""
-        with open(VALIDATE_SCRIPT, 'r') as f:
+        with open(VALIDATE_SCRIPT, "r") as f:
             script_content = f.read()
 
         # Count ERROR messages
-        error_count = script_content.count('ERROR:')
+        error_count = script_content.count("ERROR:")
         assert error_count >= 4, "Should have at least 4 different error scenarios"
 
         # Each error should be followed by installation/fix instructions
         # UV error should have install command
         uv_error_idx = script_content.find("ERROR: UV package manager not found")
         if uv_error_idx > 0:
-            following_text = script_content[uv_error_idx:uv_error_idx+500]
+            following_text = script_content[uv_error_idx : uv_error_idx + 500]
             assert "Install" in following_text or "curl" in following_text
 
     def test_error_messages_use_colors(self):
         """Verify error messages use color codes for better visibility."""
-        with open(VALIDATE_SCRIPT, 'r') as f:
+        with open(VALIDATE_SCRIPT, "r") as f:
             script_content = f.read()
 
         # Should define color codes

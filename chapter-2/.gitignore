@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+.venv/
+venv/
+
+# DuckDB database files (generated from CSV)
+data/duckdb/*.db
+data/duckdb/*.wal
+
+# Environment files with secrets
+.env
+
+# MCP client config (user preferences)
+.mcp_config.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Ruff
+.ruff_cache/
+
+# Keep CSV data files (do not ignore)
+# data/raw/library/*.csv is tracked in git

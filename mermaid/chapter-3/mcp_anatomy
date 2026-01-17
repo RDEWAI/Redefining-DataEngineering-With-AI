@@ -1,0 +1,26 @@
+flowchart TD
+
+    %% Top Layer: Server Capabilities (fed by Server)
+    subgraph Server_Capabilities ["Server Capabilities"]
+        direction LR
+        Tools["🛠️ Tools"]
+        Prompts_Cap["📝 Prompts"]
+        Resources["📂 Resources"]
+    end
+
+    %% Middle Layer: Client & Host (Client → Host)
+    subgraph Core_Protocol ["Client & Host"]
+        direction LR
+        MCP_Host["🧠 MCP Host<br>(Claude, IDE, App)"] --> MCP_Client["🧬 MCP Client"]
+    end
+
+    %% Connection: Server provides capabilities to Core Protocol
+    MCP_Server["🔌 MCP Server<br>(Exposes Primitives)"] --> Server_Capabilities
+    MCP_Client --> MCP_Server 
+
+    %% Bottom Layer: User (now positioned below)
+    User["👤 User"]
+
+    %% User initiates everything
+    User -->|Primarily Interacts| MCP_Host
+    User -->|Also Interacts| MCP_Client

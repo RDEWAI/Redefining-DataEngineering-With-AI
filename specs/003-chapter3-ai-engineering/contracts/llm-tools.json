@@ -1,0 +1,227 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Library Assistant Tool Definitions",
+  "description": "OpenAI-compatible tool definitions for Library Assistant (003c) and multi-agent system (003f)",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "search_books",
+        "description": "Search books by title, author, or keyword. Returns matching books with their availability status and location.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Search query to match against title or author"
+            },
+            "category": {
+              "type": "string",
+              "enum": ["Programming", "History", "Science", "Fiction", "Thriller"],
+              "description": "Optional category filter"
+            },
+            "limit": {
+              "type": "integer",
+              "default": 10,
+              "description": "Maximum number of results"
+            }
+          },
+          "required": ["query"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_book_details",
+        "description": "Get complete details for a specific book including physical location, RFID signal strength, and availability status.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "book_id": {
+              "type": "string",
+              "description": "Book ID (e.g., 'B001')"
+            }
+          },
+          "required": ["book_id"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "check_availability",
+        "description": "Check if a book is available for checkout and get its current shelf location.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "book_id": {
+              "type": "string",
+              "description": "Book ID to check"
+            }
+          },
+          "required": ["book_id"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_by_category",
+        "description": "List all books in a specific category with optional status filter.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string",
+              "enum": ["Programming", "History", "Science", "Fiction", "Thriller"],
+              "description": "Category to filter by"
+            },
+            "status": {
+              "type": "string",
+              "enum": ["Present", "Missing", "Checked Out"],
+              "description": "Optional status filter"
+            }
+          },
+          "required": ["category"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_by_status",
+        "description": "List all books with a specific availability status.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": ["Present", "Missing", "Checked Out"],
+              "description": "Status to filter by"
+            },
+            "category": {
+              "type": "string",
+              "enum": ["Programming", "History", "Science", "Fiction", "Thriller"],
+              "description": "Optional category filter"
+            }
+          },
+          "required": ["status"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "locate_book",
+        "description": "Get the physical location of a book (Cabinet, Rack, Row number).",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "book_id": {
+              "type": "string",
+              "description": "Book ID to locate"
+            }
+          },
+          "required": ["book_id"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "find_books_in_cabinet",
+        "description": "List all books in a specific cabinet, optionally filtered by rack.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cabinet": {
+              "type": "integer",
+              "description": "Cabinet number"
+            },
+            "rack": {
+              "type": "integer",
+              "description": "Optional rack number within cabinet"
+            }
+          },
+          "required": ["cabinet"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_weak_signal_books",
+        "description": "Get books with weak RFID signal strength that may need maintenance or relocation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "threshold": {
+              "type": "number",
+              "default": -55,
+              "description": "Signal strength threshold in dBm (default: -55, weaker signals are below this)"
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_library_stats",
+        "description": "Get aggregate statistics about the library: total books, counts by category, counts by status.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "semantic_search",
+        "description": "Search books using natural language. Finds books even when exact keywords don't match (e.g., 'books about time travel').",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Natural language search query"
+            },
+            "top_k": {
+              "type": "integer",
+              "default": 5,
+              "description": "Number of results to return"
+            }
+          },
+          "required": ["query"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "execute_analytics",
+        "description": "Execute a data analysis query using Python code. For complex analytics like 'top 5 categories by missing books'. Returns computed results.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Natural language description of the analysis to perform"
+            }
+          },
+          "required": ["query"]
+        }
+      }
+    }
+  ],
+  "agent_tools": {
+    "search_agent": ["search_books", "get_book_details", "locate_book", "semantic_search"],
+    "analytics_agent": ["get_library_stats", "list_by_category", "list_by_status", "execute_analytics"],
+    "recommendation_agent": ["search_books", "check_availability", "get_weak_signal_books", "semantic_search"]
+  }
+}
