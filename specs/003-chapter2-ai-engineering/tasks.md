@@ -1,6 +1,6 @@
 # Tasks: Chapter 2 - AI Engineering with Library Management Data
 
-**Input**: Design documents from `/specs/003-chapter3-ai-engineering/`
+**Input**: Design documents from `/specs/003-chapter2-ai-engineering/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
 **GitHub Epic**: #15 | **Sub-Issues**: #16, #17, #18, #19, #20, #21
 
@@ -444,13 +444,13 @@ Task: T5.5-021 [P] Test OpenAI initialization
 
 ### Documentation Updates
 
-- [X] T119 [P] Update `specs/003-chapter3-ai-engineering/data-model.md` - add Description field to Book entity schema
-- [X] T120 [P] Update `specs/003-chapter3-ai-engineering/spec.md` FR-002 - add Description to list of book attributes
+- [X] T119 [P] Update `specs/003-chapter2-ai-engineering/data-model.md` - add Description field to Book entity schema
+- [X] T120 [P] Update `specs/003-chapter2-ai-engineering/spec.md` FR-002 - add Description to list of book attributes
 - [X] T121 [P] Update `chapter-2/docs/01-data-infrastructure.md` - update code examples to show Description field
 
 ### End-to-End Validation
 
-- [X] T122 Delete existing database: `rm chapter-2/data/duckdb/chapter3.db`
+- [X] T122 Delete existing database: `rm chapter-2/data/duckdb/chapter2.db`
 - [X] T123 Run enhanced CSV loader: `python chapter-2/scripts/load_library_csv_to_duckdb.py`
 - [X] T124 Run all unit tests: `uv run pytest chapter-2/tests/unit/ -v` - verify 100% pass
 - [X] T125 Run all integration tests: `uv run pytest chapter-2/tests/integration/ -v` - verify 100% pass

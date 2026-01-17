@@ -1,8 +1,8 @@
-# Pre-commit hooks configuration for Chapter 3
+# Pre-commit hooks configuration for Chapter 2
 # Install: uv run pre-commit install && uv run pre-commit install --hook-type pre-push
 # Run manually: uv run pre-commit run --all-files
 #
-# Note: This config only applies to chapter-3/ directory files and can be extended to other directories by adding the directory to the files
+# Note: This config only applies to chapter-2/ directory files and can be extended to other directories by adding the directory to the files
 
 repos:
   # Ruff - fast Python linter and formatter (replaces flake8, isort, black)
@@ -14,14 +14,14 @@ repos:
         name: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
         types_or: [python, pyi]
-        files: ^chapter-3/
+        files: ^chapter-2/
 
       # Ruff formatting (check code format, don't auto-fix in pre-commit)
       - id: ruff-format
         name: ruff-format
         args: [--check]
         types_or: [python, pyi]
-        files: ^chapter-3/
+        files: ^chapter-2/
 
   # Mypy - static type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -29,22 +29,22 @@ repos:
     hooks:
       - id: mypy
         name: mypy
-        args: [--config-file=chapter-3/pyproject.toml]
+        args: [--config-file=chapter-2/pyproject.toml]
         additional_dependencies:
           - types-requests
           - pandas-stubs
         types: [python]
         # Only run mypy on chapter-3/src/ to avoid test file issues
-        files: ^chapter-3/src/
+        files: ^chapter-2/src/
         pass_filenames: false
-        entry: mypy chapter-3/src/
+        entry: mypy chapter-2/src/
 
   # Unit tests on pre-push (runs before code is pushed to remote)
   - repo: local
     hooks:
       - id: pytest-unit
         name: pytest-unit
-        entry: bash -c 'cd chapter-3 && uv run pytest tests/unit/ -v --tb=short'
+        entry: bash -c 'cd chapter-2 && uv run pytest tests/unit/ -v --tb=short'
         language: system
         stages: [pre-push]
         pass_filenames: false

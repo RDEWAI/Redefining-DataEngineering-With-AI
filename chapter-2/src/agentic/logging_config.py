@@ -1,4 +1,4 @@
-"""Structured JSON logging configuration for Chapter 3.
+"""Structured JSON logging configuration for Chapter 2.
 
 This module provides a consistent logging configuration across all modules
 with JSON-formatted output for structured log analysis.

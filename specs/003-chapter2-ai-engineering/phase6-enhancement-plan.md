@@ -1,6 +1,6 @@
 # Phase 6 Enhancement Plan: Dual-Mode Library Assistant
 
-**Branch**: `003-chapter3-ai-engineering` | **Date**: 2025-12-14
+**Branch**: `003-chapter2-ai-engineering` | **Date**: 2025-12-14
 **Enhancement to**: Phase 6 (User Story 4 - Code Execution)
 
 ## Motivation
@@ -296,7 +296,7 @@ compare-modes:       # Run comparison script
 
 - Anthropic: [Code Execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp)
 - Anthropic: [Advanced Tool Use](https://www.anthropic.com/engineering/advanced-tool-use)
-- Existing Implementation: `specs/003-chapter3-ai-engineering/tasks.md` Phase 6
+- Existing Implementation: `specs/003-chapter2-ai-engineering/tasks.md` Phase 6
 - Code: `chapter-2/src/code_execution/` (sandbox, tool_api)
 - Tests: `chapter-2/tests/unit/test_sandbox.py`
 

@@ -64,7 +64,7 @@ MCP provides a standardized way for AI applications to:
 ### 1. Install FastMCP
 
 ```bash
-cd chapter-3
+cd chapter-2
 uv add fastmcp
 ```
 

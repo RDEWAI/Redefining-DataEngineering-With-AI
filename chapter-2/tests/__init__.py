@@ -1,1 +1,1 @@
-"""Test suite for Chapter 3."""
+"""Test suite for Chapter 2."""
