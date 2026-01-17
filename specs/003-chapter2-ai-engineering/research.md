@@ -1,10 +1,10 @@
-# Research: Chapter 3 - AI Engineering with Library Management Data
+# Research: Chapter 2 - AI Engineering with Library Management Data
 
 **Branch**: `003-chapter3-ai-engineering` | **Date**: 2025-12-14
 
 ## Executive Summary
 
-This document consolidates research findings for implementing Chapter 3's AI Engineering features. All technical unknowns have been resolved with clear decisions and rationales.
+This document consolidates research findings for implementing Chapter 2's AI Engineering features. All technical unknowns have been resolved with clear decisions and rationales.
 
 ---
 
@@ -67,7 +67,7 @@ uv add fastmcp
   "mcpServers": {
     "library-server": {
       "command": "uv",
-      "args": ["run", "fastmcp", "run", "chapter-3/src/mcp_servers/library_server.py"]
+      "args": ["run", "fastmcp", "run", "chapter-2/src/mcp_servers/library_server.py"]
     }
   }
 }
@@ -103,7 +103,7 @@ import duckdb
 from sentence_transformers import SentenceTransformer
 
 # Setup
-conn = duckdb.connect('chapter-3/data/duckdb/library.db')
+conn = duckdb.connect('chapter-2/data/duckdb/library.db')
 conn.execute("INSTALL vss; LOAD vss")
 conn.execute("SET hnsw_enable_experimental_persistence = true")
 
@@ -437,11 +437,11 @@ class OrchestratorAgent(Agent):
 
 ## 6. Dependencies Summary
 
-### New Dependencies for chapter-3/pyproject.toml
+### New Dependencies for chapter-2/pyproject.toml
 
 ```toml
 [project]
-name = "chapter-3-ai-engineering"
+name = "chapter-2-ai-engineering"
 version = "0.1.0"
 requires-python = ">=3.10,<3.13"
 dependencies = [

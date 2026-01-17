@@ -1,4 +1,4 @@
-# Quickstart: Chapter 3 - AI Engineering with Library Management Data
+# Quickstart: Chapter 2 - AI Engineering with Library Management Data
 
 **Branch**: `003-chapter3-ai-engineering` | **Date**: 2025-12-14
 
@@ -16,7 +16,7 @@
 ```bash
 cd /path/to/Redefining-DataEngineering-With-AI
 git checkout 003-chapter3-ai-engineering
-cd chapter-3
+cd chapter-2
 ```
 
 ### 2. Install Dependencies
@@ -80,7 +80,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
     "library": {
       "command": "uv",
       "args": ["run", "fastmcp", "run", "src/mcp_servers/library_server.py"],
-      "cwd": "/path/to/chapter-3"
+      "cwd": "/path/to/chapter-2"
     }
   }
 }

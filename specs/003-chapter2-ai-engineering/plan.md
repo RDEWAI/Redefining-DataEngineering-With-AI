@@ -18,10 +18,10 @@ This phase provides empirical evidence for the paper's claims with a realistic e
 
 **Language/Version**: Python 3.10-3.12 (aligned with existing project)
 **Primary Dependencies**: OpenAI SDK, DuckDB, sentence-transformers (existing)
-**Storage**: DuckDB at `chapter-3/data/duckdb/chapter3.db`
+**Storage**: DuckDB at `chapter-2/data/duckdb/chapter3.db`
 **Testing**: pytest with `uv run pytest`
 **Target Platform**: macOS/Linux development environment
-**Project Type**: Single project (chapter-3/)
+**Project Type**: Single project (chapter-2/)
 **Performance Goals**: Demonstrate 60%+ token reduction with 100+ tools enabled
 **Constraints**: All dummy tools must be realistic enterprise patterns
 **Scale/Scope**: 100 dummy tools across 10 enterprise domains
@@ -55,7 +55,7 @@ specs/003-chapter3-ai-engineering/
 ### Source Code (repository root)
 
 ```text
-chapter-3/
+chapter-2/
 ├── src/
 │   ├── tools/
 │   │   ├── __init__.py
@@ -78,7 +78,7 @@ chapter-3/
 └── Makefile                        # Update: add assistant-dummy-tools target
 ```
 
-**Structure Decision**: Single project extending existing `chapter-3/` structure
+**Structure Decision**: Single project extending existing `chapter-2/` structure
 
 ## Design: Enterprise Dummy Tools
 
@@ -139,7 +139,7 @@ ToolDefinition(
 
 ## Implementation Approach
 
-### 1. Dummy Tool Generator (`chapter-3/src/tools/dummy_tools.py`)
+### 1. Dummy Tool Generator (`chapter-2/src/tools/dummy_tools.py`)
 
 ```python
 """Enterprise dummy tools for scale testing.
@@ -205,7 +205,7 @@ elif cmd == "/enable-dummy-tools":
 
 ```makefile
 assistant-dummy-tools: ## Start Library Assistant with 100 enterprise dummy tools
-	@cd chapter-3 && uv run python -m src.agents.library_assistant_enhanced \
+	@cd chapter-2 && uv run python -m src.agents.library_assistant_enhanced \
 		--mode traditional \
 		--enable-dummy-tools
 ```
@@ -276,17 +276,17 @@ parser.add_argument(
 
 ### New Files
 
-1. `chapter-3/src/tools/dummy_tools.py` - Enterprise dummy tool generator
-2. `chapter-3/tests/unit/test_dummy_tools.py` - Unit tests
-3. `chapter-3/tests/integration/test_assistant_dummy.py` - Integration tests
-4. `chapter-3/docs/05.5-enterprise-tool-scale.md` - Documentation
+1. `chapter-2/src/tools/dummy_tools.py` - Enterprise dummy tool generator
+2. `chapter-2/tests/unit/test_dummy_tools.py` - Unit tests
+3. `chapter-2/tests/integration/test_assistant_dummy.py` - Integration tests
+4. `chapter-2/docs/05.5-enterprise-tool-scale.md` - Documentation
 
 ### Modified Files
 
-1. `chapter-3/src/agents/library_assistant.py` - Add enable_dummy_tools
-2. `chapter-3/src/agents/library_assistant_enhanced.py` - Add enable_dummy_tools
-3. `chapter-3/scripts/compare_modes.py` - Add --enable-dummy-tools flag
-4. `chapter-3/Makefile` - Add new targets
+1. `chapter-2/src/agents/library_assistant.py` - Add enable_dummy_tools
+2. `chapter-2/src/agents/library_assistant_enhanced.py` - Add enable_dummy_tools
+3. `chapter-2/scripts/compare_modes.py` - Add --enable-dummy-tools flag
+4. `chapter-2/Makefile` - Add new targets
 5. `specs/003-chapter3-ai-engineering/tasks.md` - Add Phase 7.5 tasks
 
 ## References

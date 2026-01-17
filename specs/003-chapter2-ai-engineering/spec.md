@@ -1,9 +1,9 @@
-# Feature Specification: Chapter 3 - AI Engineering with Library Management Data
+# Feature Specification: Chapter 2 - AI Engineering with Library Management Data
 
 **Feature Branch**: `003-chapter3-ai-engineering`
 **Created**: 2025-12-13
 **Status**: Draft
-**Input**: User description: "Chapter 3: AI Engineering with Library Management Data - Epic covering MCP, tool use, code execution, RAG, and multi-agent systems"
+**Input**: User description: "Chapter 2: AI Engineering with Library Management Data - Epic covering MCP, tool use, code execution, RAG, and multi-agent systems"
 **GitHub Epic**: #15
 **Sub-Issues**: #16 (003a), #17 (003b), #18 (003c), #19 (003d), #20 (003e), #21 (003f)
 
@@ -220,7 +220,7 @@ As a learner, I want to see specialized agents (search, analytics, recommendatio
 
 ### External Dependencies
 
-- Kaggle Library Management dataset (data/chapter-3/library_dataset_random.csv)
+- Kaggle Library Management dataset (data/chapter-2/library_dataset_random.csv)
 - LLM provider access (cloud API or local model runtime)
 - Embedding model for vector generation
 
