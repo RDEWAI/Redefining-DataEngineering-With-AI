@@ -28,7 +28,15 @@ make superset-run   # Start Superset web server
 make test           # Run all tests
 ```
 
-## Recent Changes
-- 003-chapter2-ai-engineering: Added Python 3.10-3.12 (aligned with existing project)
+## Chapter 3: Business Analyst Agent
 
+- **Skills**: `.claude/skills/` under `chapter-3/` — `create-drd`, `update-drd`, `validate-drd`
+- **Inputs**: `chapter-3/inputs/drd/` (business requests, stakeholder notes, source docs, catalogs)
+- **Outputs**: `chapter-3/outputs/drd/` (generated DRD markdown files)
+- **Validator**: `chapter-3/.claude/skills/validate-drd/scripts/validate_drd.py`
+- **Tests**: `cd chapter-3 && uv run pytest tests/ -v`
+
+## Recent Changes
+- Chapter 3: BA Agent with DRD skills (create-drd, update-drd, validate-drd) for Patient 360 use case
+- 003-chapter2-ai-engineering: Added Python 3.10-3.12 (aligned with existing project)
 - Feature 002: DuckDB CSV Data Loader - Load 18 Synthea CSV files into DuckDB tables under `synthea` schema
