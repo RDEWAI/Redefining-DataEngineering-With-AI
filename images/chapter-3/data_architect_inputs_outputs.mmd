@@ -1,0 +1,34 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    subgraph inputs["Inputs"]
+        direction TB
+        I1[Data Requirements<br/>Document - DRD]
+        I2[Technology Catalog]
+        I3[Infrastructure Constraints]
+        I4[Team Capabilities]
+    end
+
+    subgraph work["Architect Work"]
+        A[Data<br/>Architect]
+    end
+
+    subgraph outputs["Outputs"]
+        direction TB
+        O1[High-Level Design<br/><i>a.k.a. HLD, Architecture Doc</i>]
+    end
+
+    I1 --> A
+    I2 --> A
+    I3 --> A
+    I4 --> A
+    A --> O1
+
+    style I1 fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style I2 fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style I3 fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style I4 fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style A fill:#ffd3b6,stroke:#333,stroke-width:2px
+    style O1 fill:#dcedc1,stroke:#333,stroke-width:2px
+    style inputs fill:#e8f4f8,stroke:#2196F3,stroke-width:2px
+    style work fill:#fff3e0,stroke:#FF9800,stroke-width:2px
+    style outputs fill:#e8f5e9,stroke:#4CAF50,stroke-width:2px

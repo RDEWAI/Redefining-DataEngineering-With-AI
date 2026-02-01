@@ -1,0 +1,36 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    subgraph P1["Phase 1: Requirements"]
+        direction TB
+        R1[Business Request] --> R2[Data Analyst] --> R3[DRD]
+    end
+
+    subgraph P2["Phase 2: Design"]
+        direction TB
+        D1[Data Architect] --> D2[HLD]
+        D2 --> D3[Data Modeler] --> D4[Schemas]
+    end
+
+    subgraph P3["Phase 3: Specification"]
+        direction TB
+        M1[Mapping Engineer] --> M2[DMD]
+        M2 --> Q1[DQ Engineer] --> Q2[DQS]
+    end
+
+    subgraph P4["Phase 4: Implementation"]
+        direction TB
+        T1[Technical Lead] --> T2[LLD]
+        T2 --> S1[Scrum Master] --> S2[Stories]
+    end
+
+    P1 --> RG1{Review<br/>Gate} --> P2
+    P2 --> RG2{Review<br/>Gate} --> P3
+    P3 --> RG3{Review<br/>Gate} --> P4
+
+    style P1 fill:#e8f4f8,stroke:#2196F3,stroke-width:2px
+    style P2 fill:#e8f5e9,stroke:#4CAF50,stroke-width:2px
+    style P3 fill:#fff3e0,stroke:#FF9800,stroke-width:2px
+    style P4 fill:#fce4ec,stroke:#E91E63,stroke-width:2px
+    style RG1 fill:#ffd700,stroke:#333,stroke-width:2px
+    style RG2 fill:#ffd700,stroke:#333,stroke-width:2px
+    style RG3 fill:#ffd700,stroke:#333,stroke-width:2px

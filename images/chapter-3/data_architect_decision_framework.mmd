@@ -1,0 +1,19 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    Q1{Real-time<br/>Required?}
+    Q1 -->|No| Q2{Audit/Compliance<br/>Critical?}
+    Q1 -->|Yes| Q3{Batch Also<br/>Needed?}
+
+    Q2 -->|No| M[Medallion<br/>Architecture]
+    Q2 -->|Yes| DV[Data Vault<br/>Architecture]
+
+    Q3 -->|No| K[Kappa<br/>Architecture]
+    Q3 -->|Yes| L[Lambda<br/>Architecture]
+
+    style Q1 fill:#f5f5f5,stroke:#333,stroke-width:2px
+    style Q2 fill:#f5f5f5,stroke:#333,stroke-width:2px
+    style Q3 fill:#f5f5f5,stroke:#333,stroke-width:2px
+    style M fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style DV fill:#ff6b6b,stroke:#333,stroke-width:2px
+    style K fill:#ffd93d,stroke:#333,stroke-width:2px
+    style L fill:#6bcb77,stroke:#333,stroke-width:2px

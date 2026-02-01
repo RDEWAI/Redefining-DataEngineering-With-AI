@@ -1,0 +1,32 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+graph LR
+    subgraph se["Software Engineering (5 steps)"]
+        direction LR
+        SE1[User Story] --> SE2[Design] --> SE3[Code] --> SE4[Test] --> SE5[Deploy]
+    end
+
+    subgraph de["Data Engineering (9 steps)"]
+        direction LR
+        DE1[Business<br/>Request] --> DE2[Source<br/>Analysis] --> DE3[Architecture<br/>Design] --> DE4[Data<br/>Modeling] --> DE5[Column<br/>Mappings] --> DE6[Quality<br/>Rules] --> DE7[Pipeline<br/>Code] --> DE8[Reconciliation] --> DE9[Deploy]
+    end
+
+    se ~~~ de
+
+    style se fill:#e3f2fd,stroke:#1976D2,stroke-width:2px
+    style de fill:#fff3e0,stroke:#F57C00,stroke-width:2px
+
+    style SE1 fill:#bbdefb,stroke:#333,stroke-width:2px
+    style SE2 fill:#bbdefb,stroke:#333,stroke-width:2px
+    style SE3 fill:#bbdefb,stroke:#333,stroke-width:2px
+    style SE4 fill:#bbdefb,stroke:#333,stroke-width:2px
+    style SE5 fill:#bbdefb,stroke:#333,stroke-width:2px
+
+    style DE1 fill:#ffe0b2,stroke:#333,stroke-width:2px
+    style DE2 fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style DE3 fill:#ffe0b2,stroke:#333,stroke-width:2px
+    style DE4 fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style DE5 fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style DE6 fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style DE7 fill:#ffe0b2,stroke:#333,stroke-width:2px
+    style DE8 fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style DE9 fill:#ffe0b2,stroke:#333,stroke-width:2px

@@ -1,0 +1,49 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+stateDiagram-v2
+    direction LR
+    [*] --> Init
+    Init --> Analyst
+
+    Analyst --> Review1: DRD
+    Review1 --> Architect: ✓
+    Review1 --> Analyst: ✗
+
+    Architect --> Review2: HLD
+    Review2 --> Modeler: ✓
+    Review2 --> Architect: ✗
+
+    Modeler --> Review3: Schemas
+    Review3 --> Mapper: ✓
+    Review3 --> Modeler: ✗
+
+    Mapper --> Review4: DMD
+    Review4 --> DQEng: ✓
+    Review4 --> Mapper: ✗
+
+    DQEng --> Review5: DQS
+    Review5 --> TechLead: ✓
+    Review5 --> DQEng: ✗
+
+    TechLead --> Review6: LLD
+    Review6 --> Scrum: ✓
+    Review6 --> TechLead: ✗
+
+    Scrum --> Review7: Stories
+    Review7 --> Sync: ✓
+    Review7 --> Scrum: ✗
+
+    Sync --> Complete
+    Complete --> [*]
+
+    Analyst --> Paused
+    Architect --> Paused
+    Mapper --> Paused
+    DQEng --> Paused
+    TechLead --> Paused
+    Scrum --> Paused
+    Paused --> Analyst
+    Paused --> Architect
+    Paused --> Mapper
+    Paused --> DQEng
+    Paused --> TechLead
+    Paused --> Scrum

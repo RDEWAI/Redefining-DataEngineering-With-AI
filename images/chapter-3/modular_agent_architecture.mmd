@@ -1,0 +1,35 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    subgraph Module["Agent Module"]
+        direction TB
+        INS["instructions.md<br/><i>Role, Responsibilities, Output</i>"]
+        TOOLS["tools.yaml<br/><i>Available tools</i>"]
+        SKILLS["skills.yaml<br/><i>Capabilities</i>"]
+        CONN["connections.yaml<br/><i>Data sources</i>"]
+    end
+
+    subgraph Orch["Orchestrator"]
+        direction TB
+        LOAD[Load Module]
+        EXEC[Execute]
+        REVIEW{Human Review}
+    end
+
+    INS --> LOAD
+    TOOLS --> LOAD
+    SKILLS --> LOAD
+    CONN --> LOAD
+    LOAD --> EXEC --> REVIEW
+    REVIEW -->|Approved| NEXT[Next Agent]
+    REVIEW -->|Feedback| EXEC
+
+    style INS fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style TOOLS fill:#ffd93d,stroke:#333,stroke-width:2px
+    style SKILLS fill:#6bcb77,stroke:#333,stroke-width:2px
+    style CONN fill:#ff6b6b,stroke:#333,stroke-width:2px
+    style LOAD fill:#e8e8e8,stroke:#333,stroke-width:2px
+    style EXEC fill:#e8e8e8,stroke:#333,stroke-width:2px
+    style REVIEW fill:#ffd700,stroke:#333,stroke-width:2px
+    style NEXT fill:#a5d4ff,stroke:#333,stroke-width:2px
+    style Module fill:#e8f4f8,stroke:#2196F3,stroke-width:2px
+    style Orch fill:#fff8e1,stroke:#FF9800,stroke-width:2px

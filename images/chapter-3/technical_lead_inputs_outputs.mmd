@@ -1,0 +1,42 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    subgraph inputs["Inputs"]
+        direction TB
+        I1[HLD / Architecture]
+        I2[Data Model Specs]
+        I3[Data Mapping Doc]
+        I4[DQ Specification]
+    end
+
+    subgraph techlead["Tech Lead Work"]
+        direction TB
+        A[Technical<br/>Lead]
+    end
+
+    subgraph outputs["Outputs"]
+        direction TB
+        O1[Low-Level Design<br/>LLD]
+        O2[DAG Definitions]
+        O3[Implementation<br/>Sequence]
+    end
+
+    I1 --> A
+    I2 --> A
+    I3 --> A
+    I4 --> A
+    A --> O1
+    A --> O2
+    A --> O3
+
+    style I1 fill:#dcedc1,stroke:#333,stroke-width:2px
+    style I2 fill:#ffd3a5,stroke:#333,stroke-width:2px
+    style I3 fill:#ffaaa5,stroke:#333,stroke-width:2px
+    style I4 fill:#ff8b94,stroke:#333,stroke-width:2px
+    style A fill:#e0e0e0,stroke:#333,stroke-width:2px
+    style O1 fill:#d4a5ff,stroke:#333,stroke-width:2px
+    style O2 fill:#c9b3ff,stroke:#333,stroke-width:2px
+    style O3 fill:#b8c1ff,stroke:#333,stroke-width:2px
+
+    style inputs fill:#e8f4f8,stroke:#2196F3,stroke-width:2px
+    style techlead fill:#f5f5f5,stroke:#666,stroke-width:2px
+    style outputs fill:#fff8e1,stroke:#FF9800,stroke-width:2px

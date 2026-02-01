@@ -1,0 +1,25 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    START[Start Workflow] --> CHECK{Session exists?}
+    CHECK -->|No| NEW[Create session] --> INIT[Initialize] --> RUN[Run workflow]
+    CHECK -->|Yes| LOAD[Load state] --> RESUME[Resume] --> RUN
+    RUN --> SAVE[Save state] --> GATE{Review gate}
+    GATE -->|Approved| NEXT[Next agent] --> RUN
+    GATE -->|Pause| PERSIST[Persist] --> EXIT[Exit]
+    GATE -->|Feedback| REVISE[Revise] --> RUN
+    EXIT --> LATER[Return later] --> CHECK
+
+    style START fill:#e8e8e8,stroke:#333,stroke-width:2px
+    style CHECK fill:#ffd700,stroke:#333,stroke-width:2px
+    style NEW fill:#e8e8e8,stroke:#333,stroke-width:2px
+    style LOAD fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style INIT fill:#e8e8e8,stroke:#333,stroke-width:2px
+    style RESUME fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style RUN fill:#a5d4ff,stroke:#333,stroke-width:2px
+    style SAVE fill:#dcedc1,stroke:#333,stroke-width:2px
+    style GATE fill:#ffd700,stroke:#333,stroke-width:2px
+    style NEXT fill:#e8e8e8,stroke:#333,stroke-width:2px
+    style PERSIST fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style REVISE fill:#ffaaa5,stroke:#333,stroke-width:2px
+    style EXIT fill:#e8e8e8,stroke:#333,stroke-width:2px
+    style LATER fill:#d4a5ff,stroke:#333,stroke-width:2px
