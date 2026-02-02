@@ -12,6 +12,21 @@
 | **Owner** | Health IT Department |
 | **Update Frequency** | Daily batch load from CSV source files |
 
+## Connection Details
+
+```yaml
+connection:
+  type: duckdb
+  path: data/duckdb/raw.db
+  schema: synthea
+  read_only: true
+```
+
+**Notes:**
+- `path` is relative to the project root directory
+- The `synthea` schema contains all 18 Synthea healthcare tables
+- Set `read_only: true` for analytics workloads
+
 ## Available Tables
 
 ### Core Patient Tables

@@ -4,7 +4,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Database** | DuckDB (`data/duckdb/raw.db`) |
+| **Database** | See [source_system_docs.md](source_system_docs.md) for connection details |
 | **Schema** | `synthea` |
 | **Total Tables** | 18 |
 | **Load Method** | CSV batch load via `scripts/load_raw_csv_to_duckdb.py` |
@@ -12,26 +12,26 @@
 
 ## Table Inventory
 
-| # | Table Name | Row Count | Column Count | Primary Key | Description |
-|---|-----------|-----------|--------------|-------------|-------------|
-| 1 | patients | 1,171 | 26 | id (UUID) | Patient demographics |
-| 2 | encounters | 48,723 | 15 | id (UUID) | Visit records |
-| 3 | conditions | 24,891 | 6 | (patient, encounter, code) | Diagnoses |
-| 4 | medications | 31,456 | 13 | (patient, encounter, code, start) | Prescriptions |
-| 5 | observations | 198,234 | 9 | (patient, encounter, code, date) | Lab results and vitals |
-| 6 | procedures | 41,102 | 9 | (patient, encounter, code, start) | Procedures performed |
-| 7 | allergies | 4,987 | 15 | (patient, encounter, code) | Patient allergies |
-| 8 | immunizations | 19,834 | 6 | (patient, encounter, code, date) | Vaccinations |
-| 9 | careplans | 14,567 | 9 | id (UUID) | Active care plans |
-| 10 | claims | 58,912 | 14+ | id (UUID) | Insurance claims |
-| 11 | claims_transactions | 72,345 | 12 | id | Claim line items |
-| 12 | payers | 10 | 9 | id (UUID) | Insurance companies |
-| 13 | payer_transitions | 2,134 | 7 | (patient, start_date) | Insurance changes |
-| 14 | organizations | 48 | 8 | id (UUID) | Healthcare facilities |
-| 15 | providers | 198 | 9 | id (UUID) | Clinicians |
-| 16 | devices | 2,876 | 9 | (patient, encounter, code) | Medical devices |
-| 17 | supplies | 4,523 | 5 | (patient, encounter, code, date) | Medical supplies |
-| 18 | imaging_studies | 7,891 | 8 | id (UUID) | Imaging records |
+| # | Table Name | Primary Key | Description |
+|---|-----------|-------------|-------------|
+| 1 | patients | id (UUID) | Patient demographics |
+| 2 | encounters | id (UUID) | Visit records |
+| 3 | conditions | (patient, encounter, code) | Diagnoses |
+| 4 | medications | (patient, encounter, code, start) | Prescriptions |
+| 5 | observations | (patient, encounter, code, date) | Lab results and vitals |
+| 6 | procedures | (patient, encounter, code, start) | Procedures performed |
+| 7 | allergies | (patient, encounter, code) | Patient allergies |
+| 8 | immunizations | (patient, encounter, code, date) | Vaccinations |
+| 9 | careplans | id (UUID) | Active care plans |
+| 10 | claims | id (UUID) | Insurance claims |
+| 11 | claims_transactions | id (UUID) | Claim line items |
+| 12 | payers | id (UUID) | Insurance companies |
+| 13 | payer_transitions | (patient, start_date) | Insurance changes |
+| 14 | organizations | id (UUID) | Healthcare facilities |
+| 15 | providers | id (UUID) | Clinicians |
+| 16 | devices | (patient, encounter, code) | Medical devices |
+| 17 | supplies | (patient, encounter, code, date) | Medical supplies |
+| 18 | imaging_studies | id (UUID) | Imaging records |
 
 ## Data Quality Notes
 

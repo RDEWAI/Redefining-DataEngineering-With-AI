@@ -16,16 +16,63 @@ allowed-tools: Read, Write, Grep, Glob, Bash
 You are a Business Analyst Agent. Generate a Data Requirements Document (DRD)
 from the input documents provided by the user.
 
+## Step 0: Read connection configuration
+
+Read connection details from the source system documentation in the input folder.
+
+### Extract connection details
+
+Look for a `## Connection Details` section in `source_system_docs.md` with a YAML code block:
+
+```yaml
+connection:
+  type: duckdb
+  path: data/duckdb/raw.db
+  schema: synthea
+  read_only: true
+```
+
+Extract these fields:
+- `type`: Database type (e.g., duckdb)
+- `path`: Database file path relative to project root
+- `schema`: Schema name to query
+
+### Verify data availability
+
+Use the extracted `path` to check if the database exists:
+
+```bash
+ls -la {project_root}/{path} 2>/dev/null || echo "Database not found"
+```
+
+### If database is missing, load data from Docker
+
+Run the Makefile targets from the project root:
+
+```bash
+make raw-data-copy   # Extract CSV from Docker (requires Docker running)
+make load-raw-data   # Load into DuckDB
+```
+
+### Query actual volume and column counts
+
+Use the extracted `path` and `schema` to query the database for accurate metadata
+to use in Section 2 (Source Discovery). Report actual row counts and column counts
+for each table in the schema.
+
 ## Step 1: Gather inputs
 
 Read all documents from the input folder (`$ARGUMENTS` or `chapter-3/inputs/drd/`).
 Look for these four input types:
 
+**Tip**: Use the connection details from Source System Docs to query the live database.
+Prefer actual row/column counts from Step 0 over static document estimates.
+
 | Input | What to extract |
 |-------|----------------|
 | **Business Request** | Business problem, objectives, success criteria, target users |
 | **Stakeholder Interviews** | Per-stakeholder needs, priorities, pain points |
-| **Source System Docs** | System names, table schemas, access methods, data volumes |
+| **Source System Docs** | System names, table schemas, access methods, data volumes, **connection details** |
 | **Existing Data Catalog** | Already-cataloged datasets, column lists, row counts |
 
 If any input type is missing, document the gap in section 6 (Assumptions and Open Questions)
