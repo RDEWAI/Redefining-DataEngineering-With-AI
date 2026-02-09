@@ -2,33 +2,40 @@
 flowchart LR
     subgraph Module["Agent Module"]
         direction TB
-        INS["instructions.md<br/><i>Role, Responsibilities, Output</i>"]
-        TOOLS["tools.yaml<br/><i>Available tools</i>"]
-        SKILLS["skills.yaml<br/><i>Capabilities</i>"]
-        CONN["connections.yaml<br/><i>Data sources</i>"]
+        INPUTS["inputs/<br/><i>Business requests, source docs,<br/>catalogs, stakeholder notes</i>"]
+        TOOLS["tools/<br/><i>External utilities, scripts,<br/>validators</i>"]
+        SKILLS["skills/<br/><i>Defined capabilities<br/>(create, update, validate)</i>"]
+        HOOKS["hooks/<br/><i>Event-driven automation<br/>(pre/post actions)</i>"]
     end
 
-    subgraph Orch["Orchestrator"]
+    CMD["Command<br/><i>User or orchestrator<br/>triggers agent</i>"]
+
+    subgraph Orch["Coding Agent Runtime"]
         direction TB
-        LOAD[Load Module]
+        INVOKE[Invoke Skill]
         EXEC[Execute]
+        OUTPUT[Output]
         REVIEW{Human Review}
     end
 
-    INS --> LOAD
-    TOOLS --> LOAD
-    SKILLS --> LOAD
-    CONN --> LOAD
-    LOAD --> EXEC --> REVIEW
+    INPUTS --> INVOKE
+    TOOLS --> EXEC
+    SKILLS --> INVOKE
+    HOOKS --> EXEC
+
+    CMD --> INVOKE
+    INVOKE --> EXEC --> OUTPUT --> REVIEW
     REVIEW -->|Approved| NEXT[Next Agent]
     REVIEW -->|Feedback| EXEC
 
-    style INS fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style INPUTS fill:#4ecdc4,stroke:#333,stroke-width:2px
     style TOOLS fill:#ffd93d,stroke:#333,stroke-width:2px
     style SKILLS fill:#6bcb77,stroke:#333,stroke-width:2px
-    style CONN fill:#ff6b6b,stroke:#333,stroke-width:2px
-    style LOAD fill:#e8e8e8,stroke:#333,stroke-width:2px
+    style HOOKS fill:#ff6b6b,stroke:#333,stroke-width:2px
+    style CMD fill:#b8d4e3,stroke:#333,stroke-width:2px
+    style INVOKE fill:#e8e8e8,stroke:#333,stroke-width:2px
     style EXEC fill:#e8e8e8,stroke:#333,stroke-width:2px
+    style OUTPUT fill:#dcedc8,stroke:#333,stroke-width:2px
     style REVIEW fill:#ffd700,stroke:#333,stroke-width:2px
     style NEXT fill:#a5d4ff,stroke:#333,stroke-width:2px
     style Module fill:#e8f4f8,stroke:#2196F3,stroke-width:2px
