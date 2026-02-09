@@ -1,0 +1,16 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+graph LR
+    DRD[Data Requirements<br/>Document] -->|"What data?<br/>What rules?"| HLD[High-Level<br/>Design]
+    HLD -->|"What architecture?<br/>What tech?"| DM[Data Model<br/>Specs]
+    DM -->|"What schemas?<br/>What types?"| DMD[Data Mapping<br/>Document]
+    DMD -->|"What transforms?<br/>What lineage?"| DQS[Data Quality<br/>Specification]
+    DQS -->|"What checks?<br/>What thresholds?"| LLD[Low-Level<br/>Design]
+    LLD -->|"What tasks?<br/>What sequence?"| Stories[Epics &<br/>Stories]
+
+    style DRD fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style HLD fill:#dcedc1,stroke:#333,stroke-width:2px
+    style DM fill:#ffd3a5,stroke:#333,stroke-width:2px
+    style DMD fill:#ffaaa5,stroke:#333,stroke-width:2px
+    style DQS fill:#ff8b94,stroke:#333,stroke-width:2px
+    style LLD fill:#d4a5ff,stroke:#333,stroke-width:2px
+    style Stories fill:#a5d4ff,stroke:#333,stroke-width:2px

@@ -1,0 +1,21 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    R1[Execute DQ Rule] --> R2{Pass?}
+
+    R2 -->|Yes| PASS[Continue Pipeline]
+    R2 -->|No| SEV{Severity?}
+
+    SEV -->|Critical| C1[Halt Pipeline] --> C2[Create Incident]
+    SEV -->|Warning| W1[Alert Team] --> W2[Continue Pipeline]
+    SEV -->|Info| I1[Log Only] --> I2[Continue Pipeline]
+
+    style R1 fill:#e0e0e0,stroke:#333,stroke-width:2px
+    style R2 fill:#e0e0e0,stroke:#333,stroke-width:2px
+    style SEV fill:#e0e0e0,stroke:#333,stroke-width:2px
+    style PASS fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style C1 fill:#ff6b6b,stroke:#333,stroke-width:2px
+    style C2 fill:#ff6b6b,stroke:#333,stroke-width:2px
+    style W1 fill:#ffd93d,stroke:#333,stroke-width:2px
+    style W2 fill:#ffd93d,stroke:#333,stroke-width:2px
+    style I1 fill:#a8e8e8,stroke:#333,stroke-width:2px
+    style I2 fill:#a8e8e8,stroke:#333,stroke-width:2px

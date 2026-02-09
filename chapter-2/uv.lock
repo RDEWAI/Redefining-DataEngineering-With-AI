@@ -163,7 +163,7 @@ wheels = [
 ]
 
 [[package]]
-name = "chapter-3-ai-engineering"
+name = "chapter-2-ai-engineering"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

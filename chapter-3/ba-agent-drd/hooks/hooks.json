@@ -1,0 +1,17 @@
+{
+  "description": "Automatic DRD validation after file writes",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-drd-hook.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

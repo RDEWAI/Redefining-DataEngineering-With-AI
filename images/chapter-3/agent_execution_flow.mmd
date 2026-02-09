@@ -1,0 +1,22 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+sequenceDiagram
+    participant User
+    participant Orch as Orchestrator
+    participant Agent
+    participant Output
+
+    User->>Orch: Start workflow
+
+    loop Each agent
+        Orch->>Agent: Initialize
+        Agent->>Output: Generate artifact
+        Output->>User: Present for review
+
+        alt Approved
+            User->>Orch: Continue
+        else Feedback
+            User->>Agent: Revise
+        end
+    end
+
+    Orch->>User: Complete

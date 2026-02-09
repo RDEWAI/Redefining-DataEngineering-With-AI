@@ -1,0 +1,36 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    subgraph inputs["Inputs"]
+        direction TB
+        I1[Data Requirements<br/>Document - DRD]
+        I2[Data Mapping<br/>Document - DMD]
+        I3[Sample Source<br/>Data]
+    end
+
+    subgraph dqwork["DQ Work"]
+        direction TB
+        A[DQ<br/>Engineer]
+    end
+
+    subgraph outputs["Outputs"]
+        direction TB
+        O1[Data Quality<br/>Specification - DQS]
+        O2[Framework Config<br/>- tool-specific]
+    end
+
+    I1 --> A
+    I2 --> A
+    I3 --> A
+    A --> O1
+    A --> O2
+
+    style I1 fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style I2 fill:#ffaaa5,stroke:#333,stroke-width:2px
+    style I3 fill:#dcedc1,stroke:#333,stroke-width:2px
+    style A fill:#e0e0e0,stroke:#333,stroke-width:2px
+    style O1 fill:#ff8b94,stroke:#333,stroke-width:2px
+    style O2 fill:#ffd3b6,stroke:#333,stroke-width:2px
+
+    style inputs fill:#e8f4f8,stroke:#2196F3,stroke-width:2px
+    style dqwork fill:#f5f5f5,stroke:#666,stroke-width:2px
+    style outputs fill:#fff8e1,stroke:#FF9800,stroke-width:2px

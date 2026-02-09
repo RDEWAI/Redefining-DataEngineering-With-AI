@@ -1,0 +1,14 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    Q1{Need to track<br/>historical changes?}
+    Q1 -->|No| SCD1["SCD Type 1<br/><i>Overwrite</i>"]
+    Q1 -->|Yes| Q2{Need full<br/>history?}
+
+    Q2 -->|No| SCD3["SCD Type 3<br/><i>Previous + Current</i>"]
+    Q2 -->|Yes| SCD2["SCD Type 2<br/><i>Version rows with<br/>effective dates</i>"]
+
+    style Q1 fill:#e0e0e0,stroke:#333,stroke-width:2px
+    style Q2 fill:#e0e0e0,stroke:#333,stroke-width:2px
+    style SCD1 fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style SCD2 fill:#ff6b6b,stroke:#333,stroke-width:2px
+    style SCD3 fill:#ffd93d,stroke:#333,stroke-width:2px

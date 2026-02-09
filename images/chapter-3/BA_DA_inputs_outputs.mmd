@@ -1,0 +1,33 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    subgraph inputs["Inputs"]
+        direction TB
+        I1[Business Request]
+        I2[Stakeholder Interviews]
+        I3[Source System Docs]
+        I4[Existing Data Catalog]
+    end
+
+    subgraph analyst["Analyst Work"]
+        A[Business/Data<br/>Analyst]
+    end
+
+    subgraph outputs["Outputs"]
+        O1["Data Requirements<br/>Document<br/><i>a.k.a. DRD</i>"]
+    end
+
+    I1 --> A
+    I2 --> A
+    I3 --> A
+    I4 --> A
+    A --> O1
+
+    style inputs fill:#e3f2fd,stroke:#1976D2,stroke-width:2px
+    style analyst fill:#fff3e0,stroke:#F57C00,stroke-width:2px
+    style outputs fill:#e8f5e9,stroke:#388E3C,stroke-width:2px
+    style O1 fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style A fill:#ffe0b2,stroke:#333,stroke-width:2px
+    style I1 fill:#bbdefb,stroke:#333,stroke-width:2px
+    style I2 fill:#bbdefb,stroke:#333,stroke-width:2px
+    style I3 fill:#bbdefb,stroke:#333,stroke-width:2px
+    style I4 fill:#bbdefb,stroke:#333,stroke-width:2px

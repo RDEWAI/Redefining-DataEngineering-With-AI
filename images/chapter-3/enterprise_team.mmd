@@ -1,0 +1,23 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+graph LR
+    subgraph team["Enterprise Team"]
+        direction LR
+        E1["Analyst"]
+        E2["Architect"]
+        E3["Modeler"]
+        E4["Mapper"]
+        E5["DQ"]
+        E6["Tech Lead"]
+        E7["Scrum"]
+    end
+
+    E1 --> E2 --> E3 --> E4 --> E5 --> E6 --> E7
+
+    style team fill:#fff3e0,stroke:#FF9800,stroke-width:2px
+    style E1 fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style E2 fill:#dcedc1,stroke:#333,stroke-width:2px
+    style E3 fill:#ffd3a5,stroke:#333,stroke-width:2px
+    style E4 fill:#ffaaa5,stroke:#333,stroke-width:2px
+    style E5 fill:#ff8b94,stroke:#333,stroke-width:2px
+    style E6 fill:#d4a5ff,stroke:#333,stroke-width:2px
+    style E7 fill:#a5d4ff,stroke:#333,stroke-width:2px

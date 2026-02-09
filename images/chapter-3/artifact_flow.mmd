@@ -1,0 +1,57 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    BR[Business<br/>Request] --> DRD[Data Requirements<br/>Document]
+
+    DRD --> HLD[High-Level Design /<br/>Architecture]
+
+    HLD --> DM[Data Model<br/>Specifications]
+
+    DRD --> DMD[Data Mapping<br/>Document]
+    DM --> DMD
+    HLD --> DMD
+
+    DRD --> DQS[Data Quality<br/>Specification]
+    DMD --> DQS
+
+    HLD --> LLD[Low-Level<br/>Design]
+    DM --> LLD
+    DMD --> LLD
+    DQS --> LLD
+
+    LLD --> STORIES[Epics &<br/>Stories]
+    DRD --> STORIES
+    DMD --> STORIES
+    DQS --> STORIES
+
+    subgraph gates["Review Gates"]
+        RG1{Gate 1}
+        RG2{Gate 2}
+        RG3{Gate 3}
+        RG4{Gate 4}
+    end
+
+    DRD --> RG1
+    RG1 --> HLD
+
+    DM --> RG2
+    RG2 --> DMD
+
+    DQS --> RG3
+    RG3 --> LLD
+
+    LLD --> RG4
+    RG4 --> STORIES
+
+    style BR fill:#e8e8e8,stroke:#333,stroke-width:2px
+    style DRD fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style HLD fill:#dcedc1,stroke:#333,stroke-width:2px
+    style DM fill:#ffd3a5,stroke:#333,stroke-width:2px
+    style DMD fill:#ffaaa5,stroke:#333,stroke-width:2px
+    style DQS fill:#ff8b94,stroke:#333,stroke-width:2px
+    style LLD fill:#d4a5ff,stroke:#333,stroke-width:2px
+    style STORIES fill:#a5d4ff,stroke:#333,stroke-width:2px
+    style RG1 fill:#ffd700,stroke:#333,stroke-width:2px
+    style RG2 fill:#ffd700,stroke:#333,stroke-width:2px
+    style RG3 fill:#ffd700,stroke:#333,stroke-width:2px
+    style RG4 fill:#ffd700,stroke:#333,stroke-width:2px
+    style gates fill:#fff8e1,stroke:#FF9800,stroke-width:2px

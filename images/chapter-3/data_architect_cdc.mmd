@@ -1,0 +1,21 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    Q1{CDC Available<br/>in Source?}
+    Q1 -->|Yes| Q2{Debezium<br/>Compatible?}
+    Q1 -->|No| TS[Timestamp-Based<br/>Incremental]
+
+    Q2 -->|Yes| DEB[Debezium + Kafka]
+    Q2 -->|No| Q3{Other CDC<br/>Tool?}
+
+    Q3 -->|Yes| OTHER[Vendor CDC Tool]
+    Q3 -->|No| TS
+
+    TS --> FULL[Full Refresh<br/><i>Fallback Plan</i>]
+
+    style Q1 fill:#f5f5f5,stroke:#333,stroke-width:2px
+    style Q2 fill:#f5f5f5,stroke:#333,stroke-width:2px
+    style Q3 fill:#f5f5f5,stroke:#333,stroke-width:2px
+    style DEB fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style TS fill:#ffd93d,stroke:#333,stroke-width:2px
+    style OTHER fill:#6bcb77,stroke:#333,stroke-width:2px
+    style FULL fill:#ffb3b3,stroke:#333,stroke-width:2px

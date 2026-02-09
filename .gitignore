@@ -251,7 +251,7 @@ node_modules/
 # tasks/
 
 # Claude Code (user-specific AI assistant settings)
-.claude/
+.claude/settings.local.json
 
 # Cursor (user-specific editor settings)
 .cursor/

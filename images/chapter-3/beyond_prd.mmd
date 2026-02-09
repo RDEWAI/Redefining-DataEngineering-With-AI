@@ -1,0 +1,29 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+graph LR
+    subgraph software["Software Project Artifacts"]
+        direction LR
+        S1[PRD] --> S2[Technical Design] --> S3[API Specs] --> S4[Test Plan]
+    end
+
+    subgraph data["Data Engineering Artifacts"]
+        direction LR
+        D1["DRD<br/><i>Data Requirements</i>"] --> D2["HLD<br/><i>High-Level Design</i>"] --> D3["Data Model<br/><i>Schema Definitions</i>"] --> D4["DMD<br/><i>Data Mapping</i>"] --> D5["DQS<br/><i>Quality Rules</i>"] --> D6["LLD<br/><i>Technical Spec</i>"] --> D7["Stories<br/><i>Work Items</i>"]
+    end
+
+    software ~~~ data
+
+    style software fill:#e8f4f8,stroke:#2196F3,stroke-width:2px
+    style data fill:#fff8e1,stroke:#FF9800,stroke-width:2px
+
+    style D1 fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style D2 fill:#dcedc1,stroke:#333,stroke-width:2px
+    style D3 fill:#ffd3a5,stroke:#333,stroke-width:2px
+    style D4 fill:#ffaaa5,stroke:#333,stroke-width:2px
+    style D5 fill:#ff8b94,stroke:#333,stroke-width:2px
+    style D6 fill:#d4a5ff,stroke:#333,stroke-width:2px
+    style D7 fill:#a5d4ff,stroke:#333,stroke-width:2px
+
+    style S1 fill:#bbdefb,stroke:#333,stroke-width:2px
+    style S2 fill:#bbdefb,stroke:#333,stroke-width:2px
+    style S3 fill:#bbdefb,stroke:#333,stroke-width:2px
+    style S4 fill:#bbdefb,stroke:#333,stroke-width:2px

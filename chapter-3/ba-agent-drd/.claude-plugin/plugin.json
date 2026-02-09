@@ -1,0 +1,9 @@
+{
+  "name": "ba-agent-drd",
+  "version": "1.0.0",
+  "description": "Business Analyst Agent for generating, updating, and validating Data Requirements Documents (DRDs)",
+  "author": {
+    "name": "RDEWAI"
+  },
+  "keywords": ["business-analyst", "drd", "data-requirements", "healthcare"]
+}

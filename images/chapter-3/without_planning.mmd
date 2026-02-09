@@ -1,0 +1,18 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+graph LR
+    subgraph chaos["Without Planning - The Rework Cycle"]
+        direction LR
+        A[Business<br/>Request] --> B[Start<br/>Coding] --> C[Discovery<br/>During Dev] --> D[Rework]
+        D --> C
+        D --> E[More<br/>Rework] --> F[Finally<br/>Done?]
+        F -.->|Issues Found| D
+    end
+
+    style chaos fill:#ffebee,stroke:#c62828,stroke-width:2px
+
+    style A fill:#e3f2fd,stroke:#333,stroke-width:2px
+    style B fill:#fff9c4,stroke:#333,stroke-width:2px
+    style C fill:#ffcc80,stroke:#333,stroke-width:2px
+    style D fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    style E fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    style F fill:#c8e6c9,stroke:#333,stroke-width:2px

@@ -1,0 +1,40 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    subgraph inputs["Inputs"]
+        direction TB
+        I1[Low-Level Design<br/>LLD]
+        I2[All Previous<br/>Artifacts]
+        I3[Team Capacity]
+    end
+
+    subgraph scrummaster["Scrum Master Work"]
+        direction TB
+        A[Scrum<br/>Master]
+    end
+
+    subgraph outputs["Outputs"]
+        direction TB
+        O1[Epics]
+        O2[Stories]
+        O3[GitHub Issues /<br/>Jira Tickets]
+    end
+
+    I1 --> A
+    I2 --> A
+    I3 --> A
+    A --> O1
+    A --> O2
+    O1 --> O3
+    O2 --> O3
+
+    style I1 fill:#d4a5ff,stroke:#333,stroke-width:2px
+    style I2 fill:#c9b3ff,stroke:#333,stroke-width:2px
+    style I3 fill:#b8c1ff,stroke:#333,stroke-width:2px
+    style A fill:#e0e0e0,stroke:#333,stroke-width:2px
+    style O1 fill:#a5d4ff,stroke:#333,stroke-width:2px
+    style O2 fill:#a5d4ff,stroke:#333,stroke-width:2px
+    style O3 fill:#a5d4ff,stroke:#333,stroke-width:2px
+
+    style inputs fill:#e8f4f8,stroke:#2196F3,stroke-width:2px
+    style scrummaster fill:#f5f5f5,stroke:#666,stroke-width:2px
+    style outputs fill:#fff8e1,stroke:#FF9800,stroke-width:2px

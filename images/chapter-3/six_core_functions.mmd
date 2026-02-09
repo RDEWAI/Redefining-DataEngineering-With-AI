@@ -1,0 +1,40 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+graph LR
+    subgraph planning["Planning Functions"]
+        direction LR
+        F1["1. Business/Data Analyst<br/><i>Requirements & Rules</i>"]
+        F2["2. Data Architect<br/><i>Architecture & Tech Stack</i>"]
+        F3["3. Data Modeler<br/><i>Schema Design</i>"]
+        F4["4. Mapping Engineer<br/><i>Transformations & Lineage</i>"]
+        F5["5. DQ Engineer<br/><i>Quality & Reconciliation</i>"]
+    end
+
+    subgraph design["Design"]
+        direction LR
+        TL["6. Technical Lead<br/><i>LLD & Pipeline Design</i>"]
+    end
+
+    subgraph delivery["Delivery"]
+        direction LR
+        F6["7. Scrum Master<br/><i>Creates Issues/Stories</i>"]
+    end
+
+    subgraph implementation["Implementation"]
+        direction LR
+        ENG["8. Engineers<br/><i>Work on Issues</i>"]
+    end
+
+    F1 --> F2 --> F3 --> F4 --> F5 --> TL --> F6 --> ENG
+
+    style planning fill:#e8f5e9,stroke:#4CAF50,stroke-width:2px
+    style design fill:#fff3e0,stroke:#FF9800,stroke-width:2px
+    style delivery fill:#e3f2fd,stroke:#1976D2,stroke-width:2px
+    style implementation fill:#fce4ec,stroke:#E91E63,stroke-width:2px
+    style F1 fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style F2 fill:#dcedc1,stroke:#333,stroke-width:2px
+    style F3 fill:#ffd3a5,stroke:#333,stroke-width:2px
+    style F4 fill:#ffaaa5,stroke:#333,stroke-width:2px
+    style F5 fill:#ff8b94,stroke:#333,stroke-width:2px
+    style TL fill:#d4a5ff,stroke:#333,stroke-width:2px
+    style F6 fill:#a5d4ff,stroke:#333,stroke-width:2px
+    style ENG fill:#b3e5fc,stroke:#333,stroke-width:2px

@@ -1,0 +1,13 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    I[Inputs from<br/>Previous Role] --> W[Work:<br/>Analysis &<br/>Documentation]
+    W --> O[Outputs:<br/>Artifacts]
+    O --> R{Review<br/>Gate}
+    R -->|Approved| N[Next Role]
+    R -->|Feedback| W
+
+    style I fill:#e3f2fd,stroke:#1976D2,stroke-width:2px
+    style W fill:#e8f5e9,stroke:#388E3C,stroke-width:2px
+    style O fill:#f3e5f5,stroke:#7B1FA2,stroke-width:2px
+    style R fill:#ffd700,stroke:#333,stroke-width:2px
+    style N fill:#e3f2fd,stroke:#1976D2,stroke-width:2px
