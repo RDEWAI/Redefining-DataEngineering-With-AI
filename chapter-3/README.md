@@ -44,17 +44,25 @@ ba-agent-drd (v1.0.0)
 
 ### 4. Use the skills
 
+Make sure you have the data/duckdb/raw.db already created
+
 ```
-/create-drd chapter-3/inputs/drd/samples
+/create-drd chapter-3/inputs/drd/v1
 ```
 
-This reads the sample input documents (business request, stakeholder notes, source system docs, data catalog) and generates a DRD in `chapter-3/outputs/drd/`.
+or you can also do 
+
+```
+create a drd for the requirements under chapter-3/inputs/drd/v1
+```
+
+This reads the input drd documents (business request, stakeholder notes, source system docs, data catalog) and generates a DRD in `chapter-3/outputs/drd/`.
 
 Other skills:
 
 ```
-/update-drd chapter-3/outputs/drd/DRD-2026-01-29-patient-360.md
-/validate-drd chapter-3/outputs/drd/DRD-2026-01-29-patient-360.md
+/update-drd chapter-3/outputs/drd/DRD-2026-02-10-patient-360-v1.md
+/validate-drd chapter-3/outputs/drd/DRD-2026-02-10-patient-360-v1.md
 ```
 
 ## How the Plugin Works
@@ -65,7 +73,7 @@ Other skills:
 |-------|-------------|
 | `create-drd` | Reads input documents, generates a complete DRD following a Jinja2 template |
 | `update-drd` | Merges new information into an existing DRD, preserving unchanged content |
-| `validate-drd` | Runs 14 validation checks (CRITICAL / WARNING / INFO) on a DRD |
+| `validate-drd` | Runs 15 validation checks (CRITICAL / WARNING / INFO) on a DRD |
 
 ### Automatic Validation Hook
 
@@ -81,7 +89,7 @@ This means DRDs are validated automatically — no manual step needed.
 
 ### Input Documents
 
-Sample inputs are in `inputs/drd/samples/`:
+Sample inputs are in `inputs/drd/v1/`:
 
 | File | Contents |
 |------|----------|
@@ -132,20 +140,20 @@ cd chapter-3
 make test
 ```
 
-This runs 47 tests: 36 for the validator and 11 for the hook script.
+This runs 49 tests: 38 for the validator and 11 for the hook script.
 
 ### Run the validator directly
 
 ```bash
 # Validate a specific DRD
 cd chapter-3
-uv run python ba-agent-drd/skills/validate-drd/scripts/validate_drd.py outputs/drd/DRD-2026-01-29-patient-360.md
+uv run python ba-agent-drd/skills/validate-drd/scripts/validate_drd.py outputs/drd/DRD-2026-02-10-patient-360-v1.md
 
 # Validate all DRDs in the output directory
 make validate-drd
 
 # JSON output for machine consumption
-uv run python ba-agent-drd/skills/validate-drd/scripts/validate_drd.py --format json outputs/drd/DRD-2026-01-29-patient-360.md
+uv run python ba-agent-drd/skills/validate-drd/scripts/validate_drd.py --format json outputs/drd/DRD-2026-02-10-patient-360-v1.md
 ```
 
 ### Test the hook script manually
@@ -168,7 +176,7 @@ echo $?   # 2
 1. Start Claude Code from the repo root (`claude`)
 2. Add marketplace: `/plugin marketplace add ./chapter-3`
 3. Install plugin: `/plugin install ba-agent-drd@rdewai-plugins`
-4. Run the skill: `/create-drd chapter-3/inputs/drd/samples`
+4. Run the skill: `/create-drd chapter-3/inputs/drd/v1`
 5. Verify a DRD was created in `chapter-3/outputs/drd/`
 6. The PostToolUse hook should have auto-validated it
 
@@ -200,7 +208,7 @@ Or uninstall and reinstall:
 ```bash
 make help           # Show all commands
 make dev-setup      # Install Python dependencies
-make test           # Run all 47 tests
+make test           # Run all 49 tests
 make validate-drd   # Validate all DRDs in outputs/
 make lint           # Run ruff linter
 make format         # Auto-format code

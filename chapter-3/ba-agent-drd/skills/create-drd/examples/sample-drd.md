@@ -280,7 +280,53 @@ Hospital leadership has identified that clinicians spend significant time switch
 
 ---
 
-## 7. Version History
+## 7. Regulatory and Compliance
+
+### 7.1 Applicable Regulations
+
+| Regulation | Scope | Key Requirements | Impact on Data Design |
+|------------|-------|------------------|-----------------------|
+| HIPAA (Health Insurance Portability and Accountability Act) | All patient data in Patient 360 | PHI protection, minimum necessary access, breach notification within 60 days | Encrypt data at rest and in transit; implement role-based access control; maintain audit logs |
+
+### 7.2 Data Classification
+
+| Data Element | Classification Level | Handling Requirements |
+|-------------|---------------------|----------------------|
+| Patient demographics (name, DOB, SSN, address) | PHI - Confidential | Encrypted storage, access logging, no external sharing without authorization |
+| Clinical records (diagnoses, medications, allergies, labs) | PHI - Confidential | Encrypted storage, access logging, clinician-only access for clinical detail |
+| Billing and claims data | PHI - Confidential | Encrypted storage, access logging, restricted to billing and admin roles |
+| Provider and organization data | Internal - Non-sensitive | Standard access controls, no special encryption requirements |
+
+### 7.3 Retention Requirements
+
+| Data Category | Retention Period | Deletion Method | Legal Basis |
+|--------------|-----------------|-----------------|-------------|
+| Medical records (encounters, conditions, medications) | 7 years minimum from last encounter | Secure deletion with audit trail | State medical records retention law |
+| Billing records (claims, transactions) | 10 years | Secure deletion with audit trail | Federal billing records requirement |
+| Audit logs | 6 years | Archived after 2 years, deleted after 6 | HIPAA audit trail requirement |
+| Immunization records | Permanent | Not applicable | State immunization registry law |
+
+### 7.4 Access Controls
+
+| Role / Group | Data Access Level | Restrictions | Authentication |
+|-------------|-------------------|--------------|----------------|
+| Physicians | Full clinical read (demographics, encounters, conditions, medications, allergies, labs) | No direct billing detail access | SSO + MFA |
+| Nurses | Clinical read (demographics, medications, allergies, vitals) | No billing or claims data | SSO + MFA |
+| Care Coordinators | Panel-level clinical read (care plans, encounters, conditions) | No individual lab results without patient context | SSO + MFA |
+| Billing Staff | Financial read (demographics, encounters, claims, costs) | No clinical notes or detailed lab results | SSO + MFA |
+| Department Heads | Aggregate reporting (de-identified where possible) | No individual patient detail without clinical justification | SSO + MFA |
+
+### 7.5 Audit Requirements
+
+- **Access logging**: Log every patient data access event with user ID, timestamp, patient ID accessed, and data elements viewed
+- **Modification tracking**: Track all data modifications with before/after values, user ID, and timestamp
+- **Failed access attempts**: Log all authentication failures and unauthorized access attempts
+- **Periodic review**: Quarterly access review to verify role assignments remain appropriate
+- **Breach response**: Automated alerting for bulk data access patterns that may indicate unauthorized use
+
+---
+
+## 8. Version History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
@@ -288,7 +334,7 @@ Hospital leadership has identified that clinicians spend significant time switch
 
 ---
 
-## 8. Approval
+## 9. Approval
 
 | Role | Name | Date | Signature |
 |------|------|------|-----------|

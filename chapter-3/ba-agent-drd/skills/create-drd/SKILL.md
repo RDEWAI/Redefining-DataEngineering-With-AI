@@ -117,6 +117,13 @@ responsibility areas:
 - List transformation rules (formatting, normalization)
 - Capture edge cases with expected behavior and rationale
 
+### Regulatory and Compliance (Section 7)
+- Identify applicable regulations from stakeholder inputs and business context (e.g., HIPAA, GDPR)
+- Classify data elements by sensitivity level (e.g., PHI, PII, Internal)
+- Document retention periods with legal basis for each data category
+- Map role-based access controls per consumer group
+- Specify audit logging requirements (access events, modifications, breach detection)
+
 ## Step 4: Writing style
 
 - **Business-friendly**: Leadership should understand every section. Avoid jargon.
@@ -130,7 +137,9 @@ responsibility areas:
 ## Step 5: Save and validate
 
 Save the output to `chapter-3/outputs/drd/` with naming convention:
-`DRD-{YYYY-MM-DD}-{short-name}.md`
+`DRD-{YYYY-MM-DD}-{short-name}-{version}.md`
+
+Where `{version}` is extracted from the input folder path (e.g., `v1` from `inputs/drd/v1`).
 
 Then validate:
 

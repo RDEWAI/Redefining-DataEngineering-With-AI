@@ -77,7 +77,8 @@ REQUIRED_SECTIONS = [
     "4. Consumer Requirements",
     "5. Business Rules",
     "6. Assumptions and Open Questions",
-    "7. Version History",
+    "7. Regulatory and Compliance",
+    "8. Version History",
 ]
 
 CONTENT_SECTIONS = [
@@ -85,6 +86,7 @@ CONTENT_SECTIONS = [
     "3. Data Quality Expectations",
     "4. Consumer Requirements",
     "5. Business Rules",
+    "7. Regulatory and Compliance",
 ]
 
 
@@ -165,7 +167,7 @@ def _find_subsection(sections: dict[str, str], parent: str, *names: str) -> str 
 
 
 def check_required_sections(sections: dict[str, str]) -> list[ValidationResult]:
-    """Check that all 8 required top-level sections exist."""
+    """Check that all 9 required top-level sections exist."""
     results: list[ValidationResult] = []
     for section in REQUIRED_SECTIONS:
         if section not in sections:
@@ -376,6 +378,24 @@ def check_tolerances(sections: dict[str, str]) -> list[ValidationResult]:
     return results
 
 
+def check_regulatory_compliance(sections: dict[str, str]) -> list[ValidationResult]:
+    """Check that at least one regulation is documented in section 7.1."""
+    results: list[ValidationResult] = []
+    sub = _subsection_content(
+        sections, "7. Regulatory and Compliance", "7.1 Applicable Regulations"
+    )
+    if sub is None or not _section_has_table_rows(sub or ""):
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section="7.1 Applicable Regulations",
+                message="No applicable regulations are documented.",
+                suggestion="Identify regulations that apply (e.g., HIPAA, GDPR) with scope and impact on data design.",
+            )
+        )
+    return results
+
+
 # --- INFO checks ---
 
 
@@ -398,14 +418,14 @@ def check_placeholders(content: str) -> list[ValidationResult]:
 
 
 def check_approval(sections: dict[str, str]) -> list[ValidationResult]:
-    """Suggest adding approvals if section 8 is empty or missing."""
+    """Suggest adding approvals if section 9 is empty or missing."""
     results: list[ValidationResult] = []
-    approval_content = sections.get("8. Approval", "")
+    approval_content = sections.get("9. Approval", "")
     if not approval_content or not _section_has_table_rows(approval_content):
         results.append(
             ValidationResult(
                 level=ValidationLevel.INFO,
-                section="8. Approval",
+                section="9. Approval",
                 message="Approval section is empty or has no signatories.",
                 suggestion="Add stakeholder names and roles for sign-off when ready for review.",
             )
@@ -478,6 +498,7 @@ def validate_drd(file_path: Path) -> ValidationReport:
     report.results.extend(check_freshness(sections))
     report.results.extend(check_open_questions(sections))
     report.results.extend(check_tolerances(sections))
+    report.results.extend(check_regulatory_compliance(sections))
 
     # INFO checks
     report.results.extend(check_placeholders(content))

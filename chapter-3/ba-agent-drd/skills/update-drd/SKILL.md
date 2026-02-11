@@ -50,7 +50,7 @@ In the metadata table at the top:
 - Update **Last Modified** to today's date
 - Set **Status** to "Updated - Pending Review"
 
-In section 7 (Version History), add a new row:
+In section 8 (Version History), add a new row:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
