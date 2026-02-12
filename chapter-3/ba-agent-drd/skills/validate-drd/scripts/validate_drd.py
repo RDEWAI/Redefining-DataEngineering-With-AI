@@ -272,7 +272,7 @@ def check_no_empty_sections(sections: dict[str, str]) -> list[ValidationResult]:
 
 
 def check_sla_defined(sections: dict[str, str]) -> list[ValidationResult]:
-    """Check that at least one SLA is defined in section 4.3."""
+    """Check that SLAs are defined with numeric targets in section 4.3."""
     results: list[ValidationResult] = []
     sub = _find_subsection(
         sections, "4. Consumer Requirements",
@@ -287,6 +287,18 @@ def check_sla_defined(sections: dict[str, str]) -> list[ValidationResult]:
                 suggestion="Define at least one SLA with target, measurement method, and escalation path.",
             )
         )
+    elif sub:
+        # Check that SLA table rows contain numeric targets (e.g., "99.9%", "2 seconds", "< 5s")
+        has_numeric = bool(re.search(r"\d+\.?\d*\s*(%|seconds?|s\b|ms\b|minutes?|hours?)", sub, re.IGNORECASE))
+        if not has_numeric:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    section="4.3 Service Level Agreements",
+                    message="SLA section has no numeric targets.",
+                    suggestion="Add specific numeric targets (e.g., '99.9% availability', 'under 2 seconds response time').",
+                )
+            )
     return results
 
 
@@ -379,20 +391,89 @@ def check_tolerances(sections: dict[str, str]) -> list[ValidationResult]:
 
 
 def check_regulatory_compliance(sections: dict[str, str]) -> list[ValidationResult]:
-    """Check that at least one regulation is documented in section 7.1."""
+    """Check that regulatory subsections 7.1-7.5 are documented."""
     results: list[ValidationResult] = []
-    sub = _subsection_content(
-        sections, "7. Regulatory and Compliance", "7.1 Applicable Regulations"
-    )
-    if sub is None or not _section_has_table_rows(sub or ""):
+
+    regulatory_subsections = [
+        (
+            "7.1 Applicable Regulations",
+            "No applicable regulations are documented.",
+            "Identify regulations that apply (e.g., HIPAA, GDPR) with scope and impact on data design.",
+        ),
+        (
+            "7.2 Data Classification",
+            "No data classification levels are documented.",
+            "Classify data elements by sensitivity level (e.g., PHI, PII, Internal, Public).",
+        ),
+        (
+            "7.3 Retention",
+            "No data retention periods are documented.",
+            "Document retention periods with legal basis for each data category.",
+        ),
+        (
+            "7.4 Access Controls",
+            "No access controls are documented.",
+            "Map role-based access controls per consumer group.",
+        ),
+        (
+            "7.5 Audit",
+            "No audit requirements are documented.",
+            "Specify audit logging requirements (access events, modifications, breach detection).",
+        ),
+    ]
+
+    for sub_name, message, suggestion in regulatory_subsections:
+        sub = _find_subsection(
+            sections, "7. Regulatory and Compliance",
+            sub_name, sub_name.split(" ", 1)[-1],
+        )
+        if sub is None or not sub.strip() or len(sub.strip()) < 10:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    section=sub_name,
+                    message=message,
+                    suggestion=suggestion,
+                )
+            )
+
+    return results
+
+
+def check_vague_language(content: str) -> list[ValidationResult]:
+    """Check for vague language anti-patterns that should be made specific."""
+    results: list[ValidationResult] = []
+
+    vague_patterns = [
+        (r"\breal[\s-]?time\b", "real-time", "Specify exact latency: sub-second, minute-level, hourly, or daily batch."),
+        (r"\bfast\s+response\b", "fast response", "Specify the acceptable 90th percentile response time (e.g., under 2 seconds)."),
+        (r"\ball\s+(?:the\s+)?data\b", "all the data", "Specify which tables, fields, or data domains are needed."),
+        (r"\bcomprehensive\s+view\b", "comprehensive view", "List the specific data domains included (e.g., demographics, encounters, conditions)."),
+        (r"\bup[\s-]?to[\s-]?date\b", "up-to-date", "Specify maximum acceptable data staleness per consumer."),
+        (r"\ball\s+users\b", "all users", "Name the specific user groups, departments, and headcount per group."),
+        (r"\bstandard\s+compliance\b", "standard compliance", "Which specific regulations? HIPAA? GDPR? State laws?"),
+    ]
+
+    found_patterns: list[str] = []
+    for pattern, label, _ in vague_patterns:
+        if re.search(pattern, content, re.IGNORECASE):
+            found_patterns.append(label)
+
+    if found_patterns:
+        suggestions = []
+        for pattern, label, suggestion in vague_patterns:
+            if label in found_patterns:
+                suggestions.append(f'"{label}": {suggestion}')
+
         results.append(
             ValidationResult(
                 level=ValidationLevel.WARNING,
-                section="7.1 Applicable Regulations",
-                message="No applicable regulations are documented.",
-                suggestion="Identify regulations that apply (e.g., HIPAA, GDPR) with scope and impact on data design.",
+                section="General",
+                message=f"Found vague language that should be made specific: {', '.join(found_patterns)}.",
+                suggestion=" | ".join(suggestions),
             )
         )
+
     return results
 
 
@@ -400,7 +481,7 @@ def check_regulatory_compliance(sections: dict[str, str]) -> list[ValidationResu
 
 
 def check_placeholders(content: str) -> list[ValidationResult]:
-    """Warn about remaining placeholder text."""
+    """Warn about remaining placeholder text and check for owner/due date."""
     results: list[ValidationResult] = []
     placeholders = re.findall(
         r"\[(TO BE DETERMINED|NEEDS VERIFICATION|TBD)[^\]]*\]", content, re.IGNORECASE
@@ -414,6 +495,23 @@ def check_placeholders(content: str) -> list[ValidationResult]:
                 suggestion="Replace placeholder text with actual requirements or mark as open questions.",
             )
         )
+
+    # Check that [TO BE DETERMINED] placeholders include owner and due date
+    tbd_without_details = re.findall(
+        r"\[TO BE DETERMINED(?!\s*-\s*requires input from\s+\S+.*?due\s+\d{4})[^\]]*\]",
+        content,
+        re.IGNORECASE,
+    )
+    if tbd_without_details:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.INFO,
+                section="General",
+                message=f"Found {len(tbd_without_details)} [TO BE DETERMINED] placeholder(s) missing owner or due date.",
+                suggestion='Use format: [TO BE DETERMINED - requires input from {Name}, due {YYYY-MM-DD}].',
+            )
+        )
+
     return results
 
 
@@ -499,6 +597,7 @@ def validate_drd(file_path: Path) -> ValidationReport:
     report.results.extend(check_open_questions(sections))
     report.results.extend(check_tolerances(sections))
     report.results.extend(check_regulatory_compliance(sections))
+    report.results.extend(check_vague_language(content))
 
     # INFO checks
     report.results.extend(check_placeholders(content))

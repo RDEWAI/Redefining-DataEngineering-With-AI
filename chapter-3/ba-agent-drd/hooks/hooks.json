@@ -1,6 +1,18 @@
 {
-  "description": "Automatic DRD validation after file writes",
+  "description": "BA Agent DRD hooks: auto-validation and read-only query enforcement",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/enforce-readonly-queries.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
