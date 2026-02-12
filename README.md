@@ -360,7 +360,22 @@ make dev-setup
 # Linux: sudo systemctl start docker
 ```
 
-**Image pull fails:**
+**Image pull fails with authentication/permission error:**
+
+The Docker image is private. Even if you have access on GitHub, Docker needs to be authenticated separately with GHCR (GitHub Container Registry).
+
+```bash
+# Option 1: Using GitHub CLI (recommended)
+echo $(gh auth token) | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+
+# Option 2: Using a Personal Access Token (PAT)
+# Create a PAT at https://github.com/settings/tokens with `read:packages` scope
+echo YOUR_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+```
+
+After authenticating, retry `make raw-data-copy`.
+
+**Image pull fails (network/other errors):**
 ```bash
 # Pull manually
 docker pull ghcr.io/rdewai/redefining-dataengineering-with-ai:raw-data
