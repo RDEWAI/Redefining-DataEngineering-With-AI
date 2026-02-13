@@ -186,7 +186,42 @@ Hospital leadership wants a single patient lookup interface.
 
 ---
 
-## 7. Version History
+## 7. Regulatory and Compliance
+
+### 7.1 Applicable Regulations
+
+| Regulation | Scope | Key Requirements | Impact on Data Design |
+|------------|-------|------------------|-----------------------|
+| HIPAA | All patient data | PHI protection, minimum necessary access, breach notification | Encrypt at rest and in transit; role-based access control |
+
+### 7.2 Data Classification
+
+| Data Element | Classification Level | Handling Requirements |
+|-------------|---------------------|----------------------|
+| Patient demographics | PHI - Confidential | Encrypted storage, access logging, no external sharing |
+| Clinical records | PHI - Confidential | Encrypted storage, access logging, clinician-only access |
+
+### 7.3 Retention Requirements
+
+| Data Category | Retention Period | Deletion Method | Legal Basis |
+|--------------|-----------------|-----------------|-------------|
+| Medical records | 7 years minimum | Secure deletion with audit trail | State medical records retention law |
+
+### 7.4 Access Controls
+
+| Role / Group | Data Access Level | Restrictions | Authentication |
+|-------------|-------------------|--------------|----------------|
+| Physicians | Full clinical read | No billing detail | SSO + MFA |
+| Billing Staff | Financial + demographics | No clinical notes | SSO + MFA |
+
+### 7.5 Audit Requirements
+
+- **Access logging**: Log every patient data access with user ID, timestamp, and data accessed
+- **Modification tracking**: Track all data changes with before/after values
+
+---
+
+## 8. Version History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
@@ -194,7 +229,7 @@ Hospital leadership wants a single patient lookup interface.
 
 ---
 
-## 8. Approval
+## 9. Approval
 
 | Role | Name | Date | Signature |
 |------|------|------|-----------|
@@ -245,7 +280,9 @@ Test request.
 
 ## 6. Assumptions and Open Questions
 
-## 7. Version History
+## 7. Regulatory and Compliance
+
+## 8. Version History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
@@ -393,13 +430,43 @@ Content here.
 |---|----------|-------------|----------|--------|
 | 1 | Retention policy? | Legal | 2026-03-01 | Open |
 
-## 7. Version History
+## 7. Regulatory and Compliance
+
+### 7.1 Applicable Regulations
+
+| Regulation | Scope | Key Requirements | Impact on Data Design |
+|------------|-------|------------------|-----------------------|
+| HIPAA | All patient data | PHI protection | Encrypt at rest and in transit |
+
+### 7.2 Data Classification
+
+| Data Element | Classification Level | Handling Requirements |
+|-------------|---------------------|----------------------|
+| Patient data | PHI | Encrypted storage |
+
+### 7.3 Retention Requirements
+
+| Data Category | Retention Period | Deletion Method | Legal Basis |
+|--------------|-----------------|-----------------|-------------|
+| Medical records | 7 years | Secure deletion | State law |
+
+### 7.4 Access Controls
+
+| Role / Group | Data Access Level | Restrictions | Authentication |
+|-------------|-------------------|--------------|----------------|
+| Physicians | Full clinical | No billing | SSO |
+
+### 7.5 Audit Requirements
+
+- **Access logging**: Log all data access events
+
+## 8. Version History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 0.1 | 2026-01-29 | Test | Initial |
 
-## 8. Approval
+## 9. Approval
 
 | Role | Name | Date | Signature |
 |------|------|------|-----------|

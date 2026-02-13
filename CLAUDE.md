@@ -36,6 +36,15 @@ make test           # Run all tests
 - **Validator**: `chapter-3/.claude/skills/validate-drd/scripts/validate_drd.py`
 - **Tests**: `cd chapter-3 && uv run pytest tests/ -v`
 
+## Pre-commit Hooks
+
+When adding a new chapter directory (e.g., `chapter-4/`), update `.pre-commit-config.yaml`:
+1. Add the chapter to the ruff `files` regex: `^(chapter-2|chapter-3|chapter-4)/`
+2. Add a new `pytest-unit-chN` hook scoped to the chapter with `files: ^chapter-N/`
+3. If the chapter has typed Python source, consider adding a mypy entry for it
+
+Pytest hooks are scoped per-chapter so pushes only run tests for chapters with changed files.
+
 ## Recent Changes
 - Chapter 3: BA Agent with DRD skills (create-drd, update-drd, validate-drd) for Patient 360 use case
 - 003-chapter2-ai-engineering: Added Python 3.10-3.12 (aligned with existing project)

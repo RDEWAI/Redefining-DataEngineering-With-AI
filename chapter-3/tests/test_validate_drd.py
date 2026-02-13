@@ -12,7 +12,7 @@ sys.path.insert(
     0,
     str(
         Path(__file__).resolve().parent.parent
-        / "ba-agent-drd"
+        / "ba-plugin"
         / "skills"
         / "validate-drd"
         / "scripts"
@@ -31,6 +31,7 @@ from validate_drd import (
     check_no_empty_sections,
     check_open_questions,
     check_placeholders,
+    check_regulatory_compliance,
     check_required_sections,
     check_sla_defined,
     check_source_systems,
@@ -56,7 +57,8 @@ class TestParseDrdSections:
         assert "Executive Summary" in sections
         assert "1. Business Context" in sections
         assert "2. Source Discovery" in sections
-        assert "7. Version History" in sections
+        assert "7. Regulatory and Compliance" in sections
+        assert "8. Version History" in sections
 
     def test_parses_minimal_drd(self) -> None:
         sections = parse_drd_sections(MINIMAL_INVALID_DRD)
@@ -227,6 +229,21 @@ class TestCheckTolerances:
         sections = parse_drd_sections(VALID_DRD)
         results = check_tolerances(sections)
         assert len(results) == 0
+
+
+class TestCheckRegulatoryCompliance:
+    """Tests for regulatory compliance validation."""
+
+    def test_valid_regulatory_passes(self) -> None:
+        sections = parse_drd_sections(VALID_DRD)
+        results = check_regulatory_compliance(sections)
+        assert len(results) == 0
+
+    def test_missing_regulatory_detected(self) -> None:
+        sections = parse_drd_sections(EMPTY_SECTIONS_DRD)
+        results = check_regulatory_compliance(sections)
+        assert len(results) > 0
+        assert results[0].level == ValidationLevel.WARNING
 
 
 class TestCheckPlaceholders:

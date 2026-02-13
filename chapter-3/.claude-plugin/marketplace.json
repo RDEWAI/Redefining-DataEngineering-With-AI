@@ -8,8 +8,8 @@
   },
   "plugins": [
     {
-      "name": "ba-agent-drd",
-      "source": "./ba-agent-drd",
+      "name": "ba-plugin",
+      "source": "./ba-plugin",
       "description": "Business Analyst Agent for generating, updating, and validating Data Requirements Documents (DRDs)"
     }
   ]

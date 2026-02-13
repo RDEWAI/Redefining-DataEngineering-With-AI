@@ -1,8 +1,8 @@
-# Pre-commit hooks configuration for Chapter 2
+# Pre-commit hooks configuration for Chapter 2 and Chapter 3
 # Install: uv run pre-commit install && uv run pre-commit install --hook-type pre-push
 # Run manually: uv run pre-commit run --all-files
 #
-# Note: This config only applies to chapter-2/ directory files and can be extended to other directories by adding the directory to the files
+# Note: Hooks are scoped to chapter-2/ and chapter-3/ directories
 
 repos:
   # Ruff - fast Python linter and formatter (replaces flake8, isort, black)
@@ -14,14 +14,14 @@ repos:
         name: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
         types_or: [python, pyi]
-        files: ^chapter-2/
+        files: ^(chapter-2|chapter-3)/
 
       # Ruff formatting (check code format, don't auto-fix in pre-commit)
       - id: ruff-format
         name: ruff-format
         args: [--check]
         types_or: [python, pyi]
-        files: ^chapter-2/
+        files: ^(chapter-2|chapter-3)/
 
   # Mypy - static type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -34,7 +34,7 @@ repos:
           - types-requests
           - pandas-stubs
         types: [python]
-        # Only run mypy on chapter-3/src/ to avoid test file issues
+        # Only run mypy on chapter-2/src/ to avoid test file issues
         files: ^chapter-2/src/
         pass_filenames: false
         entry: mypy chapter-2/src/
@@ -42,10 +42,18 @@ repos:
   # Unit tests on pre-push (runs before code is pushed to remote)
   - repo: local
     hooks:
-      - id: pytest-unit
-        name: pytest-unit
+      - id: pytest-unit-ch2
+        name: pytest-unit-ch2
         entry: bash -c 'cd chapter-2 && uv run pytest tests/unit/ -v --tb=short'
         language: system
         stages: [pre-push]
         pass_filenames: false
-        always_run: true
+        files: ^chapter-2/
+
+      - id: pytest-unit-ch3
+        name: pytest-unit-ch3
+        entry: bash -c 'cd chapter-3 && uv run pytest tests/ -v --tb=short'
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        files: ^chapter-3/

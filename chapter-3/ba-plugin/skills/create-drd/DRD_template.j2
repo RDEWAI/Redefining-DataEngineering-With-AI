@@ -216,7 +216,49 @@
 
 ---
 
-## 7. Version History
+## 7. Regulatory and Compliance
+
+### 7.1 Applicable Regulations
+
+| Regulation | Scope | Key Requirements | Impact on Data Design |
+|------------|-------|------------------|-----------------------|
+{% for reg in drd.regulatory_compliance.regulations %}
+| {{ reg.name }} | {{ reg.scope }} | {{ reg.key_requirements }} | {{ reg.impact }} |
+{% endfor %}
+
+### 7.2 Data Classification
+
+| Data Element | Classification Level | Handling Requirements |
+|-------------|---------------------|----------------------|
+{% for dc in drd.regulatory_compliance.data_classification %}
+| {{ dc.data_element }} | {{ dc.classification }} | {{ dc.handling }} |
+{% endfor %}
+
+### 7.3 Retention Requirements
+
+| Data Category | Retention Period | Deletion Method | Legal Basis |
+|--------------|-----------------|-----------------|-------------|
+{% for ret in drd.regulatory_compliance.retention %}
+| {{ ret.category }} | {{ ret.period }} | {{ ret.deletion_method }} | {{ ret.legal_basis }} |
+{% endfor %}
+
+### 7.4 Access Controls
+
+| Role / Group | Data Access Level | Restrictions | Authentication |
+|-------------|-------------------|--------------|----------------|
+{% for ac in drd.regulatory_compliance.access_controls %}
+| {{ ac.role }} | {{ ac.access_level }} | {{ ac.restrictions }} | {{ ac.authentication }} |
+{% endfor %}
+
+### 7.5 Audit Requirements
+
+{% for audit in drd.regulatory_compliance.audit_requirements %}
+- **{{ audit.requirement }}**: {{ audit.description }}
+{% endfor %}
+
+---
+
+## 8. Version History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
@@ -226,7 +268,7 @@
 
 ---
 
-## 8. Approval
+## 9. Approval
 
 | Role | Name | Date | Signature |
 |------|------|------|-----------|

@@ -30,34 +30,75 @@ From the repo root, open Claude Code and add the local marketplace:
 ### 3. Install the plugin
 
 ```
-/plugin install ba-agent-drd@rdewai-plugins
+/plugin install ba-plugin@rdewai-plugins
 ```
 
 You can verify the install by running `/plugin` — you should see:
 
 ```
-ba-agent-drd (v1.0.0)
+ba-plugin (v1.0.0)
   Skills: create-drd, update-drd, validate-drd
-  Hooks: PostToolUse
+  Agents: ba-agent
+  Hooks: PreToolUse, PostToolUse
   Status: Enabled
 ```
 
-### 4. Use the skills
+### 4. Use the BA Agent
+
+The recommended way to use this plugin is through the **BA Agent** — a sub-agent that orchestrates all three skills with an interactive Q&A workflow:
 
 ```
-/create-drd chapter-3/inputs/drd/samples
+@ba-agent Create a DRD from the inputs in chapter-3/inputs/drd/v1
 ```
 
-This reads the sample input documents (business request, stakeholder notes, source system docs, data catalog) and generates a DRD in `chapter-3/outputs/drd/`.
+The agent will:
+1. Read all input documents
+2. Assess gaps in each DRD section
+3. Ask you clarifying questions (using structured Q&A) until all sections have specific requirements
+4. Explore the source database with read-only queries
+5. Generate the DRD following the template
+6. Validate automatically and fix any critical issues
+
+Other agent invocations:
+
+```
+@ba-agent Update the Patient 360 DRD with new billing team requirements
+@ba-agent Validate the DRD at chapter-3/outputs/drd/DRD-2026-02-10-patient-360-v1.md
+```
+
+### 5. Use the skills directly (alternative)
+
+You can also invoke skills directly without the agent wrapper. Make sure you have `data/duckdb/raw.db` already created.
+
+```
+/create-drd chapter-3/inputs/drd/v1
+```
+
+or as natural language:
+
+```
+create a drd for the requirements under chapter-3/inputs/drd/v1
+```
+
+This reads the input documents and generates a DRD in `chapter-3/outputs/drd/`.
 
 Other skills:
 
 ```
-/update-drd chapter-3/outputs/drd/DRD-2026-01-29-patient-360.md
-/validate-drd chapter-3/outputs/drd/DRD-2026-01-29-patient-360.md
+/update-drd chapter-3/outputs/drd/DRD-2026-02-10-patient-360-v1.md
+/validate-drd chapter-3/outputs/drd/DRD-2026-02-10-patient-360-v1.md
 ```
 
 ## How the Plugin Works
+
+### BA Agent
+
+The `ba-agent` sub-agent (`ba-plugin/agents/ba-agent.md`) is the primary interface. It embodies the Business/Data Analyst role with:
+
+- **Requirements Elicitation Protocol** — asks structured questions section-by-section using `AskUserQuestion`, iterating until all DRD sections have specific, measurable requirements
+- **Source Exploration** — runs read-only DuckDB queries to verify table existence, row counts, column types, and null rates against what input documents claim
+- **Pitfall Prevention** — rejects vague requirements ("all data", "real-time", "fast"), never skips source exploration, prevents gold-plating
+- **Session Memory** — writes notes to `ba-plugin/memory/` after each engagement, tracking decisions, open questions, and DRD iteration history
 
 ### Skills
 
@@ -65,11 +106,19 @@ Other skills:
 |-------|-------------|
 | `create-drd` | Reads input documents, generates a complete DRD following a Jinja2 template |
 | `update-drd` | Merges new information into an existing DRD, preserving unchanged content |
-| `validate-drd` | Runs 14 validation checks (CRITICAL / WARNING / INFO) on a DRD |
+| `validate-drd` | Runs 15 validation checks (CRITICAL / WARNING / INFO) on a DRD |
 
-### Automatic Validation Hook
+### Hooks
 
-The plugin registers a **PostToolUse** hook that fires after every `Write` or `Edit` operation. When Claude writes a file to `outputs/drd/`:
+The plugin registers two hooks:
+
+**PreToolUse — Read-Only Query Enforcement**
+
+Fires before every `Bash` command. Blocks database write operations (INSERT, UPDATE, DELETE, DROP, etc.) and enforces the `-readonly` flag on DuckDB invocations. This prevents the BA agent from accidentally modifying the source database.
+
+**PostToolUse — Automatic DRD Validation**
+
+Fires after every `Write` or `Edit` operation. When Claude writes a file to `outputs/drd/`:
 
 1. The hook script checks if the file is a DRD (`.md` in `outputs/drd/`)
 2. Runs the Python validator against the file
@@ -81,7 +130,7 @@ This means DRDs are validated automatically — no manual step needed.
 
 ### Input Documents
 
-Sample inputs are in `inputs/drd/samples/`:
+Sample inputs are in `inputs/drd/v1/`:
 
 | File | Contents |
 |------|----------|
@@ -95,16 +144,18 @@ Sample inputs are in `inputs/drd/samples/`:
 ```
 chapter-3/
 ├── .claude-plugin/
-│   └── marketplace.json          # Local marketplace manifest
-├── ba-agent-drd/                 # Plugin root
+│   └── marketplace.json               # Local marketplace manifest
+├── ba-plugin/                      # Plugin root
 │   ├── .claude-plugin/
-│   │   └── plugin.json           # Plugin manifest
+│   │   └── plugin.json                # Plugin manifest
+│   ├── agents/
+│   │   └── ba-agent.md                # BA Agent sub-agent definition
 │   ├── skills/
 │   │   ├── create-drd/
-│   │   │   ├── SKILL.md          # Skill instructions
-│   │   │   ├── DRD_template.j2   # Template for DRD structure
+│   │   │   ├── SKILL.md               # Skill instructions
+│   │   │   ├── DRD_template.j2        # Template for DRD structure
 │   │   │   └── examples/
-│   │   │       └── sample-drd.md # Complete example DRD
+│   │   │       └── sample-drd.md      # Complete example DRD
 │   │   ├── update-drd/
 │   │   │   └── SKILL.md
 │   │   └── validate-drd/
@@ -112,12 +163,15 @@ chapter-3/
 │   │       └── scripts/
 │   │           └── validate_drd.py
 │   ├── hooks/
-│   │   └── hooks.json            # PostToolUse hook config
+│   │   └── hooks.json                 # PreToolUse + PostToolUse hook config
+│   ├── memory/                        # Session notes (cross-session memory)
+│   │   └── .gitkeep
 │   └── scripts/
-│       └── validate-drd-hook.py  # Hook script
-├── inputs/drd/                   # Input documents
-├── outputs/drd/                  # Generated DRDs
-├── tests/                        # Unit tests
+│       ├── validate-drd-hook.py       # PostToolUse: auto-validate DRDs
+│       └── enforce-readonly-queries.py # PreToolUse: block DB write operations
+├── inputs/drd/                        # Input documents
+├── outputs/drd/                       # Generated DRDs
+├── tests/                             # Unit tests
 ├── pyproject.toml
 ├── Makefile
 └── README.md
@@ -132,20 +186,20 @@ cd chapter-3
 make test
 ```
 
-This runs 47 tests: 36 for the validator and 11 for the hook script.
+This runs 89 tests: 38 for the validator, 11 for the validation hook, 21 for the read-only query hook, and 19 for the agent definition.
 
 ### Run the validator directly
 
 ```bash
 # Validate a specific DRD
 cd chapter-3
-uv run python ba-agent-drd/skills/validate-drd/scripts/validate_drd.py outputs/drd/DRD-2026-01-29-patient-360.md
+uv run python ba-plugin/skills/validate-drd/scripts/validate_drd.py outputs/drd/DRD-2026-02-10-patient-360-v1.md
 
 # Validate all DRDs in the output directory
 make validate-drd
 
 # JSON output for machine consumption
-uv run python ba-agent-drd/skills/validate-drd/scripts/validate_drd.py --format json outputs/drd/DRD-2026-01-29-patient-360.md
+uv run python ba-plugin/skills/validate-drd/scripts/validate_drd.py --format json outputs/drd/DRD-2026-02-10-patient-360-v1.md
 ```
 
 ### Test the hook script manually
@@ -154,12 +208,12 @@ uv run python ba-agent-drd/skills/validate-drd/scripts/validate_drd.py --format 
 cd chapter-3
 
 # Non-DRD file — should exit 0 (skipped)
-echo '{"tool_input":{"file_path":"/some/file.py"}}' | python3 ba-agent-drd/scripts/validate-drd-hook.py
+echo '{"tool_input":{"file_path":"/some/file.py"}}' | python3 ba-plugin/scripts/validate-drd-hook.py
 echo $?   # 0
 
 # Invalid DRD — should exit 2 (CRITICAL issues)
 echo '# Bad DRD' > /tmp/test-drd.md
-echo '{"tool_input":{"file_path":"/project/outputs/drd/test.md"}}' | python3 ba-agent-drd/scripts/validate-drd-hook.py
+echo '{"tool_input":{"file_path":"/project/outputs/drd/test.md"}}' | python3 ba-plugin/scripts/validate-drd-hook.py
 echo $?   # 2
 ```
 
@@ -167,10 +221,12 @@ echo $?   # 2
 
 1. Start Claude Code from the repo root (`claude`)
 2. Add marketplace: `/plugin marketplace add ./chapter-3`
-3. Install plugin: `/plugin install ba-agent-drd@rdewai-plugins`
-4. Run the skill: `/create-drd chapter-3/inputs/drd/samples`
-5. Verify a DRD was created in `chapter-3/outputs/drd/`
-6. The PostToolUse hook should have auto-validated it
+3. Install plugin: `/plugin install ba-plugin@rdewai-plugins`
+4. Invoke the agent: `@ba-agent Create a DRD from chapter-3/inputs/drd/v1`
+5. Answer the agent's clarifying questions until it confirms readiness
+6. Verify a DRD was created in `chapter-3/outputs/drd/`
+7. The PostToolUse hook should have auto-validated it
+8. Session notes should appear in `ba-plugin/memory/`
 
 ### Debug plugin loading
 
@@ -185,14 +241,14 @@ This shows which plugins are loaded, which hooks are registered, and when they f
 After making changes to plugin files, update the cached version:
 
 1. Open `/plugin` in Claude Code
-2. Select **ba-agent-drd**
+2. Select **ba-plugin**
 3. Select **Update now**
 
 Or uninstall and reinstall:
 
 ```
-/plugin uninstall ba-agent-drd@rdewai-plugins
-/plugin install ba-agent-drd@rdewai-plugins
+/plugin uninstall ba-plugin@rdewai-plugins
+/plugin install ba-plugin@rdewai-plugins
 ```
 
 ## Makefile Targets
@@ -200,7 +256,7 @@ Or uninstall and reinstall:
 ```bash
 make help           # Show all commands
 make dev-setup      # Install Python dependencies
-make test           # Run all 47 tests
+make test           # Run all 89 tests
 make validate-drd   # Validate all DRDs in outputs/
 make lint           # Run ruff linter
 make format         # Auto-format code
