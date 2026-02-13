@@ -7,19 +7,19 @@ with skills to generate, update, and validate Data Requirements Documents (DRDs)
 
 ## Plugin Structure
 
-The plugin lives in `ba-agent-drd/` and is defined by `ba-agent-drd/.claude-plugin/plugin.json`.
+The plugin lives in `ba-plugin/` and is defined by `ba-plugin/.claude-plugin/plugin.json`.
 The marketplace manifest is at `.claude-plugin/marketplace.json`.
 
-- `ba-agent-drd/skills/` - Skill definitions (create-drd, update-drd, validate-drd)
-- `ba-agent-drd/hooks/` - PostToolUse hook for automatic DRD validation
-- `ba-agent-drd/scripts/` - Hook scripts (validate-drd-hook.py)
+- `ba-plugin/skills/` - Skill definitions (create-drd, update-drd, validate-drd)
+- `ba-plugin/hooks/` - PostToolUse hook for automatic DRD validation
+- `ba-plugin/scripts/` - Hook scripts (validate-drd-hook.py)
 
 ## Installing the Plugin
 
 From the repo root:
 ```bash
 /plugin marketplace add ./chapter-3
-/plugin install ba-agent-drd@rdewai-plugins
+/plugin install ba-plugin@rdewai-plugins
 ```
 
 ## Skills
@@ -38,7 +38,7 @@ the errors as feedback and auto-fixes them.
 
 - `inputs/drd/` - Input documents (business requests, stakeholder notes, source docs, catalogs)
 - `outputs/drd/` - Generated DRD output files
-- `ba-agent-drd/` - Plugin directory (skills, hooks, scripts)
+- `ba-plugin/` - Plugin directory (skills, hooks, scripts)
 - `tests/` - Validator and hook unit tests
 
 ## Key Commands

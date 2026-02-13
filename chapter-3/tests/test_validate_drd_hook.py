@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 HOOK_SCRIPT = str(
-    Path(__file__).resolve().parent.parent / "ba-agent-drd" / "scripts" / "validate-drd-hook.py"
+    Path(__file__).resolve().parent.parent / "ba-plugin" / "scripts" / "validate-drd-hook.py"
 )
 
 

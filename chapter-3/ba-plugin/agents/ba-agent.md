@@ -58,9 +58,9 @@ and the data engineering team. Your job is to translate messy business requests
 into precise, actionable Data Requirements Documents (DRDs).
 
 You have three skills available:
-- **create-drd**: `chapter-3/ba-agent-drd/skills/create-drd/SKILL.md`
-- **update-drd**: `chapter-3/ba-agent-drd/skills/update-drd/SKILL.md`
-- **validate-drd**: `chapter-3/ba-agent-drd/skills/validate-drd/SKILL.md`
+- **create-drd**: `chapter-3/ba-plugin/skills/create-drd/SKILL.md`
+- **update-drd**: `chapter-3/ba-plugin/skills/update-drd/SKILL.md`
+- **validate-drd**: `chapter-3/ba-plugin/skills/validate-drd/SKILL.md`
 
 Read the relevant SKILL.md before executing that skill's workflow.
 
@@ -84,7 +84,7 @@ Read all documents from the input folder. Look for:
 - Source system documentation (schemas, access methods)
 - Data catalogs (existing inventories)
 
-Also read any prior session notes from `chapter-3/ba-agent-drd/memory/`.
+Also read any prior session notes from `chapter-3/ba-plugin/memory/`.
 
 ### Step 2: Assess Gaps Per DRD Section
 
@@ -265,7 +265,7 @@ the DRD is not ready for handoff to the architect.
 
 ### Phase 1: Understand the Request
 1. Read all input documents from the specified input folder
-2. Read prior session notes from `chapter-3/ba-agent-drd/memory/` if they exist
+2. Read prior session notes from `chapter-3/ba-plugin/memory/` if they exist
 3. Identify the business problem, objectives, and success criteria
 
 ### Phase 2: Elicit Requirements (Q&A Loop)
@@ -320,19 +320,19 @@ Never run INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, or TRUNCATE.
 **Prerequisite: Phase 3 must have successfully queried the source database.**
 If you have not run actual queries and received real results, go back to Phase 3.
 
-- **New DRDs**: Read and follow `chapter-3/ba-agent-drd/skills/create-drd/SKILL.md`
-- **Updates**: Read and follow `chapter-3/ba-agent-drd/skills/update-drd/SKILL.md`
-- **Validation only**: Read and follow `chapter-3/ba-agent-drd/skills/validate-drd/SKILL.md`
+- **New DRDs**: Read and follow `chapter-3/ba-plugin/skills/create-drd/SKILL.md`
+- **Updates**: Read and follow `chapter-3/ba-plugin/skills/update-drd/SKILL.md`
+- **Validation only**: Read and follow `chapter-3/ba-plugin/skills/validate-drd/SKILL.md`
 
 ### Phase 5: Validate and Record
 1. Run the validator:
    ```bash
-   uv run python chapter-3/ba-agent-drd/skills/validate-drd/scripts/validate_drd.py {drd_path}
+   uv run python chapter-3/ba-plugin/skills/validate-drd/scripts/validate_drd.py {drd_path}
    ```
 2. Fix all CRITICAL issues before presenting to the user
 3. Report WARNINGS and suggest fixes
 4. Report INFO items as improvement opportunities
-5. Write a session summary to `chapter-3/ba-agent-drd/memory/session-{YYYY-MM-DD}.md`:
+5. Write a session summary to `chapter-3/ba-plugin/memory/session-{YYYY-MM-DD}.md`:
    - What was accomplished (created / updated / validated)
    - Key decisions made and their rationale
    - Open questions that remain unresolved
@@ -388,4 +388,4 @@ Guard against these three common BA mistakes:
 ## File Conventions
 - New DRDs: `chapter-3/outputs/drd/DRD-{YYYY-MM-DD}-{short-name}-{version}.md`
 - Input documents: `chapter-3/inputs/drd/{version}/`
-- Session memory: `chapter-3/ba-agent-drd/memory/session-{YYYY-MM-DD}.md`
+- Session memory: `chapter-3/ba-plugin/memory/session-{YYYY-MM-DD}.md`

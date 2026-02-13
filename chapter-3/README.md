@@ -30,13 +30,13 @@ From the repo root, open Claude Code and add the local marketplace:
 ### 3. Install the plugin
 
 ```
-/plugin install ba-agent-drd@rdewai-plugins
+/plugin install ba-plugin@rdewai-plugins
 ```
 
 You can verify the install by running `/plugin` — you should see:
 
 ```
-ba-agent-drd (v1.0.0)
+ba-plugin (v1.0.0)
   Skills: create-drd, update-drd, validate-drd
   Agents: ba-agent
   Hooks: PreToolUse, PostToolUse
@@ -93,12 +93,12 @@ Other skills:
 
 ### BA Agent
 
-The `ba-agent` sub-agent (`ba-agent-drd/agents/ba-agent.md`) is the primary interface. It embodies the Business/Data Analyst role with:
+The `ba-agent` sub-agent (`ba-plugin/agents/ba-agent.md`) is the primary interface. It embodies the Business/Data Analyst role with:
 
 - **Requirements Elicitation Protocol** — asks structured questions section-by-section using `AskUserQuestion`, iterating until all DRD sections have specific, measurable requirements
 - **Source Exploration** — runs read-only DuckDB queries to verify table existence, row counts, column types, and null rates against what input documents claim
 - **Pitfall Prevention** — rejects vague requirements ("all data", "real-time", "fast"), never skips source exploration, prevents gold-plating
-- **Session Memory** — writes notes to `ba-agent-drd/memory/` after each engagement, tracking decisions, open questions, and DRD iteration history
+- **Session Memory** — writes notes to `ba-plugin/memory/` after each engagement, tracking decisions, open questions, and DRD iteration history
 
 ### Skills
 
@@ -145,7 +145,7 @@ Sample inputs are in `inputs/drd/v1/`:
 chapter-3/
 ├── .claude-plugin/
 │   └── marketplace.json               # Local marketplace manifest
-├── ba-agent-drd/                      # Plugin root
+├── ba-plugin/                      # Plugin root
 │   ├── .claude-plugin/
 │   │   └── plugin.json                # Plugin manifest
 │   ├── agents/
@@ -193,13 +193,13 @@ This runs 89 tests: 38 for the validator, 11 for the validation hook, 21 for the
 ```bash
 # Validate a specific DRD
 cd chapter-3
-uv run python ba-agent-drd/skills/validate-drd/scripts/validate_drd.py outputs/drd/DRD-2026-02-10-patient-360-v1.md
+uv run python ba-plugin/skills/validate-drd/scripts/validate_drd.py outputs/drd/DRD-2026-02-10-patient-360-v1.md
 
 # Validate all DRDs in the output directory
 make validate-drd
 
 # JSON output for machine consumption
-uv run python ba-agent-drd/skills/validate-drd/scripts/validate_drd.py --format json outputs/drd/DRD-2026-02-10-patient-360-v1.md
+uv run python ba-plugin/skills/validate-drd/scripts/validate_drd.py --format json outputs/drd/DRD-2026-02-10-patient-360-v1.md
 ```
 
 ### Test the hook script manually
@@ -208,12 +208,12 @@ uv run python ba-agent-drd/skills/validate-drd/scripts/validate_drd.py --format 
 cd chapter-3
 
 # Non-DRD file — should exit 0 (skipped)
-echo '{"tool_input":{"file_path":"/some/file.py"}}' | python3 ba-agent-drd/scripts/validate-drd-hook.py
+echo '{"tool_input":{"file_path":"/some/file.py"}}' | python3 ba-plugin/scripts/validate-drd-hook.py
 echo $?   # 0
 
 # Invalid DRD — should exit 2 (CRITICAL issues)
 echo '# Bad DRD' > /tmp/test-drd.md
-echo '{"tool_input":{"file_path":"/project/outputs/drd/test.md"}}' | python3 ba-agent-drd/scripts/validate-drd-hook.py
+echo '{"tool_input":{"file_path":"/project/outputs/drd/test.md"}}' | python3 ba-plugin/scripts/validate-drd-hook.py
 echo $?   # 2
 ```
 
@@ -221,12 +221,12 @@ echo $?   # 2
 
 1. Start Claude Code from the repo root (`claude`)
 2. Add marketplace: `/plugin marketplace add ./chapter-3`
-3. Install plugin: `/plugin install ba-agent-drd@rdewai-plugins`
+3. Install plugin: `/plugin install ba-plugin@rdewai-plugins`
 4. Invoke the agent: `@ba-agent Create a DRD from chapter-3/inputs/drd/v1`
 5. Answer the agent's clarifying questions until it confirms readiness
 6. Verify a DRD was created in `chapter-3/outputs/drd/`
 7. The PostToolUse hook should have auto-validated it
-8. Session notes should appear in `ba-agent-drd/memory/`
+8. Session notes should appear in `ba-plugin/memory/`
 
 ### Debug plugin loading
 
@@ -241,14 +241,14 @@ This shows which plugins are loaded, which hooks are registered, and when they f
 After making changes to plugin files, update the cached version:
 
 1. Open `/plugin` in Claude Code
-2. Select **ba-agent-drd**
+2. Select **ba-plugin**
 3. Select **Update now**
 
 Or uninstall and reinstall:
 
 ```
-/plugin uninstall ba-agent-drd@rdewai-plugins
-/plugin install ba-agent-drd@rdewai-plugins
+/plugin uninstall ba-plugin@rdewai-plugins
+/plugin install ba-plugin@rdewai-plugins
 ```
 
 ## Makefile Targets

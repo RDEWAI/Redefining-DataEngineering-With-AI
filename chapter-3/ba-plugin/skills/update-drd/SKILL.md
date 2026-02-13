@@ -201,7 +201,7 @@ In section 8 (Version History), add a new row:
 Run the validator:
 
 ```bash
-uv run python chapter-3/ba-agent-drd/skills/validate-drd/scripts/validate_drd.py chapter-3/outputs/drd/{filename}.md
+uv run python chapter-3/ba-plugin/skills/validate-drd/scripts/validate_drd.py chapter-3/outputs/drd/{filename}.md
 ```
 
 Report to the user:
@@ -213,7 +213,7 @@ Report to the user:
 ## Step 6: Session memory
 
 **Always write session notes regardless of validation outcome.** Write to
-`chapter-3/ba-agent-drd/memory/session-{YYYY-MM-DD}.md`:
+`chapter-3/ba-plugin/memory/session-{YYYY-MM-DD}.md`:
 
 - What was updated (DRD filename, version change) — or what was attempted if update failed
 - Changes made (bulleted list)

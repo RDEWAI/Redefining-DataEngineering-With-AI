@@ -11,7 +11,7 @@ import pytest
 
 HOOK_SCRIPT = str(
     Path(__file__).resolve().parent.parent
-    / "ba-agent-drd"
+    / "ba-plugin"
     / "scripts"
     / "enforce-readonly-queries.py"
 )

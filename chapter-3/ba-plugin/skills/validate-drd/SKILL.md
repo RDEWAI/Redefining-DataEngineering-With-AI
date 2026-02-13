@@ -26,10 +26,10 @@ Run the Python validator script on the specified file or all DRDs:
 
 ```bash
 # Single file
-uv run python chapter-3/ba-agent-drd/skills/validate-drd/scripts/validate_drd.py $ARGUMENTS
+uv run python chapter-3/ba-plugin/skills/validate-drd/scripts/validate_drd.py $ARGUMENTS
 
 # All DRDs in the output directory
-uv run python chapter-3/ba-agent-drd/skills/validate-drd/scripts/validate_drd.py --all chapter-3/outputs/drd/
+uv run python chapter-3/ba-plugin/skills/validate-drd/scripts/validate_drd.py --all chapter-3/outputs/drd/
 ```
 
 ## Step 2: Interpret results
@@ -112,7 +112,7 @@ Summary: 0 critical (fixed), 1 warning, 1 info
 ## Step 4: Session memory
 
 **Always write session notes regardless of validation outcome.** Write to
-`chapter-3/ba-agent-drd/memory/session-{YYYY-MM-DD}.md`:
+`chapter-3/ba-plugin/memory/session-{YYYY-MM-DD}.md`:
 
 - What was validated (DRD filename)
 - CRITICAL/WARNING/INFO counts (before and after fixes)

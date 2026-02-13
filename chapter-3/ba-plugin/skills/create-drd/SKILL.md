@@ -196,7 +196,7 @@ user about it before proceeding. Do not silently work around data issues.
 Read the DRD template to understand the required structure:
 
 ```bash
-cat chapter-3/ba-agent-drd/skills/create-drd/DRD_template.j2
+cat chapter-3/ba-plugin/skills/create-drd/DRD_template.j2
 ```
 
 For a complete example of a finished DRD, see [examples/sample-drd.md](examples/sample-drd.md).
@@ -259,7 +259,7 @@ Where `{version}` is extracted from the input folder path (e.g., `v1` from `inpu
 Then validate:
 
 ```bash
-uv run python chapter-3/ba-agent-drd/skills/validate-drd/scripts/validate_drd.py chapter-3/outputs/drd/{filename}.md
+uv run python chapter-3/ba-plugin/skills/validate-drd/scripts/validate_drd.py chapter-3/outputs/drd/{filename}.md
 ```
 
 Fix any CRITICAL issues before finalizing. Report the validation summary to the user.
@@ -267,7 +267,7 @@ Fix any CRITICAL issues before finalizing. Report the validation summary to the 
 ## Step 6: Session memory
 
 **Always write session notes regardless of validation outcome.** Write to
-`chapter-3/ba-agent-drd/memory/session-{YYYY-MM-DD}.md`:
+`chapter-3/ba-plugin/memory/session-{YYYY-MM-DD}.md`:
 
 - What was created (DRD filename, version) — or what was attempted if generation failed
 - Key decisions made and their rationale

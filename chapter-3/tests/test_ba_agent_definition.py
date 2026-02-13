@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 AGENT_FILE = (
-    Path(__file__).resolve().parent.parent / "ba-agent-drd" / "agents" / "ba-agent.md"
+    Path(__file__).resolve().parent.parent / "ba-plugin" / "agents" / "ba-agent.md"
 )
 
 
@@ -131,7 +131,7 @@ class TestAgentSystemPrompt:
 
     def test_references_memory_directory(self):
         _, body = _parse_agent_file()
-        assert "ba-agent-drd/memory/" in body
+        assert "ba-plugin/memory/" in body
 
     def test_instructs_ask_user_question_tool_usage(self):
         _, body = _parse_agent_file()
