@@ -1,0 +1,103 @@
+# PWI Configuration Example
+# Copy this file to pwi.yaml and customize for your project
+
+version: "1.0"
+
+# Project settings
+project:
+  name: "my-data-project"
+  type: "data_engineering"
+  output_dir: "./output"
+  session_dir: "./.pwi/sessions"
+
+# LLM Provider Configuration
+llm:
+  provider: "openrouter"  # openrouter | openai | azure
+  base_url: "https://openrouter.ai/api/v1"
+  api_key: "${OPENROUTER_API_KEY}"  # Environment variable reference
+  default_model: "anthropic/claude-3-5-sonnet"
+
+  # Model aliases for easy reference
+  models:
+    fast: "anthropic/claude-3-5-haiku"
+    balanced: "anthropic/claude-3-5-sonnet"
+    powerful: "anthropic/claude-3-opus"
+    gpt4: "openai/gpt-4-turbo"
+
+# Agent-specific configurations
+agents:
+  data_analyst:
+    model: "balanced"  # Reference to models alias
+    temperature: 0.7
+    max_tokens: 4096
+
+  data_architect:
+    model: "powerful"
+    temperature: 0.5
+    max_tokens: 8192
+
+  mapping_engineer:
+    model: "balanced"
+    temperature: 0.3  # Lower for more deterministic mappings
+    max_tokens: 4096
+
+  dq_engineer:
+    model: "balanced"
+    temperature: 0.3
+    max_tokens: 4096
+
+  story_writer:
+    model: "balanced"
+    temperature: 0.8  # Higher for creative writing
+    max_tokens: 8192
+
+  sync_agent:
+    model: "fast"  # Simple aggregation task
+    temperature: 0.2
+    max_tokens: 2048
+
+# Review gate configuration
+review:
+  default_mode: "cli"  # cli | file | web
+  timeout_minutes: 60
+
+  gates:
+    data_analyst:
+      enabled: true
+      mode: "cli"
+    data_architect:
+      enabled: true
+      mode: "file"  # Important decisions need file review
+    mapping_engineer:
+      enabled: true
+      mode: "cli"
+    dq_engineer:
+      enabled: true
+      mode: "cli"
+    story_writer:
+      enabled: true
+      mode: "cli"
+
+# Artifact settings
+artifacts:
+  drd:
+    format: "markdown"
+    template: "templates/drd_template.md"
+  dmd:
+    format: "csv"  # CSV for iterative refinement
+    template: "templates/dmd_template.csv"
+  dqs:
+    format: "yaml"
+    template: "templates/dqs_template.yaml"
+  pad:
+    format: "markdown"
+    template: "templates/pad_template.md"
+  stories:
+    format: "markdown"
+    template: "templates/story_template.md"
+
+# Logging
+logging:
+  level: "INFO"
+  format: "json"  # json | text
+  file: "./.pwi/logs/pwi.log"

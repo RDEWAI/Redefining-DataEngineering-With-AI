@@ -1,0 +1,86 @@
+# Docker Compose configuration for OpenHands GUI with PWI integration
+#
+# This deploys the OpenHands web interface with PWI custom tools and microagents loaded,
+# enabling users to run individual PWI agents on-demand through a visual interface.
+#
+# IMPORTANT: Use the start script to launch (it exports required environment variables):
+#   ./scripts/start-openhands-gui.sh
+#
+# Direct docker-compose usage requires exporting these variables first:
+#   export WORKSPACE_HOST_PATH="$(pwd)"
+#   export DATA_HOST_PATH="$(cd ../data && pwd)"
+#   docker-compose -f docker-compose.openhands.yml up --build
+#
+# Access the GUI at: http://localhost:3000
+
+services:
+  openhands-pwi:
+    build:
+      context: .
+      dockerfile: Dockerfile.openhands
+    image: pwi-openhands:latest
+    container_name: openhands-pwi
+    ports:
+      - "3000:3000"
+    # Run as root to access Docker socket (NO_SETUP=true allows this)
+    user: root
+
+    environment:
+      # LLM Configuration (required - set in .env file)
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://openrouter.ai/api/v1}
+      - LLM_MODEL=${LLM_MODEL:-openrouter/anthropic/claude-3.5-haiku}
+
+      # OpenHands Configuration
+      - SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.54-nikolaik
+      - LOG_ALL_EVENTS=true
+      - NO_SETUP=true
+      # Use non-root UID - SANDBOX_USER_ID=0 causes "UID 0 is not unique" error
+      - SANDBOX_USER_ID=1000
+      # Use absolute host path for workspace (required for Docker Desktop on Mac)
+      # WORKSPACE_HOST_PATH must be exported by start-openhands-gui.sh
+      - SANDBOX_VOLUMES=${WORKSPACE_HOST_PATH}:/workspace:rw
+
+      # PWI Configuration
+      - DUCKDB_PATH=/workspace/data/duckdb/raw.db
+      - PWI_OUTPUT_DIR=/workspace/output
+      - PYTHONPATH=/app
+
+    volumes:
+      # Docker socket for sandbox runtime
+      - /var/run/docker.sock:/var/run/docker.sock
+
+      # OpenHands state (sessions, conversations)
+      - openhands-state:/.openhands
+
+      # PWI workspace (chapter-4 directory) - read/write using absolute path
+      # These paths are exported by start-openhands-gui.sh
+      - ${WORKSPACE_HOST_PATH}:/workspace:rw
+
+      # Data directory (from parent) - read-only for safety
+      - ${DATA_HOST_PATH}:/workspace/data:ro
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    networks:
+      - pwi-network
+
+    stdin_open: true
+    tty: true
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  openhands-state:
+    name: pwi-openhands-state
+
+networks:
+  pwi-network:
+    driver: bridge
+    name: pwi-openhands-network
