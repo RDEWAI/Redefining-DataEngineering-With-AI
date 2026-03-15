@@ -36,6 +36,13 @@ make test           # Run all tests
 - **Validator**: `chapter-3/.claude/skills/validate-drd/scripts/validate_drd.py`
 - **Tests**: `cd chapter-3 && uv run pytest tests/ -v`
 
+## Chapter 4: Data Modeling Agent (continuation of Chapter 3)
+
+- **Base**: All chapter-3 BA Agent skills + hooks carried forward
+- **Inputs**: `chapter-4/inputs/drd/` (from ch3) + `chapter-4/inputs/architect/` (new)
+- **Outputs**: `chapter-4/outputs/drd/` (generated DRD markdown files)
+- **Tests**: `cd chapter-4 && uv run pytest tests/ -v`
+
 ## Pre-commit Hooks
 
 When adding a new chapter directory (e.g., `chapter-4/`), update `.pre-commit-config.yaml`:

@@ -1,0 +1,16 @@
+{
+  "name": "rdewai-plugins",
+  "owner": {
+    "name": "RDEWAI"
+  },
+  "metadata": {
+    "description": "Plugins for Redefining Data Engineering With AI"
+  },
+  "plugins": [
+    {
+      "name": "ba-plugin",
+      "source": "./ba-plugin",
+      "description": "Business Analyst Agent for generating, updating, and validating Data Requirements Documents (DRDs)"
+    }
+  ]
+}
