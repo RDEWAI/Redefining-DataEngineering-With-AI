@@ -1,0 +1,23 @@
+[
+  {
+    "rule_name": "patient_fk_not_null",
+    "column": "patient",
+    "rule": "patient IS NOT NULL",
+    "action_if_failed": "drop",
+    "description": "Observation must be linked to a patient"
+  },
+  {
+    "rule_name": "observation_code_not_null",
+    "column": "code",
+    "rule": "code IS NOT NULL",
+    "action_if_failed": "drop",
+    "description": "LOINC observation code required"
+  },
+  {
+    "rule_name": "value_not_null_threshold",
+    "column": "value",
+    "rule": "value IS NOT NULL",
+    "action_if_failed": "warn",
+    "description": "Observation value null — allowed up to 2% threshold; alert if exceeded"
+  }
+]

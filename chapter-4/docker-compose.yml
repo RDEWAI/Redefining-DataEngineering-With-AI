@@ -1,0 +1,67 @@
+# Unity Catalog server  — http://localhost:8080  (REST API + catalog)
+# Marquez API           — http://localhost:5001  (OpenLineage ingest)
+# Marquez UI            — http://localhost:3000  (lineage graph)
+#
+# Marquez API is on host port 5001 — macOS AirPlay Receiver occupies port 5000.
+# UC image is multi-arch (amd64 + arm64); no Rosetta needed on Apple Silicon.
+
+name: unitycatalog
+
+services:
+
+  server:
+    image: unitycatalog/unitycatalog:main
+    ports:
+      - "8080:8080"
+    volumes:
+      - type: bind
+        source: ./etc/conf
+        target: /opt/unitycatalog/etc/conf
+      - type: volume
+        source: unitycatalog_data
+        target: /opt/unitycatalog/etc/data
+
+  marquez-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
+      POSTGRES_DB: marquez
+    volumes:
+      - marquez_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marquez"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  marquez:
+    image: marquezproject/marquez:latest
+    platform: linux/amd64
+    ports:
+      - "5001:5000"
+    environment:
+      MARQUEZ_PORT: "5000"
+      MARQUEZ_ADMIN_PORT: "5001"
+      POSTGRES_HOST: marquez-db
+      POSTGRES_PORT: "5432"
+      SEARCH_ENABLED: "false"
+    depends_on:
+      marquez-db:
+        condition: service_healthy
+
+  marquez-web:
+    image: marquezproject/marquez-web:latest
+    platform: linux/amd64
+    ports:
+      - "3000:3000"
+    environment:
+      WEB_PORT: "3000"
+      MARQUEZ_HOST: marquez
+      MARQUEZ_PORT: "5000"
+    depends_on:
+      - marquez
+
+volumes:
+  unitycatalog_data:
+  marquez_data:
