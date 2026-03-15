@@ -1,4 +1,4 @@
-# Chapter 4 — Patient 360 Medallion Pipeline
+# MVP — Patient 360 Medallion Pipeline
 
 A production-grade **Bronze → Silver → Gold** data pipeline built with **PySpark 4.1 + Delta Lake**.
 Source data: [Synthea](https://synthea.mitre.org/) synthetic healthcare records (5,767 patients).
@@ -45,7 +45,7 @@ In production, point `spark.sql.warehouse.dir` to cloud storage (S3 / ADLS / GCS
 ## Setup
 
 ```bash
-cd chapter-4
+cd mvp
 make dev-setup          # creates .venv and installs all dependencies
 make uc-start           # start Unity Catalog + Marquez via Docker
 ```
@@ -105,7 +105,7 @@ lineage graph.
 
 ## Data
 
-The raw Synthea CSV files live at `../data/raw/` (one level above `chapter-4/`).
+The raw Synthea CSV files live at `../data/raw/` (one level above `mvp/`).
 The pipeline expects these 10 files:
 
 ```
@@ -280,7 +280,7 @@ Tests use an in-process local SparkSession — no cluster required.
 ## Project Structure
 
 ```
-chapter-4/
+mvp/
 ├── run_local.py                    # pipeline runner (bronze/silver/gold/all)
 ├── Makefile                        # make targets for all common tasks
 ├── docker-compose.yml              # Unity Catalog + Marquez services
@@ -336,7 +336,7 @@ The UC server state (table metadata) is stored in `uc-data/` (local volume, giti
 Spark requires Java 11 or 17. Check with `java -version` and update `JAVA_HOME` if needed.
 
 **`FileNotFoundError: Source file not found: .../patients.csv`**
-The default raw data path is `../data/raw/` (relative to `chapter-4/`).
+The default raw data path is `../data/raw/` (relative to `mvp/`).
 Use `--raw-path /absolute/path` if your data is elsewhere.
 
 **Pipeline slow on first run**

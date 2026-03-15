@@ -18,7 +18,7 @@ wheels = [
 ]
 
 [[package]]
-name = "chapter-4-spark-pipelines"
+name = "mvp-spark-pipelines"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

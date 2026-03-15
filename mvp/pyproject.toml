@@ -1,7 +1,7 @@
 [project]
-name = "chapter-4-spark-pipelines"
+name = "mvp-spark-pipelines"
 version = "0.1.0"
-description = "Chapter 4: Data Engineering with AI — Spark Declarative Pipelines + Delta Lake"
+description = "MVP: Data Engineering with AI — Spark Declarative Pipelines + Delta Lake"
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "pyspark[pipelines]>=4.1.1",

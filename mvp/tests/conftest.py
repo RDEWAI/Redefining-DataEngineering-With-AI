@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for chapter-4 Spark pipeline tests."""
+"""Shared pytest fixtures for mvp Spark pipeline tests."""
 
 from __future__ import annotations
 

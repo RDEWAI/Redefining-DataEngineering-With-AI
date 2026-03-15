@@ -1,4 +1,4 @@
-# Chapter 4 — Spark Declarative Pipelines: Patient 360
+# MVP — Spark Declarative Pipelines: Patient 360
 
 | Field | Value |
 |---|---|
@@ -21,7 +21,7 @@ The narrative focus is: **how AI accelerates each stage** — generating ingesti
 ## Directory Structure
 
 ```
-chapter-4/
+mvp/
 ├── CLAUDE.md
 ├── PLAN.md                             # This file
 ├── README.md

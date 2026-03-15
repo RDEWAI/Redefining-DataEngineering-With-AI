@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pyspark.sql import SparkSession
 
-# Absolute chapter-4 directory — stable regardless of working directory
+# Absolute mvp directory — stable regardless of working directory
 _CHAPTER_DIR = Path(__file__).parents[3]
 
 # JAR coordinates — Spark 4.1 uses Scala 2.13 (not 2.12)
