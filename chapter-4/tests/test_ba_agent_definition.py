@@ -111,6 +111,10 @@ class TestAgentSystemPrompt:
         assert "skills/update-drd/SKILL.md" in body
         assert "skills/validate-drd/SKILL.md" in body
 
+    def test_has_versioned_discovery(self):
+        _, body = _parse_agent_file()
+        assert "sort -V" in body, "Agent must use version-sorted discovery for inputs"
+
     def test_enforces_readonly_database(self):
         _, body = _parse_agent_file()
         assert "-readonly" in body
@@ -133,7 +137,7 @@ class TestAgentSystemPrompt:
         assert (
             "AskUserQuestion" in body
         ), "System prompt must instruct agent to use AskUserQuestion tool"
-        assert "ALWAYS use the AskUserQuestion tool" in body
+        assert "NEVER print questions as text" in body
 
     def test_has_section_readiness_checklist(self):
         _, body = _parse_agent_file()

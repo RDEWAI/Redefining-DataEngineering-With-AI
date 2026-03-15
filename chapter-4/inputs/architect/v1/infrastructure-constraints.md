@@ -2,8 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Project** | Patient 360 — Medallion Pipeline |
-| **Environment** | Local Development (Docker) |
+| **Environment** | Local Development — all services run inside Docker |
 | **Version** | 1.0 |
 | **Last Updated** | 2026-03-14 |
 
@@ -13,18 +12,20 @@
 
 | Constraint | Value | Implication |
 |-----------|-------|-------------|
-| Spark driver memory | 4 GB | Set in `spark.driver.memory`; local mode only — no cluster |
-| Spark executor memory | 4 GB | Set in `spark.executor.memory`; single executor in local mode |
-| Shuffle partitions | 8 | `spark.sql.shuffle.partitions = 8`; tuned for ~5,700-row dataset |
-| Execution mode | Local (`local[*]`) | All processing on a single machine; no YARN/K8s cluster |
+| Spark driver memory | 4 GB | Set in `spark.driver.memory`; single-node Docker container — no cluster |
+| Spark executor memory | 4 GB | Set in `spark.executor.memory`; single executor inside container |
+| Shuffle partitions | 8 | `spark.sql.shuffle.partitions = 8`; tune based on dataset size |
+| Execution mode | Local (`local[*]`) | All processing inside a single Docker container; no YARN/K8s cluster |
 | Adaptive Query Execution | Enabled | `spark.sql.adaptive.enabled = true` |
 | Spark Web UI | Disabled | `spark.ui.enabled = false` (local dev only) |
 
-**Minimum machine spec** (local dev):
-- RAM: 16 GB recommended (4 GB driver + 4 GB executor + OS + Docker overhead)
+**All services containerized**: Spark, Unity Catalog, Marquez, and PostgreSQL all run inside Docker containers managed by Docker Compose. Nothing runs directly on the host machine.
+
+**Minimum host machine spec**:
+- RAM: 16 GB recommended (containers + Docker overhead)
 - CPU: 4+ cores
-- Disk: 20 GB free (Spark warehouse + JAR cache + source CSVs)
-- Java: 11 or 17 (Spark 4.1 requirement; Java 21 is not yet supported)
+- Disk: 20 GB free (Docker images + volumes + JAR cache)
+- Docker: 24+ with Compose v2
 
 ---
 
@@ -33,10 +34,9 @@
 | Constraint | Value | Implication |
 |-----------|-------|-------------|
 | Table format | Delta Lake only | All tables (bronze, silver, gold) must be Delta; no Parquet/ORC/Iceberg |
-| Warehouse location | `warehouse/` (local) | Relative to MVP root; change `spark.sql.warehouse.dir` for cloud |
+| Warehouse location | `warehouse/` (Docker volume mount) | Mounted into Spark container; change `spark.sql.warehouse.dir` for cloud |
 | Partition scheme | `ds` (YYYY-MM-DD string) | All tables partitioned by load date; required for idempotent re-runs |
 | Write mode | `overwrite` with `replaceWhere=ds='{ds}'` | Idempotent: re-running same DS overwrites that partition only |
-| Observations table | Excluded from delta testing | 4.4 M rows — too large for local delta load generation; delta testing skips observations |
 | UC metadata storage | Named Docker volume (`unitycatalog_data`) | Persists across restarts; lost if volume is deleted |
 | Lineage storage | Named Docker volume (`marquez_data`) via PostgreSQL | Persists across restarts |
 
@@ -74,8 +74,8 @@
 | Catalog name | Must be `spark_catalog` — Spark's default catalog; cannot use arbitrary names without additional config |
 | UC version | 0.4.0 OSS — no built-in column-level lineage REST API |
 | Lineage source | OpenLineage Spark Listener only — UC does not capture lineage directly |
-| Schema bootstrap | `scripts/uc_init.py` must run once after `docker compose up` before the first pipeline execution |
-| Retry logic | `uc_init.py` retries up to 18 times (90 s total) waiting for UC server to become healthy |
+| Schema bootstrap | UC init script must run once after `docker compose up` before the first pipeline execution |
+| Retry logic | UC init script retries up to 18 times (90 s total) waiting for UC server to become healthy |
 | Derby | Not used; UC OSS replaces Derby entirely — do not configure `javax.jdo` properties |
 
 ---
@@ -96,35 +96,19 @@
 | Constraint | Detail |
 |-----------|--------|
 | Layer ordering | Bronze must complete before Silver; Silver must complete before Gold |
-| UC must be running | All layers require Unity Catalog at `localhost:8080` |
+| UC must be running | All containers require Unity Catalog service to be healthy |
 | Idempotency | Re-running for the same `ds` is safe — replaces that partition only |
-| First pipeline run | Downloads ~200 MB of JARs to `~/.ivy2/`; subsequent runs use cache |
-| Observations in tests | `gen_delta_load.py` skips observations (4.4 M rows); delta load test results exclude obs |
-| Spark SQL shell | `make spark-sql` requires UC to be running and `uc_init.py` to have already run |
+| First pipeline run | Downloads ~200 MB of JARs into container; cached in Docker volume for subsequent runs |
+| Spark SQL shell | Runs inside Spark container; requires UC container to be healthy |
 
 ---
 
-## 8. Data Volume Constraints (Local Dev)
-
-| Table | Approx. Row Count | Notes |
-|-------|------------------|-------|
-| bronze.patients | 5,767 | First load |
-| bronze.encounters | ~150,000 | Estimated from Synthea defaults |
-| bronze.observations | ~4,400,000 | Largest table — skipped in delta load tests |
-| bronze.conditions | ~80,000 | |
-| bronze.medications | ~70,000 | |
-| silver.dim_patients | 5,767 (v1) / 6,344 (v2) | After SCD2 delta: 577 changed → 2 versions each |
-| gold.patient_summary | 5,767 | One row per current patient |
-
----
-
-## 9. Known Limitations
+## 8. Known Limitations
 
 | Limitation | Impact | Workaround |
 |-----------|--------|-----------|
-| Local mode only | No horizontal scaling | Move to cloud Spark cluster for production |
+| Single-node Docker only | No horizontal scaling | Move to cloud Spark cluster for production |
 | UC OSS 0.4.0 has no column-level lineage | Cannot trace column-to-column lineage | Use Databricks Unity Catalog or DataHub for column lineage |
 | No schema evolution handling | Adding columns to CSVs requires schema changes | Add `mergeSchema = true` option or version schemas |
 | Marquez `latest` tag | Non-deterministic builds | Pin to specific Marquez version for reproducibility |
-| Spark Expectations not yet active | DQ rules defined but not enforced | Wire `spark-expectations` library into ingest and transform steps |
 | No retry/backfill mechanism | Failed pipeline for a given `ds` requires manual re-run | Add orchestrator (Airflow, Prefect) for production |

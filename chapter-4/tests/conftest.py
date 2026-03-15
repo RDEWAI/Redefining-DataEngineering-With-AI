@@ -1,4 +1,4 @@
-"""Shared fixtures for DRD validator tests."""
+"""Shared fixtures for DRD and HLD validator tests."""
 
 from __future__ import annotations
 
@@ -471,6 +471,367 @@ Content here.
 | Role | Name | Date | Signature |
 |------|------|------|-----------|
 """
+
+
+VALID_HLD = """\
+# High-Level Design: Patient 360 Medallion Pipeline
+
+| Field | Value |
+|-------|-------|
+| **Version** | 1.0 |
+| **Created** | 2026-03-14 |
+| **Last Modified** | 2026-03-14 |
+| **Author** | Architect Agent |
+| **Status** | Draft |
+| **DRD Reference** | DRD-2026-02-11-patient-360-v1.md |
+
+---
+
+## 1. Design Overview
+
+### Architecture Pattern
+
+**Selected**: Medallion (Lakehouse) Architecture
+
+**Justification**: The DRD specifies mixed latency requirements
+(sub-hour for clinical data per DRD Section 4.4, daily for analytics).
+The source data is structured and batch-accessible (DRD Section 2.1).
+HIPAA compliance requires immutable audit trail (DRD Section 7.1),
+which the bronze layer provides because raw data is never modified.
+
+**Options Considered**:
+- Medallion: Selected (rationale above)
+- Lambda: Rejected — no genuine dual-path need
+- Kappa: Rejected — source is batch, not streaming
+- Data Vault: Rejected — single source system
+
+```mermaid
+flowchart LR
+    SRC[Synthea EHR] --> BRZ[Bronze Layer]
+    BRZ --> SLV[Silver Layer]
+    SLV --> GLD[Gold Layer]
+    GLD --> CLIN[Clinical Dashboard]
+    GLD --> ANLYT[Analytics Team]
+```
+
+---
+
+## 2. Layer Specifications
+
+### 2.1 Bronze Layer
+
+**Purpose**: Raw ingestion of all 18 Synthea tables with metadata.
+
+**Responsibilities**:
+- Load source tables as-is, preserving original schema
+- Add metadata: `_ingested_at`, `_source_batch_id`, `_source_file`
+- Partition by `ds` (load date) for idempotent re-runs
+- Store as Delta Lake tables
+
+**DQ at this layer**: Schema validation only — confirm all expected
+columns are present and types match the source.
+
+### 2.2 Silver Layer
+
+**Purpose**: Cleansed and conformed business entities.
+
+**Responsibilities**:
+- Type standardization (string dates to DATE/TIMESTAMP)
+- Null handling per DRD business rules (Section 5)
+- Deduplication using surrogate keys
+- Name standardization (snake_case, consistent prefixes)
+- Business rule implementation (encounter classification)
+
+### 2.3 Gold Layer
+
+**Purpose**: Dimensional model for analytics and clinical use.
+
+**Responsibilities**:
+- Fact tables: `fact_encounter`, `fact_condition`
+- Dimensions: `dim_patient` (SCD2), `dim_provider` (SCD1)
+- Aggregations: `patient_summary` for Patient 360 view
+- Readmission scoring per DRD BR-003
+
+---
+
+## 3. Technology Stack
+
+| Component | Technology | Version | Rationale |
+|-----------|-----------|---------|-----------|
+| Processing | Apache Spark | 4.1.1 | Team proficiency: High (DRD Section 2) |
+| Table Format | Delta Lake | 4.1.0 | ACID, idempotent writes, MERGE |
+| Metastore | Unity Catalog OSS | 0.4.0 | Catalog/schema management |
+| Lineage | OpenLineage + Marquez | 1.44.0 | HIPAA audit trail (DRD 7.5) |
+| DQ Framework | Spark Expectations | 2.0.0 | Rule-based enforcement |
+| Language | Python (PySpark) | 3.10-3.12 | Team proficiency: High |
+| Orchestration | Make + scripts | N/A | Minimal overhead for local dev |
+
+---
+
+## 4. Integration Points
+
+### Source Connections
+
+| Source | Method | Credentials | Refresh |
+|--------|--------|-------------|---------|
+| Synthea CSV | File-based ingestion | Filesystem | Per pipeline run |
+
+### Target Connections
+
+| Consumer | Method | Access Pattern |
+|----------|--------|---------------|
+| Clinical Dashboard | Direct Delta query | Real-time, 50-100/day |
+| Analytics Team | SQL via Unity Catalog | Batch, daily reports |
+
+---
+
+## 5. Capacity Planning
+
+### Current Volumes
+
+| Table | Row Count | Size (est.) |
+|-------|-----------|-------------|
+| patients | 5,767 | 2 MB |
+| encounters | 150,000 | 30 MB |
+| observations | 4,400,000 | 800 MB |
+| Total (all 18) | ~5,000,000 | ~1 GB |
+
+### Growth Projections
+
+| Timeframe | Patients | Total Rows | Storage |
+|-----------|----------|------------|---------|
+| Current | 5,767 | 5M | 1 GB |
+| 12 months | 100,000 | 87M | 17 GB |
+| 24 months | 500,000 | 435M | 87 GB |
+
+### Scaling Triggers
+
+- At 1M patients: evaluate Spark cluster (currently local mode)
+- At 10 GB bronze: evaluate S3 storage (currently local filesystem)
+- Cost: $0/month (local dev); ~$200/month projected cloud
+
+---
+
+## 6. Security Architecture
+
+### HIPAA Compliance (DRD Section 7.1)
+
+- **Encryption at rest**: Delta Lake on encrypted filesystem
+- **Encryption in transit**: TLS for all API connections
+- **RBAC**: Unity Catalog ACLs per consumer group
+- **PHI masking**: SSN, drivers license dropped at silver layer
+- **Audit logging**: OpenLineage captures all data access events
+
+### Data Classification
+
+| Level | Examples | Controls |
+|-------|----------|----------|
+| PHI - Confidential | Patient demographics | Encrypted, RBAC, logged |
+| Internal | Encounter counts | RBAC only |
+
+---
+
+## 7. Disaster Recovery
+
+### Backup Strategy
+
+- Delta Lake provides time-travel (30-day retention)
+- Source CSVs are immutable — re-ingestible at any time
+- UC metadata in Docker volume — backup via `docker export`
+
+### RTO/RPO
+
+| Metric | Target | Basis |
+|--------|--------|-------|
+| RPO | 6 hours | DRD SLA: clinical data within 1 hour |
+| RTO | 2 hours | Bronze re-ingest + silver rebuild |
+
+---
+
+## 8. CDC Strategy
+
+### Per-Source Change Detection
+
+| Table | Method | Fallback | Schema Evolution |
+|-------|--------|----------|-----------------|
+| patients | Full snapshot | N/A (small table) | mergeSchema |
+| encounters | Timestamp-based | Full snapshot | mergeSchema |
+| observations | Timestamp-based | Partition reload | mergeSchema |
+| All others | Full snapshot | N/A | mergeSchema |
+
+**Justification**: Synthea is a batch source with no change log.
+Timestamp-based incremental for large tables (encounters, observations)
+because full snapshot is too slow at projected volumes. Small tables
+(<10K rows) use full snapshot for simplicity.
+
+### Schema Evolution
+
+- `mergeSchema = true` for bronze ingestion
+- Silver/Gold: schema changes require model version bump
+
+---
+
+## Decision Log
+
+| # | Decision | Options | Selected | Rationale |
+|---|----------|---------|----------|-----------|
+| 1 | Architecture pattern | Medallion, Lambda, Data Vault | Medallion | Mixed latency |
+| 2 | Processing engine | Spark, DuckDB, dbt | Spark | Team proficiency, Delta Lake |
+| 3 | CDC approach | Full snapshot, timestamp, CDC | Mixed | Volume-dependent per table |
+
+---
+
+## Open Questions
+
+| # | Question | Owner | Due Date | Status |
+|---|----------|-------|----------|--------|
+| 1 | Cloud deployment timeline | CIO | 2026-04-01 | Open |
+
+---
+
+## Approval
+
+| Role | Name | Date | Signature |
+|------|------|------|-----------|
+| Technical Lead | _Pending_ | | |
+"""
+
+MINIMAL_INVALID_HLD = """\
+# High-Level Design: Incomplete
+
+## 1. Design Overview
+
+This HLD is intentionally incomplete for testing.
+"""
+
+EMPTY_SECTIONS_HLD = """\
+# High-Level Design: Empty Sections
+
+| Field | Value |
+|-------|-------|
+| **Version** | 0.1 |
+| **Created** | 2026-03-14 |
+| **Author** | Test |
+| **Status** | Draft |
+| **DRD Reference** | DRD-test.md |
+
+## 1. Design Overview
+
+Test overview.
+
+## 2. Layer Specifications
+
+## 3. Technology Stack
+
+## 4. Integration Points
+
+## 5. Capacity Planning
+
+## 6. Security Architecture
+
+## 7. Disaster Recovery
+
+## 8. CDC Strategy
+"""
+
+PLACEHOLDER_HLD = """\
+# High-Level Design: Placeholder Test
+
+| Field | Value |
+|-------|-------|
+| **Version** | 0.1 |
+| **Created** | 2026-03-14 |
+| **Author** | Test |
+| **Status** | Draft |
+| **DRD Reference** | DRD-test.md |
+
+## 1. Design Overview
+
+[TO BE DETERMINED - requires input from architect]
+
+Medallion architecture selected because DRD specifies mixed latency.
+
+```mermaid
+flowchart LR
+    SRC --> BRZ --> SLV --> GLD
+```
+
+## 2. Layer Specifications
+
+### Bronze Layer
+Raw ingestion of source tables.
+
+### Silver Layer
+Cleansed and conformed data.
+
+### Gold Layer
+Dimensional model.
+
+## 3. Technology Stack
+
+| Component | Technology | Version | Rationale |
+|-----------|-----------|---------|-----------|
+| Processing | Spark | 4.1.1 | Team proficiency |
+| Storage | Delta Lake | 4.1.0 | ACID writes |
+| Metastore | Unity Catalog | 0.4.0 | Catalog management |
+
+## 4. Integration Points
+
+Source: Synthea CSV via file-based ingestion.
+
+## 5. Capacity Planning
+
+Current volume: 5,767 patients, ~5M rows total.
+Growth: 100K patients in 12 months.
+Cost: $0 local, ~$200/month cloud.
+
+## 6. Security Architecture
+
+HIPAA compliance required per DRD Section 7.1.
+PHI fields encrypted at rest.
+
+## 7. Disaster Recovery
+
+Delta Lake time-travel provides 30-day recovery window.
+RTO: 2 hours. RPO: 6 hours.
+
+## 8. CDC Strategy
+
+Full snapshot for small tables. Timestamp-based for large tables.
+Snapshot is acceptable because DRD projects <100K patients initially.
+"""
+
+
+@pytest.fixture
+def valid_hld_file(tmp_path: Path) -> Path:
+    """Create a valid HLD file for testing."""
+    f = tmp_path / "valid-hld.md"
+    f.write_text(VALID_HLD, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def invalid_hld_file(tmp_path: Path) -> Path:
+    """Create a minimal invalid HLD file for testing."""
+    f = tmp_path / "invalid-hld.md"
+    f.write_text(MINIMAL_INVALID_HLD, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def empty_hld_sections_file(tmp_path: Path) -> Path:
+    """Create an HLD with empty required sections."""
+    f = tmp_path / "empty-sections-hld.md"
+    f.write_text(EMPTY_SECTIONS_HLD, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def placeholder_hld_file(tmp_path: Path) -> Path:
+    """Create an HLD with placeholder text."""
+    f = tmp_path / "placeholder-hld.md"
+    f.write_text(PLACEHOLDER_HLD, encoding="utf-8")
+    return f
 
 
 @pytest.fixture

@@ -46,7 +46,14 @@ Extract these fields:
 
 ## Step 1: Gather inputs
 
-Read all documents from the input folder (`$ARGUMENTS` or `chapter-4/inputs/drd/`).
+If the user specifies an input folder via `$ARGUMENTS`, read from that folder.
+Otherwise, discover the latest input version:
+
+```bash
+ls -d chapter-4/inputs/drd/v* | sort -V | tail -1
+```
+
+Read all documents from that version folder.
 Look for these four input types:
 
 **Tip**: Use the connection details from Source System Docs to query the live database
@@ -114,18 +121,8 @@ You MUST reject vague or ambiguous answers and ask for specifics:
 ### Confirm readiness
 
 When all sections are COMPLETE, present a summary of gathered requirements organized
-by DRD section, then use `AskUserQuestion` to confirm:
-
-```
-AskUserQuestion: "I've gathered requirements for all DRD sections (summary above).
-Is this complete and accurate? Should I proceed to generate the DRD?"
-
-Options:
-- "Yes, proceed to generate the DRD"
-- "No, I have corrections or additions"
-```
-
-Only proceed to Step 1.7 after user confirms.
+by DRD section, then call `AskUserQuestion` to ask whether the user approves
+proceeding to DRD generation. Only proceed to Step 1.7 after user confirms.
 
 ## Step 1.7: Database Gate (REQUIRED — cannot skip)
 
@@ -145,19 +142,9 @@ ls -la {project_root}/{path} 2>/dev/null || echo "Database not found"
 
 ### If database is missing — STOP
 
-Use the `AskUserQuestion` tool to inform the user and block:
-
-```
-AskUserQuestion: "The source database is not accessible at the expected path.
-I cannot generate a DRD without verifying the actual data — relying on document
-estimates alone would produce unreliable requirements. How would you like to
-resolve this?"
-
-Options:
-- "I'll set up the database now (run make raw-data-copy && make load-raw-data) and come back"
-- "The database is at a different path — let me provide it"
-- "I'll provide a direct database connection or export"
-```
+Call `AskUserQuestion` to inform the user the database is not accessible and
+ask how they want to resolve it (set up the DB, provide a different path, or
+provide a direct connection).
 
 **Keep asking until the database is accessible. Do NOT generate a DRD with unverified data.**
 **Do NOT fall back to document estimates. Do NOT proceed with assumptions.
@@ -251,10 +238,13 @@ responsibility areas:
 
 ## Step 5: Save and validate
 
-Save the output to `chapter-4/outputs/drd/` with naming convention:
-`DRD-{YYYY-MM-DD}-{short-name}-{version}.md`
+Save the output to the latest version folder in `chapter-4/outputs/drd/`:
 
-Where `{version}` is extracted from the input folder path (e.g., `v1` from `inputs/drd/v1`).
+```bash
+LATEST_DRD_DIR=$(ls -d chapter-4/outputs/drd/v* | sort -V | tail -1)
+```
+
+Use naming convention: `DRD-{YYYY-MM-DD}-{short-name}.md`
 
 Then validate:
 

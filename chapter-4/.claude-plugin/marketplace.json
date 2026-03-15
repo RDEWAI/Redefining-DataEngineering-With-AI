@@ -11,6 +11,11 @@
       "name": "ba-plugin",
       "source": "./ba-plugin",
       "description": "Business Analyst Agent for generating, updating, and validating Data Requirements Documents (DRDs)"
+    },
+    {
+      "name": "architect-plugin",
+      "source": "./architect-plugin",
+      "description": "Data Architect Agent for generating, updating, and validating High-Level Design (HLD) documents"
     }
   ]
 }

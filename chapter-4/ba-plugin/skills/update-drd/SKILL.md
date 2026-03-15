@@ -22,8 +22,15 @@ provided by the user.
 
 ## Step 1: Read the existing DRD
 
-Read the DRD file the user specifies (`$ARGUMENTS` or ask which file in
-`chapter-4/outputs/drd/`).
+If the user specifies a DRD path via `$ARGUMENTS`, read that file. Otherwise,
+discover the latest DRD:
+
+```bash
+LATEST_DRD_DIR=$(ls -d chapter-4/outputs/drd/v* | sort -V | tail -1)
+ls -t "$LATEST_DRD_DIR"/DRD-*.md | head -1
+```
+
+Read the most recently modified DRD in the latest version folder.
 
 ## Step 2: Understand the changes and elicit requirements
 
@@ -79,15 +86,9 @@ For every new requirement the user wants to add, verify it ties to a stated
 business objective. If the user says something like "this might be useful later"
 or "just in case," push back:
 
-```
-AskUserQuestion: "This requirement doesn't appear to tie to a documented business
-objective. Adding it would increase scope without clear justification. Should I:"
-
-Options:
-- "Add it — here's the business objective it supports: [explain]"
-- "Skip it — you're right, it's not needed for the current objectives"
-- "Document it as a future consideration in section 6"
-```
+Call `AskUserQuestion` to flag that the requirement doesn't tie to a documented
+business objective and ask whether to add it (with justification), skip it,
+or document it as a future consideration.
 
 ## Step 2.5: Database verification (REQUIRED for sections 2-5 updates)
 
@@ -101,16 +102,8 @@ source data can actually support the new use case.
    ```bash
    ls -la {project_root}/{db_path} 2>/dev/null || echo "Database not found"
    ```
-3. **If the database is missing, STOP.** Use `AskUserQuestion` to inform the user:
-   ```
-   AskUserQuestion: "The source database is not accessible. I cannot verify
-   updates to sections 2-5 without querying the actual data. How would you like
-   to resolve this?"
-
-   Options:
-   - "I'll set up the database now and come back"
-   - "The database is at a different path — let me provide it"
-   ```
+3. **If the database is missing, STOP.** Call `AskUserQuestion` to inform the
+   user the database is not accessible and ask how they want to resolve it.
    **Do NOT offer a "skip verification" option.** The database gate is absolute.
 4. If database is accessible, run actual queries to validate the claimed changes:
    - Verify new tables exist
@@ -129,20 +122,8 @@ Apply the new information to the appropriate DRD sections:
 
 - **Preserve all existing content** that has not changed
 - **Never remove content** without explicit user approval
-- If new information **contradicts** existing content, use `AskUserQuestion` to
-  present both versions and ask which is correct:
-  ```
-  AskUserQuestion: "I found a contradiction between the existing DRD and the
-  new information:
-  - Existing: {existing content}
-  - New: {new content}
-  Which version is correct?"
-
-  Options:
-  - "Use the new information"
-  - "Keep the existing content"
-  - "Both are partially correct — let me clarify"
-  ```
+- If new information **contradicts** existing content, call `AskUserQuestion`
+  presenting both versions and asking which is correct
 - If the update **introduces vague language** where specific language existed,
   flag this and ask the user to provide specifics before accepting the change
 - Mark any newly uncertain items with `[NEEDS VERIFICATION]`
@@ -158,17 +139,9 @@ whether Section 7 needs updating:
 - **New regulations** → Update 7.1 (Applicable Regulations), 7.2 (Data Classification),
   7.3 (Retention), 7.4 (Access Controls), 7.5 (Audit Requirements) as applicable
 
-If the user's update inputs don't address regulatory impact, use `AskUserQuestion`:
-
-```
-AskUserQuestion: "The update adds [new source/consumer/data]. Does this affect
-regulatory or compliance requirements?"
-
-Options:
-- "Yes — here are the compliance changes needed"
-- "No — existing compliance rules cover this"
-- "I'm not sure — let's document it as an open question"
-```
+If the user's update inputs don't address regulatory impact, call
+`AskUserQuestion` to ask whether the new source/consumer/data affects
+regulatory or compliance requirements.
 
 ### Cross-section consistency check
 

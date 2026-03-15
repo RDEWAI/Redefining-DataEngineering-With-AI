@@ -28,8 +28,9 @@ Run the Python validator script on the specified file or all DRDs:
 # Single file
 uv run python chapter-4/ba-plugin/skills/validate-drd/scripts/validate_drd.py $ARGUMENTS
 
-# All DRDs in the output directory
-uv run python chapter-4/ba-plugin/skills/validate-drd/scripts/validate_drd.py --all chapter-4/outputs/drd/
+# All DRDs in the latest version folder
+LATEST_DRD_DIR=$(ls -d chapter-4/outputs/drd/v* | sort -V | tail -1)
+uv run python chapter-4/ba-plugin/skills/validate-drd/scripts/validate_drd.py --all "$LATEST_DRD_DIR"
 ```
 
 ## Step 2: Interpret results
@@ -80,17 +81,8 @@ For each remaining issue, provide:
 2. What is missing or incorrect
 3. A suggested fix in **business-friendly language**
 
-Use `AskUserQuestion` to present the findings and ask the user which WARNINGs
-they want to address:
-
-```
-AskUserQuestion: "Validation found {N} warnings. Which would you like me to fix?"
-
-Options:
-- "Fix all warnings"
-- "Fix only the high-priority ones (SLAs, critical fields)"
-- "Leave warnings as-is — I'll handle them later"
-```
+Call `AskUserQuestion` to ask which warnings the user wants fixed
+(all, high-priority only, or leave for later).
 
 Format the report as a checklist the user can act on:
 

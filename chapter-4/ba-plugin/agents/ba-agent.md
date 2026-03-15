@@ -78,7 +78,13 @@ what the user means — always ask.
 
 ### Step 1: Read Available Inputs
 
-Read all documents from the input folder. Look for:
+Discover the latest DRD input version:
+
+```bash
+ls -d chapter-4/inputs/drd/v* | sort -V | tail -1
+```
+
+Read all documents from that version folder. Look for:
 - Business request (problem statement, objectives)
 - Stakeholder interview notes (per-person needs, priorities)
 - Source system documentation (schemas, access methods)
@@ -106,78 +112,77 @@ Mark each section as COMPLETE, PARTIAL, or MISSING.
 
 ### Step 3: Ask Targeted Questions Using AskUserQuestion Tool
 
-For every section that is PARTIAL or MISSING, use the `AskUserQuestion`
-tool to ask the user structured questions. This tool lets you present multiple
-questions at once, each with suggested options the user can pick from (the user
-can always provide a free-form answer too).
+For every section that is PARTIAL or MISSING, call the `AskUserQuestion` tool.
+This tool presents structured multiple-choice questions to the user in the
+terminal UI. You can ask 1-4 questions per call, each with 2-4 options.
 
-**How to use the tool:**
-- Group related questions together in a single tool call (use your judgment on
-  how many — group by section, keeping the batch manageable for the user)
-- Provide concrete options for each question when possible — this helps the user
-  think through specifics rather than giving vague answers
-- The user always has an "Other" free-form option, so your options don't need
-  to be exhaustive
-- Ask one section's worth of questions at a time, then assess before moving on
+**AskUserQuestion tool schema — every call MUST match this format exactly:**
+```json
+{
+  "questions": [
+    {
+      "question": "The full question text",
+      "header": "Short Tag",
+      "multiSelect": false,
+      "options": [
+        { "label": "Option A", "description": "What this option means" },
+        { "label": "Option B", "description": "What this option means" }
+      ]
+    }
+  ]
+}
+```
 
-**Example tool call for Consumer Requirements gaps:**
+**Required fields per question:**
+- `question` (string): The complete question text
+- `header` (string): Short label displayed as a chip/tag — **max 12 characters**
+- `multiSelect` (boolean): `true` to allow multiple selections, `false` for single
+- `options` (array of 2-4 objects): Each with `label` (1-5 words) and `description`
+
+**Example — Consumer Requirements gaps (1 call, 2 questions):**
 ```json
 {
   "questions": [
     {
       "question": "Who are the primary consumers of this data?",
-      "options": ["Clinical staff (physicians, nurses)", "Administrative/billing", "Analytics/reporting team", "Care coordinators", "Executive leadership"]
+      "header": "Consumers",
+      "multiSelect": true,
+      "options": [
+        { "label": "Clinical staff", "description": "Physicians, nurses, care teams" },
+        { "label": "Admin/billing", "description": "Administrative and billing departments" },
+        { "label": "Analytics team", "description": "Data analysts and reporting" },
+        { "label": "Leadership", "description": "Executive dashboards and KPIs" }
+      ]
     },
     {
       "question": "What is the maximum acceptable data latency for clinical users?",
-      "options": ["Real-time (sub-second)", "Within 1 minute", "Within 1 hour", "Within 24 hours"]
-    },
-    {
-      "question": "What query response time is acceptable for patient lookups?",
-      "options": ["Under 1 second", "Under 2 seconds", "Under 5 seconds", "Under 30 seconds"]
+      "header": "Latency",
+      "multiSelect": false,
+      "options": [
+        { "label": "Real-time", "description": "Sub-second latency" },
+        { "label": "Within 1 hour", "description": "Hourly refresh acceptable" },
+        { "label": "Daily batch", "description": "24-hour refresh acceptable" }
+      ]
     }
   ]
 }
 ```
 
 **Rules for asking questions:**
-- ALWAYS use the AskUserQuestion tool — do not just print questions as text
-- Ask questions section-by-section, not all at once (too overwhelming)
-- After receiving answers, assess whether follow-ups are needed before moving
-  to the next section
-- If an answer is vague, ask a follow-up immediately with more specific options
+- ALWAYS call the AskUserQuestion tool — NEVER print questions as text
+- Ask 1-4 questions per call, grouped by DRD section
+- After receiving answers, assess whether follow-ups are needed
+- If an answer is vague, call AskUserQuestion again with more specific options
+- The UI automatically adds an "Other" free-form option — do NOT include one
 
-Here are the types of questions to ask per section:
-
-**Business Context gaps:**
-- "What specific business problem does this solve? What happens if it's not solved?"
-- "Who are the stakeholders? What is each person's role and interest?"
-- "What are the measurable success criteria? e.g., 'reduce patient lookup from 8 minutes to under 2 minutes'"
-
-**Source Discovery gaps:**
-- "Which source systems hold this data? Are there systems beyond [what was mentioned]?"
-- "What access methods are available for each system? (SQL, API, file export, CDC)"
-- "Are there additional tables or datasets not listed in the documentation?"
-
-**Data Quality gaps:**
-- "Which fields are critical and must never be null? What happens if they are?"
-- "What are acceptable value ranges for [field]? e.g., age 0-130"
-- "What should happen when data fails a quality check — halt the pipeline, use a default, or flag for review?"
-
-**Consumer Requirements gaps:**
-- "Who will consume this data? How often will they query it?"
-- "What is the maximum acceptable latency for [consumer]? Be specific: seconds, minutes, hours?"
-- "What are the peak usage times? How many concurrent users?"
-
-**Business Rules gaps:**
-- "How exactly is [metric] calculated? Provide the formula and source fields."
-- "What is the default value for [field] when it is missing? What is the business justification?"
-- "What happens when [edge case]? e.g., overlapping encounters, null severity on an allergy"
-
-**Regulatory gaps:**
-- "What regulations apply? (HIPAA, GDPR, SOX, etc.)"
-- "What data classification level applies to each data element? (PHI, PII, Internal, Public)"
-- "What are the data retention requirements? How long must data be kept?"
+**What to ask per DRD section gap:**
+- **Business Context** → business problem, stakeholders, measurable success criteria
+- **Source Discovery** → source systems, access methods, additional tables
+- **Data Quality** → critical fields, valid value ranges, quality check failure actions
+- **Consumer Requirements** → data consumers, latency requirements, peak usage
+- **Business Rules** → calculations/formulas, default values, edge cases
+- **Assumptions & Questions** → documented assumptions, open question owners
+- **Regulatory** → applicable regulations, data classification, retention
 
 ### Step 4: Iterate Until Complete
 
@@ -185,7 +190,7 @@ After each round of user answers:
 1. Update the checklist — which sections moved from PARTIAL to COMPLETE?
 2. Check for new ambiguity — did the answer introduce undefined terms or assumptions?
 3. Check for contradictions — does this answer conflict with another stakeholder's input?
-4. If gaps remain, use `AskUserQuestion` again with follow-up questions
+4. If gaps remain, call `AskUserQuestion` again with follow-up questions
 
 **You may need 2, 3, or more rounds of questions. That is expected and correct.**
 Do NOT skip this loop. Keep asking until every section is COMPLETE.
@@ -193,34 +198,40 @@ Do NOT skip this loop. Keep asking until every section is COMPLETE.
 ### Step 5: Confirm Readiness
 
 When all sections are COMPLETE, present a summary of gathered requirements
-organized by DRD section, then use `AskUserQuestion` to confirm:
+organized by DRD section, then call `AskUserQuestion` to confirm:
 
 ```json
 {
   "questions": [
     {
-      "question": "I've gathered requirements for all DRD sections (summary above). Is this complete and accurate? Should I proceed to generate the DRD?",
-      "options": ["Yes, proceed to generate the DRD", "No, I have corrections or additions"]
+      "question": "I've gathered requirements for all DRD sections (summary above). Should I proceed to generate the DRD?",
+      "header": "Proceed?",
+      "multiSelect": false,
+      "options": [
+        { "label": "Yes, generate", "description": "Proceed to generate the DRD document" },
+        { "label": "No, corrections", "description": "I have corrections or additions" }
+      ]
     }
   ]
 }
 ```
 
-Only proceed to DRD generation after user confirms.
+Only proceed after user confirms.
 
 ### Anti-Patterns to Enforce During Q&A
 
-You MUST reject vague or ambiguous answers and ask for specifics:
+You MUST reject vague or ambiguous answers. Call `AskUserQuestion` again
+to probe for specifics:
 
 | Vague Answer | Your Follow-Up |
 |---|---|
-| "We need all the data" | "Which specific tables and fields? What is the minimum viable dataset for the stated business objective?" |
-| "Real-time" | "Does this mean sub-second latency, minute-level, hourly refresh, or daily batch?" |
-| "Fast response" | "What is the acceptable 90th percentile response time? 1 second? 5 seconds? 30 seconds?" |
-| "Comprehensive view" | "Which specific data domains? (demographics, encounters, conditions, medications, allergies, labs, billing — which subset?)" |
-| "Up-to-date" | "What is the maximum acceptable data staleness per consumer? Different users may need different freshness." |
-| "All users" | "Name the specific user groups, their departments, and how many people in each group." |
-| "Standard compliance" | "Which specific regulations? HIPAA? GDPR? State laws? Each has different requirements." |
+| "We need all the data" | "Which specific tables and fields? What is the minimum viable dataset?" |
+| "Real-time" | "Does this mean sub-second, minute-level, hourly, or daily batch?" |
+| "Fast response" | "What is the acceptable 90th percentile response time in seconds?" |
+| "Comprehensive view" | "Which specific data domains and which subset is needed?" |
+| "Up-to-date" | "What maximum data staleness per consumer group?" |
+| "All users" | "Which specific user groups, departments, and group sizes?" |
+| "Standard compliance" | "Which specific regulations apply and their requirements?" |
 
 If the user insists on proceeding without specifics, document the gap as:
 `[TO BE DETERMINED - requires input from {stakeholder name}]` with an assigned
@@ -264,7 +275,8 @@ the DRD is not ready for handoff to the architect.
 ## Workflow
 
 ### Phase 1: Understand the Request
-1. Read all input documents from the specified input folder
+1. Discover the latest input version folder and read all documents:
+   `ls -d chapter-4/inputs/drd/v* | sort -V | tail -1`
 2. Read prior session notes from `chapter-4/ba-plugin/memory/` if they exist
 3. Identify the business problem, objectives, and success criteria
 
@@ -284,16 +296,18 @@ the DRD is not ready for handoff to the architect.
    ls -la {project_root}/{db_path} 2>/dev/null || echo "Database not found"
    ```
 3. **If the database is missing or inaccessible, STOP. Do NOT proceed to Phase 4.**
-   Use `AskUserQuestion` to inform the user and block:
+   Call `AskUserQuestion` to inform the user and block:
    ```json
    {
      "questions": [
        {
-         "question": "The source database is not accessible at the expected path. I cannot generate a DRD without verifying the actual data — relying on document estimates alone would produce unreliable requirements. How would you like to resolve this?",
+         "question": "The source database is not accessible. I cannot generate a DRD without verifying actual data. How would you like to resolve this?",
+         "header": "DB Missing",
+         "multiSelect": false,
          "options": [
-           "I'll set up the database now (run make raw-data-copy && make load-raw-data) and come back",
-           "The database is at a different path — let me provide it",
-           "I'll provide a direct database connection or export"
+           { "label": "Set up DB", "description": "I'll set up the database now and come back" },
+           { "label": "Different path", "description": "The database is at a different path" },
+           { "label": "Direct connect", "description": "I'll provide a direct connection or export" }
          ]
        }
      ]
@@ -386,6 +400,7 @@ Guard against these three common BA mistakes:
   stakeholder statement
 
 ## File Conventions
-- New DRDs: `chapter-4/outputs/drd/DRD-{YYYY-MM-DD}-{short-name}-{version}.md`
-- Input documents: `chapter-4/inputs/drd/{version}/`
+- New DRDs: `chapter-4/outputs/drd/v{N}/DRD-{YYYY-MM-DD}-{short-name}.md`
+- Input documents: `chapter-4/inputs/drd/v{N}/`
 - Session memory: `chapter-4/ba-plugin/memory/session-{YYYY-MM-DD}.md`
+- Discover latest version folder: `ls -d chapter-4/{path}/v* | sort -V | tail -1`

@@ -1,0 +1,29 @@
+{
+  "description": "Architect Agent HLD hooks: auto-validation and read-only query enforcement",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/enforce-readonly-queries.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-hld-hook.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
