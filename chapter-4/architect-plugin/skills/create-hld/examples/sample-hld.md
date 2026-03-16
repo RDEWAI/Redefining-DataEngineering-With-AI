@@ -52,7 +52,35 @@ DRD [§4.4] confirms 1-hour maximum latency for clinical users is acceptable.
 Medications and allergies have sub-minute source sync [DRD §2.2] but Phase 1
 uses hourly batch as a compromise.
 
-### 2.3 Architecture Diagram
+### 2.3 System Context Diagram
+
+```mermaid
+flowchart TB
+    subgraph Consumers["👤 Consumer Groups"]
+        clinical["Clinical Users\n350 users — dashboards, ad-hoc queries"]
+        billing["Billing Staff\n50 users — scheduled reports"]
+        heads["Department Heads\n15 users — executive summaries"]
+    end
+
+    subgraph Platform["Patient 360 Data Platform"]
+        pipeline["Medallion Pipeline\nBronze → Silver → Gold with DQ gates"]
+    end
+
+    subgraph External["External Systems"]
+        ehr["Healthcare EHR\n13 CSV source tables via Synthea"]
+        catalog["Unity Catalog OSS\nSchema registry, access control"]
+        lineage["OpenLineage / Marquez\nColumn-level lineage tracking"]
+    end
+
+    ehr -->|"Full Snapshot CDC\n(Daily / Hourly)"| pipeline
+    pipeline -->|"Gold tables\n< 2s p90, hourly refresh"| clinical
+    pipeline -->|"Billing summary\n< 2s p90, daily refresh"| billing
+    pipeline -->|"Aggregates\ndaily refresh"| heads
+    pipeline -.->|"Register schemas"| catalog
+    pipeline -.->|"Emit lineage events"| lineage
+```
+
+### 2.4 Pipeline Architecture Diagram
 
 ```mermaid
 flowchart TB
@@ -95,7 +123,7 @@ flowchart TB
     META -.->|"Catalog Registration"| Bronze & Silver & Gold
 ```
 
-### 2.4 Key Design Principles
+### 2.5 Key Design Principles
 
 - **Idempotency**: All layers partition by `ds` (YYYY-MM-DD); re-running same `ds` replaces that partition only via `replaceWhere` [infrastructure-constraints.md §2]
 - **Schema enforcement**: All 13 source tables use explicit `StructType` schemas; no schema inference
@@ -315,7 +343,35 @@ catalog. SCD Type 2 in Silver detects changes via SHA-256 hash comparison.
 **Phase 2**: Evaluate Timestamp Watermark when source systems provide reliable
 update timestamps. True sub-minute CDC for medications/allergies deferred.
 
-### 8.2 Recovery Strategy
+### 8.2 Ingestion Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  participant EHR as Healthcare EHR
+  participant ING as Ingestion Service
+  participant BRZ as Bronze Layer
+  participant DQ1 as DQ Gate 1
+  participant SLV as Silver Layer
+  participant DQ2 as DQ Gate 2
+  participant GLD as Gold Layer
+
+  EHR->>ING: Full snapshot CSV extract (daily/hourly)
+  ING->>BRZ: Write raw data + metadata (_ingested_at, _batch_id)
+  BRZ->>DQ1: Schema validation, not-null checks on identity fields
+  alt DQ1 Pass
+    DQ1->>SLV: Type casting, dedup, SCD2 merge, derived fields
+  else DQ1 Fail
+    DQ1-->>BRZ: Quarantine rejected records
+  end
+  SLV->>DQ2: FK checks, business rule validation
+  alt DQ2 Pass
+    DQ2->>GLD: Build denormalized consumer tables
+  else DQ2 Fail
+    DQ2-->>SLV: Flag for review
+  end
+```
+
+### 8.3 Recovery Strategy
 
 | Metric | Target | Justification |
 |--------|--------|---------------|
@@ -323,7 +379,7 @@ update timestamps. True sub-minute CDC for medications/allergies deferred.
 | RPO | 24 hours (last batch) | Daily batch cadence; source EHR is system of record |
 | Production RTO/RPO | [TBD - Phase 2] | Requires decision from Jennifer Martinez (Compliance) per DRD §7.6 |
 
-### 8.3 Backup Approach
+### 8.4 Backup Approach
 
 Source CSVs are immutable and re-ingestible at any time. Delta Lake time travel
 provides 7-day rollback window. Unity Catalog and Marquez metadata stored in

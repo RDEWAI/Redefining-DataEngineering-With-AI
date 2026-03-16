@@ -520,18 +520,32 @@ def check_placeholders(content: str) -> list[ValidationResult]:
 
 
 def check_diagrams(content: str) -> list[ValidationResult]:
-    """Check if architecture diagram (mermaid block) is present."""
+    """Check that at least 2 Mermaid diagram blocks are present."""
     results: list[ValidationResult] = []
-    has_mermaid = bool(re.search(r"```mermaid", content))
-    if not has_mermaid:
+    mermaid_count = len(re.findall(r"```mermaid", content))
+    if mermaid_count == 0:
         results.append(
             ValidationResult(
-                level=ValidationLevel.INFO,
+                level=ValidationLevel.WARNING,
                 section="2. Architecture Overview",
-                message="No Mermaid architecture diagram found.",
+                message="No Mermaid diagrams found.",
                 suggestion=(
-                    "Add a ```mermaid flowchart showing the conceptual data flow"
-                    " from sources through layers to consumers."
+                    "Add at least a system context (flowchart), pipeline"
+                    " architecture (flowchart), and ingestion sequence diagram."
+                ),
+            )
+        )
+    elif mermaid_count < 2:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section="2. Architecture Overview",
+                message=(
+                    f"Only {mermaid_count} Mermaid diagram(s) found;" " at least 2 recommended."
+                ),
+                suggestion=(
+                    "Add a system context diagram (flowchart) and an"
+                    " ingestion sequence diagram (sequenceDiagram)."
                 ),
             )
         )
@@ -627,10 +641,10 @@ def validate_hld(file_path: Path) -> ValidationReport:
     report.results.extend(check_security_compliance(sections))
     report.results.extend(check_pattern_justification(sections))
     report.results.extend(check_decision_documentation(content))
+    report.results.extend(check_diagrams(content))
 
     # INFO checks
     report.results.extend(check_placeholders(content))
-    report.results.extend(check_diagrams(content))
     report.results.extend(check_cost_estimates(sections))
     report.results.extend(check_downstream_references(content))
 

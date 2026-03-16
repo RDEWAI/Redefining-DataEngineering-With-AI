@@ -13,7 +13,7 @@
 
 ## 1. Executive Summary
 
-The Patient 360 pipeline consolidates 13 Synthea healthcare source tables into a unified patient view serving 415+ clinical, billing, and administrative users across five role groups. The architecture uses a Medallion pattern (Bronze, Silver, Gold) with Delta Lake for ACID guarantees and SCD Type 2 tracking on patient dimensions. This design satisfies the DRD's 1-hour clinical latency SLA [DRD 4.4] and 2-second search response target [DRD 4.3] while keeping implementation within the team's demonstrated proficiency in batch Spark pipelines and Delta Lake MERGE INTO [team-capabilities.md 2]. Phase 1 runs entirely on local Docker infrastructure with $0 cloud cost; production migration is deferred to Phase 2.
+The Patient 360 pipeline consolidates 13 Synthea healthcare source tables (13.5M total rows verified, 636 MB raw) into a unified patient view serving 415+ clinical, billing, and administrative users across five role groups. The architecture uses a Medallion pattern (Bronze, Silver, Gold) with Delta Lake for ACID guarantees and SCD Type 2 tracking on patient dimensions. All tables use hourly batch ingestion via Full Snapshot CDC, satisfying the DRD's 1-hour clinical latency SLA [DRD SS4.4] and 2-second query response target [DRD SS4.3] while keeping implementation within the team's demonstrated proficiency in batch Spark pipelines and Delta Lake MERGE INTO [team-capabilities.md SS2]. Pipeline observability combines Spark Expectations for data quality enforcement, OpenLineage/Marquez for lineage tracking, and Grafana for pipeline metrics dashboards.
 
 ---
 
@@ -23,69 +23,101 @@ The Patient 360 pipeline consolidates 13 Synthea healthcare source tables into a
 
 **Pattern**: Medallion Architecture (Bronze, Silver, Gold)
 
-**Justification**: The DRD [4.4] requires a maximum of 1-hour latency for clinical users and 24-hour latency for billing and reporting consumers. The team has demonstrated high proficiency in Medallion patterns, Delta Lake MERGE INTO, and SCD Type 2 [team-capabilities.md 2], making Medallion the lowest-risk, highest-velocity choice. The 5,767-patient dataset with approximately 6.9M total rows [DRD 2.3] is well within local-mode Spark capacity and does not justify a streaming architecture.
+**Justification**: The DRD [SS4.4] requires a maximum of 1-hour latency for clinical users and 24-hour latency for billing/reporting consumers. The team has demonstrated high proficiency in Medallion patterns, Delta Lake MERGE INTO, and SCD Type 2 [team-capabilities.md SS2] -- making Medallion the lowest-risk, highest-velocity choice. The 5,767-patient dataset with 13.5M total rows [DRD SS2.3, verified against source database] is well within local-mode Spark capacity and does not justify a streaming architecture. The team is Not Experienced in Streaming [team-capabilities.md SS2], ruling out Lambda and Kappa patterns without an upskilling investment.
 
 ### 2.2 Alternatives Considered
 
 | Option | Description | Why Not Selected |
 |--------|-------------|------------------|
 | Medallion (Bronze/Silver/Gold) | 3-layer batch pipeline with Delta Lake | **Selected** -- team proficient, satisfies all DRD SLAs |
-| Lambda Architecture | Dual batch + streaming paths | Over-engineered: DRD requires only 1-hour latency, not sub-minute; team has no streaming experience [team-capabilities.md 2] |
-| Kappa Architecture | Streaming-only with Kafka/Flink reprocessing | Requires infrastructure not in technology catalog [technology-catalog.md]; team not experienced in streaming |
-| Data Vault | Hub-satellite modeling with surrogate keys | Team awareness-level only; longer delivery timeline; no audit-trail requirement that mandates Data Vault |
+| Lambda Architecture | Dual batch + streaming paths for mixed latency | Over-engineered: DRD requires only 1-hour latency [SS4.4], not sub-minute; team has no streaming experience [team-capabilities.md SS2] |
+| Kappa Architecture | Streaming-only with Kafka/Flink reprocessing | Requires Kafka/Flink infrastructure not in technology catalog [technology-catalog.md]; team gap in streaming |
+| Data Vault | Hub-satellite modeling with surrogate keys | Team has no practical experience; longer development timeline; no audit-trail requirement in DRD that mandates Data Vault's overhead |
 
-**Trade-off**: Medallion batch cannot achieve sub-minute data freshness. The DRD [4.4] confirms 1-hour maximum latency for clinical users is acceptable. Medications and allergies have sub-minute source sync [DRD 2.2] but Phase 1 uses hourly batch as a compromise; true sub-minute CDC is deferred to Phase 2.
+**Trade-off**: Medallion batch cannot achieve sub-minute data freshness. The DRD [SS2.2] notes sub-minute source sync for medications and allergies, but the physician latency SLA [SS4.4] accepts 1-hour maximum. Hourly batch for all tables is the Phase 1 compromise accepted by the user.
 
-### 2.3 Architecture Diagram
+### 2.3 System Context Diagram
+
+```mermaid
+flowchart TB
+    subgraph Consumers["Consumer Groups"]
+        clinical["Clinical Users\n350 users\nDashboards, ad-hoc queries"]
+        billing["Billing Staff\n50 users\nScheduled reports"]
+        heads["Department Heads\n15 users\nExecutive summaries"]
+    end
+
+    subgraph Platform["Patient 360 Data Platform"]
+        pipeline["Medallion Pipeline\nBronze - Silver - Gold\nDQ gates between layers"]
+    end
+
+    subgraph External["External Systems"]
+        ehr["Synthea Healthcare EHR\n13 source tables\nDuckDB read-only"]
+        catalog["Unity Catalog OSS\nSchema registry"]
+        lineage["OpenLineage / Marquez\nLineage tracking"]
+        grafana["Grafana\nPipeline metrics dashboards"]
+    end
+
+    ehr -->|"Full Snapshot CDC\nHourly batch"| pipeline
+    pipeline -->|"Gold tables\n< 2s p90, hourly refresh"| clinical
+    pipeline -->|"Billing summary\n< 2s p90, daily refresh"| billing
+    pipeline -->|"Aggregates\ndaily refresh"| heads
+    pipeline -.->|"Register schemas"| catalog
+    pipeline -.->|"Emit lineage events"| lineage
+    pipeline -.->|"Pipeline metrics"| grafana
+```
+
+### 2.4 Pipeline Architecture Diagram
 
 ```mermaid
 flowchart TB
     subgraph Sources["Source Systems"]
-        EHR["Healthcare EHR\n(13 CSV source tables)"]
+        EHR["Synthea Healthcare EHR\n13 source tables"]
     end
 
     subgraph Platform["Data Platform"]
         subgraph Bronze["Bronze Layer"]
-            B["Schema enforcement\nPartition tagging (ds)\nNo transformations"]
+            B["Schema enforcement\nPartition tagging ds\nNo transformations"]
         end
 
-        DQ1{{"DQ Gate\n(not-null, type checks)"}}
+        DQ1{{"DQ Gate 1\nNot-null, type checks\nSpark Expectations"}}
 
         subgraph Silver["Silver Layer"]
             S["SCD Type 2 dimensions\nFact normalization\nDerived fields\nReferential integrity"]
         end
 
-        DQ2{{"DQ Gate\n(FK checks, business rules)"}}
+        DQ2{{"DQ Gate 2\nFK checks, business rules\nSpark Expectations"}}
 
         subgraph Gold["Gold Layer"]
-            G["Denormalized views\nRole-based access\nSLA-optimized queries"]
+            G["Denormalized consumer tables\nRole-based access\nSLA-optimized queries"]
         end
 
-        META["Unity Catalog OSS\n(Catalog/Schema Registry)"]
-        LIN["OpenLineage / Marquez\n(Lineage Tracking)"]
+        META["Unity Catalog OSS\nCatalog and Schema Registry"]
+        LIN["OpenLineage / Marquez\nLineage Tracking"]
+        MON["Grafana\nPipeline Metrics"]
     end
 
     subgraph Consumers["Consumer Groups"]
-        Clinical["Clinical Users\n(350 users)\n< 2s p90, hourly refresh"]
-        Billing["Billing Staff\n(50 users)\n< 2s p90, daily refresh"]
-        DeptHeads["Department Heads\n(15 users)\naggregates only"]
+        Clinical["Clinical Users 350\n< 2s p90, hourly refresh"]
+        Billing["Billing Staff 50\n< 2s p90, daily refresh"]
+        DeptHeads["Department Heads 15\nAggregates only"]
     end
 
-    EHR -->|"Full Snapshot CDC\n(Daily/Hourly)"| Bronze
+    EHR -->|"Full Snapshot CDC\nHourly batch"| Bronze
     Bronze --> DQ1 --> Silver
     Silver --> DQ2 --> Gold
     Gold --> Clinical & Billing & DeptHeads
     Bronze & Silver & Gold -.-> LIN
     META -.->|"Catalog Registration"| Bronze & Silver & Gold
+    Bronze & Silver & Gold -.->|"Job metrics"| MON
 ```
 
-### 2.4 Key Design Principles
+### 2.5 Key Design Principles
 
-- **Idempotency**: All layers partition by `ds` (YYYY-MM-DD); re-running the same `ds` replaces that partition only via `replaceWhere` [infrastructure-constraints.md 2]
-- **Schema enforcement**: All 13 source tables use explicit `StructType` schemas at Bronze ingestion; no schema inference
-- **Traceability**: Every pipeline job emits OpenLineage events to Marquez; lineage graph visible across all layers
-- **Separation of concerns**: Bronze = raw copy; Silver = conformed with SCD2; Gold = business-ready aggregations
-- **Read-only source**: Source database accessed via `-readonly` flag only; system is read-only per DRD [1.5]
+- **Idempotency**: All layers partition by `ds` (YYYY-MM-DD); re-running the same `ds` replaces that partition only via `replaceWhere` [infrastructure-constraints.md SS2]
+- **Schema enforcement**: All 13 source tables use explicit `StructType` schemas; no schema inference at Bronze [team-capabilities.md SS2]
+- **Traceability**: Every pipeline job emits OpenLineage events to Marquez; lineage graph visible across all layers [DRD SS7.5]
+- **Separation of concerns**: Bronze = raw immutable copy; Silver = conformed with SCD2 and derived fields; Gold = consumer-ready aggregations
+- **Read-only source access**: Source database accessed via `-readonly` flag only; system is read-only by design [DRD SS1.5]
 
 ---
 
@@ -93,48 +125,51 @@ flowchart TB
 
 ### 3.1 Layer Strategy
 
-**Bronze Layer**: Preserves source data exactly as received from Synthea CSVs. No transformations -- only type casting, schema enforcement, and partition tagging with the `ds` load date column. Serves as the immutable audit record. All 13 Phase 1 tables land here with idempotent partition replacement per `ds` date [DRD 2.2].
+**Bronze Layer**
 
-**Silver Layer**: Applies SCD Type 2 to dimension tables (patients, providers, payers, organizations) for historical tracking using SHA-256 change detection via Delta Lake MERGE INTO. Fact tables (encounters, conditions, medications, observations, allergies, claims, immunizations, careplans, procedures) use insert-only pattern with partition overwrite. Derived fields computed here: `calculated_age`, `medication_status`, `is_30_day_readmission`, `total_visit_cost` [DRD 5.2]. Referential integrity enforced across all child-parent relationships [DRD 3.3].
+Preserves source data exactly as received from the Synthea EHR. No business transformations -- only type casting, schema enforcement, and partition tagging with load metadata (`_ingested_at`, `_batch_id`, `_source_file`). Serves as the immutable audit record. All 13 Phase 1 tables land here with idempotent partition replacement per `ds` date [DRD SS2.2]. Tables deferred to Phase 2 (claims_transactions, payer_transitions, devices, supplies, imaging_studies) are excluded [DRD SS2.2].
 
-**Gold Layer**: Produces three denormalized, consumer-specific aggregation tables aligned to the DRD's consumer groups [DRD 4.1]:
+**Silver Layer**
 
-- **patient_summary**: Clinical demographics, active conditions, active medications, allergies, recent encounters. Serves physicians (120), nurses (200), and care coordinators (30) [DRD 4.2].
-- **patient_clinical_history**: Full encounter timeline with conditions, procedures, observations, immunizations, and careplans. Serves physicians and nurses for point-of-care lookups [DRD 4.2].
-- **patient_billing_summary**: Encounter costs, claims, payment tracking, and readmission flags. Serves billing staff (50) exclusively [DRD 5.5].
+Applies business logic and data conformance. SCD Type 2 applied to dimension tables (patients, providers, payers, organizations) for historical tracking using SHA-256 change detection and Delta MERGE INTO [team-capabilities.md SS2]. Fact tables (encounters, conditions, medications, observations, allergies, claims, immunizations, careplans, procedures) use insert-only pattern with partition overwrite. Derived fields computed here: `calculated_age`, `medication_status`, `is_30_day_readmission`, `total_visit_cost` [DRD SS5.2]. Referential integrity enforced per DRD [SS3.3]. Default values applied: NULL costs treated as zero [DRD SS5.1], NULL allergy severity set to "Unknown" [DRD SS5.1].
 
-Optimized for sub-2-second query response at 90th percentile [DRD 4.3].
+**Gold Layer**
+
+Produces three denormalized, consumer-specific tables aligned to the DRD's consumer groups [SS4.1]:
+
+1. **patient_summary** -- Clinical users (physicians, nurses, care coordinators): demographics, active conditions, active medications, allergies (never suppressed), recent encounters. Serves the 2-second search response SLA [DRD SS4.3].
+2. **patient_clinical_history** -- Physicians and nurses: full encounter history, observations, procedures, immunizations, careplans. Supports pre-appointment review use case [DRD SS4.2].
+3. **patient_billing_summary** -- Billing staff only: encounter costs, claims, total_visit_cost. Cost fields hidden from non-billing roles [DRD SS5.5].
 
 > Detailed table inventories, column schemas, and per-table write strategies are documented in the **Data Model Specification (DMS)**.
 
 ### 3.2 Data Domain Map
 
-**Clinical domain** (patients, encounters, conditions, medications, observations, allergies, immunizations, procedures, careplans) flows through all three layers. This is the core domain serving the Patient 360 use case, representing the largest data volume at approximately 6.3M rows across 9 tables.
+**Clinical domain** (patients, encounters, conditions, medications, observations, allergies, immunizations, procedures, careplans) flows through all three layers. This is the core domain serving the Patient 360 search use case [DRD SS1.1].
 
-**Reference domain** (organizations, providers, payers) lands in Bronze and becomes SCD Type 2 dimensions in Silver. These are slowly changing reference tables (2,170 total rows) supporting foreign key relationships and providing context enrichment.
+**Reference domain** (organizations, providers, payers) lands in Bronze and becomes SCD Type 2 dimensions in Silver. These are slowly changing reference tables (1,080 orgs, 1,080 providers, 10 payers) supporting FK relationships [DRD SS3.3].
 
-**Financial domain** (claims) flows Bronze, Silver, Gold billing summary. Contains 630,668 rows and is restricted to billing staff per DRD [5.5]. Cost columns are hidden from all non-billing roles [DRD 5.5].
+**Financial domain** (claims) flows Bronze to Silver to Gold billing summary. Restricted to billing staff role per DRD [SS5.5]. Cost fields hidden from clinical views.
 
 ### 3.3 SCD Strategy
 
 | Dimension Type | SCD Approach | Rationale |
 |----------------|-------------|-----------|
-| Patient demographics | SCD Type 2 | Track address, name, and insurance changes over time for clinical accuracy and patient safety [DRD 1.2] |
-| Provider attributes | SCD Type 2 | Track specialty and organization changes to maintain historical encounter attribution |
-| Payer information | SCD Type 2 | Track plan changes for accurate billing reconciliation and claims history [DRD 4.2] |
-| Organization data | SCD Type 2 | Track organizational restructuring and facility changes |
-
-All SCD Type 2 implementations use SHA-256 hash comparison on mutable columns to detect changes, with `effective_start_date`, `effective_end_date`, and `is_current` flags managed by Delta Lake MERGE INTO.
+| Patient demographics (5,767 rows) | SCD Type 2 | Track address, name, and insurance changes over time for clinical accuracy [DRD SS1.2]; team proficient with Delta MERGE INTO [team-capabilities.md SS2] |
+| Provider attributes (1,080 rows) | SCD Type 2 | Track specialty and organization changes for referential accuracy |
+| Payer information (10 rows) | SCD Type 2 | Track plan and coverage changes for billing accuracy |
+| Organization data (1,080 rows) | SCD Type 2 | Track organizational restructuring for reporting |
+| Fact tables (encounters, conditions, etc.) | Insert-only with partition overwrite | Immutable event records; no history tracking needed -- partition by `ds` for idempotent reruns [infrastructure-constraints.md SS2] |
 
 ### 3.4 Data Quality Strategy
 
-**Bronze gate**: Schema validation (all expected columns present, data types match StructType definitions), not-null checks on identity fields (`patients.id`, `encounters.patient`) [DRD 3.1], valid range checks on dates (no future birthdates, no future encounter dates) [DRD 3.2]. Actions: `fail` pipeline for identity field violations, `drop` rows with invalid date ranges, `warn` for optional field anomalies.
+Data quality is enforced at layer boundaries using Spark Expectations [technology-catalog.md SS5] with YAML rule definitions per table.
 
-**Silver gate**: Referential integrity enforcement across all 12 FK relationships defined in DRD [3.3] (encounters to patients, conditions to encounters, etc.). Null tolerance enforcement per DRD [3.4]: 0% for patient name/DOB, 0% for allergy description, 60% threshold for allergy severity. Business rule validation for derived fields (`calculated_age` must be non-negative, `total_visit_cost` must be non-negative). Duplicate detection on patients using SSN + DOB + name with less than 1% tolerance [DRD 3.4].
+**Bronze gate**: Schema validation (all expected columns present, data types match StructType definition), not-null checks on identity fields (patient `id`), valid range checks on dates (no future dates for birthdate, encounter start/stop) [DRD SS3.2]. Actions: `fail` for identity fields, `drop` for invalid date ranges, `ignore` (log only) for optional fields [DRD SS3.1].
 
-**Gold gate**: Consumer-facing assertions: `patient_id NOT NULL`, `full_name NOT NULL`, allergy arrays never suppressed (even with NULL severity -- display as "Unknown") [DRD 5.4]. Cost fields present in billing summary but absent from clinical tables [DRD 5.5]. Deceased flag prominently available when applicable [DRD 5.4].
+**Silver gate**: Referential integrity validation (FK checks per DRD [SS3.3] -- encounters.patient must exist in patients.id, conditions.encounter must exist in encounters.id, etc.). Null tolerance enforcement per DRD [SS3.4]: 0% for patient name/DOB, 0% for allergy description, 60% ceiling for allergy severity. Business rule validation on derived fields (calculated_age >= 0, total_visit_cost >= 0). Actions: `drop` for RI violations, `fail` if null tolerance thresholds exceeded.
 
-All DQ rules authored as YAML using Spark Expectations [technology-catalog.md 5], organized by layer in `expectations/<layer>/` directories.
+**Gold gate**: Column-level assertions on consumer-facing fields: `patient_id NOT NULL`, `full_name NOT NULL`, allergy arrays never suppressed (allergies with NULL severity displayed as "Unknown") [DRD SS5.4]. Aggregate assertion: all 5,767 patients present in patient_summary [DRD SS4.3 -- 100% data completeness SLA].
 
 ---
 
@@ -142,31 +177,31 @@ All DQ rules authored as YAML using Spark Expectations [technology-catalog.md 5]
 
 | Component | Selected Tool | Why |
 |-----------|--------------|-----|
-| Processing Engine | Apache Spark (PySpark) | Team high proficiency [team-capabilities.md 1, 2]; handles 4.4M-row observations table in local mode; native Delta Lake integration |
-| Table Format | Delta Lake | ACID writes, time travel, MERGE INTO for SCD2; mandated by infrastructure constraints [infrastructure-constraints.md 2]; team proficient |
-| Metastore | Unity Catalog OSS | Catalog/schema hierarchy (`spark_catalog.bronze.patients`); REST API for consumer access; approved in technology catalog [technology-catalog.md 2] |
-| Lineage | OpenLineage + Marquez | HIPAA audit trail requirement [DRD 7.5]; captures Bronze to Silver to Gold lineage per job; approved in technology catalog [technology-catalog.md 3] |
-| Data Quality | Spark Expectations | Rule-based DQ enforcement at each layer boundary; YAML rule definitions for maintainability; approved in technology catalog [technology-catalog.md 5] |
-| Language | Python (PySpark) | Team high proficiency [team-capabilities.md 1]; pytest ecosystem for pipeline testing; UV package management |
-| Containerization | Docker + Docker Compose | All services (UC, Marquez, PostgreSQL, Spark) containerized; team proficient [team-capabilities.md 3] |
-| Orchestration | Airflow | Team proficient [team-capabilities.md 3]; manages Bronze to Silver to Gold dependency chain; supports hourly and daily schedules |
+| Processing Engine | Apache Spark (PySpark) | Team high proficiency [team-capabilities.md SS1]; handles 4.4M-row observations table in local mode; Delta Lake integration native [technology-catalog.md SS1] |
+| Table Format | Delta Lake | ACID writes, time travel for rollback, MERGE INTO for SCD2; mandated by infrastructure constraints [infrastructure-constraints.md SS2] |
+| Metastore | Unity Catalog OSS | Catalog/schema hierarchy for table registration; REST API for consumer access [technology-catalog.md SS2] |
+| Lineage | OpenLineage + Marquez | HIPAA audit trail support [DRD SS7.5]; captures Bronze to Silver to Gold job-level lineage [technology-catalog.md SS3] |
+| Data Quality | Spark Expectations | YAML rule-based DQ enforcement at each layer boundary; row_dq, agg_dq, and query_dq rule types [technology-catalog.md SS5] |
+| Pipeline Metrics | Grafana | Dashboard visualization for pipeline runtime, throughput, and error rates; complements Marquez lineage with operational monitoring |
+| Containerization | Docker + Docker Compose | All services (Spark, UC, Marquez, PostgreSQL, Grafana) in containers; local dev environment [technology-catalog.md SS4] |
+| Language | Python (PySpark) | Team high proficiency [team-capabilities.md SS1]; pytest ecosystem for testing [team-capabilities.md SS4] |
 
 > Detailed technology versions, JAR coordinates, and deployment configurations belong in the **Low-Level Design (LLD)** document.
 
 ### 4.1 Key Compatibility Constraints
 
-- Spark 4.x requires Scala 2.13 JARs and Java 11 or 17 [infrastructure-constraints.md 1]
-- UC OSS catalog name must be `spark_catalog` -- Spark's default; cannot use arbitrary catalog names [infrastructure-constraints.md 5]
-- OpenLineage port remapped to 5001 on macOS host due to AirPlay conflict [infrastructure-constraints.md 3]
-- UC bootstrap script must run once after `docker compose up` before first pipeline execution [infrastructure-constraints.md 5]
-- All services run inside Docker containers on a single host -- no cluster mode [infrastructure-constraints.md 1]
+- Spark 4.x requires Scala 2.13 JARs and Java 11 or 17 [infrastructure-constraints.md SS1]
+- UC OSS catalog name must be `spark_catalog` -- Spark's default; arbitrary catalog names require additional configuration [infrastructure-constraints.md SS5]
+- OpenLineage port remapped to 5001 on macOS due to AirPlay conflict [infrastructure-constraints.md SS3]
+- UC init script must run once after `docker compose up` before first pipeline execution [infrastructure-constraints.md SS5]
+- Grafana is a new addition not currently in the technology catalog -- requires team evaluation and catalog update
 
 ### 4.2 Technology Trade-offs
 
-- **Delta Lake vendor lock-in**: Acceptable for local dev; Iceberg migration path exists if multi-engine portability is needed in production. Infrastructure constraints mandate Delta Lake exclusively [infrastructure-constraints.md 2].
-- **UC OSS 0.4.0 limitations**: No column-level lineage REST API; column lineage requires Databricks UC or DataHub -- deferred to Phase 2 [Open Question 5]
-- **Local Spark mode**: Sufficient for 6.9M rows; move to cluster mode if dataset grows to 10x current volume (approximately 60K patients)
-- **Marquez `latest` tag**: Non-deterministic builds; should pin to specific version for production reproducibility [infrastructure-constraints.md 8]
+- **Delta Lake vendor lock-in**: Acceptable for local dev; Iceberg migration path exists if multi-engine portability needed in production. Infrastructure constraints mandate Delta exclusively [infrastructure-constraints.md SS2]
+- **UC OSS 0.4.0 limitations**: No column-level lineage REST API; requires Databricks UC or DataHub for column lineage -- deferred to Phase 2 [infrastructure-constraints.md SS8]
+- **Local Spark mode**: Sufficient for 13.5M total rows; cluster mode needed if dataset grows beyond 10x current volume
+- **Grafana addition**: Not in current technology catalog; requires team evaluation. Team is Familiar with pre-commit hooks and Docker but Grafana proficiency is unverified [team-capabilities.md SS3]
 
 ---
 
@@ -176,23 +211,27 @@ All DQ rules authored as YAML using Spark Expectations [technology-catalog.md 5]
 
 | Source | Type | Access Pattern | Tables Consumed |
 |--------|------|---------------|-----------------|
-| Synthea Healthcare EHR | DuckDB database (CSV-backed) | Read-only SQL for validation; CSV file read for Spark ingestion | 13 Phase 1 tables: patients, encounters, conditions, medications, observations, allergies, immunizations, procedures, claims, careplans, organizations, providers, payers [DRD 2.2] |
+| Synthea Healthcare EHR | DuckDB database (636 MB verified) | Read-only SQL for validation; CSV file read for ingestion [DRD SS2.1] | 13 Phase 1 tables: patients, encounters, conditions, medications, observations, allergies, immunizations, procedures, claims, careplans, organizations, providers, payers |
 
 ### 5.2 Consumer Access Pattern
 
 | Consumer Group | Access Method | Gold Tables | SLA |
 |---------------|--------------|-------------|-----|
-| Physicians (120) | Unity Catalog REST API | patient_summary, patient_clinical_history | < 2s at p90, hourly refresh [DRD 4.3, 4.4] |
-| Nurses (200) | Unity Catalog REST API | patient_summary, patient_clinical_history | < 2s at p90, hourly refresh [DRD 4.3, 4.4] |
-| Care Coordinators (30) | Unity Catalog REST API | patient_summary | < 2s at p90, daily refresh [DRD 4.3, 4.4] |
-| Billing Staff (50) | Unity Catalog REST API | patient_billing_summary | < 2s at p90, daily refresh [DRD 4.3, 4.4] |
-| Department Heads (15) | Unity Catalog REST API | patient_summary (aggregates only) | < 2s at p90, daily refresh [DRD 4.3, 4.4] |
+| Physicians (120) | Unity Catalog REST API | patient_summary, patient_clinical_history | < 2s at p90 [DRD SS4.3], hourly refresh [DRD SS4.4] |
+| Nurses (200) | Unity Catalog REST API | patient_summary, patient_clinical_history | < 2s at p90 [DRD SS4.3], hourly refresh [DRD SS4.4] |
+| Care Coordinators (30) | Unity Catalog REST API | patient_summary | < 2s at p90 [DRD SS4.3], daily refresh [DRD SS4.4] |
+| Billing Staff (50) | Unity Catalog REST API | patient_billing_summary | < 2s at p90 [DRD SS4.3], daily refresh [DRD SS4.4] |
+| Department Heads (15) | Unity Catalog REST API | patient_summary (aggregates) | < 2s at p90 [DRD SS4.3], daily refresh [DRD SS4.4] |
 
 ### 5.3 Observability Strategy
 
-Every pipeline job emits OpenLineage events capturing job-level lineage (input datasets to output datasets). The Marquez backend stores these events and provides a web UI for visualizing the full Bronze to Silver to Gold lineage graph. Spark Expectations DQ results are logged per layer with pass/fail/warn counts, enabling data engineers to identify quality degradation across pipeline runs.
+Pipeline observability uses three complementary tools:
 
-Access logging for HIPAA compliance [DRD 7.5] is handled at the application layer in Phase 1, logging user ID, timestamp, patient ID, and action type. Full audit infrastructure is deferred to Phase 2.
+1. **OpenLineage + Marquez** [technology-catalog.md SS3]: Every pipeline job emits lineage events capturing input/output dataset relationships. The Marquez web UI provides a visual Bronze to Silver to Gold lineage graph. Supports HIPAA audit trail requirements [DRD SS7.5].
+
+2. **Spark Expectations** [technology-catalog.md SS5]: DQ results logged per layer with pass/fail/warn counts. Rule definitions in YAML enable version-controlled quality gates. Failed records quarantined with rejection reasons.
+
+3. **Grafana**: Pipeline metrics dashboards showing job runtime, throughput (rows/second), error rates, and DQ pass rates. Alert rules trigger notifications when pipeline runtime exceeds 30 minutes or DQ failure rates exceed thresholds.
 
 ---
 
@@ -200,33 +239,36 @@ Access logging for HIPAA compliance [DRD 7.5] is handled at the application laye
 
 ### 6.1 Current Scale
 
-Total dataset: approximately 6.9M rows across 13 Phase 1 tables. Database size: 636 MB raw. Largest table: observations at 4,366,447 rows. Patient count: 5,767. All volumes verified against the source database on 2026-03-16 and match DRD [2.3] exactly. Estimated Delta Lake storage: approximately 3.8 GB (Delta compression plus metadata overhead versus raw CSV).
+Total dataset: 13.5M rows across 18 tables (636 MB raw CSV, verified against source database on 2026-03-16). Of these, 13 tables (7.9M rows) are in Phase 1 scope; 5 tables (5.6M rows) are deferred to Phase 2 [DRD SS2.2]. Largest Phase 1 table: observations at 4,366,447 rows. Patient count: 5,767. Estimated Delta storage: approximately 4 GB (Bronze + Silver + Gold combined, accounting for Delta overhead and SCD2 versioning). Estimated full pipeline runtime: 15-20 minutes on local Spark (`local[*]`, 4 GB driver memory).
 
 ### 6.2 Growth Model
 
-| Metric | Current | Year 1 | Year 3 | Assumption |
+| Metric | Current (Verified) | Year 1 (5-10%) | Year 3 (5-10% compounded) | Assumption |
 |--------|---------|--------|--------|------------|
-| Patient count | 5,767 | ~6,000 | ~6,500 | ~200 new patients/year (~3.5% annual growth) |
-| Total rows (all tables) | ~6.9M | ~7.1M | ~7.6M | Linear growth proportional to patient count |
-| Storage (Delta) | ~3.8 GB | ~4.2 GB | ~5.0 GB | Delta compression approximately 30% overhead vs CSV |
-| Pipeline runtime (full) | ~15 min | ~16 min | ~18 min | Linear growth with row count on local Spark |
-| Concurrent users | 415 | ~450 | ~500 | Proportional to staffing growth |
-
-**Growth assumptions**: Patient growth based on typical single-facility healthcare provider intake rates. Observations per patient ratio (~757) assumed stable. Growth projections are conservative; re-evaluate at 10x volume threshold.
+| Patient count | 5,767 | 6,050-6,340 | 6,670-7,670 | Low growth: stable patient population with modest new registrations [user decision] |
+| Phase 1 rows (all tables) | 7.9M | 8.3M-8.7M | 9.1M-10.5M | Linear growth proportional to patient count |
+| Observations (largest table) | 4.37M | 4.59M-4.81M | 5.05M-5.81M | ~757 observations per patient [DRD SS2.3] |
+| Delta storage (estimated) | ~4 GB | ~4.4-4.8 GB | ~5.2-6.4 GB | Delta compression plus SCD2 version overhead |
+| Pipeline runtime (full) | ~15-20 min | ~17-22 min | ~20-27 min | Linear growth with row count on local Spark |
 
 ### 6.3 Scaling Levers
 
-- **10x patient volume (~60K patients)**: Migrate from `local[*]` to Spark cluster mode (EMR, Databricks, or Dataproc); increase shuffle partitions beyond current 8
-- **50 GB Delta storage**: Evaluate cloud object storage (S3, GCS, or ADLS) to replace local Docker volumes
-- **Pipeline runtime exceeds 30 minutes**: Increase shuffle partitions for observations table; evaluate incremental CDC over full snapshot
-- **Small file proliferation**: Schedule weekly VACUUM on Delta tables to compact small files from partition overwrites
-- **Concurrent user threshold (500+)**: Evaluate read replica or caching layer for Gold tables
+- **10x patient volume (~60K patients)**: Migrate from `local[*]` to Spark cluster mode (YARN or Kubernetes); current single-node Docker constraint [infrastructure-constraints.md SS1] is the first bottleneck
+- **50 GB Delta storage**: Evaluate cloud object storage (S3/GCS/ADLS) to replace local Docker volume [infrastructure-constraints.md SS2]
+- **Pipeline runtime exceeds 30 minutes**: Increase shuffle partitions beyond current 8 [infrastructure-constraints.md SS1]; consider partitioning observations by patient hash
+- **Delta small-file proliferation**: Schedule weekly VACUUM and OPTIMIZE operations
+- **Re-evaluation trigger**: Any single table exceeding 50M rows or total pipeline runtime exceeding 1 hour warrants architecture review
 
 ### 6.4 Cost Model
 
-Phase 1 runs on local developer workstations with Docker -- $0 infrastructure cost beyond hardware. Cloud migration cost scales along two axes: (1) compute hours (vCPU-hour pricing) for Spark processing, proportional to pipeline runtime and frequency; (2) storage volume (GB/month) for Delta tables, growing linearly with data volume. Cloud platform decision is pending [Open Question 2]. The cost model remains linear with data growth given the batch processing pattern -- no fixed-cost streaming infrastructure.
+Phase 1 operates on a developer workstation with Docker -- zero infrastructure cost beyond the developer's machine. Cost drivers scale along two axes:
 
-> Detailed compute sizing (memory allocations, Spark configs, shuffle partitions) and monthly cost breakdowns belong in the **Low-Level Design (LLD)** document.
+1. **Compute**: Scales with pipeline runtime (vCPU-hours per run multiplied by runs per day). At hourly cadence with ~20 min runtime, this is approximately 8 vCPU-hours/day on local hardware.
+2. **Storage**: Scales with Delta table size (GB/month). At ~4 GB with 5-10% annual growth, storage remains negligible for 3+ years on local hardware.
+
+Cloud migration (when triggered by scaling levers above) introduces per-hour compute costs and per-GB storage costs. The specific cloud platform is an open question [Open Question #2].
+
+> Detailed compute sizing (engine tuning parameters, memory allocations) and monthly cost breakdowns belong in the **Low-Level Design (LLD)** document.
 
 ---
 
@@ -236,34 +278,33 @@ Phase 1 runs on local developer workstations with Docker -- $0 infrastructure co
 
 | Classification | Examples | Handling Strategy |
 |---------------|----------|-------------------|
-| PHI - High Sensitivity | SSN | Masked to last 4 digits in all views [DRD 3.5]; encrypted at rest in Phase 2; audit all access |
-| PHI - Standard | Patient name, DOB, address, phone | Role-based access; address restricted by role [DRD 3.5]; encrypted at rest in Phase 2 |
-| PHI - Clinical | Conditions, medications, allergies, observations, procedures | Clinical role access only [DRD 5.5]; allergy severity never suppressed [DRD 5.4]; encrypted at rest in Phase 2 |
-| PHI - Financial | Claims, encounter costs, procedure costs, medication costs | Billing role only [DRD 5.5]; hidden from clinical and administrative views |
-| Internal | Organizations, providers, payers (reference data) | Standard access controls; no PHI exposure |
+| PHI - Confidential | Patient name, DOB, SSN, address [DRD SS7.2] | SSN masked to last 4 digits in all layers [DRD SS3.5]; encryption at rest deferred to Phase 2; role-based access at application layer |
+| PHI - Clinical | Conditions, medications, allergies, observations [DRD SS7.2] | Clinical role access only [DRD SS5.5]; allergy severity never suppressed -- NULL displayed as "Unknown" [DRD SS5.1, SS5.4] |
+| PHI - Safety Critical | Allergies [DRD SS7.2] | Prominent display in all clinical views; zero tolerance for missed alerts [DRD SS1.3]; not suppressible regardless of NULL severity |
+| Financial | Claims, encounter costs, total_visit_cost [DRD SS7.2] | Billing role only [DRD SS5.5]; hidden from clinical and administrative Gold tables |
+| Internal | Reference data (organizations, providers, payers) | Standard access controls; no PHI restrictions |
 
 ### 7.2 Access Strategy
 
 | Role Group | Layer Access | Restrictions | Phase |
 |-----------|-------------|-------------|-------|
-| Physicians (120) | Gold READ only | No cost columns; SSN masked; full address visible [DRD 3.5] | Phase 1 (app-layer) |
-| Nurses (200) | Gold READ only | No cost columns; SSN masked; city/state only [DRD 3.5] | Phase 1 (app-layer) |
-| Care Coordinators (30) | Gold READ only | No cost columns; SSN masked; city/state only [DRD 3.5] | Phase 1 (app-layer) |
-| Billing Staff (50) | Gold READ only | No clinical notes; full cost visibility [DRD 5.5] | Phase 1 (app-layer) |
-| Department Heads (15) | Gold READ only | Aggregates only; no individual PHI in reports [DRD 7.4] | Phase 1 (app-layer) |
-| Data Engineers | All layers READ/WRITE | Pipeline service account; no restrictions on Bronze/Silver/Gold | Phase 1 |
-| Full RBAC + SSO + MFA | All layers | Column-level enforcement; database-level row/column security | Phase 2 [DRD 7.4] |
+| Physicians (120) | Gold READ | Full clinical; masked SSN; full address [DRD SS3.5]; no cost columns [DRD SS5.5] | Phase 1 (app-layer masking) |
+| Nurses (200) | Gold READ | Full clinical; masked SSN; city/state only [DRD SS3.5]; no cost columns [DRD SS5.5] | Phase 1 (app-layer masking) |
+| Care Coordinators (30) | Gold READ | Panel patients; masked SSN; city/state only [DRD SS3.5]; no cost columns [DRD SS5.5] | Phase 1 (app-layer masking) |
+| Billing Staff (50) | Gold READ | Demographics + financial only; no clinical notes [DRD SS5.5, SS7.4] | Phase 1 (app-layer masking) |
+| Department Heads (15) | Gold READ | Aggregates only; no individual PHI in reports [DRD SS7.4] | Phase 1 (app-layer masking) |
+| Data Engineers | All layers READ/WRITE | Pipeline operations via service account | Phase 1 |
+| Full RBAC + SSO + MFA | All layers | Column-level enforcement via UC ACLs [DRD SS7.4] | Phase 2 |
 
 ### 7.3 Compliance Requirements
 
-HIPAA compliance is a separate workstream per DRD [6.1 Assumptions]. Phase 1 focuses on data consolidation with application-layer masking [DRD 3.5]. The following HIPAA technical safeguards are deferred to Phase 2 when the production environment is selected:
+HIPAA compliance architecture is a separate workstream per DRD [SS6.1 Assumptions]. Phase 1 focuses on data consolidation with application-layer masking [DRD SS3.5 Note]. The following HIPAA technical safeguards are planned:
 
-- **Encryption at rest**: AES-256 for all Delta tables containing PHI
-- **Encryption in transit**: TLS 1.3 for all service-to-service communication
-- **Access logging**: Comprehensive audit logging of all patient record access with user ID, timestamp, patient ID, and action type [DRD 7.5]
-- **Breach detection**: Anomalous access pattern alerting (volume spikes, off-hours access) [DRD 7.5]
-- **Retention**: 6-year minimum for adult patient records; 7-year for billing/claims [DRD 7.3]
-- **Audit query SLA**: Audit data retrievable within 72 hours for compliance investigations [DRD 7.5]
+- **Access logging**: Log all patient record access with user ID, timestamp, patient ID, and action type [DRD SS7.5] -- implemented via OpenLineage events in Phase 1, extended to application-layer audit logs in Phase 2
+- **Encryption at rest**: AES-256 for Delta tables -- deferred to Phase 2 when production environment is selected
+- **Encryption in transit**: TLS 1.3 for all service communication -- deferred to Phase 2
+- **Retention**: 6-year minimum for patient records [DRD SS7.3]; 7-year for billing/claims; audit logs archived to cold storage after 6 years
+- **Breach detection**: Anomalous access pattern alerting -- deferred to Phase 2 [DRD SS7.5]
 
 > Column-level masking rules, specific authentication methods, and encryption key management details belong in the **Low-Level Design (LLD)** document.
 
@@ -273,28 +314,63 @@ HIPAA compliance is a separate workstream per DRD [6.1 Assumptions]. Phase 1 foc
 
 ### 8.1 CDC Strategy
 
-All source tables use Full Snapshot in Phase 1. The source database has no reliable `updated_at` or `modified_at` columns (verified via `information_schema.columns` query on 2026-03-16), making Timestamp Watermark unreliable. Log-Based CDC (Debezium) requires Kafka infrastructure not in the technology catalog [technology-catalog.md]. SCD Type 2 in Silver detects changes via SHA-256 hash comparison using Delta Lake MERGE INTO.
+All source tables use Full Snapshot CDC in Phase 1. Database verification confirmed no `updated_at` or `modified_at` columns exist in any of the 18 source tables -- only business date columns (START, STOP, BIRTHDATE, DATE, etc.) are present. This makes Timestamp Watermark CDC unreliable. Log-Based CDC (Debezium) requires Kafka infrastructure not in the technology catalog [technology-catalog.md]. SCD Type 2 change detection in Silver uses SHA-256 hash comparison on dimension rows via Delta MERGE INTO.
 
 | Source Type | CDC Method | Frequency | Rationale |
 |------------|-----------|-----------|-----------|
-| Static reference tables (organizations, providers, payers) | Full Snapshot | Weekly | Less than 1,100 rows each; changes are rare; weekly is sufficient |
-| Safety-critical tables (medications, allergies) | Full Snapshot | Hourly | Phase 1 compromise for DRD sub-minute requirement [DRD 2.2]; 5,607-290K rows manageable at hourly cadence |
-| Medium transactional tables (conditions, immunizations, careplans) | Full Snapshot | Daily | Daily batch satisfies 24-hour freshness SLA [DRD 4.4]; 19K-210K rows |
-| Large transactional tables (encounters, observations, claims, procedures) | Full Snapshot | Daily | 340K-4.4M rows; daily full reload acceptable at current scale; satisfies SLA [DRD 4.4] |
+| Clinical tables (encounters, conditions, medications, observations, allergies, immunizations, careplans, procedures) | Full Snapshot | Hourly | Satisfies 1-hour clinical latency SLA [DRD SS4.4]; all tables treated uniformly per user decision |
+| Financial tables (claims) | Full Snapshot | Hourly | Consistent with clinical tables; billing SLA allows daily [DRD SS4.4] but hourly simplifies scheduling |
+| Reference tables (organizations, providers, payers) | Full Snapshot | Hourly | Very small tables (10-1,080 rows); included in hourly batch for operational simplicity |
 
-**Phase 2 CDC evolution**: Evaluate Timestamp Watermark when source systems provide reliable update timestamps. True sub-minute CDC for medications and allergies requires streaming infrastructure (Structured Streaming or Debezium + Kafka) and team upskilling [team-capabilities.md 2].
+**Phase 2 CDC evolution**: Evaluate Timestamp Watermark when source systems provide reliable audit timestamps. True sub-minute CDC for medications/allergies [DRD SS2.2] deferred until streaming infrastructure (Kafka/Structured Streaming) is added to technology catalog and team upskills [team-capabilities.md SS2].
 
-### 8.2 Recovery Strategy
+### 8.2 Ingestion Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant SCH as Scheduler
+    participant EHR as Healthcare EHR
+    participant ING as Ingestion Service
+    participant BRZ as Bronze Layer
+    participant DQ1 as DQ Gate 1
+    participant SLV as Silver Layer
+    participant DQ2 as DQ Gate 2
+    participant GLD as Gold Layer
+    participant MON as Grafana
+
+    SCH->>ING: Trigger hourly pipeline run
+    ING->>EHR: Read-only full snapshot extract (13 tables)
+    EHR-->>ING: Raw data
+    ING->>BRZ: Write raw data with metadata (_ingested_at, _batch_id, ds)
+    ING->>MON: Emit ingestion metrics (rows read, duration)
+    BRZ->>DQ1: Schema validation, not-null checks, date range checks
+    alt DQ1 Pass
+        DQ1->>SLV: Type casting, dedup, SCD2 merge, derived fields
+    else DQ1 Fail
+        DQ1-->>BRZ: Quarantine rejected records with rejection reason
+    end
+    SLV->>DQ2: FK checks, null tolerance thresholds, business rules
+    alt DQ2 Pass
+        DQ2->>GLD: Build denormalized consumer tables (3 Gold tables)
+    else DQ2 Fail
+        DQ2-->>SLV: Flag violations for data steward review
+    end
+    GLD->>MON: Emit pipeline completion metrics (duration, row counts, DQ scores)
+```
+
+### 8.3 Recovery Strategy
 
 | Metric | Target | Justification |
 |--------|--------|---------------|
-| RTO | 4 hours | Read-only system; source CSVs are authoritative; full pipeline rebuild from source within 4 hours [DRD 7.6] |
-| RPO | 24 hours (last daily batch) | Daily batch cadence means maximum 24 hours of data loss; source EHR is system of record [DRD 7.6] |
-| Production RTO/RPO | [TBD - requires decision from Jennifer Martinez (Compliance)] | DRD 7.6 marks production DR as Phase 2; due date 2026-04-30 |
+| RTO | 4 hours | Read-only system rebuildable from source EHR; no user data at risk [DRD SS7.6]; user decision |
+| RPO | 24 hours (last successful batch) | Hourly batch cadence but source EHR is system of record; worst case is re-ingesting 24 hours of batches [DRD SS7.6]; user decision |
+| Production RTO/RPO | [TBD - requires decision from Jennifer Martinez (Compliance)] | DRD SS7.6 defers to Phase 2; due date 2026-04-30 |
 
-### 8.3 Backup Approach
+### 8.4 Backup Approach
 
-Source CSVs are immutable and re-ingestible at any time from the EHR system. Delta Lake time travel provides a 7-day rollback window for all Bronze, Silver, and Gold tables. Unity Catalog metadata and Marquez lineage data are stored in named Docker volumes (`unitycatalog_data`, `marquez_data`) with daily volume snapshots. Pipeline code is versioned in Git. Full rebuild from source is the primary DR strategy for Phase 1.
+Source data is immutable in the EHR and re-ingestible at any time -- the pipeline can be fully rebuilt from source. Delta Lake time travel provides a 7-day rollback window for investigating data issues without restoring from backup. Unity Catalog and Marquez metadata are stored in named Docker volumes (`unitycatalog_data`, `marquez_data`) with daily backup [infrastructure-constraints.md SS2]. All pipeline code is version-controlled in Git.
+
+Recovery procedure: re-run the pipeline from Bronze through Gold for the affected `ds` partitions. Idempotent partition replacement [infrastructure-constraints.md SS2] ensures re-runs produce identical results.
 
 > Detailed recovery runbooks and per-table CDC configurations belong in the **Low-Level Design (LLD)** document.
 
@@ -312,11 +388,37 @@ Source CSVs are immutable and re-ingestible at any time from the EHR system. Del
 
 **Selected**: Medallion (Bronze/Silver/Gold)
 
-**Rationale**: DRD [4.4] requires 1-hour maximum latency for clinical users and 24-hour for others -- no sub-minute requirement at the query level. Team has demonstrated high proficiency in Medallion + Delta Lake [team-capabilities.md 2]. Infrastructure is local Docker with no Kafka/Flink [technology-catalog.md]. Lambda and Kappa require streaming experience the team does not have [team-capabilities.md 2]. Data Vault adds modeling complexity without a corresponding audit-trail requirement.
+**Rationale**: DRD [SS4.4] requires 1-hour maximum latency for clinical users and 24-hour for others -- no sub-minute requirement at the query level. Team has demonstrated high proficiency in Medallion + Delta Lake [team-capabilities.md SS2]. Infrastructure is local Docker with no Kafka/Flink [technology-catalog.md]. User confirmed this selection.
 
-**Trade-off**: Cannot achieve sub-minute data freshness. Hourly batch is the Phase 1 acceptable compromise for medications and allergies [DRD 2.2].
+**Trade-off**: Cannot achieve sub-minute data freshness for medications/allergies [DRD SS2.2]. Hourly batch is the Phase 1 compromise. Sub-minute CDC deferred to Phase 2 with streaming infrastructure.
 
-### Decision 2: Storage Format -- Delta Lake vs. Iceberg vs. Hudi
+### Decision 2: CDC Method -- Hourly Full Snapshot for All Tables
+
+**Options Considered**:
+1. Micro-batch (1-5 minute polling with timestamp-based CDC)
+2. Spark Structured Streaming (trigger-once or continuous)
+3. Hourly Full Snapshot for all tables uniformly
+
+**Selected**: Hourly Full Snapshot for all tables
+
+**Rationale**: Source database has no `updated_at` or `modified_at` columns (verified via database query on 2026-03-16), making timestamp-based CDC unreliable. Team is Not Experienced in Streaming [team-capabilities.md SS2]. Hourly cadence satisfies the 1-hour clinical latency SLA [DRD SS4.4]. User confirmed acceptance of hourly batch for all tables including medications/allergies.
+
+**Trade-off**: Full Snapshot scans entire source tables each run. For observations (4.37M rows), this adds processing time per run. Acceptable at current scale (estimated 15-20 min total pipeline runtime). Evaluate incremental CDC in Phase 2 when source systems provide audit timestamps.
+
+### Decision 3: SCD Strategy -- Type 2 with Versioned Rows
+
+**Options Considered**:
+1. SCD Type 1 -- overwrite with latest value, no history
+2. SCD Type 2 -- versioned rows with effective dates
+3. Full snapshot -- daily full reload, simplest approach
+
+**Selected**: SCD Type 2 with versioned rows and effective dates
+
+**Rationale**: Team is Proficient with Delta MERGE INTO for SCD2 [team-capabilities.md SS2]. Patient demographics (address, insurance) change over time and clinical accuracy requires historical tracking [DRD SS1.2]. SHA-256 hash comparison detects changes efficiently on dimension tables (max 5,767 rows for patients). User confirmed this selection.
+
+**Trade-off**: SCD Type 2 increases Silver storage due to historical versions and adds MERGE INTO complexity. Acceptable because dimension tables are small (patients: 5,767 rows; providers: 1,080; payers: 10) and the team has proven proficiency.
+
+### Decision 4: Storage Format -- Delta Lake
 
 **Options Considered**:
 1. Delta Lake -- ACID, time travel, MERGE INTO, team high proficiency
@@ -325,61 +427,48 @@ Source CSVs are immutable and re-ingestible at any time from the EHR system. Del
 
 **Selected**: Delta Lake
 
-**Rationale**: Infrastructure constraints mandate Delta Lake exclusively [infrastructure-constraints.md 2]. Team has high proficiency in Delta MERGE INTO for SCD2 [team-capabilities.md 2]. No multi-engine requirement in Phase 1.
+**Rationale**: Infrastructure constraints mandate Delta Lake exclusively [infrastructure-constraints.md SS2]. Team has high proficiency in Delta MERGE INTO for SCD2 [team-capabilities.md SS2]. No alternatives permitted by infrastructure policy.
 
-**Trade-off**: Vendor lock-in to Databricks ecosystem. Acceptable for local dev; Iceberg migration path exists if multi-engine portability is needed in production.
+**Trade-off**: Vendor lock-in to Databricks ecosystem. Acceptable for local dev; Iceberg migration path exists if multi-engine portability needed in production.
 
-### Decision 3: CDC Method -- Full Snapshot vs. Timestamp vs. Log-Based
-
-**Options Considered**:
-1. Full Snapshot -- reload entire table each run
-2. Timestamp Watermark -- filter by `updated_at` column
-3. Log-Based CDC (Debezium) -- transaction log capture
-
-**Selected**: Full Snapshot for all tables in Phase 1
-
-**Rationale**: Source database verified to have no `updated_at` or `modified_at` columns (confirmed via database query). Log-Based CDC requires Kafka infrastructure not in the approved technology catalog [technology-catalog.md]. Full Snapshot with Delta `replaceWhere` on `ds` partition is idempotent and sufficient for current dataset sizes [infrastructure-constraints.md 2].
-
-**Trade-off**: Full Snapshot scans entire source table each run. For observations (4.4M rows), this adds approximately 5 minutes to pipeline runtime. Evaluate Timestamp Watermark in Phase 2 when sources provide reliable update timestamps.
-
-### Decision 4: Gold Table Design -- 3 Consumer-Aligned Tables
+### Decision 5: Gold Table Design -- 3 Consumer-Aligned Tables
 
 **Options Considered**:
-1. 3 consumer-aligned tables (patient_summary, patient_clinical_history, patient_billing_summary)
-2. 1 wide denormalized patient_360 table for all consumers
+1. Three consumer-aligned tables (patient_summary, patient_clinical_history, patient_billing_summary)
+2. One wide denormalized patient_360 table for all consumers
 3. Per-consumer tables (5+ tables, one per role group)
 
-**Selected**: 3 consumer-aligned tables
+**Selected**: Three consumer-aligned tables
 
-**Rationale**: DRD [4.1] identifies three distinct consumer access patterns with different data needs (clinical lookup, clinical history, billing). DRD [5.5] requires cost data hidden from non-billing roles -- separate tables enforce this separation at the schema level rather than relying solely on application-layer filtering.
+**Rationale**: DRD [SS4.1] identifies three distinct consumer access patterns with different data needs. DRD [SS5.5] requires cost data hidden from non-billing roles -- separate tables enforce this separation at the schema level rather than relying solely on application-layer masking.
 
-**Trade-off**: 3 Gold tables require 3 separate pipeline jobs instead of 1. Acceptable because Gold tables are small (5,767 patient rows each) and compute cost is minimal.
+**Trade-off**: Three Gold tables require three separate pipeline jobs instead of one. Acceptable because Gold tables are small (base of 5,767 patient rows) and compute cost is minimal.
 
-### Decision 5: SCD Strategy -- Type 2 vs. Type 1 vs. No SCD
-
-**Options Considered**:
-1. SCD Type 2 with versioned rows (effective_start_date, effective_end_date, is_current)
-2. SCD Type 1 (overwrite, no history)
-3. No SCD (snapshot-only)
-
-**Selected**: SCD Type 2 for 4 dimension tables (patients, providers, payers, organizations)
-
-**Rationale**: DRD [1.2] requires tracking patient changes over time for clinical accuracy. Team is proficient in SCD Type 2 via Delta Lake MERGE INTO [team-capabilities.md 2]. Dimension tables are small (5,767 patients, 1,080 providers, 1,080 organizations, 10 payers), so storage overhead of versioned rows is negligible.
-
-**Trade-off**: SCD Type 2 adds MERGE INTO complexity to 4 dimension pipelines. Acceptable given team proficiency and small table sizes.
-
-### Decision 6: Processing Cadence -- Hourly vs. Daily
+### Decision 6: Monitoring -- Spark Expectations + Marquez + Grafana
 
 **Options Considered**:
-1. All tables daily batch
-2. Safety-critical tables hourly, remainder daily
-3. All tables hourly
+1. Spark Expectations + Marquez only (tools already in catalog)
+2. Spark Expectations + Marquez + Grafana (adds pipeline metrics dashboards)
+3. Minimal application logging only
 
-**Selected**: Safety-critical tables (medications, allergies) hourly; all others daily
+**Selected**: Spark Expectations + Marquez + Grafana
 
-**Rationale**: DRD [4.4] specifies 1-hour maximum latency for clinical users. Medications and allergies are safety-critical [DRD 3.1] and have sub-minute source sync [DRD 2.2]. Hourly batch is the Phase 1 compromise. Non-critical tables (encounters, conditions, observations, claims) satisfy the 24-hour SLA for billing and reporting consumers [DRD 4.4].
+**Rationale**: Spark Expectations provides DQ enforcement at layer boundaries [technology-catalog.md SS5]. Marquez provides lineage tracking for HIPAA audit support [DRD SS7.5]. Grafana adds operational visibility with pipeline runtime dashboards, throughput metrics, and alerting -- filling the gap between data quality (Spark Expectations) and data lineage (Marquez). User requested both DQ/lineage and pipeline metrics.
 
-**Trade-off**: Hourly full snapshot of medications (290K rows) and allergies (5,607 rows) increases daily pipeline runs from 1 to 24 for these tables. Compute cost is minimal given table sizes.
+**Trade-off**: Grafana is not currently in the approved technology catalog [technology-catalog.md] and team proficiency is unverified. Requires catalog update and team evaluation. Accepted because Grafana is a standard, widely-adopted tool with low learning curve for dashboard creation.
+
+### Decision 7: Recovery Targets -- Relaxed DR (RTO 4h / RPO 24h)
+
+**Options Considered**:
+1. Relaxed DR: RTO 4 hours / RPO 24 hours
+2. Standard DR: RTO 1 hour / RPO 1 hour
+3. Defer entirely to Phase 2
+
+**Selected**: Relaxed DR (RTO 4 hours / RPO 24 hours)
+
+**Rationale**: System is read-only [DRD SS1.5] and rebuildable from the authoritative source EHR at any time. No user-generated data is at risk. DRD [SS7.6] notes DR requirements are TBD for Phase 1. User confirmed relaxed targets are appropriate for a development/Phase 1 environment.
+
+**Trade-off**: 4-hour RTO means clinical users could lose access to Patient 360 search for up to 4 hours during an outage. Acceptable because source EHR systems remain available for direct lookup during outages. Production RTO/RPO targets require compliance review [Open Question #3].
 
 ---
 
@@ -389,25 +478,24 @@ Source CSVs are immutable and re-ingestible at any time from the EHR system. Del
 
 | # | Question | Assigned To | Due Date | Status |
 |---|----------|-------------|----------|--------|
-| 1 | Will medications and allergies have a true sub-minute CDC path in Phase 2 (Structured Streaming or Debezium)? | Michael Torres (CIO) | 2026-04-15 | Open |
-| 2 | Which cloud platform for production deployment (Databricks, EMR, Dataproc)? Team has no cloud deployment experience [team-capabilities.md 3] | Michael Torres (CIO) | 2026-06-01 | Open |
-| 3 | What are the production RTO/RPO targets? DRD 7.6 marks these as TBD for Phase 2 | Jennifer Martinez (Compliance) | 2026-04-30 | Open |
-| 4 | Should schema evolution use `mergeSchema = true` or versioned schemas when source adds columns? | Data Engineering Team | 2026-04-15 | Open |
-| 5 | Column-level lineage strategy for production -- DataHub vs. Databricks UC? UC OSS 0.4.0 lacks column lineage API [infrastructure-constraints.md 8] | Data Engineering Team | 2026-06-01 | Open |
-| 6 | How will fuzzy name matching be implemented for patient search (Soundex, Levenshtein, other)? [DRD 6.2 Q1] | Michael Torres (CIO) | 2026-02-28 | Open (overdue) |
-| 7 | What is the retention policy for deceased patient records? [DRD 6.2 Q4] | Jennifer Martinez (Compliance) | 2026-02-28 | Open (overdue) |
-| 8 | Pin Marquez to a specific version for reproducible builds; currently using `latest` tag [infrastructure-constraints.md 8] | Data Engineering Team | 2026-04-15 | Open |
+| 1 | How will fuzzy name matching be implemented for patient search (Soundex, Levenshtein, other)? | Michael Torres (CIO) | 2026-02-28 | Open [DRD SS6.2 #1] |
+| 2 | Which cloud platform for production deployment (Databricks, EMR, Dataproc)? Team is Not Experienced in all three [team-capabilities.md SS3]. | Michael Torres (CIO) | 2026-06-01 | Open |
+| 3 | What are the production RTO/RPO targets? Phase 1 uses 4h/24h; production targets require compliance review. | Jennifer Martinez (Compliance) | 2026-04-30 | Open [DRD SS7.6] |
+| 4 | Should schema evolution use `mergeSchema = true` or versioned schemas? Team is Familiar (not Proficient) with schema evolution [team-capabilities.md SS2]. | Data Engineering Team | 2026-04-15 | Open |
+| 5 | Column-level lineage strategy for production (DataHub vs. Databricks UC)? UC OSS 0.4.0 has no column-level lineage API [infrastructure-constraints.md SS8]. | Data Engineering Team | 2026-06-01 | Open |
+| 6 | Grafana proficiency assessment -- team capability for Grafana dashboard creation and alerting is unverified. | Data Engineering Team | 2026-04-15 | Open |
+| 7 | What is the retention policy for deceased patient records? | Compliance Team | 2026-02-28 | Open [DRD SS6.2 #4] |
 
 ### Key Risks
 
 | Risk | Impact | Likelihood | Mitigation |
 |------|--------|-----------|------------|
-| Observations table (4.4M rows) exceeds local Spark memory during processing | Pipeline failures, SLA breach | Low -- well within 4 GB driver memory [infrastructure-constraints.md 1] | Monitor pipeline runtime; scale to cluster mode at 10x volume; increase shuffle partitions |
-| HIPAA audit requirements not fully met in Phase 1 (dev environment) | Compliance gap if PHI accessed in non-dev context | Medium | Phase 1 restricted to local dev; Phase 2 adds encryption + audit logging; no production PHI in Phase 1 |
-| Team unfamiliar with UC OSS 0.4.0 (Familiar proficiency, not Proficient) | Slower development, potential misconfiguration | Medium | Allocate upskilling time; use `spark_catalog` default to reduce complexity; leverage UC bootstrap script |
-| Source database adds new columns without notice | Bronze schema enforcement failures, pipeline halt | Low | Monitor schema drift; evaluate `mergeSchema` in Bronze [Open Question 4]; enforce schema-on-write in Silver |
-| Hourly full snapshot for medications/allergies may not satisfy clinical safety needs | Stale medication data for up to 1 hour | Medium | DRD [4.4] confirms 1-hour latency acceptable; escalate if clinical feedback indicates safety concern |
-| Overdue open questions (Q6, Q7) block Phase 1 features | Fuzzy search and retention policy undefined | Medium | Escalate to CIO and Compliance Officer; document as Phase 1 known gaps |
+| Observations table (4.37M rows) hourly full snapshot exceeds local Spark memory or SLA | Pipeline failures, data freshness SLA breach | Low -- well within 4 GB driver memory [infrastructure-constraints.md SS1] | Monitor runtime via Grafana; scale to cluster mode at 10x volume; increase shuffle partitions if runtime exceeds 30 min |
+| HIPAA audit requirements not fully met in Phase 1 | Compliance gap if production traffic routed through Phase 1 | Medium -- Phase 1 is dev-only | Phase 2 adds encryption at rest, full audit logging, SSO + MFA [DRD SS7.4]; Phase 1 restricted to development use |
+| Team unfamiliar with UC OSS 0.4.0 (Familiar, not Proficient) | Slower development, misconfiguration of catalog | Medium | Allocate upskilling time; use `spark_catalog` default to reduce configuration complexity [infrastructure-constraints.md SS5] |
+| Source database adds columns without notice | Bronze schema enforcement failures | Low | Use `mergeSchema` option in Bronze reads; enforce strict schema-on-write in Silver; alert on schema drift |
+| Grafana not in approved technology catalog | Potential rejection during architecture review | Medium | Submit catalog update request; if rejected, fall back to Marquez + Spark Expectations only (Decision 6 Option 1) |
+| Full Snapshot CDC becomes unsustainable at 10x scale | Pipeline runtime exceeds 1 hour; hourly SLA missed | Low (3+ years at 5-10% growth) | Re-evaluation trigger at 50M rows or 1-hour runtime; evaluate Timestamp Watermark CDC when source provides audit columns |
 
 ---
 
@@ -417,7 +505,7 @@ Source CSVs are immutable and re-ingestible at any time from the EHR system. Del
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 | 2026-03-16 | Architect Agent | Initial HLD: Medallion pattern selected; Full Snapshot CDC; 3 consumer-aligned Gold tables; 4h RTO / 24h RPO for Phase 1; SCD Type 2 for 4 dimension tables; hourly batch for safety-critical tables |
+| 1.0 | 2026-03-16 | Architect Agent | Initial HLD: Medallion pattern; hourly Full Snapshot CDC for all tables; SCD Type 2 on dimensions; 3 consumer-aligned Gold tables; Spark Expectations + Marquez + Grafana observability; relaxed DR (4h RTO / 24h RPO) |
 
 ### Approval
 
@@ -425,11 +513,11 @@ Source CSVs are immutable and re-ingestible at any time from the EHR system. Del
 |------|------|------|-----------|
 | Technical Sponsor | Michael Torres | _Pending_ | __________ |
 | Business Sponsor | Dr. Sarah Chen | _Pending_ | __________ |
-| Data Architecture Lead | [TBD] | _Pending_ | __________ |
-| Security/Compliance | Jennifer Martinez | _Pending_ | __________ |
+| Compliance/Privacy | Jennifer Martinez | _Pending_ | __________ |
+| Clinical Operations | Lisa Park | _Pending_ | __________ |
 
 ### Related Documents
 
-- **DRD**: DRD-2026-02-11-patient-360.md (v1.1) -- source requirements document
-- **DMS**: Data Model Specification (downstream -- defines table schemas, column details, and per-table write strategies)
+- **DRD**: DRD-2026-02-11-patient-360.md (v1.1) -- source requirements
+- **DMS**: Data Model Specification (downstream -- defines table schemas, column details, and write strategies)
 - **LLD**: Low-Level Design (downstream -- defines deployment configs, technology versions, JAR coordinates, and operational runbooks)

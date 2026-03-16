@@ -36,6 +36,25 @@ This DMS implements the layer specifications defined in {{ dms.hld_reference }}.
 | {{ trace.dms_section }} | {{ trace.hld_section }} | {{ trace.notes }} |
 {% endfor %}
 
+### 1.4 Holistic Entity Relationship Diagram
+
+{{ dms.holistic_er_diagram }}
+
+### 1.5 Scope & Boundaries
+
+This DMS defines the **logical data model**: table structures, column definitions,
+data types, primary/foreign key relationships, grain statements, and SCD strategies.
+
+| Concern | Downstream Document |
+|---------|-------------------|
+| Column-level transform expressions | Source-to-Target Mapping (STM) |
+| Null handling and rejection rules | Data Quality Specification (DQS) |
+| Storage format, compression, retention | Low-Level Design (LLD) |
+
+### 1.6 Layer Architecture
+
+{{ dms.design_overview.layer_architecture_diagram }}
+
 ---
 
 ## 2. Bronze Layer Schemas
@@ -105,9 +124,9 @@ columns:
     type: {{ col.type }}
     nullable: {{ col.nullable }}
     source: {{ col.source }}
-    transform: "{{ col.transform }}"
-    null_handling: "{{ col.null_handling }}"
+{% if col.business_rule %}
     business_rule: {{ col.business_rule }}
+{% endif %}
     description: {{ col.description }}
 {% endfor %}
 foreign_keys:
@@ -227,18 +246,17 @@ foreign_keys:
 | {{ cluster.table }} | {{ cluster.columns }} | {{ cluster.rationale }} |
 {% endfor %}
 
-### Compression & Storage
-
-{{ dms.physical_design.compression_notes }}
+> Storage format, compression codec, and retention policies are defined
+> in the **Low-Level Design (LLD)** document.
 
 ---
 
 ## 8. Traceability Matrix
 
-| Gold Column | Silver Source | Bronze Source | Raw Source | Transform Summary |
-|-------------|-------------|-------------|------------|-------------------|
-{% for trace in dms.traceability_matrix %}
-| {{ trace.gold }} | {{ trace.silver }} | {{ trace.bronze }} | {{ trace.raw }} | {{ trace.transform }} |
+| Gold Table | Silver Source | Bronze Source | Key Design Decisions |
+|-----------|-------------|-------------|---------------------|
+{% for trace in dms.table_lineage %}
+| {{ trace.gold_table }} | {{ trace.silver_source }} | {{ trace.bronze_source }} | {{ trace.design_decisions }} |
 {% endfor %}
 
 ---

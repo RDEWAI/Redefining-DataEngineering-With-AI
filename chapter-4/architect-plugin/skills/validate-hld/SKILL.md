@@ -56,7 +56,7 @@ The validator checks rules across three severity levels:
 
 ### INFO (suggestions for improvement)
 - Placeholder text remaining ([TBD], [TODO])
-- Mermaid diagrams present
+- Mermaid diagrams present (≥2 blocks: system context + pipeline + ingestion sequence)
 - Cost model described in Scalability & Capacity Model
 - Downstream document references (LLD, DMS) present
 
@@ -64,13 +64,13 @@ The validator checks rules across three severity levels:
 
 A complete HLD contains these sections:
 - **Executive Summary**: Business context, scope, key decisions at a glance
-- **Architecture Overview**: Pattern, justification, conceptual Mermaid architecture diagram
+- **Architecture Overview**: Pattern, justification, 3 Mermaid diagrams (system context, pipeline, ingestion sequence)
 - **Data Architecture**: Bronze/Silver/Gold layer strategy, DQ approach (defer table inventories to DMS)
 - **Technology Decisions**: Component/Tool/Why table (defer versions to LLD)
 - **Integration Architecture**: Sources, lineage, downstream consumers
 - **Scalability & Capacity Model**: Row counts, growth projections, compute sizing, cost model
 - **Security & Compliance**: Compliance controls, encryption, access strategy, audit
-- **Operational Considerations**: CDC summary, RTO/RPO targets, backup strategy, monitoring
+- **Operational Considerations**: CDC summary, ingestion sequence diagram, RTO/RPO targets, backup strategy
 
 ## Step 2.5: Fix CRITICAL issues before presenting
 

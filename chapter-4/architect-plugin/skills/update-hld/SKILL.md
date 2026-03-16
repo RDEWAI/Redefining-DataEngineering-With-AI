@@ -106,6 +106,13 @@ Step 1.7 for the database gate protocol.
   update or remove it.
 - Mark uncertain items with `[NEEDS VERIFICATION]`
 
+### Re-generate diagrams
+
+When changes affect system boundaries, layer structure, or ingestion flow:
+1. Update the **System Context diagram** (§2.3) if external actors or system boundaries changed
+2. Update the **Pipeline Architecture diagram** (§2.4) if layers, DQ gates, or consumer groups changed
+3. Update the **Ingestion Sequence diagram** (§8.2) if CDC strategy or DQ steps changed
+
 ### Cross-section consistency check
 
 After merging, verify:
@@ -114,6 +121,7 @@ After merging, verify:
 3. Integration Architecture matches source system capabilities
 4. Security & Compliance covers all DRD regulatory requirements
 5. Operational Considerations aligns with current SLA targets
+6. All three diagrams reflect the current architecture
 
 ## Pitfall Prevention
 

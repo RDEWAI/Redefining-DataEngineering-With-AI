@@ -111,7 +111,7 @@ internal checklist:
 | HLD Section | Required Information | Status |
 |---|---|---|
 | **Executive Summary** | One-paragraph overview of what, why, and how | ? |
-| **Architecture Overview** | Architecture pattern, justification, conceptual Mermaid diagram | ? |
+| **Architecture Overview** | Pattern, justification, 3 diagrams (system context, pipeline, ingestion sequence) | ? |
 | **Data Architecture** | Bronze/Silver/Gold layer strategy, transformation approach, DQ expectations | ? |
 | **Technology Decisions** | Tool choices with justification (defer versions to LLD) | ? |
 | **Integration Architecture** | Source systems, lineage, downstream consumers | ? |
@@ -427,13 +427,13 @@ this format in the Decision Log section of the HLD.
 
 A complete HLD contains these sections:
 - **Executive Summary**: Business context, scope, key decisions at a glance
-- **Architecture Overview**: Pattern, justification, conceptual Mermaid architecture diagram
+- **Architecture Overview**: Pattern, justification, 3 Mermaid diagrams (system context C4, pipeline flowchart, ingestion sequence)
 - **Data Architecture**: Bronze/Silver/Gold layer strategy, DQ approach (defer table inventories to DMS)
 - **Technology Decisions**: Component/Tool/Why table (defer versions to LLD)
 - **Integration Architecture**: Sources, lineage, downstream consumers
 - **Scalability & Capacity Model**: Row counts, growth projections, compute sizing, cost model
 - **Security & Compliance**: Compliance controls, encryption, access strategy, audit
-- **Operational Considerations**: CDC summary, RTO/RPO targets, backup strategy, monitoring
+- **Operational Considerations**: CDC summary, ingestion sequence diagram, RTO/RPO targets, backup strategy
 - **Decision Log**: All major design decisions with Options Considered, Rationale, Trade-off
 - **Open Questions & Risks**: Unresolved items with owners, due dates, and identified risks
 - **Appendix**: Version history, approval records, reference materials

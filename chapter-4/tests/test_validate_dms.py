@@ -28,8 +28,11 @@ from validate_dms import (  # noqa: E402
     check_diagrams,
     check_gold_schemas,
     check_hld_traceability,
+    check_holistic_er_diagram,
     check_metadata,
     check_naming_conventions,
+    check_no_null_handling_in_silver,
+    check_no_transform_in_silver,
     check_placeholders,
     check_required_sections,
     check_scd_documentation,
@@ -209,13 +212,35 @@ class TestCheckDiagrams:
 
     def test_diagrams_present(self):
         results = check_diagrams(VALID_DMS)
-        infos = [r for r in results if r.level == ValidationLevel.INFO]
-        assert len(infos) == 0
+        warnings = [r for r in results if r.level == ValidationLevel.WARNING]
+        assert len(warnings) == 0
 
     def test_missing_diagrams_flagged(self):
         results = check_diagrams(MINIMAL_INVALID_DMS)
-        infos = [r for r in results if r.level == ValidationLevel.INFO]
-        assert len(infos) > 0
+        warnings = [r for r in results if r.level == ValidationLevel.WARNING]
+        assert len(warnings) > 0
+
+
+class TestCheckHolisticErDiagram:
+    """Design Overview should include a holistic erDiagram spanning all layers."""
+
+    def test_valid_dms_has_holistic_diagram(self):
+        sections = parse_dms_sections(VALID_DMS)
+        results = check_holistic_er_diagram(sections)
+        warnings = [r for r in results if r.level == ValidationLevel.WARNING]
+        assert len(warnings) == 0
+
+    def test_missing_holistic_diagram_flagged(self):
+        # Design Overview has text content but no erDiagram
+        sections = {
+            "1. Design Overview": (
+                "### 1.1 Modeling Approach\n\nMedallion architecture.\n\n"
+                "### 1.2 Layer Summary\n\n| Layer | Purpose |\n"
+            )
+        }
+        results = check_holistic_er_diagram(sections)
+        warnings = [r for r in results if r.level == ValidationLevel.WARNING]
+        assert len(warnings) > 0
 
 
 class TestValidateDms:
@@ -265,3 +290,43 @@ class TestValidationReport:
             ],
         )
         assert not report.passed
+
+
+class TestCheckNoTransformInSilver:
+    """Silver YAML blocks should not contain transform: expressions."""
+
+    def test_valid_dms_has_no_transforms(self):
+        sections = parse_dms_sections(VALID_DMS)
+        results = check_no_transform_in_silver(sections)
+        warnings = [r for r in results if r.level == ValidationLevel.WARNING]
+        assert len(warnings) == 0
+
+    def test_transform_in_silver_detected(self):
+        dms_with_transform = VALID_DMS.replace(
+            "    source: bronze.patients.BIRTHDATE",
+            "    source: bronze.patients.BIRTHDATE\n" '    transform: "CAST(BIRTHDATE AS DATE)"',
+        )
+        sections = parse_dms_sections(dms_with_transform)
+        results = check_no_transform_in_silver(sections)
+        warnings = [r for r in results if r.level == ValidationLevel.WARNING]
+        assert len(warnings) > 0
+
+
+class TestCheckNoNullHandlingInSilver:
+    """Silver YAML blocks should not contain null_handling: directives."""
+
+    def test_valid_dms_has_no_null_handling(self):
+        sections = parse_dms_sections(VALID_DMS)
+        results = check_no_null_handling_in_silver(sections)
+        warnings = [r for r in results if r.level == ValidationLevel.WARNING]
+        assert len(warnings) == 0
+
+    def test_null_handling_in_silver_detected(self):
+        dms_with_nh = VALID_DMS.replace(
+            "    source: bronze.patients.BIRTHDATE",
+            "    source: bronze.patients.BIRTHDATE\n" '    null_handling: "pass through null"',
+        )
+        sections = parse_dms_sections(dms_with_nh)
+        results = check_no_null_handling_in_silver(sections)
+        warnings = [r for r in results if r.level == ValidationLevel.WARNING]
+        assert len(warnings) > 0

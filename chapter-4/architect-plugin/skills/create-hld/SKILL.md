@@ -316,7 +316,10 @@ responsibility areas:
 - Evaluate DRD requirements against pattern options (Medallion, Lambda, Kappa, Data Vault)
 - Select and document the pattern with full justification
 - **Every selection must cite a specific DRD requirement**
-- Include a conceptual Mermaid architecture diagram (data flow, not table names)
+- Include three Mermaid diagrams:
+  1. **System Context** (`flowchart TB`) — the platform as a boundary with external actors and consumer groups (§2.3)
+  2. **Pipeline Architecture** (`flowchart TB`) — conceptual data flow through layers (§2.4)
+  3. **Ingestion Sequence** (`sequenceDiagram`) — step-by-step CDC/ingestion flow (§8.2)
 
 ### Data Architecture (Section 3)
 

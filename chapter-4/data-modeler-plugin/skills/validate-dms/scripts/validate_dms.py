@@ -117,7 +117,7 @@ def _yaml_has_key(yaml_text: str, key: str) -> bool:
 
 def _yaml_has_columns(yaml_text: str) -> bool:
     """Check if a YAML block has a columns list with entries."""
-    return bool(re.search(r"^columns:\s*\n\s+-\s+name:", yaml_text, re.MULTILINE))
+    return bool(re.search(r"^columns:\s*\n\s+-\s+(?:name:|{name:)", yaml_text, re.MULTILINE))
 
 
 # --- CRITICAL checks ---
@@ -397,8 +397,8 @@ def check_traceability_matrix(sections: dict[str, str]) -> list[ValidationResult
                 section="8. Traceability Matrix",
                 message="Traceability Matrix section is empty.",
                 suggestion=(
-                    "Add a table mapping gold columns back through silver,"
-                    " bronze, and source with transform summaries."
+                    "Add a table mapping gold tables back through silver"
+                    " and bronze source tables with key design decisions."
                 ),
             )
         )
@@ -420,8 +420,8 @@ def check_traceability_matrix(sections: dict[str, str]) -> list[ValidationResult
                 section="8. Traceability Matrix",
                 message="Traceability Matrix has no data rows.",
                 suggestion=(
-                    "Add at least one row mapping a gold column through"
-                    " silver → bronze → source."
+                    "Add at least one row mapping a gold table through"
+                    " silver → bronze source tables."
                 ),
             )
         )
@@ -491,8 +491,72 @@ def check_physical_design(sections: dict[str, str]) -> list[ValidationResult]:
                 section="7. Physical Design Notes",
                 message="Physical Design Notes section is empty.",
                 suggestion=(
-                    "Document partition strategy, clustering keys,"
-                    " and compression settings for each layer."
+                    "Document partition strategy and clustering keys."
+                    " Compression and storage format belong in the LLD."
+                ),
+            )
+        )
+    return results
+
+
+def check_no_transform_in_silver(sections: dict[str, str]) -> list[ValidationResult]:
+    """Warn if silver YAML blocks contain transform: expressions (belong in STM)."""
+    results: list[ValidationResult] = []
+    silver_content = sections.get("3. Silver Layer Schemas", "")
+    if not silver_content:
+        return results
+
+    yaml_blocks = _extract_yaml_blocks(silver_content)
+    blocks_with_transform = [
+        b for b in yaml_blocks if re.search(r"^\s+transform:", b, re.MULTILINE)
+    ]
+
+    if blocks_with_transform:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section="3. Silver Layer Schemas",
+                message=(
+                    f"Found transform: in {len(blocks_with_transform)} silver YAML"
+                    " block(s). Column-level transforms belong in the"
+                    " Source-to-Target Mapping document."
+                ),
+                suggestion=(
+                    "Remove transform: fields from silver YAML blocks."
+                    " The DMS defines what (columns, types, keys),"
+                    " not how (transform expressions)."
+                ),
+            )
+        )
+    return results
+
+
+def check_no_null_handling_in_silver(
+    sections: dict[str, str],
+) -> list[ValidationResult]:
+    """Warn if silver YAML blocks contain null_handling: (belongs in DQS)."""
+    results: list[ValidationResult] = []
+    silver_content = sections.get("3. Silver Layer Schemas", "")
+    if not silver_content:
+        return results
+
+    yaml_blocks = _extract_yaml_blocks(silver_content)
+    blocks_with_nh = [b for b in yaml_blocks if re.search(r"^\s+null_handling:", b, re.MULTILINE)]
+
+    if blocks_with_nh:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section="3. Silver Layer Schemas",
+                message=(
+                    f"Found null_handling: in {len(blocks_with_nh)} silver YAML"
+                    " block(s). Null handling rules belong in the"
+                    " Data Quality Specification."
+                ),
+                suggestion=(
+                    "Remove null_handling: fields from silver YAML blocks."
+                    " Use nullable: true/false to define the schema contract;"
+                    " handling rules go in the DQS."
                 ),
             )
         )
@@ -522,18 +586,42 @@ def check_placeholders(content: str) -> list[ValidationResult]:
 
 
 def check_diagrams(content: str) -> list[ValidationResult]:
-    """Check if ER diagram (mermaid block) is present."""
+    """Check if Mermaid diagrams are present."""
     results: list[ValidationResult] = []
     has_mermaid = bool(re.search(r"```mermaid", content))
     if not has_mermaid:
         results.append(
             ValidationResult(
-                level=ValidationLevel.INFO,
+                level=ValidationLevel.WARNING,
                 section="General",
-                message="No Mermaid ER diagram found.",
+                message="No Mermaid diagrams found.",
                 suggestion=(
-                    "Add a ```mermaid erDiagram showing entity relationships"
-                    " across bronze, silver, and gold layers."
+                    "Add a layer architecture flowchart (§1) and a"
+                    " gold star schema erDiagram (§4)."
+                ),
+            )
+        )
+    return results
+
+
+def check_holistic_er_diagram(sections: dict[str, str]) -> list[ValidationResult]:
+    """Check if Design Overview contains a holistic erDiagram spanning all layers."""
+    results: list[ValidationResult] = []
+    overview_content = sections.get("1. Design Overview", "")
+    if not overview_content:
+        return results
+
+    has_er = bool(re.search(r"```mermaid\s*\n\s*erDiagram", overview_content))
+    if not has_er:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section="1. Design Overview",
+                message=("No holistic erDiagram found in Design Overview section."),
+                suggestion=(
+                    "Add a ```mermaid erDiagram in §1 showing Bronze, Silver,"
+                    " and Gold tables with columns, PKs, FKs, and relationships"
+                    " across all layers."
                 ),
             )
         )
@@ -634,10 +722,13 @@ def validate_dms(file_path: Path) -> ValidationReport:
     report.results.extend(check_silver_lineage(sections))
     report.results.extend(check_gold_foreign_keys(sections))
     report.results.extend(check_physical_design(sections))
+    report.results.extend(check_no_transform_in_silver(sections))
+    report.results.extend(check_no_null_handling_in_silver(sections))
+    report.results.extend(check_diagrams(content))
+    report.results.extend(check_holistic_er_diagram(sections))
 
     # INFO checks
     report.results.extend(check_placeholders(content))
-    report.results.extend(check_diagrams(content))
     report.results.extend(check_all_layers_have_yaml(sections))
     report.results.extend(check_business_rules(sections))
 

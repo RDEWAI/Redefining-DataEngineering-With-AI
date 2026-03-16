@@ -521,22 +521,32 @@ Hourly batch is the Phase 1 compromise for medications and allergies.
 
 ```mermaid
 flowchart TB
-    subgraph Sources["Source Systems"]
-        EHR["Healthcare EHR\\n(18 CSV tables)"]
-    end
-    subgraph Platform["Data Platform"]
-        BRZ["Bronze Layer\\nSchema enforcement, partition tagging"]
-        DQ1["DQ Gate"]
-        SLV["Silver Layer\\nSCD2 dimensions, fact normalization"]
-        DQ2["DQ Gate"]
-        GLD["Gold Layer\\nDenormalized views, role-based access"]
-    end
     subgraph Consumers["Consumer Groups"]
-        CLIN["Clinical Users\\n(350 users, <2s p90)"]
-        BILL["Billing Staff\\n(50 users, 24h SLA)"]
+        clinical["Clinical Users\\n350 users"]
     end
-    EHR --> BRZ --> DQ1 --> SLV --> DQ2 --> GLD
-    GLD --> CLIN & BILL
+    subgraph Platform["Patient 360 Data Platform"]
+        pipeline["Medallion Pipeline\\nBronze/Silver/Gold"]
+    end
+    subgraph External["External Systems"]
+        ehr["Healthcare EHR\\n18 CSV tables"]
+    end
+    ehr -->|"Full Snapshot CDC"| pipeline
+    pipeline -->|"Gold tables"| clinical
+```
+
+```mermaid
+flowchart TB
+    EHR["EHR"] --> BRZ["Bronze"] --> SLV["Silver"] --> GLD["Gold"]
+    GLD --> CLIN["Clinical"] & BILL["Billing"]
+```
+
+```mermaid
+sequenceDiagram
+  participant EHR as Healthcare EHR
+  participant BRZ as Bronze Layer
+  participant SLV as Silver Layer
+  EHR->>BRZ: Full snapshot CSV extract
+  BRZ->>SLV: Type casting, SCD2 merge
 ```
 
 ### Key Design Principles
@@ -1007,10 +1017,36 @@ the dimensional model described in HLD §2.3 Gold Layer.
 
 ```mermaid
 erDiagram
-    bronze_patients ||--|| silver_patients : cleanses
-    silver_patients ||--|| dim_patient : conforms
-    bronze_encounters ||--|| silver_encounters : cleanses
-    silver_encounters ||--|| fact_encounter : conforms
+    bronze_patients {
+        VARCHAR ID PK
+        TIMESTAMP _ingested_at
+    }
+    bronze_encounters {
+        VARCHAR ID PK
+        VARCHAR PATIENT FK
+    }
+    silver_patients {
+        VARCHAR patient_id PK
+        VARCHAR first_name
+    }
+    silver_encounters {
+        VARCHAR encounter_id PK
+        VARCHAR patient_id FK
+    }
+    dim_patient {
+        BIGINT patient_sk PK
+        VARCHAR patient_id UK
+        BOOLEAN is_current
+    }
+    fact_encounter {
+        BIGINT encounter_sk PK
+        BIGINT patient_sk FK
+    }
+    bronze_patients ||--|| silver_patients : "cleanse"
+    bronze_encounters ||--|| silver_encounters : "cleanse"
+    silver_patients ||--o{ silver_encounters : "has"
+    silver_patients ||--|| dim_patient : "SCD2"
+    silver_encounters ||--|| fact_encounter : "per enc"
     dim_patient ||--o{ fact_encounter : "patient_sk"
 ```
 
@@ -1130,26 +1166,25 @@ columns:
     type: DATE
     nullable: true
     source: bronze.patients.BIRTHDATE
-    transform: "CAST(BIRTHDATE AS DATE)"
-    null_handling: "pass through null, flag WARNING"
     business_rule: BR-001
+    description: Date of birth
   - name: first_name
     type: VARCHAR
     nullable: true
     source: bronze.patients.FIRST
-    transform: "INITCAP(TRIM(FIRST))"
+    description: First name (proper case)
   - name: last_name
     type: VARCHAR
     nullable: false
     source: bronze.patients.LAST
-    transform: "INITCAP(TRIM(LAST))"
+    description: Last name (proper case)
   - name: gender
     type: VARCHAR(10)
     nullable: false
     source: bronze.patients.GENDER
-    transform: "UPPER(TRIM(GENDER))"
     enum: [MALE, FEMALE, OTHER, UNKNOWN]
     business_rule: BR-002
+    description: Standardized gender
 ```
 
 ### encounters (Silver)
@@ -1177,17 +1212,17 @@ columns:
     type: TIMESTAMP
     nullable: true
     source: bronze.encounters.START
-    transform: "CAST(START AS TIMESTAMP)"
+    description: Encounter start timestamp
   - name: encounter_end
     type: TIMESTAMP
     nullable: true
     source: bronze.encounters.STOP
-    transform: "CAST(STOP AS TIMESTAMP)"
+    description: Encounter end timestamp
   - name: encounter_class
     type: VARCHAR
     nullable: true
     source: bronze.encounters.ENCOUNTERCLASS
-    transform: "UPPER(TRIM(ENCOUNTERCLASS))"
+    description: Encounter classification (standardized)
 ```
 
 ---
@@ -1217,7 +1252,7 @@ columns:
   - name: full_name
     type: VARCHAR
     nullable: false
-    transform: "first_name || ' ' || last_name"
+    description: Derived from first_name and last_name
   - name: birth_date
     type: DATE
     nullable: true
@@ -1316,19 +1351,16 @@ foreign_keys:
 - Fact tables: cluster by most common join key (e.g., `patient_sk`)
 - Dimensions: no clustering (small tables)
 
-### Compression
-
-- Delta Lake default (Snappy) for all layers
+> Storage format, compression, and retention policies are in the LLD.
 
 ---
 
 ## 8. Traceability Matrix
 
-| Gold Column | Silver | Bronze | Transform |
-|-------------|--------|--------|-----------|
-| dim_patient.full_name | first_name+last_name | FIRST+LAST | INITCAP |
-| dim_patient.birth_date | birth_date | BIRTHDATE | CAST DATE |
-| fact_encounter.patient_sk | patient_id | PATIENT | SK lookup |
+| Gold Table | Silver Source | Bronze Source | Key Design Decisions |
+|-----------|-------------|-------------|---------------------|
+| dim_patient (SCD2) | patients | patients | SCD Type 2 for address |
+| fact_encounter | encounters | encounters | Grain: one per encounter |
 
 ---
 
@@ -1469,9 +1501,9 @@ Partition by ingestion date. Delta Lake compression.
 
 ## 8. Traceability Matrix
 
-| Gold Column | Silver Source | Bronze Source | Raw Source | Transform |
-|-------------|-------------|-------------|-----------|-----------|
-| dim_patient.patient_sk | patients.patient_id | patients.Id | Synthea | SK generation |
+| Gold Table | Silver Source | Bronze Source | Key Design Decisions |
+|-----------|-------------|-------------|---------------------|
+| dim_patient (SCD2) | patients | patients | SCD Type 2, surrogate key |
 
 ## 9. Version History
 

@@ -234,17 +234,23 @@ class TestCheckPlaceholders:
 
 
 class TestCheckDiagrams:
-    """Check for Mermaid diagrams."""
+    """Check for Mermaid diagrams (WARNING level, ≥2 required)."""
 
     def test_diagrams_present(self):
         results = check_diagrams(VALID_HLD)
-        infos = [r for r in results if r.level == ValidationLevel.INFO]
-        assert len(infos) == 0
+        warnings = [r for r in results if r.level == ValidationLevel.WARNING]
+        assert len(warnings) == 0
 
     def test_missing_diagrams_flagged(self):
         results = check_diagrams(MINIMAL_INVALID_HLD)
-        infos = [r for r in results if r.level == ValidationLevel.INFO]
-        assert len(infos) > 0
+        warnings = [r for r in results if r.level == ValidationLevel.WARNING]
+        assert len(warnings) > 0
+
+    def test_single_diagram_flagged(self):
+        content = "# HLD\n\n```mermaid\nflowchart TB\n  A --> B\n```\n"
+        results = check_diagrams(content)
+        warnings = [r for r in results if r.level == ValidationLevel.WARNING]
+        assert len(warnings) > 0
 
 
 class TestCheckCostEstimates:

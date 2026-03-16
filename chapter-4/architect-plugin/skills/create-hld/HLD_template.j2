@@ -35,17 +35,27 @@
 
 **Trade-off**: {{ hld.architecture.tradeoff }}
 
-### 2.3 Architecture Diagram
+### 2.3 System Context Diagram
 
-<!-- Diagram should show CONCEPTUAL data flow: Sources → Layers → Consumers.
+<!-- C4 Level 1: Show the data platform as a boundary box surrounded by
+     external actors (source systems, consumer groups, supporting services).
+     Answers: "What does our system interact with?" -->
+
+```mermaid
+{{ hld.architecture.system_context_diagram }}
+```
+
+### 2.4 Pipeline Architecture Diagram
+
+<!-- Conceptual data flow: Sources → Layers → Consumers.
      Include quality gates between layers and SLA annotations per consumer group.
      Do NOT list individual table names — those belong in the DMS. -->
 
 ```mermaid
-{{ hld.architecture.diagram }}
+{{ hld.architecture.pipeline_diagram }}
 ```
 
-### 2.4 Key Design Principles
+### 2.5 Key Design Principles
 
 {% for principle in hld.architecture.principles %}
 - {{ principle }}
@@ -202,7 +212,16 @@
 | {{ cdc.source_type }} | {{ cdc.method }} | {{ cdc.frequency }} | {{ cdc.rationale }} |
 {% endfor %}
 
-### 8.2 Recovery Strategy
+### 8.2 Ingestion Sequence Diagram
+
+<!-- Sequence diagram showing the step-by-step CDC/ingestion flow.
+     Answers: "What happens during a pipeline run?" -->
+
+```mermaid
+{{ hld.operations.ingestion_sequence_diagram }}
+```
+
+### 8.3 Recovery Strategy
 
 | Metric | Target | Justification |
 |--------|--------|---------------|
@@ -210,7 +229,7 @@
 | {{ dr.metric }} | {{ dr.target }} | {{ dr.justification }} |
 {% endfor %}
 
-### 8.3 Backup Approach
+### 8.4 Backup Approach
 
 {{ hld.operations.backup_approach }}
 
