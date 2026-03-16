@@ -11,6 +11,10 @@ The use case is **Patient 360** — a unified patient search experience across S
 - [Claude Code](https://code.claude.com) CLI installed
 - Python 3.10–3.12
 - [UV](https://docs.astral.sh/uv/) package manager
+- **Max output tokens** — Some agents (e.g., Data Modeler) generate large artifacts that exceed the default 32k token limit. Add this to your `~/.zshrc`:
+  ```bash
+  export CLAUDE_CODE_MAX_OUTPUT_TOKENS=128000
+  ```
 
 ## Quick Start
 
@@ -34,6 +38,7 @@ From the repo root, open Claude Code and add the local marketplace:
 ```
 /plugin install ba-plugin@rdewai-plugins
 /plugin install architect-plugin@rdewai-plugins
+/plugin install data-modeler-plugin@rdewai-plugins
 ```
 
 You can verify the install by running `/plugin` — you should see:
@@ -50,6 +55,12 @@ architect-plugin (v1.0.0)
   Agents: architect-agent
   Hooks: PreToolUse, PostToolUse
   Status: Enabled
+
+data-modeler-plugin (v1.0.0)
+  Skills: create-dms, update-dms, validate-dms
+  Agents: data-modeler-agent
+  Hooks: PreToolUse, PostToolUse
+  Status: Enabled
 ```
 
 ### 4. Use the BA Agent
@@ -57,7 +68,7 @@ architect-plugin (v1.0.0)
 The BA Agent orchestrates DRD creation with an interactive Q&A workflow:
 
 ```
-@ba-agent Create a DRD from the inputs in chapter-4/inputs/drd/v1
+@ba-agent Create a DRD from the inputs in inputs/drd/v1
 ```
 
 The agent will:
@@ -73,7 +84,7 @@ Other agent invocations:
 
 ```
 @ba-agent Update the Patient 360 DRD with new billing team requirements
-@ba-agent Validate the DRD at chapter-4/outputs/drd/v1/DRD-2026-02-10-patient-360.md
+@ba-agent Validate the DRD at outputs/drd/v1/DRD-2026-02-10-patient-360.md
 ```
 
 ### 5. Use the Architect Agent
@@ -97,25 +108,52 @@ Other agent invocations:
 
 ```
 @architect-plugin:architect-agent Update the existing HLD with new cloud migration constraints
-@architect-plugin:architect-agent Validate the HLD at chapter-4/outputs/hld/v1/HLD-2026-03-15-pipeline.md
+@architect-plugin:architect-agent Validate the HLD at outputs/hld/v1/HLD-2026-03-15-pipeline.md
 ```
 
-### 6. Use skills directly (alternative)
+### 6. Use the Data Modeler Agent
+
+The Data Modeler Agent translates HLD layer specifications into concrete schema definitions:
+
+```
+@data-modeler-plugin:data-modeler-agent Create the DMS from the latest HLD
+```
+
+The agent will:
+1. Discover the latest HLD, DRD, and modeler input version folders automatically
+2. Read HLD layer specs, DRD business rules, enterprise naming standards, governance policies, and data dictionary
+3. Assess gaps across 9 DMS sections (Design Overview, Bronze/Silver/Gold Schemas, Naming Conventions, SCD Strategy, etc.)
+4. Ask you schema design decisions via structured `AskUserQuestion` UI — one section at a time
+5. Verify source table structures with read-only database queries (DESCRIBE, sample data, null rates)
+6. Generate the DMS with embedded YAML schema blocks, SCD type decisions, and HLD traceability
+7. Validate automatically and fix any critical issues
+
+Other agent invocations:
+
+```
+@data-modeler-plugin:data-modeler-agent Update the DMS to add SCD Type 2 tracking for provider specialty
+@data-modeler-plugin:data-modeler-agent Validate the DMS at outputs/dms/v1/DMS-2026-03-16-patient-360.md
+```
+
+### 7. Use skills directly (alternative)
 
 You can also invoke skills directly without the agent wrapper. Make sure you have `data/duckdb/raw.db` already created.
 
 ```
-/create-drd chapter-4/inputs/drd/v1
-/create-hld chapter-4/outputs/drd/v1/DRD-2026-02-11-patient-360.md
+/create-drd inputs/drd/v1
+/create-hld outputs/drd/v1/DRD-2026-02-11-patient-360.md
 ```
 
 Other skills:
 
 ```
-/update-drd chapter-4/outputs/drd/v1/DRD-2026-02-10-patient-360.md
-/validate-drd chapter-4/outputs/drd/v1/DRD-2026-02-10-patient-360.md
-/update-hld chapter-4/outputs/hld/v1/HLD-2026-03-15-pipeline.md
-/validate-hld chapter-4/outputs/hld/v1/HLD-2026-03-15-pipeline.md
+/update-drd outputs/drd/v1/DRD-2026-02-10-patient-360.md
+/validate-drd outputs/drd/v1/DRD-2026-02-10-patient-360.md
+/update-hld outputs/hld/v1/HLD-2026-03-15-pipeline.md
+/validate-hld outputs/hld/v1/HLD-2026-03-15-pipeline.md
+/data-modeler-plugin:create-dms
+/data-modeler-plugin:update-dms outputs/dms/v1/DMS-2026-03-16-patient-360.md
+/data-modeler-plugin:validate-dms outputs/dms/v1/DMS-2026-03-16-patient-360.md
 ```
 
 ## How the Plugins Work
@@ -139,6 +177,17 @@ The `architect-agent` sub-agent (`architect-plugin/agents/architect-agent.md`) e
 - **DRD Traceability** — every design decision must cite the DRD section it satisfies
 - **Session Memory** — writes notes to `architect-plugin/memory/` after each engagement
 
+### Data Modeler Agent
+
+The `data-modeler-agent` sub-agent (`data-modeler-plugin/agents/data-modeler-agent.md`) embodies the Data Modeler role with:
+
+- **Schema Elicitation Protocol** — asks schema design decisions section-by-section using `AskUserQuestion`, covering bronze/silver/gold schemas, SCD strategies, naming conventions, and physical design
+- **Database Gate** — queries actual source table structures (DESCRIBE, sample data, null rates) before designing schemas; blocks DMS generation if the database is inaccessible
+- **Dual-Format Output** — generates markdown narrative with embedded YAML schema blocks that downstream agents (Mapping Engineer, DQ Engineer) can parse programmatically
+- **Enterprise Standards** — applies naming conventions, governance policies, and data dictionary from `inputs/dms/v1/` (PHI handling, approved types, enumeration standards)
+- **HLD Traceability** — every schema decision must cite the HLD layer specification it implements
+- **Session Memory** — writes notes to `data-modeler-plugin/memory/` after each engagement
+
 ### Skills
 
 | Plugin | Skill | What it does |
@@ -149,10 +198,13 @@ The `architect-agent` sub-agent (`architect-plugin/agents/architect-agent.md`) e
 | architect-plugin | `create-hld` | Reads DRD + architect inputs, generates a complete HLD following a Jinja2 template |
 | architect-plugin | `update-hld` | Merges changes into an existing HLD, verifying cross-section consistency |
 | architect-plugin | `validate-hld` | Runs validation checks on an HLD (sections, traceability, tech table, CDC, capacity) |
+| data-modeler-plugin | `create-dms` | Reads HLD + DRD + enterprise standards, generates a complete DMS with YAML schema blocks |
+| data-modeler-plugin | `update-dms` | Merges schema changes into an existing DMS, preserving unchanged content |
+| data-modeler-plugin | `validate-dms` | Runs validation checks on a DMS (sections, YAML syntax, SCD types, traceability) |
 
 ### Hooks
 
-Both plugins register two hooks each:
+All three plugins register two hooks each:
 
 **PreToolUse — Read-Only Query Enforcement**
 
@@ -160,9 +212,9 @@ Fires before every `Bash` command. Blocks database write operations (INSERT, UPD
 
 **PostToolUse — Automatic Validation**
 
-Fires after every `Write` or `Edit` operation. When Claude writes a file to `outputs/drd/` or `outputs/hld/`:
+Fires after every `Write` or `Edit` operation. When Claude writes a file to `outputs/drd/`, `outputs/hld/`, or `outputs/dms/`:
 
-1. The hook script checks if the file is a DRD/HLD (`.md` in the outputs directory)
+1. The hook script checks if the file is a DRD/HLD/DMS (`.md` in the outputs directory)
 2. Runs the Python validator against the file
 3. **CRITICAL issues** → blocks Claude and feeds errors back for auto-fix
 4. **Warnings** → passed as non-blocking context
@@ -173,7 +225,7 @@ Fires after every `Write` or `Edit` operation. When Claude writes a file to `out
 All inputs and outputs use **folder-based versioning** (`v1/`, `v2/`, etc.). The latest version folder is the source of truth for that component. Agents auto-discover the latest version via:
 
 ```bash
-ls -d chapter-4/{path}/v* | sort -V | tail -1
+ls -d {path}/v* | sort -V | tail -1
 ```
 
 ### Input Documents
@@ -194,6 +246,14 @@ ls -d chapter-4/{path}/v* | sort -V | tail -1
 | `infrastructure-constraints.md` | Compute limits, storage format, networking, security, platform |
 | `team-capabilities.md` | Language proficiency, pattern experience, skill gaps |
 | `technology-catalog.md` | Approved tools with versions, roles, and licensing |
+
+**Data Modeler Agent inputs** — `inputs/dms/v1/`:
+
+| File | Contents |
+|------|----------|
+| `enterprise-naming-standards.md` | Table/column naming rules, schema organization, metadata columns, approved abbreviations |
+| `data-governance-policies.md` | Data classification (PHI/PII), PHI handling rules, retention policies, RBAC, SCD policy guidelines |
+| `enterprise-data-dictionary.md` | Approved data types, business entity definitions, derived columns, code systems, enumerations, null handling |
 
 ## Plugin Directory Structure
 
@@ -247,13 +307,38 @@ chapter-4/
 │   └── scripts/
 │       ├── validate-hld-hook.py
 │       └── enforce-readonly-queries.py
+├── data-modeler-plugin/                # Data Modeler Agent plugin
+│   ├── .claude-plugin/
+│   │   └── plugin.json
+│   ├── agents/
+│   │   └── data-modeler-agent.md
+│   ├── skills/
+│   │   ├── create-dms/
+│   │   │   ├── SKILL.md
+│   │   │   ├── DMS_template.j2
+│   │   │   └── examples/
+│   │   │       └── sample-dms.md
+│   │   ├── update-dms/
+│   │   │   └── SKILL.md
+│   │   └── validate-dms/
+│   │       ├── SKILL.md
+│   │       └── scripts/
+│   │           └── validate_dms.py
+│   ├── hooks/
+│   │   └── hooks.json
+│   ├── memory/
+│   └── scripts/
+│       ├── validate-dms-hook.py
+│       └── enforce-readonly-queries.py
 ├── inputs/
 │   ├── drd/v1/                         # BA Agent inputs (versioned)
-│   └── architect/v1/                   # Architect Agent inputs (versioned)
+│   ├── architect/v1/                   # Architect Agent inputs (versioned)
+│   └── dms/v1/                         # Data Modeler inputs (versioned)
 ├── outputs/
 │   ├── drd/v1/                         # Generated DRDs (versioned)
-│   └── hld/v1/                         # Generated HLDs (versioned)
-├── tests/                              # Unit tests (157 tests)
+│   ├── hld/v1/                         # Generated HLDs (versioned)
+│   └── dms/v1/                         # Generated DMSs (versioned)
+├── tests/                              # Unit tests (223 tests)
 ├── pyproject.toml
 ├── Makefile
 └── README.md
@@ -268,7 +353,7 @@ cd chapter-4
 make test
 ```
 
-This runs 157 tests covering both plugins: validators, validation hooks, read-only query enforcement, and agent definition structure.
+This runs 223 tests covering all three plugins: validators, validation hooks, read-only query enforcement, and agent definition structure.
 
 ### Run validators directly
 
@@ -281,22 +366,29 @@ uv run python ba-plugin/skills/validate-drd/scripts/validate_drd.py outputs/drd/
 # Validate a specific HLD
 uv run python architect-plugin/skills/validate-hld/scripts/validate_hld.py outputs/hld/v1/HLD-2026-03-15-pipeline.md
 
-# Validate all DRDs/HLDs
+# Validate a specific DMS
+uv run python data-modeler-plugin/skills/validate-dms/scripts/validate_dms.py outputs/dms/v1/DMS-2026-03-16-patient-360.md
+
+# Validate all DRDs/HLDs/DMSs
 make validate-drd
 make validate-hld
+make validate-dms
 ```
 
 ### Test the plugin end-to-end
 
 1. Start Claude Code from the repo root (`claude`)
 2. Add marketplace: `/plugin marketplace add ./chapter-4`
-3. Install plugins: `/plugin install ba-plugin@rdewai-plugins` and `/plugin install architect-plugin@rdewai-plugins`
-4. Invoke the BA agent: `@ba-agent Create a DRD from chapter-4/inputs/drd/v1`
+3. Install plugins: `/plugin install ba-plugin@rdewai-plugins`, `/plugin install architect-plugin@rdewai-plugins`, `/plugin install data-modeler-plugin@rdewai-plugins`
+4. Invoke the BA agent: `@ba-agent Create a DRD from inputs/drd/v1`
 5. Answer the agent's clarifying questions until it confirms readiness
-6. Verify a DRD was created in `chapter-4/outputs/drd/v1/`
+6. Verify a DRD was created in `outputs/drd/v1/`
 7. Invoke the Architect agent: `@architect-plugin:architect-agent Create the HLD for the project`
 8. Answer design decisions until the agent confirms readiness
-9. Verify an HLD was created in `chapter-4/outputs/hld/v1/`
+9. Verify an HLD was created in `outputs/hld/v1/`
+10. Invoke the Data Modeler agent: `@data-modeler-plugin:data-modeler-agent Create the DMS from the latest HLD`
+11. Answer schema design questions until the agent confirms readiness
+12. Verify a DMS was created in `outputs/dms/v1/`
 
 ### Debug plugin loading
 
@@ -320,6 +412,9 @@ Or uninstall and reinstall:
 
 /plugin uninstall architect-plugin@rdewai-plugins
 /plugin install architect-plugin@rdewai-plugins
+
+/plugin uninstall data-modeler-plugin@rdewai-plugins
+/plugin install data-modeler-plugin@rdewai-plugins
 ```
 
 ## Makefile Targets
@@ -327,9 +422,10 @@ Or uninstall and reinstall:
 ```bash
 make help           # Show all commands
 make dev-setup      # Install Python dependencies
-make test           # Run all 157 tests
+make test           # Run all 223 tests
 make validate-drd   # Validate all DRDs in outputs/
 make validate-hld   # Validate all HLDs in outputs/
+make validate-dms   # Validate all DMSs in outputs/
 make lint           # Run ruff linter
 make format         # Auto-format code
 make clean          # Remove caches

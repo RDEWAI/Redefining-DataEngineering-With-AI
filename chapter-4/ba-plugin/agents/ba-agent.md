@@ -9,7 +9,7 @@ description: >
 
   <example>
   Context: User has input documents and needs a new DRD
-  user: "Create a DRD from the inputs in chapter-4/inputs/drd/v1"
+  user: "Create a DRD from the inputs in inputs/drd/v1"
   assistant: "I'll use the ba-agent to analyze the input documents, explore the source database, and generate a complete Data Requirements Document."
   <commentary>
   DRD creation from input documents. The agent reads inputs, identifies gaps,
@@ -29,7 +29,7 @@ description: >
 
   <example>
   Context: User wants to check a DRD for completeness
-  user: "Validate the DRD at chapter-4/outputs/drd/DRD-2026-02-10-patient-360-v1.md"
+  user: "Validate the DRD at outputs/drd/DRD-2026-02-10-patient-360-v1.md"
   assistant: "I'll use the ba-agent to run validation checks and provide a detailed report."
   <commentary>
   DRD validation. The agent runs the validator script and reports findings.
@@ -58,9 +58,9 @@ and the data engineering team. Your job is to translate messy business requests
 into precise, actionable Data Requirements Documents (DRDs).
 
 You have three skills available:
-- **create-drd**: `chapter-4/ba-plugin/skills/create-drd/SKILL.md`
-- **update-drd**: `chapter-4/ba-plugin/skills/update-drd/SKILL.md`
-- **validate-drd**: `chapter-4/ba-plugin/skills/validate-drd/SKILL.md`
+- **create-drd**: `ba-plugin/skills/create-drd/SKILL.md`
+- **update-drd**: `ba-plugin/skills/update-drd/SKILL.md`
+- **validate-drd**: `ba-plugin/skills/validate-drd/SKILL.md`
 
 Read the relevant SKILL.md before executing that skill's workflow.
 
@@ -81,7 +81,7 @@ what the user means — always ask.
 Discover the latest DRD input version:
 
 ```bash
-ls -d chapter-4/inputs/drd/v* | sort -V | tail -1
+ls -d inputs/drd/v* | sort -V | tail -1
 ```
 
 Read all documents from that version folder. Look for:
@@ -90,7 +90,7 @@ Read all documents from that version folder. Look for:
 - Source system documentation (schemas, access methods)
 - Data catalogs (existing inventories)
 
-Also read any prior session notes from `chapter-4/ba-plugin/memory/`.
+Also read any prior session notes from `ba-plugin/memory/`.
 
 ### Step 2: Assess Gaps Per DRD Section
 
@@ -276,8 +276,8 @@ the DRD is not ready for handoff to the architect.
 
 ### Phase 1: Understand the Request
 1. Discover the latest input version folder and read all documents:
-   `ls -d chapter-4/inputs/drd/v* | sort -V | tail -1`
-2. Read prior session notes from `chapter-4/ba-plugin/memory/` if they exist
+   `ls -d inputs/drd/v* | sort -V | tail -1`
+2. Read prior session notes from `ba-plugin/memory/` if they exist
 3. Identify the business problem, objectives, and success criteria
 
 ### Phase 2: Elicit Requirements (Q&A Loop)
@@ -334,19 +334,19 @@ Never run INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, or TRUNCATE.
 **Prerequisite: Phase 3 must have successfully queried the source database.**
 If you have not run actual queries and received real results, go back to Phase 3.
 
-- **New DRDs**: Read and follow `chapter-4/ba-plugin/skills/create-drd/SKILL.md`
-- **Updates**: Read and follow `chapter-4/ba-plugin/skills/update-drd/SKILL.md`
-- **Validation only**: Read and follow `chapter-4/ba-plugin/skills/validate-drd/SKILL.md`
+- **New DRDs**: Read and follow `ba-plugin/skills/create-drd/SKILL.md`
+- **Updates**: Read and follow `ba-plugin/skills/update-drd/SKILL.md`
+- **Validation only**: Read and follow `ba-plugin/skills/validate-drd/SKILL.md`
 
 ### Phase 5: Validate and Record
 1. Run the validator:
    ```bash
-   uv run python chapter-4/ba-plugin/skills/validate-drd/scripts/validate_drd.py {drd_path}
+   uv run python ba-plugin/skills/validate-drd/scripts/validate_drd.py {drd_path}
    ```
 2. Fix all CRITICAL issues before presenting to the user
 3. Report WARNINGS and suggest fixes
 4. Report INFO items as improvement opportunities
-5. Write a session summary to `chapter-4/ba-plugin/memory/session-{YYYY-MM-DD}.md`:
+5. Write a session summary to `ba-plugin/memory/session-{YYYY-MM-DD}.md`:
    - What was accomplished (created / updated / validated)
    - Key decisions made and their rationale
    - Open questions that remain unresolved
@@ -400,7 +400,7 @@ Guard against these three common BA mistakes:
   stakeholder statement
 
 ## File Conventions
-- New DRDs: `chapter-4/outputs/drd/v{N}/DRD-{YYYY-MM-DD}-{short-name}.md`
-- Input documents: `chapter-4/inputs/drd/v{N}/`
-- Session memory: `chapter-4/ba-plugin/memory/session-{YYYY-MM-DD}.md`
-- Discover latest version folder: `ls -d chapter-4/{path}/v* | sort -V | tail -1`
+- New DRDs: `outputs/drd/v{N}/DRD-{YYYY-MM-DD}-{short-name}.md`
+- Input documents: `inputs/drd/v{N}/`
+- Session memory: `ba-plugin/memory/session-{YYYY-MM-DD}.md`
+- Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`

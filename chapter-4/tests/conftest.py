@@ -864,3 +864,535 @@ def placeholder_drd_file(tmp_path: Path) -> Path:
     f = tmp_path / "placeholder-drd.md"
     f.write_text(PLACEHOLDER_DRD, encoding="utf-8")
     return f
+
+
+# ---------------------------------------------------------------------------
+# DMS (Data Model Specification) fixtures
+# ---------------------------------------------------------------------------
+
+VALID_DMS = """\
+# Data Model Specification: Patient 360 Dimensional Model
+
+| Field | Value |
+|-------|-------|
+| **Version** | 1.0 |
+| **Created** | 2026-03-15 |
+| **Last Modified** | 2026-03-15 |
+| **Author** | Data Modeler Agent |
+| **Status** | Draft |
+| **HLD Reference** | HLD-2026-03-14-patient-360-v1.md |
+
+---
+
+## 1. Design Overview
+
+This DMS defines the bronze, silver, and gold layer schemas for the Patient 360
+Medallion pipeline. The design follows HLD §2 Layer Specifications and implements
+the dimensional model described in HLD §2.3 Gold Layer.
+
+```mermaid
+erDiagram
+    bronze_patients ||--|| silver_patients : cleanses
+    silver_patients ||--|| dim_patient : conforms
+    bronze_encounters ||--|| silver_encounters : cleanses
+    silver_encounters ||--|| fact_encounter : conforms
+    dim_patient ||--o{ fact_encounter : "patient_sk"
+```
+
+---
+
+## 2. Bronze Layer Schemas
+
+### patients (Bronze)
+
+Raw ingestion of the Synthea patients table per HLD §2.1 Bronze Layer.
+
+```yaml
+table: patients
+layer: bronze
+schema: raw
+partition_by: _ingested_date
+columns:
+  - name: Id
+    type: VARCHAR
+    nullable: false
+    description: Original patient identifier
+  - name: BIRTHDATE
+    type: VARCHAR
+    nullable: true
+    description: Date of birth as string
+  - name: FIRST
+    type: VARCHAR
+    nullable: true
+    description: First name
+  - name: LAST
+    type: VARCHAR
+    nullable: true
+    description: Last name
+  - name: GENDER
+    type: VARCHAR
+    nullable: true
+    description: Gender code
+  - name: _ingested_at
+    type: TIMESTAMP
+    nullable: false
+    description: Ingestion timestamp (metadata)
+  - name: _source_batch_id
+    type: VARCHAR
+    nullable: false
+    description: Batch identifier (metadata)
+  - name: _source_file
+    type: VARCHAR
+    nullable: false
+    description: Source file path (metadata)
+```
+
+### encounters (Bronze)
+
+Raw ingestion of the Synthea encounters table per HLD §2.1 Bronze Layer.
+
+```yaml
+table: encounters
+layer: bronze
+schema: raw
+partition_by: _ingested_date
+columns:
+  - name: Id
+    type: VARCHAR
+    nullable: false
+    description: Original encounter identifier
+  - name: PATIENT
+    type: VARCHAR
+    nullable: false
+    description: Patient reference
+  - name: START
+    type: VARCHAR
+    nullable: true
+    description: Encounter start datetime as string
+  - name: STOP
+    type: VARCHAR
+    nullable: true
+    description: Encounter stop datetime as string
+  - name: ENCOUNTERCLASS
+    type: VARCHAR
+    nullable: true
+    description: Encounter classification
+  - name: _ingested_at
+    type: TIMESTAMP
+    nullable: false
+    description: Ingestion timestamp (metadata)
+  - name: _source_batch_id
+    type: VARCHAR
+    nullable: false
+    description: Batch identifier (metadata)
+  - name: _source_file
+    type: VARCHAR
+    nullable: false
+    description: Source file path (metadata)
+```
+
+---
+
+## 3. Silver Layer Schemas
+
+### patients (Silver)
+
+Canonical patient entity. Standardized from bronze patients per HLD §2.2.
+
+```yaml
+table: patients
+layer: silver
+schema: clinical
+primary_key: patient_id
+partition_by: _ingested_date
+columns:
+  - name: patient_id
+    type: VARCHAR
+    nullable: false
+    source: bronze.patients.Id
+    description: Unique patient identifier
+  - name: birth_date
+    type: DATE
+    nullable: true
+    source: bronze.patients.BIRTHDATE
+    transform: "CAST(BIRTHDATE AS DATE)"
+    null_handling: "pass through null, flag WARNING"
+    business_rule: BR-001
+  - name: first_name
+    type: VARCHAR
+    nullable: true
+    source: bronze.patients.FIRST
+    transform: "INITCAP(TRIM(FIRST))"
+  - name: last_name
+    type: VARCHAR
+    nullable: false
+    source: bronze.patients.LAST
+    transform: "INITCAP(TRIM(LAST))"
+  - name: gender
+    type: VARCHAR(10)
+    nullable: false
+    source: bronze.patients.GENDER
+    transform: "UPPER(TRIM(GENDER))"
+    enum: [MALE, FEMALE, OTHER, UNKNOWN]
+    business_rule: BR-002
+```
+
+### encounters (Silver)
+
+Canonical encounter entity per HLD §2.2 Silver Layer.
+
+```yaml
+table: encounters
+layer: silver
+schema: clinical
+primary_key: encounter_id
+partition_by: encounter_date
+columns:
+  - name: encounter_id
+    type: VARCHAR
+    nullable: false
+    source: bronze.encounters.Id
+    description: Unique encounter identifier
+  - name: patient_id
+    type: VARCHAR
+    nullable: false
+    source: bronze.encounters.PATIENT
+    description: FK to patients
+  - name: encounter_start
+    type: TIMESTAMP
+    nullable: true
+    source: bronze.encounters.START
+    transform: "CAST(START AS TIMESTAMP)"
+  - name: encounter_end
+    type: TIMESTAMP
+    nullable: true
+    source: bronze.encounters.STOP
+    transform: "CAST(STOP AS TIMESTAMP)"
+  - name: encounter_class
+    type: VARCHAR
+    nullable: true
+    source: bronze.encounters.ENCOUNTERCLASS
+    transform: "UPPER(TRIM(ENCOUNTERCLASS))"
+```
+
+---
+
+## 4. Gold Layer Schemas
+
+### dim_patient (Gold)
+
+Patient dimension with SCD Type 2 for address tracking per HLD §2.3.
+
+```yaml
+table: dim_patient
+layer: gold
+schema: analytics
+grain: one row per patient version
+scd_type: 2
+surrogate_key: patient_sk
+columns:
+  - name: patient_sk
+    type: BIGINT
+    nullable: false
+    description: Surrogate key
+  - name: patient_id
+    type: VARCHAR
+    nullable: false
+    description: Natural key from silver
+  - name: full_name
+    type: VARCHAR
+    nullable: false
+    transform: "first_name || ' ' || last_name"
+  - name: birth_date
+    type: DATE
+    nullable: true
+  - name: gender
+    type: VARCHAR(10)
+    nullable: false
+  - name: effective_from
+    type: DATE
+    nullable: false
+  - name: effective_to
+    type: DATE
+    nullable: true
+  - name: is_current
+    type: BOOLEAN
+    nullable: false
+```
+
+### fact_encounter (Gold)
+
+Encounter fact table per HLD §2.3 Gold Layer.
+
+```yaml
+table: fact_encounter
+layer: gold
+schema: analytics
+grain: one row per patient encounter
+surrogate_key: encounter_sk
+columns:
+  - name: encounter_sk
+    type: BIGINT
+    nullable: false
+    description: Surrogate key
+  - name: encounter_id
+    type: VARCHAR
+    nullable: false
+    description: Natural key
+  - name: patient_sk
+    type: BIGINT
+    nullable: false
+    description: FK to dim_patient
+  - name: encounter_start
+    type: TIMESTAMP
+    nullable: true
+  - name: encounter_end
+    type: TIMESTAMP
+    nullable: true
+  - name: encounter_class
+    type: VARCHAR
+    nullable: true
+foreign_keys:
+  - column: patient_sk
+    references: dim_patient.patient_sk
+```
+
+---
+
+## 5. Naming Conventions
+
+### Table Naming
+
+- **Dimensions**: `dim_` prefix (e.g., `dim_patient`, `dim_provider`)
+- **Facts**: `fact_` prefix (e.g., `fact_encounter`, `fact_condition`)
+- **Silver**: domain prefix (e.g., `clinical_patients`)
+- **Bronze**: source table name as-is
+
+### Column Naming
+
+- All columns use snake_case
+- Surrogate keys: `{entity}_sk`
+- Foreign keys: `{referenced_entity}_sk`
+- Metadata columns: `_` prefix (`_ingested_at`, `_source_batch_id`)
+
+---
+
+## 6. SCD Strategy
+
+| Dimension | Attribute | SCD Type | Rationale |
+|-----------|-----------|----------|-----------|
+| dim_patient | full_name | Type 1 | Only current name needed |
+| dim_patient | birth_date | Type 1 | Corrections only |
+| dim_patient | gender | Type 1 | Corrections only |
+| dim_patient | address | Type 2 | Track address history for analytics |
+
+---
+
+## 7. Physical Design Notes
+
+### Partitioning
+
+- Bronze: partition by `_ingested_date` for idempotent re-ingestion
+- Silver: partition by domain-relevant date (e.g., `encounter_date`)
+- Gold: partition by reporting period
+
+### Clustering
+
+- Fact tables: cluster by most common join key (e.g., `patient_sk`)
+- Dimensions: no clustering (small tables)
+
+### Compression
+
+- Delta Lake default (Snappy) for all layers
+
+---
+
+## 8. Traceability Matrix
+
+| Gold Column | Silver | Bronze | Transform |
+|-------------|--------|--------|-----------|
+| dim_patient.full_name | first_name+last_name | FIRST+LAST | INITCAP |
+| dim_patient.birth_date | birth_date | BIRTHDATE | CAST DATE |
+| fact_encounter.patient_sk | patient_id | PATIENT | SK lookup |
+
+---
+
+## 9. Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2026-03-15 | Data Modeler Agent | Initial creation |
+"""
+
+MINIMAL_INVALID_DMS = """\
+# Data Model Specification: Incomplete
+
+## 1. Design Overview
+
+This DMS is intentionally incomplete for testing.
+"""
+
+EMPTY_SECTIONS_DMS = """\
+# Data Model Specification: Empty Sections
+
+| Field | Value |
+|-------|-------|
+| **Version** | 0.1 |
+| **Created** | 2026-03-15 |
+| **Author** | Test |
+| **Status** | Draft |
+| **HLD Reference** | HLD-test.md |
+
+## 1. Design Overview
+
+Test overview.
+
+## 2. Bronze Layer Schemas
+
+## 3. Silver Layer Schemas
+
+## 4. Gold Layer Schemas
+
+## 5. Naming Conventions
+
+## 6. SCD Strategy
+
+## 7. Physical Design Notes
+
+## 8. Traceability Matrix
+
+## 9. Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1 | 2026-03-15 | Test | Initial |
+"""
+
+PLACEHOLDER_DMS = """\
+# Data Model Specification: Placeholder Test
+
+| Field | Value |
+|-------|-------|
+| **Version** | 0.1 |
+| **Created** | 2026-03-15 |
+| **Author** | Test |
+| **Status** | Draft |
+| **HLD Reference** | HLD-test.md |
+
+## 1. Design Overview
+
+[TO BE DETERMINED - requires input from data modeler]
+
+Medallion schema design per HLD §2 Layer Specifications.
+References HLD §2.3 Gold Layer for dimensional model.
+
+```mermaid
+erDiagram
+    patients ||--o{ encounters : has
+```
+
+## 2. Bronze Layer Schemas
+
+```yaml
+table: patients
+layer: bronze
+schema: raw
+columns:
+  - name: Id
+    type: VARCHAR
+    nullable: false
+```
+
+## 3. Silver Layer Schemas
+
+[TODO: define silver schemas after source analysis]
+
+```yaml
+table: patients
+layer: silver
+schema: clinical
+primary_key: patient_id
+columns:
+  - name: patient_id
+    type: VARCHAR
+    nullable: false
+    source: bronze.patients.Id
+    business_rule: BR-001
+```
+
+## 4. Gold Layer Schemas
+
+```yaml
+table: dim_patient
+layer: gold
+schema: analytics
+grain: one row per patient
+scd_type: 2
+surrogate_key: patient_sk
+columns:
+  - name: patient_sk
+    type: BIGINT
+    nullable: false
+foreign_keys:
+  - column: provider_sk
+    references: dim_provider.provider_sk
+```
+
+## 5. Naming Conventions
+
+- dim_ prefix for dimensions
+- fact_ prefix for facts
+- snake_case for all columns
+
+## 6. SCD Strategy
+
+Type 1 for corrections, Type 2 for tracked attributes.
+
+## 7. Physical Design Notes
+
+Partition by ingestion date. Delta Lake compression.
+
+## 8. Traceability Matrix
+
+| Gold Column | Silver Source | Bronze Source | Raw Source | Transform |
+|-------------|-------------|-------------|-----------|-----------|
+| dim_patient.patient_sk | patients.patient_id | patients.Id | Synthea | SK generation |
+
+## 9. Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1 | 2026-03-15 | Test | Initial |
+"""
+
+
+@pytest.fixture
+def valid_dms_file(tmp_path: Path) -> Path:
+    """Create a valid DMS file for testing."""
+    f = tmp_path / "valid-dms.md"
+    f.write_text(VALID_DMS, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def invalid_dms_file(tmp_path: Path) -> Path:
+    """Create a minimal invalid DMS file for testing."""
+    f = tmp_path / "invalid-dms.md"
+    f.write_text(MINIMAL_INVALID_DMS, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def empty_dms_sections_file(tmp_path: Path) -> Path:
+    """Create a DMS with empty required sections."""
+    f = tmp_path / "empty-sections-dms.md"
+    f.write_text(EMPTY_SECTIONS_DMS, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def placeholder_dms_file(tmp_path: Path) -> Path:
+    """Create a DMS with placeholder text."""
+    f = tmp_path / "placeholder-dms.md"
+    f.write_text(PLACEHOLDER_DMS, encoding="utf-8")
+    return f

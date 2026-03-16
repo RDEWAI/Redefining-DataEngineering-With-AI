@@ -1,4 +1,4 @@
-.PHONY: help dev-setup test test-unit validate-drd validate-hld lint format clean
+.PHONY: help dev-setup test test-unit validate-drd validate-hld validate-dms lint format clean
 
 help: ##@ Show available commands
 	@echo "Chapter 4: Planning with Context — Multi-Agent Artifact Chain"
@@ -10,6 +10,7 @@ help: ##@ Show available commands
 	@echo "=== Artifact Operations ==="
 	@echo "  validate-drd     - Validate all DRDs in outputs/drd/"
 	@echo "  validate-hld     - Validate all HLDs in outputs/hld/"
+	@echo "  validate-dms     - Validate all DMSs in outputs/dms/"
 	@echo ""
 	@echo "=== Testing & Quality ==="
 	@echo "  test             - Run all tests"
@@ -30,11 +31,14 @@ validate-drd: ##@ Validate all DRDs in outputs/drd/
 validate-hld: ##@ Validate all HLDs in outputs/hld/
 	uv run python architect-plugin/skills/validate-hld/scripts/validate_hld.py --all outputs/hld/
 
+validate-dms: ##@ Validate all DMSs in outputs/dms/
+	uv run python data-modeler-plugin/skills/validate-dms/scripts/validate_dms.py --all outputs/dms/
+
 lint: ##@ Run ruff linter
-	uv run ruff check ba-plugin/ architect-plugin/ tests/
+	uv run ruff check ba-plugin/ architect-plugin/ data-modeler-plugin/ tests/
 
 format: ##@ Auto-format code
-	uv run ruff format ba-plugin/ architect-plugin/ tests/
+	uv run ruff format ba-plugin/ architect-plugin/ data-modeler-plugin/ tests/
 
 clean: ##@ Remove generated files and caches
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

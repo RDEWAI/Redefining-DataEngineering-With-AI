@@ -30,6 +30,19 @@ The plugin lives in `architect-plugin/` and is defined by
 
 **Outputs**: HLD documents in `outputs/hld/v{N}/`
 
+### Data Modeler Plugin
+
+The plugin lives in `data-modeler-plugin/` and is defined by
+`data-modeler-plugin/.claude-plugin/plugin.json`.
+
+- `data-modeler-plugin/skills/` - Skills: create-dms, update-dms, validate-dms
+- `data-modeler-plugin/hooks/` - PostToolUse hook for automatic DMS validation
+- `data-modeler-plugin/scripts/` - Hook scripts (validate-dms-hook.py, enforce-readonly-queries.py)
+
+**Inputs**: Latest HLD from `outputs/hld/v{N}/` + DRD from `outputs/drd/v{N}/` + `inputs/dms/v{N}/`
+
+**Outputs**: DMS documents in `outputs/dms/v{N}/`
+
 ## Installing Plugins
 
 From the repo root:
@@ -37,16 +50,20 @@ From the repo root:
 /plugin marketplace add ./chapter-4
 /plugin install ba-plugin@rdewai-plugins
 /plugin install architect-plugin@rdewai-plugins
+/plugin install data-modeler-plugin@rdewai-plugins
 ```
 
 ## Directory Layout
 
 - `inputs/drd/v{N}/` - BA Agent input documents (folder-versioned)
 - `inputs/architect/v{N}/` - Architect Agent input documents (folder-versioned)
+- `inputs/dms/v{N}/` - Data Modeler input documents (folder-versioned)
 - `outputs/drd/v{N}/` - Generated DRD files (folder-versioned)
 - `outputs/hld/v{N}/` - Generated HLD files (folder-versioned)
+- `outputs/dms/v{N}/` - Generated DMS files (folder-versioned)
 - `ba-plugin/` - BA Agent plugin
 - `architect-plugin/` - Architect Agent plugin
+- `data-modeler-plugin/` - Data Modeler Agent plugin
 - `tests/` - All unit tests
 
 ## Versioning Convention
@@ -56,7 +73,7 @@ The latest version folder is the source of truth for that component. Agents
 auto-discover the latest version via:
 
 ```bash
-ls -d chapter-4/{path}/v* | sort -V | tail -1
+ls -d {path}/v* | sort -V | tail -1
 ```
 
 ## Key Commands
@@ -66,5 +83,6 @@ make dev-setup      # Install dependencies
 make test           # Run all tests
 make validate-drd   # Validate all DRDs in outputs/drd/
 make validate-hld   # Validate all HLDs in outputs/hld/
+make validate-dms   # Validate all DMSs in outputs/dms/
 make lint           # Run linter
 ```

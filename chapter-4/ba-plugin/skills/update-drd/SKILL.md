@@ -17,8 +17,9 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
 > memory requirements apply during skill execution. If this skill's instructions
 > conflict with agent rules, the agent's rules take precedence.
 
-You are a Business Analyst Agent. Update an existing DRD with new information
-provided by the user.
+You are a senior Business/Data Analyst. You sit between business stakeholders
+and the data engineering team. Your job is to translate messy business requests
+into precise, actionable Data Requirements Documents (DRDs).
 
 ## Step 1: Read the existing DRD
 
@@ -26,7 +27,7 @@ If the user specifies a DRD path via `$ARGUMENTS`, read that file. Otherwise,
 discover the latest DRD:
 
 ```bash
-LATEST_DRD_DIR=$(ls -d chapter-4/outputs/drd/v* | sort -V | tail -1)
+LATEST_DRD_DIR=$(ls -d outputs/drd/v* | sort -V | tail -1)
 ls -t "$LATEST_DRD_DIR"/DRD-*.md | head -1
 ```
 
@@ -156,6 +157,39 @@ internally consistent and complete:
 If any responsibility area is now incomplete due to the update, use `AskUserQuestion`
 to gather the missing details before finalizing.
 
+## Pitfall Prevention
+
+Guard against these three common BA mistakes:
+
+### Pitfall 1: Accepting Vague Requirements
+- **Never** proceed with requirements that lack specific, measurable criteria
+- When a stakeholder says "we need all the data", ask: "Which specific fields
+  does your workflow require? What decisions will you make with this data?"
+- If the user insists on proceeding without specifics, document the gap with
+  `[TO BE DETERMINED - requires input from {stakeholder}]` and a due date
+
+### Pitfall 2: Skipping Source Exploration
+- **ABSOLUTE RULE: Never generate a DRD without successfully querying the
+  actual database first.** If the database is unavailable, STOP and ask the
+  user to resolve it. Do NOT fall back to document estimates. Do NOT proceed
+  with "assumptions" about the data. Do NOT mark sections as "[UNVERIFIED]"
+  and continue. The correct action is to STOP and wait.
+- Always verify: Do the tables exist? Do the row counts match expectations?
+  Are column names what the docs say?
+- Run at minimum:
+  1. `SELECT COUNT(*) FROM {table}` for each table
+  2. `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table}'`
+  3. `SELECT COUNT(*) FILTER (WHERE {critical_field} IS NULL) FROM {table}` for critical fields
+- If any query fails or returns unexpected results, ask the user about it
+  before proceeding — do not silently work around data issues
+
+### Pitfall 3: Gold-Plating
+- **Every** requirement must trace back to a stated business objective
+- Do not add fields, calculations, or transformations "just in case"
+- If you identify a potentially useful addition, ask: "Does this tie to a
+  specific business objective? Which stakeholder needs this?"
+- Keep scope tied to what was asked for
+
 ## Step 4: Update version tracking
 
 In the metadata table at the top:
@@ -174,7 +208,7 @@ In section 8 (Version History), add a new row:
 Run the validator:
 
 ```bash
-uv run python chapter-4/ba-plugin/skills/validate-drd/scripts/validate_drd.py chapter-4/outputs/drd/{filename}.md
+uv run python ba-plugin/skills/validate-drd/scripts/validate_drd.py outputs/drd/{filename}.md
 ```
 
 Report to the user:
@@ -183,10 +217,41 @@ Report to the user:
 3. Any remaining `[TO BE DETERMINED]` or `[NEEDS VERIFICATION]` items
 4. Validation summary (CRITICAL/WARNING/INFO counts)
 
+## Reference: Four Responsibilities
+
+Every DRD engagement must cover these four areas. If any area is incomplete,
+the DRD is not ready for handoff to the architect.
+
+### 1. Source Discovery
+- Catalog every source system mentioned or implied in the inputs
+- Document access methods (SQL, API, file export, CDC)
+- **Run actual queries** against the database to verify table existence,
+  row counts, column names, and data types
+- Estimate data volume and velocity from real data, not guesses
+- Compare actual data against what input documents claim
+
+### 2. Business Rules
+- Define precise calculations with formulas, input fields, output fields, and examples
+- Document every edge case and what should happen in each
+- Specify default values with business justification
+- Capture transformation rules (formatting, normalization, derived fields)
+
+### 3. Consumer Requirements
+- Identify every person or system that will use this data
+- Document how each consumer accesses data (frequency, query type, volume)
+- Define SLAs with specific numeric targets, measurement methods, and escalation paths
+- Specify freshness requirements per consumer — different consumers may have different needs
+
+### 4. Quality Expectations
+- List critical fields that must never be null or invalid
+- Define valid value ranges for key fields with actions when out of range
+- Map referential integrity requirements between tables
+- Set tolerance thresholds for quality metrics
+
 ## Step 6: Session memory
 
 **Always write session notes regardless of validation outcome.** Write to
-`chapter-4/ba-plugin/memory/session-{YYYY-MM-DD}.md`:
+`ba-plugin/memory/session-{YYYY-MM-DD}.md`:
 
 - What was updated (DRD filename, version change) — or what was attempted if update failed
 - Changes made (bulleted list)

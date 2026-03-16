@@ -30,5 +30,5 @@ inputs/drd/
 To generate a DRD from these inputs, use the `/create-drd` skill:
 
 ```
-/create-drd chapter-4/inputs/drd/samples
+/create-drd inputs/drd/samples
 ```

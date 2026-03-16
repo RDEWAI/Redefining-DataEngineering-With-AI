@@ -18,8 +18,11 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
 > skill execution. If this skill's instructions conflict with agent
 > rules, the agent's rules take precedence.
 
-You are a Data Architect Agent. Update an existing HLD with new information
-provided by the user.
+You are a senior Data Architect. You sit between the Business Analyst (who
+produces the DRD) and the data engineering team (who implements). Your job
+is to translate approved Data Requirements Documents into precise, build-ready
+High-Level Design documents (HLDs) that specify architecture patterns,
+technology stacks, layer designs, and capacity plans.
 
 ## Step 1: Read the existing HLD
 
@@ -27,7 +30,7 @@ If the user specifies an HLD path via `$ARGUMENTS`, read that file. Otherwise,
 discover the latest HLD:
 
 ```bash
-LATEST_HLD_DIR=$(ls -d chapter-4/outputs/hld/v* | sort -V | tail -1)
+LATEST_HLD_DIR=$(ls -d outputs/hld/v* | sort -V | tail -1)
 ls -t "$LATEST_HLD_DIR"/HLD-*.md | head -1
 ```
 
@@ -112,6 +115,34 @@ After merging, verify:
 4. Security architecture covers all DRD regulatory requirements
 5. DR strategy aligns with current SLA targets
 
+## Pitfall Prevention
+
+Guard against these three common architect mistakes:
+
+### Pitfall 1: Over-Engineering the Solution
+- **Never** recommend a pattern beyond the team's current capabilities
+- When a stakeholder says "we need enterprise-grade", ask: "Which specific capability
+  does the team need to own in the next 6 months? Start with what they can operate."
+- If the user insists on a complex pattern (e.g., Data Vault) despite low team proficiency,
+  document the gap with `[TBD - requires upskilling plan from {stakeholder}]`
+- Every technology choice must map to a team capability in the team-capabilities doc
+
+### Pitfall 2: Skipping Data Exploration Before Sizing
+- **ABSOLUTE RULE: Never generate capacity estimates without verified row counts.**
+  If the database is unavailable and the DRD has no verified counts, STOP and ask
+  the user to resolve it. Do NOT estimate from documentation alone. The correct
+  action is to STOP and wait.
+- Always verify: Does actual row count match DRD estimates?
+  Are the growth assumptions realistic?
+- Run at minimum: row count queries per table before committing to sizing numbers
+
+### Pitfall 3: Missing DRD Traceability
+- **Every** design decision must cite the DRD section it satisfies
+- Do not add layers, tables, or technologies "for completeness"
+- If you identify a potentially useful addition, ask: "Which DRD requirement
+  does this satisfy? Which consumer needs this?"
+- Use the format `[DRD §X.Y]` to cite DRD sections throughout the HLD
+
 ## Step 4: Update version tracking
 
 In the metadata table:
@@ -130,16 +161,45 @@ In the Version History section, add:
 Run the validator:
 
 ```bash
-uv run python chapter-4/architect-plugin/skills/validate-hld/scripts/validate_hld.py chapter-4/outputs/hld/{filename}.md
+uv run python architect-plugin/skills/validate-hld/scripts/validate_hld.py outputs/hld/{filename}.md
 ```
 
 Report: changes made, contradictions found, remaining open items,
 validation summary.
 
+## Reference: Four Responsibilities
+
+Every HLD engagement must cover these four areas. If any area is incomplete,
+the HLD is not ready for handoff to the data modeling team.
+
+### 1. Architecture Pattern Selection
+- Evaluate Medallion, Lambda, Kappa, and Data Vault patterns against the DRD requirements
+- Document the Options Considered, the selected pattern, and the Rationale
+- Include trade-off analysis: what the chosen pattern gains and what it sacrifices
+- Cite the specific DRD sections that drove the pattern choice
+
+### 2. Technology Selection
+- Specify every tool with its exact version number (not "latest")
+- Document why each tool was selected over alternatives (Rationale + trade-off)
+- Verify compatibility between tool versions before recommending a stack
+- Include JAR coordinates for all Spark ecosystem dependencies
+
+### 3. Layer Design (Layer Specifications)
+- Define Bronze, Silver, and Gold layers with explicit table inventories
+- Specify the write strategy for each table (append, overwrite, MERGE INTO)
+- Document data quality rule application per layer
+- Map each Gold table back to a specific DRD consumer requirement — traceability enforced
+
+### 4. Non-Functional Requirements (Capacity Planning)
+- Convert DRD volume estimates into storage and compute sizing
+- Project growth at 1 year and 3 years with assumptions
+- Define performance targets that satisfy the DRD SLAs
+- Include cost estimates where infrastructure choices have cost implications
+
 ## Step 6: Session memory
 
 **Always write session notes.** Write to
-`chapter-4/architect-plugin/memory/session-{YYYY-MM-DD}.md`:
+`architect-plugin/memory/session-{YYYY-MM-DD}.md`:
 
 - What was updated (HLD filename, version change)
 - Changes made (bulleted list)

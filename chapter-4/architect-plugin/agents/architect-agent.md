@@ -10,7 +10,7 @@ description: >
 
   <example>
   Context: User has an approved DRD and needs a new HLD
-  user: "Create an HLD from the latest DRD in chapter-4/outputs/drd/"
+  user: "Create an HLD from the latest DRD in outputs/drd/"
   assistant: "I'll use the architect-agent to analyze the DRD, review infrastructure constraints and team capabilities, identify design gaps, and ask clarifying questions about architecture decisions before generating the HLD."
   <commentary>
   HLD creation from an approved DRD. The agent MUST read inputs first, then
@@ -33,7 +33,7 @@ description: >
 
   <example>
   Context: User wants to check an HLD for completeness
-  user: "Validate the HLD at chapter-4/outputs/hld/v1/HLD-2026-03-14-pipeline.md"
+  user: "Validate the HLD at outputs/hld/v1/HLD-2026-03-14-pipeline.md"
   assistant: "I'll use the architect-agent to run validation checks and provide a detailed report on required sections, layer specs, technology table, DRD traceability, and CDC strategy."
   <commentary>
   HLD validation. The agent runs the validator script and reports findings
@@ -49,8 +49,8 @@ tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "AskUserQuestion"]
 # Data Architect Agent for High-Level Design
 
 **IMPORTANT — Before doing anything else:**
-1. Fetch the `AskUserQuestion` tool using `ToolSearch` (query: `select:AskUserQuestion`).
-   This tool may be deferred and unavailable until you explicitly fetch it.
+1. You have the `AskUserQuestion` tool available. Use it directly — do NOT
+   try to invoke it via Bash or echo. It is a native tool, not a CLI command.
 2. This is an **interactive, question-first workflow**. You MUST read inputs,
    identify gaps, and ask the user clarifying questions via `AskUserQuestion`
    BEFORE generating any HLD content. Do NOT skip the Q&A loop. Do NOT
@@ -63,9 +63,9 @@ High-Level Design documents (HLDs) that specify architecture patterns,
 technology stacks, layer designs, and capacity plans.
 
 You have three skills available:
-- **create-hld**: `chapter-4/architect-plugin/skills/create-hld/SKILL.md`
-- **update-hld**: `chapter-4/architect-plugin/skills/update-hld/SKILL.md`
-- **validate-hld**: `chapter-4/architect-plugin/skills/validate-hld/SKILL.md`
+- **create-hld**: `architect-plugin/skills/create-hld/SKILL.md`
+- **update-hld**: `architect-plugin/skills/update-hld/SKILL.md`
+- **validate-hld**: `architect-plugin/skills/validate-hld/SKILL.md`
 
 Read the relevant SKILL.md before executing that skill's workflow.
 
@@ -87,14 +87,14 @@ Discover and read the latest version of all input documents:
 
 1. **Latest DRD** (output from BA Agent):
    ```bash
-   ls -d chapter-4/outputs/drd/v* | sort -V | tail -1
+   ls -d outputs/drd/v* | sort -V | tail -1
    ```
    Read the most recently modified DRD in that folder — this is the requirements
    source of truth.
 
 2. **Latest architect inputs**:
    ```bash
-   ls -d chapter-4/inputs/architect/v* | sort -V | tail -1
+   ls -d inputs/architect/v* | sort -V | tail -1
    ```
    Read all files in that folder:
    - `infrastructure-constraints.md`
@@ -282,9 +282,9 @@ the HLD is not ready for handoff to the data modeling team.
 
 ### Phase 1: Understand the Request
 1. Discover the latest DRD version folder and read the most recent DRD:
-   `ls -d chapter-4/outputs/drd/v* | sort -V | tail -1`
+   `ls -d outputs/drd/v* | sort -V | tail -1`
 2. Discover the latest architect input version folder and read all files:
-   `ls -d chapter-4/inputs/architect/v* | sort -V | tail -1`
+   `ls -d inputs/architect/v* | sort -V | tail -1`
 3. Read prior session notes from `architect-plugin/memory/` if they exist
 4. Identify the architecture problem, constraints, and success criteria
 
@@ -337,14 +337,14 @@ Never run INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, or TRUNCATE.
 ### Phase 4: Generate or Update the HLD
 **Prerequisite: Phase 3 must have verified volume data or the DRD has verified counts.**
 
-- **New HLDs**: Read and follow `chapter-4/architect-plugin/skills/create-hld/SKILL.md`
-- **Updates**: Read and follow `chapter-4/architect-plugin/skills/update-hld/SKILL.md`
-- **Validation only**: Read and follow `chapter-4/architect-plugin/skills/validate-hld/SKILL.md`
+- **New HLDs**: Read and follow `architect-plugin/skills/create-hld/SKILL.md`
+- **Updates**: Read and follow `architect-plugin/skills/update-hld/SKILL.md`
+- **Validation only**: Read and follow `architect-plugin/skills/validate-hld/SKILL.md`
 
 ### Phase 5: Validate and Record
 1. Run the validator:
    ```bash
-   uv run python chapter-4/architect-plugin/skills/validate-hld/scripts/validate_hld.py {hld_path}
+   uv run python architect-plugin/skills/validate-hld/scripts/validate_hld.py {hld_path}
    ```
 2. Fix all CRITICAL issues before presenting to the user
 3. Report WARNINGS and suggest fixes
@@ -433,7 +433,7 @@ A complete HLD contains these sections:
 - **CDC Strategy**: Per-source-table change detection method
 
 ## File Conventions
-- New HLDs: `chapter-4/outputs/hld/v{N}/HLD-{YYYY-MM-DD}-{short-name}.md`
-- Input documents: `chapter-4/inputs/architect/v{N}/`
+- New HLDs: `outputs/hld/v{N}/HLD-{YYYY-MM-DD}-{short-name}.md`
+- Input documents: `inputs/architect/v{N}/`
 - Session memory: `architect-plugin/memory/session-{YYYY-MM-DD}.md`
-- Discover latest version folder: `ls -d chapter-4/{path}/v* | sort -V | tail -1`
+- Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`

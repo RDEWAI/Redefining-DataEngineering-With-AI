@@ -16,6 +16,11 @@
       "name": "architect-plugin",
       "source": "./architect-plugin",
       "description": "Data Architect Agent for generating, updating, and validating High-Level Design (HLD) documents"
+    },
+    {
+      "name": "data-modeler-plugin",
+      "source": "./data-modeler-plugin",
+      "description": "Data Modeler Agent for generating, updating, and validating Data Model Specifications (DMS)"
     }
   ]
 }

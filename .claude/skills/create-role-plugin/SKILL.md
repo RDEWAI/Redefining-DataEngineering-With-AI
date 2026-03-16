@@ -104,29 +104,60 @@ Call `AskUserQuestion` — **Round 2** (2 questions):
 If user chooses "Let me list" or "Let me specify", call `AskUserQuestion` again
 to collect the specific details in a follow-up round.
 
+Call `AskUserQuestion` — **Round 3** (1 question):
+
+```json
+{
+  "questions": [
+    {
+      "question": "What role-specific input documents should be created in inputs/{artifact}/v1/?",
+      "header": "Inputs",
+      "multiSelect": true,
+      "options": [
+        { "label": "Enterprise standards", "description": "Naming conventions, prefixes, schema organization" },
+        { "label": "Governance policies", "description": "Data classification, retention, access control, compliance" },
+        { "label": "Data dictionary", "description": "Approved types, entity definitions, enumerations, null handling" },
+        { "label": "None needed", "description": "Role works from upstream artifacts only" }
+      ]
+    }
+  ]
+}
+```
+
+If the user selects input document types, generate them in Step 3.5 (after
+plugin files, before updating existing files). Use the existing input documents
+as style references:
+- `inputs/architect/v1/` (3 files) — technical constraint documents
+- `inputs/drd/v1/` (4 files) — business context documents
+- `inputs/dms/v1/` (3 files) — enterprise standards documents
+
+Each input document should follow the pattern: metadata table at top, numbered
+sections with tables, domain-specific content tailored to the Patient 360
+healthcare use case.
+
 ## Step 2: Read Canonical Templates
 
 Read all of these files from the architect-plugin — they are the canonical
 patterns for generating new plugins:
 
 ```
-chapter-4/architect-plugin/.claude-plugin/plugin.json
-chapter-4/architect-plugin/agents/architect-agent.md
-chapter-4/architect-plugin/skills/create-hld/SKILL.md
-chapter-4/architect-plugin/skills/create-hld/HLD_template.j2
-chapter-4/architect-plugin/skills/update-hld/SKILL.md
-chapter-4/architect-plugin/skills/validate-hld/SKILL.md
-chapter-4/architect-plugin/skills/validate-hld/scripts/validate_hld.py
-chapter-4/architect-plugin/hooks/hooks.json
-chapter-4/architect-plugin/scripts/enforce-readonly-queries.py
-chapter-4/architect-plugin/scripts/validate-hld-hook.py
-chapter-4/tests/test_architect_agent_definition.py
-chapter-4/tests/test_validate_hld.py
-chapter-4/tests/test_validate_hld_hook.py
-chapter-4/tests/conftest.py
-chapter-4/.claude-plugin/marketplace.json
-chapter-4/CLAUDE.md
-chapter-4/Makefile
+architect-plugin/.claude-plugin/plugin.json
+architect-plugin/agents/architect-agent.md
+architect-plugin/skills/create-hld/SKILL.md
+architect-plugin/skills/create-hld/HLD_template.j2
+architect-plugin/skills/update-hld/SKILL.md
+architect-plugin/skills/validate-hld/SKILL.md
+architect-plugin/skills/validate-hld/scripts/validate_hld.py
+architect-plugin/hooks/hooks.json
+architect-plugin/scripts/enforce-readonly-queries.py
+architect-plugin/scripts/validate-hld-hook.py
+tests/test_architect_agent_definition.py
+tests/test_validate_hld.py
+tests/test_validate_hld_hook.py
+tests/conftest.py
+.claude-plugin/marketplace.json
+CLAUDE.md
+Makefile
 ```
 
 ## Step 3: Generate All Plugin Files
@@ -157,8 +188,13 @@ AskUserQuestion answers from Step 1.
 | 15 | `tests/test_architect_agent_definition.py` | `tests/test_{role_underscore}_agent_definition.py` | agent file path, name assertion, section assertions |
 | 16 | `tests/test_validate_hld.py` | `tests/test_validate_{artifact}.py` | validator imports, fixture names, check function names |
 | 17 | `tests/test_validate_hld_hook.py` | `tests/test_validate_{artifact}_hook.py` | hook script path, output path pattern, fixture names |
+| 18 | — | `{plugin_name}/README.md` | Plugin README with overview, skills, usage, directory layout |
 
 ### Critical Rules for Generation
+
+**All paths must be relative to chapter-4/ — NEVER use `chapter-4/` prefix.**
+Since the working directory is chapter-4/, use paths like `outputs/hld/v*`,
+`{plugin_name}/skills/...`, `inputs/{artifact}/v*` — NOT `chapter-4/outputs/...`.
 
 **Agent definition (file #5):**
 - Keep the exact same structural sections: Elicitation Protocol (Steps 1-5),
@@ -166,9 +202,22 @@ AskUserQuestion answers from Step 1.
   Writing Style, Sections Reference, File Conventions
 - AskUserQuestion examples MUST use the correct Claude Code schema:
   `{questions: [{question, header (max 12 chars), multiSelect, options: [{label, description}]}]}`
-- Version discovery: `ls -d chapter-4/{path}/v* | sort -V | tail -1`
+- Version discovery: `ls -d {path}/v* | sort -V | tail -1`
 - If DB gate is enabled, include Phase 3 database gate; if disabled, skip it
 - Replace `[DRD §X.Y]` traceability format with `[{UPSTREAM_ARTIFACT} §X.Y]`
+- AskUserQuestion is a native tool — instruct the agent to use it directly,
+  do NOT instruct to fetch via ToolSearch or invoke via Bash
+
+**Skill files (files #6, #9, #10) — MUST include agent content inline:**
+Skills run inline (not as subagents) and do NOT automatically load agent.md.
+The "Skill Inheritance" comment is NOT sufficient. Each skill MUST physically
+include these sections from the agent definition:
+- **Role context**: The full role description (position in chain, artifact format)
+- **Four Responsibilities**: What completeness looks like for this artifact
+- **Pitfall Prevention**: The 3 common mistakes to guard against
+- **create skill** gets all 3 sections + Decision Documentation Standard
+- **update skill** gets Role context + Pitfall Prevention + Reference: Four Responsibilities (at end)
+- **validate skill** gets Role context + Sections Reference (list of required sections)
 
 **Validator (file #11):**
 - Keep `ValidationLevel`, `ValidationResult`, `ValidationReport` classes verbatim
@@ -220,6 +269,64 @@ The plugin lives in `{plugin_name}/` and is defined by
 
 Also update the Directory Layout section to include new input/output paths.
 
+### Plugin README.md (file #18)
+Generate `{plugin_name}/README.md` with:
+```markdown
+# {ROLE} Plugin
+
+{ROLE} Agent for generating, updating, and validating {artifact_full} ({ARTIFACT}) documents.
+
+## Skills
+
+| Skill | Command | Description |
+|-------|---------|-------------|
+| create-{artifact} | `/{plugin_name}:create-{artifact}` | Generate a new {ARTIFACT} from upstream artifacts |
+| update-{artifact} | `/{plugin_name}:update-{artifact}` | Update an existing {ARTIFACT} with changes |
+| validate-{artifact} | `/{plugin_name}:validate-{artifact}` | Validate a {ARTIFACT} for completeness |
+
+## Usage
+
+```
+/{plugin_name}:create-{artifact}
+```
+
+Or invoke the agent directly:
+```
+@{plugin_name}:{agent_name} Create the {ARTIFACT} for the project
+```
+
+## Directory Layout
+
+```
+{plugin_name}/
+├── .claude-plugin/plugin.json
+├── agents/{agent_name}.md
+├── skills/
+│   ├── create-{artifact}/
+│   │   ├── SKILL.md
+│   │   ├── {ARTIFACT}_template.j2
+│   │   └── examples/sample-{artifact}.md
+│   ├── update-{artifact}/SKILL.md
+│   └── validate-{artifact}/
+│       ├── SKILL.md
+│       └── scripts/validate_{artifact}.py
+├── hooks/hooks.json
+├── scripts/
+│   ├── validate-{artifact}-hook.py
+│   └── enforce-readonly-queries.py
+└── memory/
+```
+
+## Inputs
+
+- Upstream: `outputs/{upstream}/v{N}/`
+- Role-specific: `inputs/{artifact}/v{N}/`
+
+## Outputs
+
+- `outputs/{artifact}/v{N}/{ARTIFACT}-{YYYY-MM-DD}-{name}.md`
+```
+
 ### Makefile
 Add a `validate-{artifact}` target following the existing `validate-hld` pattern.
 
@@ -228,7 +335,6 @@ Add a `validate-{artifact}` target following the existing `validate-hld` pattern
 Run these commands and fix any issues:
 
 ```bash
-cd chapter-4
 uv run pytest tests/test_{role_underscore}_agent_definition.py tests/test_validate_{artifact}.py tests/test_validate_{artifact}_hook.py -v
 uv run ruff check {plugin_name}/ tests/test_{role_underscore}_agent_definition.py tests/test_validate_{artifact}.py tests/test_validate_{artifact}_hook.py
 uv run ruff format --check {plugin_name}/ tests/
@@ -250,10 +356,16 @@ After all files are generated and tests pass, report:
    ```
    /reload-plugins
    # or
-   /plugin marketplace add ./chapter-4
+   /plugin marketplace add .
    /plugin install {plugin_name}@rdewai-plugins
    ```
-4. How to invoke the new agent:
+4. How to invoke the new skills (interactive mode with AskUserQuestion):
+   ```
+   /{plugin_name}:create-{artifact}
+   /{plugin_name}:update-{artifact}
+   /{plugin_name}:validate-{artifact}
+   ```
+   Or invoke the agent (may run as subagent without interactive UI):
    ```
    @{plugin_name}:{agent_name} Create the {ARTIFACT} for the project
    ```

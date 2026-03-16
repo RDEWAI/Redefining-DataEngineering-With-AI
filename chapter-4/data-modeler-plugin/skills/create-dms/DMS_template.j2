@@ -1,0 +1,272 @@
+# Data Model Specification: {{ dms.title }}
+
+| Field | Value |
+|-------|-------|
+| **Version** | {{ dms.version }} |
+| **Created** | {{ dms.created_date }} |
+| **Last Modified** | {{ dms.modified_date }} |
+| **Author** | {{ dms.author }} |
+| **Status** | {{ dms.status }} |
+| **HLD Reference** | {{ dms.hld_reference }} |
+| **DRD Reference** | {{ dms.drd_reference }} |
+
+---
+
+## 1. Design Overview
+
+### 1.1 Modeling Approach
+
+{{ dms.design_overview.approach }}
+
+### 1.2 Layer Summary
+
+| Layer | Purpose | Table Count | Key Characteristics |
+|-------|---------|-------------|---------------------|
+{% for layer in dms.design_overview.layers %}
+| {{ layer.name }} | {{ layer.purpose }} | {{ layer.table_count }} | {{ layer.characteristics }} |
+{% endfor %}
+
+### 1.3 HLD Traceability
+
+This DMS implements the layer specifications defined in {{ dms.hld_reference }}.
+
+| DMS Section | HLD Section | Notes |
+|-------------|-------------|-------|
+{% for trace in dms.design_overview.hld_traceability %}
+| {{ trace.dms_section }} | {{ trace.hld_section }} | {{ trace.notes }} |
+{% endfor %}
+
+---
+
+## 2. Bronze Layer Schemas
+
+{% for table in dms.bronze_schemas %}
+### {{ table.name }} (Bronze)
+
+{{ table.description }}
+
+**Source**: {{ table.source_system }}.{{ table.source_table }} [HLD §{{ table.hld_ref }}]
+
+```yaml
+table: {{ table.name }}
+layer: bronze
+schema: {{ table.schema }}
+source_table: {{ table.source_system }}.{{ table.source_table }}
+partition_by: {{ table.partition_by }}
+write_strategy: {{ table.write_strategy }}
+columns:
+{% for col in table.columns %}
+  - name: {{ col.name }}
+    type: {{ col.type }}
+    nullable: {{ col.nullable }}
+    source: {{ col.source }}
+    description: {{ col.description }}
+{% endfor %}
+  # Metadata columns (added by pipeline)
+  - name: _ingested_at
+    type: TIMESTAMP
+    nullable: false
+    source: system
+    description: Pipeline ingestion timestamp
+  - name: _source_batch_id
+    type: VARCHAR
+    nullable: false
+    source: system
+    description: Pipeline run identifier
+  - name: _source_file
+    type: VARCHAR
+    nullable: true
+    source: system
+    description: Source file path (file-based ingestion)
+```
+
+{% endfor %}
+
+---
+
+## 3. Silver Layer Schemas
+
+{% for table in dms.silver_schemas %}
+### {{ table.name }} (Silver)
+
+{{ table.description }}
+
+**Business Purpose**: {{ table.business_purpose }} [HLD §{{ table.hld_ref }}]
+
+```yaml
+table: {{ table.name }}
+layer: silver
+schema: {{ table.schema }}
+primary_key: {{ table.primary_key }}
+partition_by: {{ table.partition_by }}
+columns:
+{% for col in table.columns %}
+  - name: {{ col.name }}
+    type: {{ col.type }}
+    nullable: {{ col.nullable }}
+    source: {{ col.source }}
+    transform: "{{ col.transform }}"
+    null_handling: "{{ col.null_handling }}"
+    business_rule: {{ col.business_rule }}
+    description: {{ col.description }}
+{% endfor %}
+foreign_keys:
+{% for fk in table.foreign_keys %}
+  - column: {{ fk.column }}
+    references: {{ fk.references }}
+{% endfor %}
+```
+
+{% endfor %}
+
+---
+
+## 4. Gold Layer Schemas
+
+{% for table in dms.gold_schemas %}
+### {{ table.name }} (Gold)
+
+{{ table.description }}
+
+**Consumer**: {{ table.consumer }} [DRD §{{ table.drd_ref }}]
+
+```yaml
+table: {{ table.name }}
+layer: gold
+schema: {{ table.schema }}
+grain: {{ table.grain }}
+{% if table.scd_type %}
+scd_type: {{ table.scd_type }}
+surrogate_key: {{ table.surrogate_key }}
+effective_from: {{ table.effective_from }}
+effective_to: {{ table.effective_to }}
+is_current: {{ table.is_current }}
+{% endif %}
+columns:
+{% for col in table.columns %}
+  - name: {{ col.name }}
+    type: {{ col.type }}
+    nullable: {{ col.nullable }}
+    description: {{ col.description }}
+{% if col.scd_type %}
+    scd_type: {{ col.scd_type }}
+{% endif %}
+{% endfor %}
+foreign_keys:
+{% for fk in table.foreign_keys %}
+  - column: {{ fk.column }}
+    references: {{ fk.references }}
+{% endfor %}
+```
+
+{% endfor %}
+
+---
+
+## 5. Naming Conventions
+
+### Table Naming
+
+| Layer | Convention | Example |
+|-------|-----------|---------|
+{% for conv in dms.naming_conventions.tables %}
+| {{ conv.layer }} | {{ conv.convention }} | {{ conv.example }} |
+{% endfor %}
+
+### Column Naming
+
+| Rule | Description | Example |
+|------|-------------|---------|
+{% for rule in dms.naming_conventions.columns %}
+| {{ rule.rule }} | {{ rule.description }} | {{ rule.example }} |
+{% endfor %}
+
+### Schema Organization
+
+| Schema | Contents | Example Tables |
+|--------|----------|----------------|
+{% for schema in dms.naming_conventions.schemas %}
+| {{ schema.name }} | {{ schema.contents }} | {{ schema.examples }} |
+{% endfor %}
+
+---
+
+## 6. SCD Strategy
+
+### Dimension Attribute SCD Types
+
+| Dimension | Attribute | SCD Type | Rationale | DRD Reference |
+|-----------|-----------|----------|-----------|---------------|
+{% for scd in dms.scd_strategy %}
+| {{ scd.dimension }} | {{ scd.attribute }} | {{ scd.scd_type }} | {{ scd.rationale }} | {{ scd.drd_ref }} |
+{% endfor %}
+
+### SCD Implementation Notes
+
+{% for note in dms.scd_notes %}
+- {{ note }}
+{% endfor %}
+
+---
+
+## 7. Physical Design Notes
+
+### Partition Strategy
+
+| Table | Partition Column | Rationale |
+|-------|-----------------|-----------|
+{% for part in dms.physical_design.partitions %}
+| {{ part.table }} | {{ part.column }} | {{ part.rationale }} |
+{% endfor %}
+
+### Clustering / Sort Keys
+
+| Table | Cluster Columns | Rationale |
+|-------|----------------|-----------|
+{% for cluster in dms.physical_design.clustering %}
+| {{ cluster.table }} | {{ cluster.columns }} | {{ cluster.rationale }} |
+{% endfor %}
+
+### Compression & Storage
+
+{{ dms.physical_design.compression_notes }}
+
+---
+
+## 8. Traceability Matrix
+
+| Gold Column | Silver Source | Bronze Source | Raw Source | Transform Summary |
+|-------------|-------------|-------------|------------|-------------------|
+{% for trace in dms.traceability_matrix %}
+| {{ trace.gold }} | {{ trace.silver }} | {{ trace.bronze }} | {{ trace.raw }} | {{ trace.transform }} |
+{% endfor %}
+
+---
+
+## 9. Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+{% for v in dms.version_history %}
+| {{ v.version }} | {{ v.date }} | {{ v.author }} | {{ v.changes }} |
+{% endfor %}
+
+---
+
+## 10. Open Questions
+
+| # | Question | Assigned To | Due Date | Status |
+|---|----------|-------------|----------|--------|
+{% for q in dms.open_questions %}
+| {{ loop.index }} | {{ q.question }} | {{ q.assigned_to }} | {{ q.due_date }} | {{ q.status }} |
+{% endfor %}
+
+---
+
+## 11. Approval
+
+| Role | Name | Date | Signature |
+|------|------|------|-----------|
+{% for a in dms.approvals %}
+| {{ a.role }} | {{ a.name }} | {{ a.date }} | {{ a.signature }} |
+{% endfor %}

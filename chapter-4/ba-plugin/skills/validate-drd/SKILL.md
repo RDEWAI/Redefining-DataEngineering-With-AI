@@ -17,8 +17,9 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 > memory requirements apply during skill execution. If this skill's instructions
 > conflict with agent rules, the agent's rules take precedence.
 
-You are a Business Analyst Agent. Validate a DRD against completeness and
-quality standards.
+You are a senior Business/Data Analyst. You sit between business stakeholders
+and the data engineering team. Your job is to translate messy business requests
+into precise, actionable Data Requirements Documents (DRDs).
 
 ## Step 1: Run the validator
 
@@ -26,11 +27,11 @@ Run the Python validator script on the specified file or all DRDs:
 
 ```bash
 # Single file
-uv run python chapter-4/ba-plugin/skills/validate-drd/scripts/validate_drd.py $ARGUMENTS
+uv run python ba-plugin/skills/validate-drd/scripts/validate_drd.py $ARGUMENTS
 
 # All DRDs in the latest version folder
-LATEST_DRD_DIR=$(ls -d chapter-4/outputs/drd/v* | sort -V | tail -1)
-uv run python chapter-4/ba-plugin/skills/validate-drd/scripts/validate_drd.py --all "$LATEST_DRD_DIR"
+LATEST_DRD_DIR=$(ls -d outputs/drd/v* | sort -V | tail -1)
+uv run python ba-plugin/skills/validate-drd/scripts/validate_drd.py --all "$LATEST_DRD_DIR"
 ```
 
 ## Step 2: Interpret results
@@ -61,6 +62,20 @@ The validator checks rules across three severity levels:
   — also checks that placeholders include owner name and due date
 - Approval section empty
 - Edge cases not documented
+
+## DRD Sections Reference
+
+A complete DRD must contain all of the following sections. Use this checklist
+when interpreting validation results to understand what each section should cover:
+
+- **Executive Summary** — One-sentence objective, data products, success metrics
+- **1. Business Context** — Business objectives with measurable targets, success criteria with numbers, stakeholder table
+- **2. Source Discovery** — Source systems with access methods, table inventory with row counts, volume estimates, security requirements
+- **3. Data Quality** — Critical fields list, valid value ranges, referential integrity rules, tolerance thresholds
+- **4. Consumer Requirements** — Named consumers with departments, access patterns per consumer, SLAs with numeric targets, freshness per consumer
+- **5. Business Rules** — Default values with justification, calculations with formulas AND examples, transformation rules, edge cases
+- **6. Assumptions & Questions** — Documented assumptions, open questions with owners and due dates
+- **7. Regulatory & Compliance** — Applicable regulations, data classification levels, retention periods, access controls, audit requirements
 
 ## Step 2.5: Fix CRITICAL issues before presenting
 
@@ -104,7 +119,7 @@ Summary: 0 critical (fixed), 1 warning, 1 info
 ## Step 4: Session memory
 
 **Always write session notes regardless of validation outcome.** Write to
-`chapter-4/ba-plugin/memory/session-{YYYY-MM-DD}.md`:
+`ba-plugin/memory/session-{YYYY-MM-DD}.md`:
 
 - What was validated (DRD filename)
 - CRITICAL/WARNING/INFO counts (before and after fixes)

@@ -16,8 +16,11 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 > `architect-agent.md`. The traceability enforcement, pitfall prevention,
 > and session memory requirements apply during skill execution.
 
-You are a Data Architect Agent. Validate an HLD against completeness and
-quality standards.
+You are a senior Data Architect. You sit between the Business Analyst (who
+produces the DRD) and the data engineering team (who implements). Your job
+is to translate approved Data Requirements Documents into precise, build-ready
+High-Level Design documents (HLDs) that specify architecture patterns,
+technology stacks, layer designs, and capacity plans.
 
 ## Step 1: Run the validator
 
@@ -25,11 +28,11 @@ Run the Python validator script on the specified file or all HLDs:
 
 ```bash
 # Single file
-uv run python chapter-4/architect-plugin/skills/validate-hld/scripts/validate_hld.py $ARGUMENTS
+uv run python architect-plugin/skills/validate-hld/scripts/validate_hld.py $ARGUMENTS
 
 # All HLDs in the latest version folder
-LATEST_HLD_DIR=$(ls -d chapter-4/outputs/hld/v* | sort -V | tail -1)
-uv run python chapter-4/architect-plugin/skills/validate-hld/scripts/validate_hld.py --all "$LATEST_HLD_DIR"
+LATEST_HLD_DIR=$(ls -d outputs/hld/v* | sort -V | tail -1)
+uv run python architect-plugin/skills/validate-hld/scripts/validate_hld.py --all "$LATEST_HLD_DIR"
 ```
 
 ## Step 2: Interpret results
@@ -54,6 +57,18 @@ The validator checks rules across three severity levels:
 - Placeholder text remaining ([TBD], [TODO])
 - Mermaid diagrams present
 - Cost estimates included
+
+## HLD Sections Reference
+
+A complete HLD contains these sections:
+- **Design Overview**: Pattern, justification, Mermaid architecture diagram
+- **Layer Specification**: Bronze/Silver/Gold tables, write modes, DQ rules
+- **Technology Stack**: Full table of tools, versions, roles, and JAR coordinates
+- **Integration Points**: Sources, lineage, downstream consumers
+- **Capacity Planning**: Row counts, growth projections, compute sizing, cost
+- **Security Architecture**: Compliance controls, encryption, access model, audit
+- **Disaster Recovery**: RTO/RPO targets, backup strategy
+- **CDC Strategy**: Per-source-table change detection method
 
 ## Step 2.5: Fix CRITICAL issues before presenting
 
@@ -104,7 +119,7 @@ Summary: 0 critical (fixed), 1 warning, 1 info
 ## Step 4: Session memory
 
 **Always write session notes.** Write to
-`chapter-4/architect-plugin/memory/session-{YYYY-MM-DD}.md`:
+`architect-plugin/memory/session-{YYYY-MM-DD}.md`:
 
 - What was validated (HLD filename)
 - CRITICAL/WARNING/INFO counts (before and after fixes)
