@@ -2,9 +2,9 @@
 name: validate-hld
 description: >
   Validates a High-Level Design document against completeness and quality
-  standards. Checks all required sections, DRD traceability, layer specs,
-  technology stack, CDC strategy, and capacity planning. Reports issues
-  as CRITICAL, WARNING, or INFO with suggested fixes. Use when the user
+  standards. Checks all required sections, DRD traceability, data architecture,
+  technology decisions, integration architecture, and scalability model. Reports
+  issues as CRITICAL, WARNING, or INFO with suggested fixes. Use when the user
   asks to validate, check, review, or verify an HLD.
 argument-hint: "[path-to-hld-file]"
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
@@ -20,7 +20,7 @@ You are a senior Data Architect. You sit between the Business Analyst (who
 produces the DRD) and the data engineering team (who implements). Your job
 is to translate approved Data Requirements Documents into precise, build-ready
 High-Level Design documents (HLDs) that specify architecture patterns,
-technology stacks, layer designs, and capacity plans.
+technology decisions, data architecture, and capacity models.
 
 ## Step 1: Run the validator
 
@@ -40,35 +40,37 @@ uv run python architect-plugin/skills/validate-hld/scripts/validate_hld.py --all
 The validator checks rules across three severity levels:
 
 ### CRITICAL (blocks downstream work)
-- All 8 required sections present
+- All 8 required sections present (Executive Summary through Operational Considerations)
 - Metadata complete (version, date, author, status, DRD reference)
-- Layer specifications non-empty (Bronze, Silver, Gold)
-- Technology stack table present with entries
+- Executive Summary exists with meaningful content (≥2 sentences)
+- Data Architecture non-empty (Bronze, Silver, Gold layers described)
+- Technology Decisions table present with entries
 
 ### WARNING (needs attention)
 - DRD traceability — design decisions cite DRD requirements
-- CDC strategy specifies detection methods
-- Capacity projections include numeric values
-- Security references compliance/regulatory/sensitive-data controls
-- Pattern selection includes justification
+- CDC strategy in Operational Considerations specifies detection methods
+- Scalability & Capacity Model includes numeric projections
+- Security & Compliance references regulatory/sensitive-data controls
+- Architecture Overview includes pattern justification
 - Decision documentation present
 
 ### INFO (suggestions for improvement)
 - Placeholder text remaining ([TBD], [TODO])
 - Mermaid diagrams present
-- Cost estimates included
+- Cost model described in Scalability & Capacity Model
+- Downstream document references (LLD, DMS) present
 
 ## HLD Sections Reference
 
 A complete HLD contains these sections:
-- **Design Overview**: Pattern, justification, Mermaid architecture diagram
-- **Layer Specification**: Bronze/Silver/Gold tables, write modes, DQ rules
-- **Technology Stack**: Full table of tools, versions, roles, and JAR coordinates
-- **Integration Points**: Sources, lineage, downstream consumers
-- **Capacity Planning**: Row counts, growth projections, compute sizing, cost
-- **Security Architecture**: Compliance controls, encryption, access model, audit
-- **Disaster Recovery**: RTO/RPO targets, backup strategy
-- **CDC Strategy**: Per-source-table change detection method
+- **Executive Summary**: Business context, scope, key decisions at a glance
+- **Architecture Overview**: Pattern, justification, conceptual Mermaid architecture diagram
+- **Data Architecture**: Bronze/Silver/Gold layer strategy, DQ approach (defer table inventories to DMS)
+- **Technology Decisions**: Component/Tool/Why table (defer versions to LLD)
+- **Integration Architecture**: Sources, lineage, downstream consumers
+- **Scalability & Capacity Model**: Row counts, growth projections, compute sizing, cost model
+- **Security & Compliance**: Compliance controls, encryption, access strategy, audit
+- **Operational Considerations**: CDC summary, RTO/RPO targets, backup strategy, monitoring
 
 ## Step 2.5: Fix CRITICAL issues before presenting
 
@@ -108,10 +110,10 @@ CRITICAL (must fix):
 - [x] All critical issues have been auto-fixed
 
 WARNING (should fix):
-- [ ] Section 8: CDC strategy missing fallback methods
+- [ ] Operational Considerations: Missing monitoring and alerting strategy
 
 INFO (nice to have):
-- [ ] Section 5: No cost estimates included
+- [ ] Scalability & Capacity Model: No cost model described
 
 Summary: 0 critical (fixed), 1 warning, 1 info
 ```

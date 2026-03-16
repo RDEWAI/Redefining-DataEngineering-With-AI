@@ -27,10 +27,12 @@ from validate_hld import (  # noqa: E402
     check_capacity_projections,
     check_cdc_strategy,
     check_cost_estimates,
+    check_data_architecture,
     check_decision_documentation,
     check_diagrams,
+    check_downstream_references,
     check_drd_traceability,
-    check_layer_specs,
+    check_executive_summary,
     check_metadata,
     check_pattern_justification,
     check_placeholders,
@@ -55,7 +57,7 @@ class TestParseHldSections:
 
     def test_section_content_is_correct(self):
         sections = parse_hld_sections(VALID_HLD)
-        assert "1. Design Overview" in sections
+        assert "2. Architecture Overview" in sections
 
 
 class TestCheckRequiredSections:
@@ -77,7 +79,7 @@ class TestCheckRequiredSections:
         sections = parse_hld_sections(MINIMAL_INVALID_HLD)
         results = check_required_sections(sections)
         messages = " ".join(r.message for r in results)
-        assert "Layer Specifications" in messages
+        assert "Data Architecture" in messages
 
 
 class TestCheckMetadata:
@@ -94,24 +96,46 @@ class TestCheckMetadata:
         assert len(criticals) > 0
 
 
-class TestCheckLayerSpecs:
-    """Layer specifications must be non-empty."""
+class TestCheckExecutiveSummary:
+    """Executive Summary must exist with meaningful content."""
+
+    def test_valid_summary_passes(self):
+        sections = parse_hld_sections(VALID_HLD)
+        results = check_executive_summary(sections)
+        criticals = [r for r in results if r.level == ValidationLevel.CRITICAL]
+        assert len(criticals) == 0
+
+    def test_missing_summary_detected(self):
+        sections = parse_hld_sections(MINIMAL_INVALID_HLD)
+        results = check_executive_summary(sections)
+        criticals = [r for r in results if r.level == ValidationLevel.CRITICAL]
+        assert len(criticals) > 0
+
+    def test_short_summary_detected(self):
+        sections = parse_hld_sections(EMPTY_SECTIONS_HLD)
+        results = check_executive_summary(sections)
+        criticals = [r for r in results if r.level == ValidationLevel.CRITICAL]
+        assert len(criticals) > 0
+
+
+class TestCheckDataArchitecture:
+    """Data Architecture must mention Bronze, Silver, and Gold layers."""
 
     def test_valid_layers_pass(self):
         sections = parse_hld_sections(VALID_HLD)
-        results = check_layer_specs(sections)
+        results = check_data_architecture(sections)
         criticals = [r for r in results if r.level == ValidationLevel.CRITICAL]
         assert len(criticals) == 0
 
     def test_empty_layers_detected(self):
         sections = parse_hld_sections(EMPTY_SECTIONS_HLD)
-        results = check_layer_specs(sections)
+        results = check_data_architecture(sections)
         criticals = [r for r in results if r.level == ValidationLevel.CRITICAL]
         assert len(criticals) > 0
 
 
 class TestCheckTechnologyTable:
-    """Technology stack must have a table with entries."""
+    """Technology decisions must have a table with entries."""
 
     def test_valid_tech_table_passes(self):
         sections = parse_hld_sections(VALID_HLD)
@@ -141,7 +165,7 @@ class TestCheckDrdTraceability:
 
 
 class TestCheckCdcStrategy:
-    """CDC section must mention detection methods."""
+    """Operational Considerations must mention CDC detection methods."""
 
     def test_valid_cdc_passes(self):
         sections = parse_hld_sections(VALID_HLD)
@@ -157,7 +181,7 @@ class TestCheckCdcStrategy:
 
 
 class TestCheckCapacityProjections:
-    """Capacity section must have numeric projections."""
+    """Scalability section must have numeric projections."""
 
     def test_valid_capacity_passes(self):
         sections = parse_hld_sections(VALID_HLD)
@@ -177,7 +201,7 @@ class TestCheckSecurityCompliance:
 
 
 class TestCheckPatternJustification:
-    """Design overview must justify the pattern choice."""
+    """Architecture Overview must justify the pattern choice."""
 
     def test_valid_justification_passes(self):
         sections = parse_hld_sections(VALID_HLD)
@@ -224,13 +248,27 @@ class TestCheckDiagrams:
 
 
 class TestCheckCostEstimates:
-    """Capacity section should mention costs."""
+    """Scalability section should mention costs."""
 
     def test_costs_present(self):
         sections = parse_hld_sections(VALID_HLD)
         results = check_cost_estimates(sections)
         infos = [r for r in results if r.level == ValidationLevel.INFO]
         assert len(infos) == 0
+
+
+class TestCheckDownstreamReferences:
+    """HLD should reference downstream documents (LLD, DMS)."""
+
+    def test_references_present(self):
+        results = check_downstream_references(VALID_HLD)
+        infos = [r for r in results if r.level == ValidationLevel.INFO]
+        assert len(infos) == 0
+
+    def test_missing_references_flagged(self):
+        results = check_downstream_references("# HLD\n\nNo downstream references.")
+        infos = [r for r in results if r.level == ValidationLevel.INFO]
+        assert len(infos) > 0
 
 
 class TestValidateHld:

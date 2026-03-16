@@ -134,11 +134,12 @@ class TestAgentSystemPrompt:
 
     def test_references_hld_sections(self):
         _, body = _parse_agent_file()
-        assert "Design Overview" in body
-        assert "Layer Specification" in body or "Layer Design" in body
-        assert "Technology Stack" in body
-        assert "CDC Strategy" in body or "CDC" in body
-        assert "Capacity Planning" in body or "Capacity" in body
+        assert "Executive Summary" in body
+        assert "Architecture Overview" in body
+        assert "Data Architecture" in body or "Layer Design" in body
+        assert "Technology Decisions" in body
+        assert "CDC" in body
+        assert "Scalability" in body or "Capacity" in body
 
     def test_references_architect_inputs(self):
         _, body = _parse_agent_file()

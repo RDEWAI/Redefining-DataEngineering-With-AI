@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Validate High-Level Design (HLD) against completeness and quality standards.
 
-Checks all required sections, metadata, layer specifications, technology table,
-CDC strategy, capacity planning, security, and DRD traceability. Reports issues
+Checks all required sections, metadata, data architecture, technology decisions,
+CDC strategy, capacity model, security, and DRD traceability. Reports issues
 as CRITICAL, WARNING, or INFO.
 
 Usage:
@@ -71,14 +71,14 @@ class ValidationReport:
 
 
 REQUIRED_SECTIONS = [
-    "1. Design Overview",
-    "2. Layer Specifications",
-    "3. Technology Stack",
-    "4. Integration Points",
-    "5. Capacity Planning",
-    "6. Security Architecture",
-    "7. Disaster Recovery",
-    "8. CDC Strategy",
+    "1. Executive Summary",
+    "2. Architecture Overview",
+    "3. Data Architecture",
+    "4. Technology Decisions",
+    "5. Integration Architecture",
+    "6. Scalability & Capacity Model",
+    "7. Security & Compliance",
+    "8. Operational Considerations",
 ]
 
 
@@ -101,31 +101,6 @@ def parse_hld_sections(content: str) -> dict[str, str]:
         sections[current_heading] = "\n".join(current_lines).strip()
 
     return sections
-
-
-def _section_has_table_rows(content: str) -> bool:
-    """Check if section content contains at least one markdown table data row."""
-    lines = content.strip().split("\n")
-    table_rows = [
-        ln
-        for ln in lines
-        if ln.strip().startswith("|")
-        and not ln.strip().startswith("| ---")
-        and not ln.strip().startswith("|---")
-        and not all(c in "|- " for c in ln.strip())
-    ]
-    # Exclude header row — need at least 2 pipe-rows
-    return len(table_rows) >= 2
-
-
-def _section_has_content_beyond_headings(content: str) -> bool:
-    """Check if section has meaningful content beyond sub-headings and whitespace."""
-    lines = content.strip().split("\n")
-    for line in lines:
-        stripped = line.strip()
-        if stripped and not stripped.startswith("#") and not stripped.startswith("---"):
-            return True
-    return False
 
 
 def _subsection_content(sections: dict[str, str], parent: str, sub: str) -> str | None:
@@ -183,39 +158,75 @@ def check_metadata(content: str) -> list[ValidationResult]:
     return results
 
 
-def check_layer_specs(sections: dict[str, str]) -> list[ValidationResult]:
-    """Check that Bronze, Silver, and Gold layer subsections are non-empty."""
+def check_executive_summary(sections: dict[str, str]) -> list[ValidationResult]:
+    """Check that Executive Summary exists and has meaningful content (≥2 sentences)."""
     results: list[ValidationResult] = []
-    layer_section = "2. Layer Specifications"
+    summary_content = sections.get("1. Executive Summary", "")
 
-    layer_checks = [
-        ("Bronze", ["2.1 Bronze", "Bronze Layer", "2.1"]),
-        ("Silver", ["2.2 Silver", "Silver Layer", "2.2"]),
-        ("Gold", ["2.3 Gold", "Gold Layer", "2.3"]),
-    ]
+    if not summary_content or not summary_content.strip():
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section="1. Executive Summary",
+                message="Executive Summary section is missing or empty.",
+                suggestion=(
+                    "Add a 3-5 sentence overview covering what the pipeline does,"
+                    " who it serves, and the key architectural choice."
+                ),
+            )
+        )
+        return results
 
-    parent_content = sections.get(layer_section, "")
+    # Count sentences (periods, exclamation marks, or question marks followed by space or end)
+    sentences = re.findall(r"[.!?](?:\s|$)", summary_content)
+    if len(sentences) < 2:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section="1. Executive Summary",
+                message=(
+                    f"Executive Summary has only {len(sentences)} sentence(s);"
+                    " at least 2 required."
+                ),
+                suggestion=(
+                    "Expand the Executive Summary to at least 3-5 sentences"
+                    " covering business context, pipeline purpose, and architecture choice."
+                ),
+            )
+        )
+    return results
 
-    for layer_name, search_terms in layer_checks:
-        found = False
-        for term in search_terms:
-            sub = _subsection_content(sections, layer_section, term)
-            if sub is not None and sub.strip():
-                found = True
-                break
-        # Also check if the layer name appears in the parent section
-        if not found and layer_name.lower() in parent_content.lower():
-            found = True
 
-        if not found:
+def check_data_architecture(sections: dict[str, str]) -> list[ValidationResult]:
+    """Check that Data Architecture section mentions Bronze, Silver, and Gold layers."""
+    results: list[ValidationResult] = []
+    section_key = "3. Data Architecture"
+    content = sections.get(section_key, "")
+
+    if not content:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section=section_key,
+                message="Data Architecture section is empty.",
+                suggestion=(
+                    "Add layer strategy descriptions for Bronze, Silver, and Gold layers,"
+                    " SCD strategy, and data quality approach."
+                ),
+            )
+        )
+        return results
+
+    for layer_name in ["Bronze", "Silver", "Gold"]:
+        if layer_name.lower() not in content.lower():
             results.append(
                 ValidationResult(
                     level=ValidationLevel.CRITICAL,
-                    section=f"2. Layer Specifications — {layer_name}",
-                    message=f"{layer_name} layer specification is missing or empty.",
+                    section=f"{section_key} — {layer_name}",
+                    message=f"{layer_name} layer is not mentioned in Data Architecture.",
                     suggestion=(
-                        f"Add a subsection defining the {layer_name} layer:"
-                        " purpose, write strategy, and table inventory."
+                        f"Add a description of the {layer_name} layer's purpose"
+                        " and responsibilities."
                     ),
                 )
             )
@@ -224,19 +235,19 @@ def check_layer_specs(sections: dict[str, str]) -> list[ValidationResult]:
 
 
 def check_technology_table(sections: dict[str, str]) -> list[ValidationResult]:
-    """Check that the technology stack section has a table with >= 3 rows."""
+    """Check that the technology decisions section has a table with >= 3 rows."""
     results: list[ValidationResult] = []
-    tech_content = sections.get("3. Technology Stack", "")
+    tech_content = sections.get("4. Technology Decisions", "")
 
     if not tech_content:
         results.append(
             ValidationResult(
                 level=ValidationLevel.CRITICAL,
-                section="3. Technology Stack",
-                message="Technology stack section is empty.",
+                section="4. Technology Decisions",
+                message="Technology Decisions section is empty.",
                 suggestion=(
-                    "Add a table listing all tools with tool, version,"
-                    " role, license, and JAR coordinate columns."
+                    "Add a table listing technology choices with columns:"
+                    " Component, Selected Tool, and Why."
                 ),
             )
         )
@@ -256,14 +267,14 @@ def check_technology_table(sections: dict[str, str]) -> list[ValidationResult]:
         results.append(
             ValidationResult(
                 level=ValidationLevel.CRITICAL,
-                section="3. Technology Stack",
+                section="4. Technology Decisions",
                 message=(
                     f"Technology table has only {len(table_rows) - 1} data rows;"
                     " at least 3 required."
                 ),
                 suggestion=(
-                    "Add rows for all tools: processing engine, table format,"
-                    " metastore, lineage, and data quality tools."
+                    "Add rows for all key technology choices: processing engine,"
+                    " table format, metastore, and data quality tools."
                 ),
             )
         )
@@ -296,19 +307,19 @@ def check_drd_traceability(content: str) -> list[ValidationResult]:
 
 
 def check_cdc_strategy(sections: dict[str, str]) -> list[ValidationResult]:
-    """Check that CDC section mentions snapshot, timestamp, or CDC method."""
+    """Check that Operational Considerations section mentions CDC methods."""
     results: list[ValidationResult] = []
-    cdc_content = sections.get("8. CDC Strategy", "")
+    ops_content = sections.get("8. Operational Considerations", "")
 
-    if not cdc_content:
+    if not ops_content:
         results.append(
             ValidationResult(
                 level=ValidationLevel.WARNING,
-                section="8. CDC Strategy",
-                message="CDC Strategy section is empty.",
+                section="8. Operational Considerations",
+                message="Operational Considerations section is empty.",
                 suggestion=(
-                    "Document the change detection method for each source table:"
-                    " Full Snapshot, Timestamp Watermark, or Log-Based CDC."
+                    "Document CDC strategy per source type, recovery targets"
+                    " (RTO/RPO), and backup approach."
                 ),
             )
         )
@@ -317,7 +328,7 @@ def check_cdc_strategy(sections: dict[str, str]) -> list[ValidationResult]:
     has_cdc_method = bool(
         re.search(
             r"\b(snapshot|timestamp|cdc|log.based|watermark|debezium)\b",
-            cdc_content,
+            ops_content,
             re.IGNORECASE,
         )
     )
@@ -325,10 +336,10 @@ def check_cdc_strategy(sections: dict[str, str]) -> list[ValidationResult]:
         results.append(
             ValidationResult(
                 level=ValidationLevel.WARNING,
-                section="8. CDC Strategy",
-                message="CDC Strategy section does not specify a recognized CDC method.",
+                section="8. Operational Considerations",
+                message="Operational Considerations does not specify a recognized CDC method.",
                 suggestion=(
-                    "Specify the CDC method per source table:"
+                    "Specify the CDC method per source type:"
                     " Full Snapshot, Timestamp Watermark, or Log-Based CDC."
                 ),
             )
@@ -337,19 +348,19 @@ def check_cdc_strategy(sections: dict[str, str]) -> list[ValidationResult]:
 
 
 def check_capacity_projections(sections: dict[str, str]) -> list[ValidationResult]:
-    """Check that capacity section contains numeric values."""
+    """Check that scalability section contains numeric values."""
     results: list[ValidationResult] = []
-    capacity_content = sections.get("5. Capacity Planning", "")
+    capacity_content = sections.get("6. Scalability & Capacity Model", "")
 
     if not capacity_content:
         results.append(
             ValidationResult(
                 level=ValidationLevel.WARNING,
-                section="5. Capacity Planning",
-                message="Capacity Planning section is empty.",
+                section="6. Scalability & Capacity Model",
+                message="Scalability & Capacity Model section is empty.",
                 suggestion=(
-                    "Add current row counts, growth projections, and compute"
-                    " sizing with specific numeric values."
+                    "Add current scale summary, growth projections with"
+                    " numeric values, and scaling levers."
                 ),
             )
         )
@@ -360,8 +371,8 @@ def check_capacity_projections(sections: dict[str, str]) -> list[ValidationResul
         results.append(
             ValidationResult(
                 level=ValidationLevel.WARNING,
-                section="5. Capacity Planning",
-                message="Capacity Planning section has no numeric volume values.",
+                section="6. Scalability & Capacity Model",
+                message="Scalability section has no numeric volume values.",
                 suggestion=(
                     "Add specific numbers: row counts, storage estimates"
                     " (GB/MB), and growth projections."
@@ -374,17 +385,16 @@ def check_capacity_projections(sections: dict[str, str]) -> list[ValidationResul
 def check_security_compliance(sections: dict[str, str]) -> list[ValidationResult]:
     """Check that security section mentions compliance, regulatory, or encryption controls."""
     results: list[ValidationResult] = []
-    security_content = sections.get("6. Security Architecture", "")
+    security_content = sections.get("7. Security & Compliance", "")
 
     if not security_content:
         results.append(
             ValidationResult(
                 level=ValidationLevel.WARNING,
-                section="6. Security Architecture",
-                message="Security Architecture section is empty.",
+                section="7. Security & Compliance",
+                message="Security & Compliance section is empty.",
                 suggestion=(
-                    "Document compliance controls, encryption strategy,"
-                    " access model, and sensitive data handling rules."
+                    "Document data classification, access strategy," " and compliance requirements."
                 ),
             )
         )
@@ -402,14 +412,14 @@ def check_security_compliance(sections: dict[str, str]) -> list[ValidationResult
         results.append(
             ValidationResult(
                 level=ValidationLevel.WARNING,
-                section="6. Security Architecture",
+                section="7. Security & Compliance",
                 message=(
-                    "Security Architecture section does not mention"
-                    " compliance, regulatory, or encryption controls."
+                    "Security & Compliance section does not mention"
+                    " compliance, regulatory, or data classification controls."
                 ),
                 suggestion=(
-                    "Add compliance control table, sensitive data handling"
-                    " rules, and encryption requirements."
+                    "Add data classification table, access strategy,"
+                    " and compliance requirements."
                 ),
             )
         )
@@ -417,19 +427,19 @@ def check_security_compliance(sections: dict[str, str]) -> list[ValidationResult
 
 
 def check_pattern_justification(sections: dict[str, str]) -> list[ValidationResult]:
-    """Check that Design Overview section contains pattern justification."""
+    """Check that Architecture Overview section contains pattern justification."""
     results: list[ValidationResult] = []
-    overview_content = sections.get("1. Design Overview", "")
+    overview_content = sections.get("2. Architecture Overview", "")
 
     if not overview_content:
         results.append(
             ValidationResult(
                 level=ValidationLevel.WARNING,
-                section="1. Design Overview",
-                message="Design Overview section is empty.",
+                section="2. Architecture Overview",
+                message="Architecture Overview section is empty.",
                 suggestion=(
                     "Add architecture pattern selection with justification,"
-                    " options considered, and trade-off analysis."
+                    " alternatives considered, and trade-off analysis."
                 ),
             )
         )
@@ -446,9 +456,9 @@ def check_pattern_justification(sections: dict[str, str]) -> list[ValidationResu
         results.append(
             ValidationResult(
                 level=ValidationLevel.WARNING,
-                section="1. Design Overview",
+                section="2. Architecture Overview",
                 message=(
-                    "Design Overview does not contain pattern justification"
+                    "Architecture Overview does not contain pattern justification"
                     " (rationale/because/trade-off)."
                 ),
                 suggestion=(
@@ -517,11 +527,11 @@ def check_diagrams(content: str) -> list[ValidationResult]:
         results.append(
             ValidationResult(
                 level=ValidationLevel.INFO,
-                section="1. Design Overview",
+                section="2. Architecture Overview",
                 message="No Mermaid architecture diagram found.",
                 suggestion=(
-                    "Add a ```mermaid flowchart showing the data flow from"
-                    " sources through Bronze/Silver/Gold to consumers."
+                    "Add a ```mermaid flowchart showing the conceptual data flow"
+                    " from sources through layers to consumers."
                 ),
             )
         )
@@ -529,9 +539,9 @@ def check_diagrams(content: str) -> list[ValidationResult]:
 
 
 def check_cost_estimates(sections: dict[str, str]) -> list[ValidationResult]:
-    """Check if capacity section includes cost or budget information."""
+    """Check if scalability section includes cost or budget information."""
     results: list[ValidationResult] = []
-    capacity_content = sections.get("5. Capacity Planning", "")
+    capacity_content = sections.get("6. Scalability & Capacity Model", "")
 
     has_cost = bool(
         re.search(r"\b(cost|\$|budget|estimate|monthly)\b", capacity_content, re.IGNORECASE)
@@ -540,11 +550,31 @@ def check_cost_estimates(sections: dict[str, str]) -> list[ValidationResult]:
         results.append(
             ValidationResult(
                 level=ValidationLevel.INFO,
-                section="5. Capacity Planning",
-                message="No cost estimates found in Capacity Planning section.",
+                section="6. Scalability & Capacity Model",
+                message="No cost information found in Scalability section.",
                 suggestion=(
-                    "Add a cost estimate table with monthly estimates"
-                    " for compute, storage, and tooling."
+                    "Add a cost model describing how costs scale with" " data volume growth."
+                ),
+            )
+        )
+    return results
+
+
+def check_downstream_references(content: str) -> list[ValidationResult]:
+    """Check that the HLD references downstream documents (LLD, DMS)."""
+    results: list[ValidationResult] = []
+    has_lld = bool(re.search(r"\b(LLD|Low.Level Design)\b", content, re.IGNORECASE))
+    has_dms = bool(re.search(r"\b(DMS|Data Model Specification)\b", content, re.IGNORECASE))
+
+    if not has_lld and not has_dms:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.INFO,
+                section="General",
+                message=("HLD does not reference downstream documents (LLD or DMS)."),
+                suggestion=(
+                    "Add references to the LLD (for deployment details) and"
+                    " DMS (for table schemas) to clarify scope boundaries."
                 ),
             )
         )
@@ -586,7 +616,8 @@ def validate_hld(file_path: Path) -> ValidationReport:
     # CRITICAL checks
     report.results.extend(check_required_sections(sections))
     report.results.extend(check_metadata(content))
-    report.results.extend(check_layer_specs(sections))
+    report.results.extend(check_executive_summary(sections))
+    report.results.extend(check_data_architecture(sections))
     report.results.extend(check_technology_table(sections))
 
     # WARNING checks
@@ -601,6 +632,7 @@ def validate_hld(file_path: Path) -> ValidationReport:
     report.results.extend(check_placeholders(content))
     report.results.extend(check_diagrams(content))
     report.results.extend(check_cost_estimates(sections))
+    report.results.extend(check_downstream_references(content))
 
     return report
 

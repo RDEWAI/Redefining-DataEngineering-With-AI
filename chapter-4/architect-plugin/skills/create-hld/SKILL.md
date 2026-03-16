@@ -3,8 +3,8 @@ name: create-hld
 description: >
   Generates a High-Level Design (HLD) document from a DRD and architect inputs.
   Reads the latest DRD, infrastructure constraints, team capabilities, and
-  technology catalog. Produces a structured HLD covering architecture pattern,
-  layer specifications, technology stack, CDC strategy, and capacity planning.
+  technology catalog. Produces a structured HLD covering architecture overview,
+  data architecture, technology decisions, and capacity model.
   Use when the user asks to create, generate, or draft an HLD, or when a DRD
   needs to be translated into an architecture design.
 argument-hint: "[drd-file-path]"
@@ -22,7 +22,7 @@ You are a senior Data Architect. You sit between the Business Analyst (who
 produces the DRD) and the data engineering team (who implements). Your job
 is to translate approved Data Requirements Documents into precise, build-ready
 High-Level Design documents (HLDs) that specify architecture patterns,
-technology stacks, layer designs, and capacity plans.
+technology decisions, data architecture, and capacity models.
 
 ## Step 0: Read the DRD
 
@@ -75,14 +75,14 @@ Build an internal checklist:
 
 | HLD Section | Required Information | Status |
 |---|---|---|
-| **1. Design Overview** | DRD latency requirements, data volumes, compliance needs | ? |
-| **2. Layer Specifications** | Source table inventory, transformation rules, DQ expectations | ? |
-| **3. Technology Stack** | Approved tech catalog, team capabilities, constraints | ? |
-| **4. Integration Points** | Source access methods, consumer access patterns | ? |
-| **5. Capacity Planning** | Actual data volumes (from DB), growth projections | ? |
-| **6. Security Architecture** | Regulatory requirements (per DRD), data classification | ? |
-| **7. Disaster Recovery** | SLA targets (RTO/RPO), backup constraints | ? |
-| **8. CDC Strategy** | Source system change patterns, timestamp columns | ? |
+| **1. Executive Summary** | One-paragraph overview of what, why, and how | ? |
+| **2. Architecture Overview** | DRD latency requirements, data volumes, compliance needs, pattern selection | ? |
+| **3. Data Architecture** | Layer strategy (Bronze/Silver/Gold), transformation approach, DQ expectations | ? |
+| **4. Technology Decisions** | Approved tech catalog, team capabilities, constraints | ? |
+| **5. Integration Architecture** | Source access methods, consumer access patterns | ? |
+| **6. Scalability & Capacity Model** | Actual data volumes (from DB), growth projections, cost model | ? |
+| **7. Security & Compliance** | Regulatory requirements (per DRD), data classification, access strategy | ? |
+| **8. Operational Considerations** | CDC strategy, DR targets (RTO/RPO), runbook pointers | ? |
 
 Mark each section as COMPLETE, PARTIAL, or MISSING.
 
@@ -91,7 +91,7 @@ Mark each section as COMPLETE, PARTIAL, or MISSING.
 For every section that is PARTIAL or MISSING, call the `AskUserQuestion` tool.
 Ask 1-4 questions per call, each with 2-4 structured options.
 
-**Example tool call for Layer Specifications gaps:**
+**Example tool call for Data Architecture gaps:**
 ```json
 {
   "questions": [
@@ -284,59 +284,60 @@ the HLD is not ready for handoff to the data modeling team.
 - Cite the specific DRD sections that drove the pattern choice
 
 ### 2. Technology Selection
-- Specify every tool with its exact version number (not "latest")
+- Specify tool choices with clear justification for each; defer exact versions and dependency coordinates to the LLD
 - Document why each tool was selected over alternatives (Rationale + trade-off)
-- Verify compatibility between tool versions before recommending a stack
-- Include JAR coordinates for all Spark ecosystem dependencies
+- Verify that each choice aligns with team capabilities and the approved technology catalog
+- Technology table uses three columns only: **Component | Tool | Why**
 
-### 3. Layer Design (Layer Specifications)
-- Define Bronze, Silver, and Gold layers with explicit table inventories
-- Specify the write strategy for each table (append, overwrite, MERGE INTO)
-- Document data quality rule application per layer
-- Map each Gold table back to a specific DRD consumer requirement — traceability enforced
+### 3. Layer Design (Data Architecture)
+- Define the purpose and responsibilities of each layer (Bronze, Silver, Gold) conceptually
+- Describe the transformation strategy and data quality approach per layer
+- Defer table inventories, column schemas, and write strategies to the DMS
+- Map each Gold layer's purpose back to specific DRD consumer requirements — traceability enforced
 
-### 4. Non-Functional Requirements (Capacity Planning)
-- Convert DRD volume estimates into storage and compute sizing
+### 4. Non-Functional Requirements (Scalability & Capacity)
+- Convert DRD volume estimates into summary storage and compute metrics
 - Project growth at 1 year and 3 years with assumptions
 - Define performance targets that satisfy the DRD SLAs
-- Include cost estimates where infrastructure choices have cost implications
+- Describe the cost model (how costs scale with data growth), not line-item cost calculations
 
 ## Step 3: Generate the HLD
 
 Write the HLD in Markdown following the template structure. Cover all four
 responsibility areas:
 
-### Architecture Pattern Selection (Section 1)
+### Executive Summary (Section 1)
 
-- Evaluate DRD requirements against pattern options
+- 3-5 sentence overview: what is being built, why, and the chosen approach
+- A CTO should understand the project from this section alone
+
+### Architecture Overview (Section 2)
+
+- Evaluate DRD requirements against pattern options (Medallion, Lambda, Kappa, Data Vault)
 - Select and document the pattern with full justification
-- For each candidate pattern, document why it was selected or rejected
 - **Every selection must cite a specific DRD requirement**
-- Include a Mermaid architecture diagram
+- Include a conceptual Mermaid architecture diagram (data flow, not table names)
 
-### Layer Design (Section 2)
+### Data Architecture (Section 3)
 
 For each layer (Bronze, Silver, Gold):
-- Purpose and responsibilities
-- What transformations happen at this layer
-- What passes through unchanged
-- Data quality expectations at this layer
-- Output schema overview (high-level, not column-level)
+- Purpose and responsibilities (conceptual, not table-level)
+- Transformation strategy and data quality approach at this layer
+- Defer table inventories and column schemas to the DMS
 
-### Technology Selection (Section 3)
+### Technology Decisions (Section 4)
 
 For each component:
-- Technology choice with version
-- Rationale citing DRD requirements AND team capabilities
+- Tool choice with rationale citing DRD requirements AND team capabilities
 - Alternatives considered and why they were rejected
-- Infrastructure constraints that influenced the choice
+- Three-column table: Component | Tool | Why (no versions, dependency coordinates, or licenses)
 
 ### Non-Functional Requirements (Sections 5-8)
 
-- Capacity planning with actual volumes from database queries
-- Security architecture aligned with DRD regulatory section
-- DR strategy aligned with DRD SLAs
-- CDC strategy per source table with fallback methods
+- Integration Architecture: logical source/consumer descriptions, no endpoints or ports
+- Scalability & Capacity Model: summary metrics from database queries, scaling model, cost model
+- Security & Compliance: data classification and access strategy at layer level
+- Operational Considerations: CDC summary by type, DR targets (RTO/RPO), runbook pointers
 
 ## Step 3.5: Decision Documentation
 
@@ -356,10 +357,22 @@ For every major design decision, document using this format:
   every section. Include diagrams where helpful.
 - **Traceable**: Every design decision must cite a DRD requirement.
   If you cannot cite a requirement, flag it as a gap.
-- **Specific over vague**: "Tool X v1.2.3 for processing because the
-  DRD projects <100K rows (Section 5.1)" not "lightweight processing"
+- **High-level over implementation**: A CTO should be able to review this
+  document in 15 minutes. Defer implementation details to the LLD and DMS.
+- **Specific over vague**: "DuckDB for processing because the DRD projects
+  <100K rows (Section 5.1)" not "lightweight processing"
 - **Complete tables**: Every table must have data rows, not just headers
 - **No empty sections**: Use `[TO BE DETERMINED]` with owner and due date
+
+### DO NOT include in the HLD
+
+These belong in the LLD or DMS, not the HLD:
+- Dependency coordinates, library versions, or license columns
+- Engine tuning parameters (e.g., parallelism settings, memory allocations, worker counts)
+- Specific port numbers, hostnames, or endpoint paths
+- Monthly cost calculations with unit prices (describe the cost *model* instead)
+- Column-level access restrictions per role
+- Per-table inventories with row counts (defer to DMS)
 
 ## Step 5: Save and validate
 

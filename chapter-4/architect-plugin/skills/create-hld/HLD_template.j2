@@ -8,247 +8,214 @@
 | **Author** | {{ hld.author }} |
 | **Status** | {{ hld.status }} |
 | **DRD Reference** | {{ hld.drd_reference }} |
-| **Architecture Pattern** | {{ hld.architecture_pattern }} |
 
 ---
 
-## 1. Design Overview
+## 1. Executive Summary
 
-### 1.1 Architecture Pattern
+{{ hld.executive_summary }}
 
-**Selected Pattern**: {{ hld.design_overview.pattern }}
+---
 
-**Justification**: {{ hld.design_overview.justification }}
+## 2. Architecture Overview
 
-### 1.2 Options Considered
+### 2.1 Selected Pattern
 
-| Option | Description | Rationale for Rejection |
-|--------|-------------|--------------------------|
-{% for option in hld.design_overview.options_considered %}
+**Pattern**: {{ hld.architecture.pattern }}
+
+**Justification**: {{ hld.architecture.justification }}
+
+### 2.2 Alternatives Considered
+
+| Option | Description | Why Not Selected |
+|--------|-------------|------------------|
+{% for option in hld.architecture.alternatives %}
 | {{ option.name }} | {{ option.description }} | {{ option.rejection_reason }} |
 {% endfor %}
 
-**Trade-off**: {{ hld.design_overview.tradeoff }}
+**Trade-off**: {{ hld.architecture.tradeoff }}
 
-### 1.3 Architecture Diagram
+### 2.3 Architecture Diagram
+
+<!-- Diagram should show CONCEPTUAL data flow: Sources → Layers → Consumers.
+     Include quality gates between layers and SLA annotations per consumer group.
+     Do NOT list individual table names — those belong in the DMS. -->
 
 ```mermaid
-{{ hld.design_overview.diagram }}
+{{ hld.architecture.diagram }}
 ```
 
-### 1.4 Key Design Principles
+### 2.4 Key Design Principles
 
-{% for principle in hld.design_overview.principles %}
+{% for principle in hld.architecture.principles %}
 - {{ principle }}
 {% endfor %}
 
 ---
 
-## 2. Layer Specifications
+## 3. Data Architecture
 
-### 2.1 Bronze Layer (Raw Ingestion)
+### 3.1 Layer Strategy
 
-**Purpose**: {{ hld.layer_specs.bronze.purpose }}
+{% for layer in hld.data_architecture.layers %}
+**{{ layer.name }}**
 
-**Write Strategy**: {{ hld.layer_specs.bronze.write_strategy }}
+{{ layer.description }}
 
-**Partition Key**: {{ hld.layer_specs.bronze.partition_key }}
-
-| Table | Source | Write Mode | DQ Rules Applied | Estimated Rows |
-|-------|--------|------------|-----------------|----------------|
-{% for table in hld.layer_specs.bronze.tables %}
-| {{ table.name }} | {{ table.source }} | {{ table.write_mode }} | {{ table.dq_rules }} | {{ table.estimated_rows }} |
 {% endfor %}
 
-**Data Quality**: {{ hld.layer_specs.bronze.dq_strategy }}
+> Detailed table inventories, column schemas, and row-level write strategies are
+> documented in the **Data Model Specification (DMS)**.
 
-### 2.2 Silver Layer (Curated / Conformed)
+### 3.2 Data Domain Map
 
-**Purpose**: {{ hld.layer_specs.silver.purpose }}
+{{ hld.data_architecture.domain_map }}
 
-**Write Strategy**: {{ hld.layer_specs.silver.write_strategy }}
+### 3.3 SCD Strategy
 
-| Table | Type | Source Bronze Table | SCD Type | Key Columns |
-|-------|------|---------------------|----------|-------------|
-{% for table in hld.layer_specs.silver.tables %}
-| {{ table.name }} | {{ table.table_type }} | {{ table.source_table }} | {{ table.scd_type }} | {{ table.key_columns }} |
+| Dimension Type | SCD Approach | Rationale |
+|----------------|-------------|-----------|
+{% for scd in hld.data_architecture.scd_strategy %}
+| {{ scd.dimension_type }} | {{ scd.approach }} | {{ scd.rationale }} |
 {% endfor %}
 
-**Data Quality**: {{ hld.layer_specs.silver.dq_strategy }}
+### 3.4 Data Quality Strategy
 
-### 2.3 Gold Layer (Business / Consumer-Facing)
-
-**Purpose**: {{ hld.layer_specs.gold.purpose }}
-
-**Write Strategy**: {{ hld.layer_specs.gold.write_strategy }}
-
-| Table | Consumer | DRD Reference | Refresh Cadence | Description |
-|-------|----------|---------------|-----------------|-------------|
-{% for table in hld.layer_specs.gold.tables %}
-| {{ table.name }} | {{ table.consumer }} | {{ table.drd_reference }} | {{ table.refresh_cadence }} | {{ table.description }} |
-{% endfor %}
-
-**Data Quality**: {{ hld.layer_specs.gold.dq_strategy }}
+{{ hld.data_architecture.dq_strategy }}
 
 ---
 
-## 3. Technology Stack
+## 4. Technology Decisions
 
-| Component | Tool | Version | Role | License | JAR Coordinate |
-|-----------|------|---------|------|---------|----------------|
-{% for tech in hld.technology_stack %}
-| {{ tech.component }} | {{ tech.tool }} | {{ tech.version }} | {{ tech.role }} | {{ tech.license }} | {{ tech.jar_coordinate }} |
+| Component | Selected Tool | Why |
+|-----------|--------------|-----|
+{% for tech in hld.technology_decisions %}
+| {{ tech.component }} | {{ tech.tool }} | {{ tech.why }} |
 {% endfor %}
 
-### 3.1 Dependency Notes
+> Detailed technology versions, dependency coordinates, and deployment configurations
+> belong in the **Low-Level Design (LLD)** document.
 
-{% for note in hld.technology_notes %}
-- {{ note }}
+### 4.1 Key Compatibility Constraints
+
+{% for constraint in hld.technology_constraints %}
+- {{ constraint }}
+{% endfor %}
+
+### 4.2 Technology Trade-offs
+
+{% for tradeoff in hld.technology_tradeoffs %}
+- {{ tradeoff }}
 {% endfor %}
 
 ---
 
-## 4. Integration Points
+## 5. Integration Architecture
 
-### 4.1 Source Systems
+### 5.1 Source Systems
 
-| System | Type | Connection | Access Method | Tables Consumed |
-|--------|------|------------|---------------|-----------------|
+| Source | Type | Access Pattern | Tables Consumed |
+|--------|------|---------------|-----------------|
 {% for source in hld.integration.sources %}
-| {{ source.name }} | {{ source.type }} | {{ source.connection }} | {{ source.access_method }} | {{ source.tables }} |
+| {{ source.name }} | {{ source.type }} | {{ source.access_pattern }} | {{ source.tables }} |
 {% endfor %}
 
-### 4.2 Lineage & Observability
+### 5.2 Consumer Access Pattern
 
-| Tool | Role | Endpoint | Namespace |
-|------|------|----------|-----------|
-{% for lineage in hld.integration.lineage %}
-| {{ lineage.tool }} | {{ lineage.role }} | {{ lineage.endpoint }} | {{ lineage.namespace }} |
-{% endfor %}
-
-### 4.3 Downstream Consumers
-
-| Consumer | Interface | Tables / Views | SLA Reference |
-|----------|-----------|----------------|---------------|
+| Consumer Group | Access Method | Gold Tables | SLA |
+|---------------|--------------|-------------|-----|
 {% for consumer in hld.integration.consumers %}
-| {{ consumer.name }} | {{ consumer.interface }} | {{ consumer.tables }} | {{ consumer.sla_reference }} |
+| {{ consumer.name }} | {{ consumer.access_method }} | {{ consumer.tables }} | {{ consumer.sla }} |
 {% endfor %}
+
+### 5.3 Observability Strategy
+
+{{ hld.integration.observability }}
 
 ---
 
-## 5. Capacity Planning
+## 6. Scalability & Capacity Model
 
-### 5.1 Current Data Volumes
+### 6.1 Current Scale
 
-| Table | Current Rows | Storage Estimate | Growth Rate | Notes |
-|-------|-------------|-----------------|-------------|-------|
-{% for vol in hld.capacity.current_volumes %}
-| {{ vol.table }} | {{ vol.current_rows }} | {{ vol.storage_estimate }} | {{ vol.growth_rate }} | {{ vol.notes }} |
+{{ hld.scalability.current_scale }}
+
+### 6.2 Growth Model
+
+| Metric | Current | Year 1 | Year 3 | Assumption |
+|--------|---------|--------|--------|------------|
+{% for proj in hld.scalability.projections %}
+| {{ proj.metric }} | {{ proj.current }} | {{ proj.year_1 }} | {{ proj.year_3 }} | {{ proj.assumption }} |
 {% endfor %}
 
-### 5.2 Growth Projections
+### 6.3 Scaling Levers
 
-| Metric | Year 0 (Current) | Year 1 | Year 3 | Assumption |
-|--------|-----------------|--------|--------|------------|
-{% for proj in hld.capacity.projections %}
-| {{ proj.metric }} | {{ proj.year_0 }} | {{ proj.year_1 }} | {{ proj.year_3 }} | {{ proj.assumption }} |
+{% for lever in hld.scalability.scaling_levers %}
+- {{ lever }}
 {% endfor %}
 
-### 5.3 Compute Sizing
+### 6.4 Cost Model
 
-| Workload | Spark Config | Memory | Cores | Shuffle Partitions |
-|----------|-------------|--------|-------|--------------------|
-{% for compute in hld.capacity.compute_sizing %}
-| {{ compute.workload }} | {{ compute.config }} | {{ compute.memory }} | {{ compute.cores }} | {{ compute.shuffle_partitions }} |
-{% endfor %}
+{{ hld.scalability.cost_model }}
 
-### 5.4 Cost Estimates
-
-| Component | Unit | Quantity | Unit Cost | Monthly Estimate | Notes |
-|-----------|------|----------|-----------|-----------------|-------|
-{% for cost in hld.capacity.cost_estimates %}
-| {{ cost.component }} | {{ cost.unit }} | {{ cost.quantity }} | {{ cost.unit_cost }} | {{ cost.monthly_estimate }} | {{ cost.notes }} |
-{% endfor %}
+> Detailed compute sizing (engine tuning parameters, memory allocations) and monthly
+> cost breakdowns belong in the **Low-Level Design (LLD)** document.
 
 ---
 
-## 6. Security Architecture
+## 7. Security & Compliance
 
-### 6.1 Regulatory Compliance Controls
+### 7.1 Data Classification
 
-| Control | Implementation | Layer Applied | Status |
-|---------|---------------|---------------|--------|
-{% for control in hld.security.compliance_controls %}
-| {{ control.name }} | {{ control.implementation }} | {{ control.layer }} | {{ control.status }} |
+| Classification | Examples | Handling Strategy |
+|---------------|----------|-------------------|
+{% for cls in hld.security.classifications %}
+| {{ cls.level }} | {{ cls.examples }} | {{ cls.handling }} |
 {% endfor %}
 
-### 6.2 Encryption
+### 7.2 Access Strategy
 
-| Data State | Method | Key Management | Scope |
-|------------|--------|---------------|-------|
-{% for enc in hld.security.encryption %}
-| {{ enc.state }} | {{ enc.method }} | {{ enc.key_management }} | {{ enc.scope }} |
+| Role Group | Layer Access | Restrictions | Phase |
+|-----------|-------------|-------------|-------|
+{% for role in hld.security.access_strategy %}
+| {{ role.group }} | {{ role.access }} | {{ role.restrictions }} | {{ role.phase }} |
 {% endfor %}
 
-### 6.3 Access Model
+### 7.3 Compliance Requirements
 
-| Role | Catalog Access | Schema Access | Column Restrictions | Auth Method |
-|------|---------------|---------------|---------------------|-------------|
-{% for access in hld.security.access_model %}
-| {{ access.role }} | {{ access.catalog_access }} | {{ access.schema_access }} | {{ access.column_restrictions }} | {{ access.auth_method }} |
-{% endfor %}
+{{ hld.security.compliance }}
 
-### 6.4 Sensitive Data Handling
-
-{% for rule in hld.security.sensitive_data_handling %}
-- **{{ rule.field }}**: {{ rule.rule }}
-{% endfor %}
+> Column-level masking rules, specific authentication methods, and encryption
+> key management details belong in the **Low-Level Design (LLD)** document.
 
 ---
 
-## 7. Disaster Recovery
+## 8. Operational Considerations
 
-### 7.1 RTO / RPO Targets
+### 8.1 CDC Strategy
 
-| Tier | Component | RTO | RPO | Justification |
-|------|-----------|-----|-----|---------------|
-{% for dr in hld.disaster_recovery.targets %}
-| {{ dr.tier }} | {{ dr.component }} | {{ dr.rto }} | {{ dr.rpo }} | {{ dr.justification }} |
+{{ hld.operations.cdc_summary }}
+
+| Source Type | CDC Method | Frequency | Rationale |
+|------------|-----------|-----------|-----------|
+{% for cdc in hld.operations.cdc_methods %}
+| {{ cdc.source_type }} | {{ cdc.method }} | {{ cdc.frequency }} | {{ cdc.rationale }} |
 {% endfor %}
 
-### 7.2 Backup Strategy
+### 8.2 Recovery Strategy
 
-| Data Asset | Backup Method | Frequency | Retention | Storage Location |
-|------------|--------------|-----------|-----------|-----------------|
-{% for backup in hld.disaster_recovery.backups %}
-| {{ backup.asset }} | {{ backup.method }} | {{ backup.frequency }} | {{ backup.retention }} | {{ backup.location }} |
+| Metric | Target | Justification |
+|--------|--------|---------------|
+{% for dr in hld.operations.recovery_targets %}
+| {{ dr.metric }} | {{ dr.target }} | {{ dr.justification }} |
 {% endfor %}
 
-### 7.3 Recovery Runbook (Summary)
+### 8.3 Backup Approach
 
-{% for step in hld.disaster_recovery.runbook %}
-{{ loop.index }}. {{ step }}
-{% endfor %}
+{{ hld.operations.backup_approach }}
 
----
-
-## 8. CDC Strategy
-
-### 8.1 Change Detection Per Source Table
-
-| Source Table | CDC Method | Key Columns | Watermark Field | Frequency | Notes |
-|-------------|-----------|-------------|-----------------|-----------|-------|
-{% for cdc in hld.cdc_strategy %}
-| {{ cdc.table }} | {{ cdc.method }} | {{ cdc.key_columns }} | {{ cdc.watermark_field }} | {{ cdc.frequency }} | {{ cdc.notes }} |
-{% endfor %}
-
-### 8.2 CDC Method Key
-
-| Method | Description | When to Use |
-|--------|-------------|-------------|
-| Full Snapshot | Load entire source table each run | Small tables (< 100K rows), no reliable timestamp |
-| Timestamp Watermark | Filter by `updated_at` or `modified_date` | Source has reliable update timestamp column |
-| Log-Based CDC | Capture from DB transaction log (Debezium, etc.) | High-frequency updates, large tables, need sub-minute latency |
+> Detailed recovery runbooks and per-table CDC configurations belong in the
+> **Low-Level Design (LLD)** document.
 
 ---
 
@@ -272,7 +239,9 @@
 
 ---
 
-## 10. Open Questions
+## 10. Open Questions & Risks
+
+### Open Questions
 
 | # | Question | Assigned To | Due Date | Status |
 |---|----------|-------------|----------|--------|
@@ -280,9 +249,19 @@
 | {{ loop.index }} | {{ q.question }} | {{ q.assigned_to }} | {{ q.due_date }} | {{ q.status }} |
 {% endfor %}
 
+### Key Risks
+
+| Risk | Impact | Likelihood | Mitigation |
+|------|--------|-----------|------------|
+{% for risk in hld.risks %}
+| {{ risk.description }} | {{ risk.impact }} | {{ risk.likelihood }} | {{ risk.mitigation }} |
+{% endfor %}
+
 ---
 
-## 11. Version History
+## 11. Appendix
+
+### Version History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
@@ -290,12 +269,16 @@
 | {{ v.version }} | {{ v.date }} | {{ v.author }} | {{ v.changes }} |
 {% endfor %}
 
----
-
-## 12. Approval
+### Approval
 
 | Role | Name | Date | Signature |
 |------|------|------|-----------|
 {% for a in hld.approvals %}
 | {{ a.role }} | {{ a.name }} | {{ a.date }} | {{ a.signature }} |
 {% endfor %}
+
+### Related Documents
+
+- **DRD**: {{ hld.drd_reference }}
+- **DMS**: Data Model Specification (downstream — defines table schemas and column details)
+- **LLD**: Low-Level Design (downstream — defines deployment configs, versions, and runbooks)

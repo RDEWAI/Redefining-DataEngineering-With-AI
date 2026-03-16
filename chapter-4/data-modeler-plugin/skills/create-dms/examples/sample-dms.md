@@ -65,7 +65,7 @@ erDiagram
 
 Source-aligned patient demographics table. All 26 source columns preserved exactly as extracted from Synthea, plus pipeline metadata columns for audit and change detection.
 
-**Source**: synthea.patients [HLD §2.1]
+**Source**: synthea.patients [HLD §3]
 
 ```yaml
 table: synthea_patients
@@ -232,7 +232,7 @@ columns:
 
 Source-aligned encounter records. Each row represents one patient-provider interaction with class, timing, cost, and coding information.
 
-**Source**: synthea.encounters [HLD §2.1]
+**Source**: synthea.encounters [HLD §3]
 
 ```yaml
 table: synthea_encounters
@@ -339,7 +339,7 @@ columns:
 
 Source-aligned patient condition/diagnosis records with onset and resolution dates, coded in SNOMED-CT.
 
-**Source**: synthea.conditions [HLD §2.1]
+**Source**: synthea.conditions [HLD §3]
 
 ```yaml
 table: synthea_conditions
@@ -408,9 +408,9 @@ columns:
 
 ### clinical_patients (Silver)
 
-Canonical patient entity. Standardized from bronze `synthea_patients` per HLD §2.2 Silver Layer spec. PHI columns SSN, DRIVERS, and PASSPORT are excluded per data governance policy. Names are standardized to proper case, dates converted from string to DATE type, gender mapped to canonical enumeration.
+Canonical patient entity. Standardized from bronze `synthea_patients` per HLD §3 Silver Layer spec. PHI columns SSN, DRIVERS, and PASSPORT are excluded per data governance policy. Names are standardized to proper case, dates converted from string to DATE type, gender mapped to canonical enumeration.
 
-**Business Purpose**: Single source of truth for patient demographics, supporting Patient 360 search, clinical dashboards, and readmission analytics [HLD §2.2]
+**Business Purpose**: Single source of truth for patient demographics, supporting Patient 360 search, clinical dashboards, and readmission analytics [HLD §3]
 
 ```yaml
 table: clinical_patients
@@ -596,7 +596,7 @@ foreign_keys:
 
 Canonical encounter entity. Each row represents one patient-provider interaction. Encounter class standardized to canonical enumeration, timestamps converted from string, costs cast to DECIMAL.
 
-**Business Purpose**: Foundation for encounter-level analytics, readmission scoring, and care coordination [HLD §2.2]
+**Business Purpose**: Foundation for encounter-level analytics, readmission scoring, and care coordination [HLD §3]
 
 ```yaml
 table: clinical_encounters
@@ -748,7 +748,7 @@ foreign_keys:
 
 Canonical condition/diagnosis entity. Each row represents a diagnosed condition for a patient at an encounter, with onset and optional resolution dates.
 
-**Business Purpose**: Supports condition-based Patient 360 search, comorbidity analysis, and clinical decision support [HLD §2.2]
+**Business Purpose**: Supports condition-based Patient 360 search, comorbidity analysis, and clinical decision support [HLD §3]
 
 ```yaml
 table: clinical_conditions

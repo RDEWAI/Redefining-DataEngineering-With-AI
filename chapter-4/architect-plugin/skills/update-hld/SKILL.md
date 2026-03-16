@@ -22,7 +22,7 @@ You are a senior Data Architect. You sit between the Business Analyst (who
 produces the DRD) and the data engineering team (who implements). Your job
 is to translate approved Data Requirements Documents into precise, build-ready
 High-Level Design documents (HLDs) that specify architecture patterns,
-technology stacks, layer designs, and capacity plans.
+technology decisions, data architecture, and capacity models.
 
 ## Step 1: Read the existing HLD
 
@@ -71,12 +71,12 @@ Call the `AskUserQuestion` tool to clarify if the user's intent is ambiguous:
 
 An update to one section often has ripple effects:
 
-- **New DRD requirement** → check Layer Specs (can architecture support it?),
-  Technology (does current stack handle it?), Capacity (volume impact?)
-- **Changed constraint** → check Technology (still viable?), Layer Specs
-  (boundaries still correct?), CDC (approach still valid?)
-- **New technology** → check team capabilities, integration points,
-  capacity (cost impact?), DR (backup strategy still valid?)
+- **New DRD requirement** → check Data Architecture (can layers support it?),
+  Technology Decisions (does current stack handle it?), Scalability & Capacity Model (volume impact?)
+- **Changed constraint** → check Technology Decisions (still viable?), Data Architecture
+  (layer boundaries still correct?), Integration Architecture (approach still valid?)
+- **New technology** → check team capabilities, Integration Architecture,
+  Scalability & Capacity Model (cost impact?), Operational Considerations (backup/monitoring still valid?)
 
 Use `AskUserQuestion` to ask about affected sections the user did not
 address. Ask section-by-section.
@@ -90,9 +90,9 @@ address. Ask section-by-section.
 | "Update capacity" | "What are the new volume projections? What scaling triggers should change?" |
 | "Better security" | "Which specific compliance requirement is not met? What sensitive data needs additional protection?" |
 
-## Step 2.5: Database verification (if capacity/CDC affected)
+## Step 2.5: Database verification (if capacity affected)
 
-If the update affects capacity planning or CDC strategy, re-verify
+If the update affects the Scalability & Capacity Model, re-verify
 source data volumes using read-only queries. See create-hld SKILL.md
 Step 1.7 for the database gate protocol.
 
@@ -109,11 +109,11 @@ Step 1.7 for the database gate protocol.
 ### Cross-section consistency check
 
 After merging, verify:
-1. Layer specs still align with technology choices
-2. Capacity projections match current volumes
-3. CDC strategy matches source system capabilities
-4. Security architecture covers all DRD regulatory requirements
-5. DR strategy aligns with current SLA targets
+1. Data Architecture still aligns with Technology Decisions
+2. Scalability & Capacity Model matches current volumes
+3. Integration Architecture matches source system capabilities
+4. Security & Compliance covers all DRD regulatory requirements
+5. Operational Considerations aligns with current SLA targets
 
 ## Pitfall Prevention
 
@@ -179,22 +179,22 @@ the HLD is not ready for handoff to the data modeling team.
 - Cite the specific DRD sections that drove the pattern choice
 
 ### 2. Technology Selection
-- Specify every tool with its exact version number (not "latest")
+- Specify tool choices with clear justification; defer exact versions and dependency coordinates to the LLD
 - Document why each tool was selected over alternatives (Rationale + trade-off)
-- Verify compatibility between tool versions before recommending a stack
-- Include JAR coordinates for all Spark ecosystem dependencies
+- Verify that each choice aligns with team capabilities and the approved technology catalog
+- Technology table uses three columns only: **Component | Tool | Why**
 
-### 3. Layer Design (Layer Specifications)
-- Define Bronze, Silver, and Gold layers with explicit table inventories
-- Specify the write strategy for each table (append, overwrite, MERGE INTO)
-- Document data quality rule application per layer
-- Map each Gold table back to a specific DRD consumer requirement — traceability enforced
+### 3. Data Architecture (Layer Design)
+- Define the purpose and responsibilities of each layer (Bronze, Silver, Gold) conceptually
+- Describe the transformation strategy and data quality approach per layer
+- Defer table inventories, column schemas, and write strategies to the DMS
+- Map each Gold layer's purpose back to specific DRD consumer requirements — traceability enforced
 
-### 4. Non-Functional Requirements (Capacity Planning)
-- Convert DRD volume estimates into storage and compute sizing
+### 4. Non-Functional Requirements (Scalability & Capacity)
+- Convert DRD volume estimates into summary storage and compute metrics
 - Project growth at 1 year and 3 years with assumptions
 - Define performance targets that satisfy the DRD SLAs
-- Include cost estimates where infrastructure choices have cost implications
+- Describe the cost model (how costs scale with data growth), not line-item cost calculations
 
 ## Step 6: Session memory
 
