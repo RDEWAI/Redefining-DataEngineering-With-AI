@@ -394,6 +394,7 @@ docker pull ghcr.io/rdewai/redefining-dataengineering-with-ai:raw-data
 - **marshmallow <4** - Data serialization (pinned for Superset compatibility)
 - **pytest 8.3.4** - Testing framework
 - **setuptools** - Python packaging tools
+- **openpyxl 3.1+** - Excel file generation for Source-to-Target Mappings (Chapter 4)
 
 ### Python Version Support
 

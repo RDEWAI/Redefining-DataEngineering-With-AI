@@ -36,11 +36,12 @@ make test           # Run all tests
 - **Validator**: `chapter-3/.claude/skills/validate-drd/scripts/validate_drd.py`
 - **Tests**: `cd chapter-3 && uv run pytest tests/ -v`
 
-## Chapter 4: Data Modeling Agent (continuation of Chapter 3)
+## Chapter 4: Multi-Agent Artifact Chain (continuation of Chapter 3)
 
-- **Base**: All chapter-3 BA Agent skills + hooks carried forward
-- **Inputs**: `chapter-4/inputs/drd/` (from ch3) + `chapter-4/inputs/architect/` (new)
-- **Outputs**: `chapter-4/outputs/drd/` (generated DRD markdown files)
+- **Plugins**: BA (DRD) → Architect (HLD) → Data Modeler (DMS) → Mapping Analyst (STM)
+- **Inputs**: `chapter-4/inputs/{role}/v{N}/` (folder-versioned per role)
+- **Outputs**: `chapter-4/outputs/{artifact}/v{N}/` (DRD=markdown, HLD=markdown, DMS=markdown, STM=xlsx)
+- **Dependencies**: jinja2, pyyaml, openpyxl (for STM Excel workbook generation)
 - **Tests**: `cd chapter-4 && uv run pytest tests/ -v`
 
 ## Pre-commit Hooks

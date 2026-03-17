@@ -21,6 +21,11 @@
       "name": "data-modeler-plugin",
       "source": "./data-modeler-plugin",
       "description": "Data Modeler Agent for generating, updating, and validating Data Model Specifications (DMS)"
+    },
+    {
+      "name": "mapping-analyst-plugin",
+      "source": "./mapping-analyst-plugin",
+      "description": "Mapping Analyst Agent for generating, updating, and validating Source-to-Target Mapping (STM) Excel workbooks"
     }
   ]
 }

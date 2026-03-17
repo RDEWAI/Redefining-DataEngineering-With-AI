@@ -1,8 +1,8 @@
 # Chapter 4: Planning with Context — Multi-Agent Artifact Chain
 
-Two Claude Code plugins that act as a **Business Analyst Agent** and a **Data Architect Agent**, producing structured artifacts that feed the next role in the chain.
+Four Claude Code plugins that act as a **Business Analyst Agent**, **Data Architect Agent**, **Data Modeler Agent**, and **Mapping Analyst Agent**, producing structured artifacts that feed the next role in the chain.
 
-**Artifact chain**: DRD → **HLD** → Data Model → DMD → DQS → LLD → Stories
+**Artifact chain**: DRD → **HLD** → **DMS** → **STM** → DQS → LLD → Stories
 
 The use case is **Patient 360** — a unified patient search experience across Synthea healthcare data.
 
@@ -11,6 +11,7 @@ The use case is **Patient 360** — a unified patient search experience across S
 - [Claude Code](https://code.claude.com) CLI installed
 - Python 3.10–3.12
 - [UV](https://docs.astral.sh/uv/) package manager
+- **openpyxl** — installed automatically via `make dev-setup` (required for STM Excel workbook generation)
 - **Max output tokens** — Some agents (e.g., Data Modeler) generate large artifacts that exceed the default 32k token limit. Add this to your `~/.zshrc`:
   ```bash
   export CLAUDE_CODE_MAX_OUTPUT_TOKENS=128000
@@ -39,6 +40,7 @@ From the repo root, open Claude Code and add the local marketplace:
 /plugin install ba-plugin@rdewai-plugins
 /plugin install architect-plugin@rdewai-plugins
 /plugin install data-modeler-plugin@rdewai-plugins
+/plugin install mapping-analyst-plugin@rdewai-plugins
 ```
 
 You can verify the install by running `/plugin` — you should see:
@@ -59,6 +61,12 @@ architect-plugin (v1.0.0)
 data-modeler-plugin (v1.0.0)
   Skills: create-dms, update-dms, validate-dms
   Agents: data-modeler-agent
+  Hooks: PreToolUse, PostToolUse
+  Status: Enabled
+
+mapping-analyst-plugin (v1.0.0)
+  Skills: create-stm, update-stm, validate-stm
+  Agents: mapping-analyst-agent
   Hooks: PreToolUse, PostToolUse
   Status: Enabled
 ```
@@ -135,7 +143,33 @@ Other agent invocations:
 @data-modeler-plugin:data-modeler-agent Validate the DMS at outputs/dms/v1/DMS-2026-03-16-patient-360.md
 ```
 
-### 7. Use skills directly (alternative)
+### 7. Use the Mapping Analyst Agent
+
+The Mapping Analyst Agent translates DMS schema definitions into column-level transformation specifications as an Excel workbook:
+
+```
+@mapping-analyst-plugin:mapping-analyst-agent Create the STM from the latest DMS
+```
+
+The agent will:
+1. Discover the latest DMS, HLD, and mapping analyst input version folders automatically
+2. Read DMS schemas, HLD layer specs, transformation standards, and code system mappings
+3. Assess gaps across 8 STM sheets (Source-to-Bronze, Bronze-to-Silver, Silver-to-Gold, Code Systems, Null Handling, Edge Cases, Lineage)
+4. Ask you transformation decisions via structured `AskUserQuestion` UI — one mapping layer at a time
+5. Verify source table structures with read-only database queries (DESCRIBE, sample data, null rates)
+6. Generate the STM as an **.xlsx Excel workbook** with 8 formatted sheets (bold headers, frozen panes, auto-filter, color-coded columns)
+7. Validate automatically and fix any critical issues
+
+**Note**: The STM output is `.xlsx` (Excel), not markdown. It uses **openpyxl** for generation and validation.
+
+Other agent invocations:
+
+```
+@mapping-analyst-plugin:mapping-analyst-agent Update the STM with revised null handling rules
+@mapping-analyst-plugin:mapping-analyst-agent Validate the STM at outputs/stm/v1/STM-2026-03-16-patient-360.xlsx
+```
+
+### 8. Use skills directly (alternative)
 
 You can also invoke skills directly without the agent wrapper. Make sure you have `data/duckdb/raw.db` already created.
 
@@ -154,6 +188,9 @@ Other skills:
 /data-modeler-plugin:create-dms
 /data-modeler-plugin:update-dms outputs/dms/v1/DMS-2026-03-16-patient-360.md
 /data-modeler-plugin:validate-dms outputs/dms/v1/DMS-2026-03-16-patient-360.md
+/mapping-analyst-plugin:create-stm
+/mapping-analyst-plugin:update-stm outputs/stm/v1/STM-2026-03-16-patient-360.xlsx
+/mapping-analyst-plugin:validate-stm outputs/stm/v1/STM-2026-03-16-patient-360.xlsx
 ```
 
 ## How the Plugins Work
@@ -188,6 +225,16 @@ The `data-modeler-agent` sub-agent (`data-modeler-plugin/agents/data-modeler-age
 - **HLD Traceability** — every schema decision must cite the HLD layer specification it implements
 - **Session Memory** — writes notes to `data-modeler-plugin/memory/` after each engagement
 
+### Mapping Analyst Agent
+
+The `mapping-analyst-agent` sub-agent (`mapping-analyst-plugin/agents/mapping-analyst-agent.md`) embodies the Mapping Analyst role with:
+
+- **Mapping Elicitation Protocol** — asks transformation decisions layer-by-layer using `AskUserQuestion`, covering source-to-bronze pass-through, bronze-to-silver cleansing, silver-to-gold aggregations, and edge cases
+- **Database Gate** — queries actual source table structures (DESCRIBE, sample data, null rates) before specifying transformations; blocks STM generation if the database is inaccessible
+- **Excel Output** — generates `.xlsx` workbooks using **openpyxl** with 8 sheets (Summary, Source-to-Bronze, Bronze-to-Silver, Silver-to-Gold, Code Systems, Null Handling, Edge Cases, Lineage), formatted with bold headers, frozen panes, auto-filter, and color-coded columns
+- **DMS Traceability** — every transformation must cite the DMS schema section it implements
+- **Session Memory** — writes notes to `mapping-analyst-plugin/memory/` after each engagement
+
 ### Skills
 
 | Plugin | Skill | What it does |
@@ -201,10 +248,13 @@ The `data-modeler-agent` sub-agent (`data-modeler-plugin/agents/data-modeler-age
 | data-modeler-plugin | `create-dms` | Reads HLD + DRD + enterprise standards, generates a complete DMS with YAML schema blocks |
 | data-modeler-plugin | `update-dms` | Merges schema changes into an existing DMS, preserving unchanged content |
 | data-modeler-plugin | `validate-dms` | Runs validation checks on a DMS (sections, YAML syntax, SCD types, traceability) |
+| mapping-analyst-plugin | `create-stm` | Reads DMS + HLD + transformation standards, generates a complete STM as .xlsx with 8 sheets |
+| mapping-analyst-plugin | `update-stm` | Merges transformation changes into an existing STM workbook |
+| mapping-analyst-plugin | `validate-stm` | Runs 15 validation checks on an STM .xlsx (sheets, headers, traceability, formatting) |
 
 ### Hooks
 
-All three plugins register two hooks each:
+All four plugins register two hooks each:
 
 **PreToolUse — Read-Only Query Enforcement**
 
@@ -212,9 +262,9 @@ Fires before every `Bash` command. Blocks database write operations (INSERT, UPD
 
 **PostToolUse — Automatic Validation**
 
-Fires after every `Write` or `Edit` operation. When Claude writes a file to `outputs/drd/`, `outputs/hld/`, or `outputs/dms/`:
+Fires after every `Write` or `Edit` operation. When Claude writes a file to `outputs/drd/`, `outputs/hld/`, `outputs/dms/`, or `outputs/stm/`:
 
-1. The hook script checks if the file is a DRD/HLD/DMS (`.md` in the outputs directory)
+1. The hook script checks if the file is a DRD/HLD/DMS (`.md`) or STM (`.xlsx`) in the outputs directory
 2. Runs the Python validator against the file
 3. **CRITICAL issues** → blocks Claude and feeds errors back for auto-fix
 4. **Warnings** → passed as non-blocking context
@@ -254,6 +304,13 @@ ls -d {path}/v* | sort -V | tail -1
 | `enterprise-naming-standards.md` | Table/column naming rules, schema organization, metadata columns, approved abbreviations |
 | `data-governance-policies.md` | Data classification (PHI/PII), PHI handling rules, retention policies, RBAC, SCD policy guidelines |
 | `enterprise-data-dictionary.md` | Approved data types, business entity definitions, derived columns, code systems, enumerations, null handling |
+
+**Mapping Analyst Agent inputs** — `inputs/stm/v1/`:
+
+| File | Contents |
+|------|----------|
+| `transformation-standards.md` | Idempotency rules, type casting, null handling conventions, dedup rules, string standardization, date/time standards, surrogate key generation, SCD merge patterns |
+| `code-system-mappings.md` | SNOMED-CT, RxNorm, LOINC codes for Patient 360, encounter/gender enumerations, CASE expression templates |
 
 ## Plugin Directory Structure
 
@@ -330,15 +387,40 @@ chapter-4/
 │   └── scripts/
 │       ├── validate-dms-hook.py
 │       └── enforce-readonly-queries.py
+├── mapping-analyst-plugin/                # Mapping Analyst Agent plugin
+│   ├── .claude-plugin/
+│   │   └── plugin.json
+│   ├── agents/
+│   │   └── mapping-analyst-agent.md
+│   ├── skills/
+│   │   ├── create-stm/
+│   │   │   ├── SKILL.md
+│   │   │   └── examples/
+│   │   │       ├── sample-stm.py         # Generates sample-stm.xlsx
+│   │   │       └── sample-stm.xlsx
+│   │   ├── update-stm/
+│   │   │   └── SKILL.md
+│   │   └── validate-stm/
+│   │       ├── SKILL.md
+│   │       └── scripts/
+│   │           └── validate_stm.py
+│   ├── hooks/
+│   │   └── hooks.json
+│   ├── memory/
+│   └── scripts/
+│       ├── validate-stm-hook.py
+│       └── enforce-readonly-queries.py
 ├── inputs/
 │   ├── drd/v1/                         # BA Agent inputs (versioned)
 │   ├── architect/v1/                   # Architect Agent inputs (versioned)
-│   └── dms/v1/                         # Data Modeler inputs (versioned)
+│   ├── dms/v1/                         # Data Modeler inputs (versioned)
+│   └── stm/v1/                         # Mapping Analyst inputs (versioned)
 ├── outputs/
 │   ├── drd/v1/                         # Generated DRDs (versioned)
 │   ├── hld/v1/                         # Generated HLDs (versioned)
-│   └── dms/v1/                         # Generated DMSs (versioned)
-├── tests/                              # Unit tests (223 tests)
+│   ├── dms/v1/                         # Generated DMSs (versioned)
+│   └── stm/v1/                         # Generated STM Excel workbooks (versioned)
+├── tests/                              # Unit tests (299 tests)
 ├── pyproject.toml
 ├── Makefile
 └── README.md
@@ -353,7 +435,7 @@ cd chapter-4
 make test
 ```
 
-This runs 223 tests covering all three plugins: validators, validation hooks, read-only query enforcement, and agent definition structure.
+This runs 299 tests covering all four plugins: validators, validation hooks, read-only query enforcement, and agent definition structure.
 
 ### Run validators directly
 
@@ -369,17 +451,21 @@ uv run python architect-plugin/skills/validate-hld/scripts/validate_hld.py outpu
 # Validate a specific DMS
 uv run python data-modeler-plugin/skills/validate-dms/scripts/validate_dms.py outputs/dms/v1/DMS-2026-03-16-patient-360.md
 
-# Validate all DRDs/HLDs/DMSs
+# Validate a specific STM (.xlsx)
+uv run python mapping-analyst-plugin/skills/validate-stm/scripts/validate_stm.py outputs/stm/v1/STM-2026-03-16-patient-360.xlsx
+
+# Validate all artifacts
 make validate-drd
 make validate-hld
 make validate-dms
+make validate-stm
 ```
 
 ### Test the plugin end-to-end
 
 1. Start Claude Code from the repo root (`claude`)
 2. Add marketplace: `/plugin marketplace add ./chapter-4`
-3. Install plugins: `/plugin install ba-plugin@rdewai-plugins`, `/plugin install architect-plugin@rdewai-plugins`, `/plugin install data-modeler-plugin@rdewai-plugins`
+3. Install plugins: `/plugin install ba-plugin@rdewai-plugins`, `/plugin install architect-plugin@rdewai-plugins`, `/plugin install data-modeler-plugin@rdewai-plugins`, `/plugin install mapping-analyst-plugin@rdewai-plugins`
 4. Invoke the BA agent: `@ba-agent Create a DRD from inputs/drd/v1`
 5. Answer the agent's clarifying questions until it confirms readiness
 6. Verify a DRD was created in `outputs/drd/v1/`
@@ -389,6 +475,9 @@ make validate-dms
 10. Invoke the Data Modeler agent: `@data-modeler-plugin:data-modeler-agent Create the DMS from the latest HLD`
 11. Answer schema design questions until the agent confirms readiness
 12. Verify a DMS was created in `outputs/dms/v1/`
+13. Invoke the Mapping Analyst agent: `@mapping-analyst-plugin:mapping-analyst-agent Create the STM from the latest DMS`
+14. Answer transformation mapping questions until the agent confirms readiness
+15. Verify an STM `.xlsx` workbook was created in `outputs/stm/v1/`
 
 ### Debug plugin loading
 
@@ -415,6 +504,9 @@ Or uninstall and reinstall:
 
 /plugin uninstall data-modeler-plugin@rdewai-plugins
 /plugin install data-modeler-plugin@rdewai-plugins
+
+/plugin uninstall mapping-analyst-plugin@rdewai-plugins
+/plugin install mapping-analyst-plugin@rdewai-plugins
 ```
 
 ## Makefile Targets
@@ -422,10 +514,11 @@ Or uninstall and reinstall:
 ```bash
 make help           # Show all commands
 make dev-setup      # Install Python dependencies
-make test           # Run all 223 tests
+make test           # Run all 299 tests
 make validate-drd   # Validate all DRDs in outputs/
 make validate-hld   # Validate all HLDs in outputs/
 make validate-dms   # Validate all DMSs in outputs/
+make validate-stm   # Validate all STMs (.xlsx) in outputs/
 make lint           # Run ruff linter
 make format         # Auto-format code
 make clean          # Remove caches
