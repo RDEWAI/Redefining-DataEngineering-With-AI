@@ -76,13 +76,11 @@ Build an internal checklist:
 | HLD Section | Required Information | Status |
 |---|---|---|
 | **1. Executive Summary** | One-paragraph overview of what, why, and how | ? |
-| **2. Architecture Overview** | DRD latency requirements, data volumes, compliance needs, pattern selection | ? |
-| **3. Data Architecture** | Layer strategy (Bronze/Silver/Gold), transformation approach, DQ expectations | ? |
-| **4. Technology Decisions** | Approved tech catalog, team capabilities, constraints | ? |
-| **5. Integration Architecture** | Source access methods, consumer access patterns | ? |
-| **6. Scalability & Capacity Model** | Actual data volumes (from DB), growth projections, cost model | ? |
-| **7. Security & Compliance** | Regulatory requirements (per DRD), data classification, access strategy | ? |
-| **8. Operational Considerations** | CDC strategy, DR targets (RTO/RPO), runbook pointers | ? |
+| **2. Requirements Summary** | Explicit FR list (what the system must do) + NFR list (latency, freshness, availability, compliance) traced to DRD sections | ? |
+| **3. Integration Architecture** | Source systems and access patterns; consumer groups and their Gold tables; SLA per consumer | ? |
+| **4. Data Architecture** | Pattern selection + justification; Bronze/Silver/Gold layer strategy; data domain map; SCD strategy | ? |
+| **5. Pipeline Architecture** | Technology stack; CDC method + frequency; scalability model + growth projections; RTO/RPO; observability tools | ? |
+| **6. Governance** | Data sensitivity classification; IAM / access strategy per role; DQ rules per layer; compliance requirements | ? |
 
 Mark each section as COMPLETE, PARTIAL, or MISSING.
 
@@ -263,11 +261,32 @@ Guard against these three common architect mistakes:
 
 ## Step 2: Read the template
 
-Read the HLD template to understand the required structure:
+Read the HLD template and all section partials to understand the required structure:
 
 ```bash
 cat architect-plugin/skills/create-hld/HLD_template.j2
+cat architect-plugin/skills/create-hld/sections/*.j2
 ```
+
+The template uses 9 section partials (01–09). Key variable namespaces:
+
+| Namespace | Section | Contents |
+|-----------|---------|----------|
+| `hld.requirements` | §2 | `functional[]` and `non_functional[]` — FR/NFR traceability tables |
+| `hld.integration` | §3 | `sources[]`, `consumers[]`, `observability` |
+| `hld.architecture` | §4 | `pattern`, `justification`, `alternatives[]`, `tradeoff`, `system_context_diagram`, `pipeline_diagram`, `principles[]` |
+| `hld.data_architecture` | §4 | `layers[]`, `domain_map`, `domain_diagram`, `scd_strategy[]` |
+| `hld.technology_decisions` | §5 | `[]` — Component/Tool/Why rows |
+| `hld.technology_constraints` | §5 | `[]` — compatibility constraints |
+| `hld.technology_tradeoffs` | §5 | `[]` — trade-off bullets |
+| `hld.operations` | §5 | `cdc_summary`, `cdc_methods[]`, `ingestion_sequence_diagram`, `recovery_targets[]`, `backup_approach` |
+| `hld.scalability` | §5 | `current_scale`, `projections[]`, `scaling_levers[]`, `cost_model` |
+| `hld.governance` | §6 | `data_classification[]`, `access_strategy[]`, `dq_strategy`, `compliance` |
+| `hld.decision_log` | §7 | `[]` — title/options/selected/rationale/tradeoff |
+| `hld.open_questions` | §8 | `[]` — question/assigned_to/due_date/status |
+| `hld.risks` | §8 | `[]` — description/impact/likelihood/mitigation |
+| `hld.version_history` | §9 | `[]` |
+| `hld.approvals` | §9 | `[]` |
 
 For a complete example of a finished HLD, see
 [examples/sample-hld.md](examples/sample-hld.md).
@@ -303,44 +322,55 @@ the HLD is not ready for handoff to the data modeling team.
 
 ## Step 3: Generate the HLD
 
-Write the HLD in Markdown following the template structure. Cover all four
-responsibility areas:
+Write the HLD in Markdown following the template structure. The HLD has 9 sections:
 
-### Executive Summary (Section 1)
-
+### Section 1 — Executive Summary
 - 3-5 sentence overview: what is being built, why, and the chosen approach
 - A CTO should understand the project from this section alone
 
-### Architecture Overview (Section 2)
+### Section 2 — Requirements Summary
+Two explicit traceability tables pulled directly from the DRD:
 
-- Evaluate DRD requirements against pattern options (Medallion, Lambda, Kappa, Data Vault)
-- Select and document the pattern with full justification
-- **Every selection must cite a specific DRD requirement**
-- Include three Mermaid diagrams:
-  1. **System Context** (`flowchart TB`) — the platform as a boundary with external actors and consumer groups (§2.3)
-  2. **Pipeline Architecture** (`flowchart TB`) — conceptual data flow through layers (§2.4)
-  3. **Ingestion Sequence** (`sequenceDiagram`) — step-by-step CDC/ingestion flow (§8.2)
+**Functional Requirements** — one row per capability the system must deliver:
+- `FR-1` through `FR-N` numbered sequentially
+- Requirement: what the system must do (active voice, one sentence)
+- DRD Reference: exact section (`DRD §X.Y`)
+- Satisfied By: which HLD component delivers it (e.g., "Gold: patient_summary")
 
-### Data Architecture (Section 3)
+**Non-Functional Requirements** — one row per quality attribute:
+- `NFR-1` through `NFR-N` numbered sequentially
+- Requirement: the quality constraint (latency, freshness, availability, compliance, etc.)
+- DRD Reference: exact section
+- Satisfied By: which design decision delivers it
+- Target: measurable threshold (e.g., "< 2s p90", "hourly", "AES-256")
 
-For each layer (Bronze, Silver, Gold):
-- Purpose and responsibilities (conceptual, not table-level)
-- Transformation strategy and data quality approach at this layer
-- Defer table inventories and column schemas to the DMS
+Every row must cite a DRD section. If an FR/NFR cannot be traced to the DRD, flag it as `[gap — no DRD reference]`.
 
-### Technology Decisions (Section 4)
+### Section 3 — Integration Architecture
+- Source systems: logical description, access method, tables consumed — no ports or hostnames
+- Consumer groups: access method, which Gold tables, and SLA per group
+- **System Context Diagram** (`flowchart TB`) — the platform boundary with external actors (§3.3)
 
-For each component:
-- Tool choice with rationale citing DRD requirements AND team capabilities
-- Alternatives considered and why they were rejected
-- Three-column table: Component | Tool | Why (no versions, dependency coordinates, or licenses)
+### Section 4 — Data Architecture
+- Pattern selection: evaluate Medallion, Lambda, Kappa, Data Vault; document alternatives table + trade-off
+- Layer Strategy: Bronze/Silver/Gold purpose and responsibilities — no table-level detail (defer to DMS)
+- Data Domain Map: text description + **Domain Map Diagram** (`flowchart LR`) showing domains → Gold tables (§4.4)
+- SCD Strategy: one row per dimension type
+- **Pipeline Architecture Diagram** (`flowchart TB`) — conceptual data flow through layers with DQ gates (§4.6)
 
-### Non-Functional Requirements (Sections 5-8)
+### Section 5 — Pipeline Architecture
+- Technology Decisions: Component | Tool | Why table — no versions or JAR coordinates
+- CDC Strategy: method per source type + **Ingestion Sequence Diagram** (`sequenceDiagram`) (§5.3)
+- Scalability & Capacity: verified row counts from DB, growth model, scaling levers, cost model
+- Reliability: RTO/RPO targets with justification; backup approach
+- Observability: tools used for lineage, DQ monitoring, and pipeline metrics
+- Key Design Principles: cross-cutting architectural rules
 
-- Integration Architecture: logical source/consumer descriptions, no endpoints or ports
-- Scalability & Capacity Model: summary metrics from database queries, scaling model, cost model
-- Security & Compliance: data classification and access strategy at layer level
-- Operational Considerations: CDC summary by type, DR targets (RTO/RPO), runbook pointers
+### Section 6 — Governance
+- Data Sensitivity & Classification: one row per sensitivity level with examples and handling
+- Access Strategy (IAM): one row per role group — layer access, restrictions, phase
+- Data Quality Strategy: DQ rules per layer (Bronze gate, Silver gate, Gold gate) with rule types and actions
+- Compliance Requirements: regulatory obligations (HIPAA, etc.) and which controls satisfy them
 
 ## Step 3.5: Decision Documentation
 

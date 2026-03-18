@@ -19,6 +19,10 @@ def main():
     if "/outputs/hld/" not in file_path or not file_path.endswith(".md"):
         sys.exit(0)
 
+    # Skip section fragments — only validate complete top-level HLD files
+    if "/outputs/hld/" in file_path and "/sections/" in file_path:
+        sys.exit(0)
+
     plugin_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     validator = os.path.join(plugin_root, "skills", "validate-hld", "scripts", "validate_hld.py")
 

@@ -71,12 +71,13 @@ Call the `AskUserQuestion` tool to clarify if the user's intent is ambiguous:
 
 An update to one section often has ripple effects:
 
-- **New DRD requirement** → check Data Architecture (can layers support it?),
-  Technology Decisions (does current stack handle it?), Scalability & Capacity Model (volume impact?)
-- **Changed constraint** → check Technology Decisions (still viable?), Data Architecture
-  (layer boundaries still correct?), Integration Architecture (approach still valid?)
-- **New technology** → check team capabilities, Integration Architecture,
-  Scalability & Capacity Model (cost impact?), Operational Considerations (backup/monitoring still valid?)
+- **New DRD requirement** → check §4 Data Architecture (can layers support it?),
+  §5 Pipeline Architecture §5.1 Technology Decisions (does current stack handle it?), §5.4 Scalability (volume impact?), §2 Requirements Summary (does the FR/NFR table need a new row?)
+- **Changed constraint** → check §5.1 Technology Decisions (still viable?), §4 Data Architecture
+  (layer boundaries still correct?), §3 Integration Architecture (approach still valid?)
+- **New technology** → check team capabilities, §3 Integration Architecture,
+  §5.4 Scalability (cost impact?), §5.5 Reliability and §5.6 Observability (backup/monitoring still valid?)
+- **Changed compliance requirement** → check §6 Governance (classification, IAM, DQ, compliance), §2 NFR table
 
 Use `AskUserQuestion` to ask about affected sections the user did not
 address. Ask section-by-section.
@@ -92,7 +93,7 @@ address. Ask section-by-section.
 
 ## Step 2.5: Database verification (if capacity affected)
 
-If the update affects the Scalability & Capacity Model, re-verify
+If the update affects §5.4 Scalability & Capacity, re-verify
 source data volumes using read-only queries. See create-hld SKILL.md
 Step 1.7 for the database gate protocol.
 
@@ -109,19 +110,21 @@ Step 1.7 for the database gate protocol.
 ### Re-generate diagrams
 
 When changes affect system boundaries, layer structure, or ingestion flow:
-1. Update the **System Context diagram** (§2.3) if external actors or system boundaries changed
-2. Update the **Pipeline Architecture diagram** (§2.4) if layers, DQ gates, or consumer groups changed
-3. Update the **Ingestion Sequence diagram** (§8.2) if CDC strategy or DQ steps changed
+1. Update the **System Context diagram** (§3.3) if external actors or system boundaries changed
+2. Update the **Data Domain Map diagram** (§4.4) if data domains or Gold table groupings changed
+3. Update the **Pipeline Architecture diagram** (§4.6) if layers, DQ gates, or consumer groups changed
+4. Update the **Ingestion Sequence diagram** (§5.3) if CDC strategy or DQ steps changed
 
 ### Cross-section consistency check
 
 After merging, verify:
-1. Data Architecture still aligns with Technology Decisions
-2. Scalability & Capacity Model matches current volumes
-3. Integration Architecture matches source system capabilities
-4. Security & Compliance covers all DRD regulatory requirements
-5. Operational Considerations aligns with current SLA targets
-6. All three diagrams reflect the current architecture
+1. §4 Data Architecture still aligns with §5.1 Technology Decisions
+2. §5.4 Scalability & Capacity matches current verified volumes
+3. §3 Integration Architecture matches source system capabilities and consumer SLAs
+4. §6 Governance covers all DRD regulatory requirements (classification, IAM, DQ, compliance)
+5. §5.2 CDC Strategy and §5.5 Reliability align with current SLA targets
+6. §2 Requirements Summary FR/NFR rows all have valid DRD references and "Satisfied By" entries
+7. All four diagrams (§3.3 system context, §4.4 domain map, §4.6 pipeline, §5.3 ingestion sequence) reflect the current architecture
 
 ## Pitfall Prevention
 
@@ -175,34 +178,22 @@ uv run python architect-plugin/skills/validate-hld/scripts/validate_hld.py outpu
 Report: changes made, contradictions found, remaining open items,
 validation summary.
 
-## Reference: Four Responsibilities
+## Reference: Nine Sections (post-restructure)
 
-Every HLD engagement must cover these four areas. If any area is incomplete,
+Every HLD must cover all 9 sections. If any section is incomplete,
 the HLD is not ready for handoff to the data modeling team.
 
-### 1. Architecture Pattern Selection
-- Evaluate Medallion, Lambda, Kappa, and Data Vault patterns against the DRD requirements
-- Document the Options Considered, the selected pattern, and the Rationale
-- Include trade-off analysis: what the chosen pattern gains and what it sacrifices
-- Cite the specific DRD sections that drove the pattern choice
-
-### 2. Technology Selection
-- Specify tool choices with clear justification; defer exact versions and dependency coordinates to the LLD
-- Document why each tool was selected over alternatives (Rationale + trade-off)
-- Verify that each choice aligns with team capabilities and the approved technology catalog
-- Technology table uses three columns only: **Component | Tool | Why**
-
-### 3. Data Architecture (Layer Design)
-- Define the purpose and responsibilities of each layer (Bronze, Silver, Gold) conceptually
-- Describe the transformation strategy and data quality approach per layer
-- Defer table inventories, column schemas, and write strategies to the DMS
-- Map each Gold layer's purpose back to specific DRD consumer requirements — traceability enforced
-
-### 4. Non-Functional Requirements (Scalability & Capacity)
-- Convert DRD volume estimates into summary storage and compute metrics
-- Project growth at 1 year and 3 years with assumptions
-- Define performance targets that satisfy the DRD SLAs
-- Describe the cost model (how costs scale with data growth), not line-item cost calculations
+| Section | Key Content |
+|---------|-------------|
+| §1 Executive Summary | 3-5 sentences; CTO-readable overview |
+| §2 Requirements Summary | Explicit FR-N and NFR-N rows with DRD references and Satisfied By |
+| §3 Integration Architecture | Sources, consumers, system context diagram (§3.3) |
+| §4 Data Architecture | Pattern selection, layer strategy, domain map + diagram (§4.4), SCD, pipeline diagram (§4.6) |
+| §5 Pipeline Architecture | Tech decisions, CDC + ingestion sequence (§5.3), scalability, reliability, observability |
+| §6 Governance | Data sensitivity, IAM, DQ strategy, compliance |
+| §7 Decision Log | All major decisions with Options / Selected / Rationale / Trade-off |
+| §8 Open Questions & Risks | Unresolved items with owners + due dates; key risks with mitigations |
+| §9 Appendix | Version history, approvals, downstream document references |
 
 ## Step 6: Session memory
 
