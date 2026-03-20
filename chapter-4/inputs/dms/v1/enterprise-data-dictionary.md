@@ -32,7 +32,19 @@ Only these data types are permitted in Silver and Gold layer schemas. Bronze pre
 | `FLOAT` / `DOUBLE` | Floating-point imprecision for financial/clinical data | `DECIMAL(p,s)` |
 | `CHAR(n)` | Fixed-width padding wastes storage | `VARCHAR(n)` |
 | `BLOB` / `BINARY` | Not suitable for analytical tables | Store externally, reference by path |
-| `ARRAY` / `MAP` / `STRUCT` | Complex types complicate downstream consumers | Normalize into separate tables |
+
+**Conditionally approved complex types** — permitted in Gold denormalized consumer tables only, where normalization would require joins at query time and hurt the 2-second SLA [DRD §4.3]. Prohibited in Bronze and Silver layers.
+
+| Type | When Permitted | Layer | Usage Rule |
+|------|---------------|-------|------------|
+| `ARRAY<T>` | Gold consumer tables — repeating elements of the same type (e.g., list of allergy descriptions, list of condition codes) | Gold only | Element type `T` must be a scalar approved type (VARCHAR, DECIMAL, etc.). Max expected cardinality must be documented in the YAML block. |
+| `MAP<K,V>` | Gold consumer tables — key-value pairs where keys are dynamic (e.g., observation code → value) | Gold only | Both key and value types must be scalar approved types. Prefer ARRAY of STRUCTs when keys are known at design time. |
+| `STRUCT<fields>` | Gold consumer tables — grouping related fields from the same entity into a nested record (e.g., `allergy STRUCT<description VARCHAR, severity VARCHAR>`) | Gold only | Field names inside STRUCT follow the same snake_case column naming convention. STRUCT nesting limited to 1 level — no nested STRUCTs. |
+
+**Governance rules for complex types**:
+- Every column using ARRAY, MAP, or STRUCT must include a `complex_type_rationale:` field in its YAML block explaining why normalization was not chosen
+- Downstream consumers (STM, DQS) must document how they handle NULL elements within complex types
+- Complex types are prohibited in any table accessible by Spark Expectations row-level DQ rules (use scalar columns for DQ checks)
 
 ---
 
