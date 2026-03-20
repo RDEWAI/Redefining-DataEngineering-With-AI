@@ -57,7 +57,7 @@ class TestParseHldSections:
 
     def test_section_content_is_correct(self):
         sections = parse_hld_sections(VALID_HLD)
-        assert "2. Architecture Overview" in sections
+        assert "2. Requirements Summary" in sections
 
 
 class TestCheckRequiredSections:
