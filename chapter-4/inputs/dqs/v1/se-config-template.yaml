@@ -1,0 +1,59 @@
+# Spark-Expectations Configuration Template
+# Patient 360 Pipeline
+# Version: 2.0
+# Compatible with: spark-expectations >= 2.6.0
+#
+# Usage:
+#   from spark_expectations.rules import load_rules_from_yaml
+#   rules_df = load_rules_from_yaml("se-rules-dim-patient.yaml", spark, options={"dq_env": "PROD"})
+#
+# The dq_env section defines per-environment defaults for all SE rules.
+# When SE loads this YAML, it selects ONE environment via options={"dq_env": "<env>"}
+# and merges those defaults into every rule. Per-rule fields override env defaults.
+#
+# Defaults cascade: COLUMN_DEFAULTS → dq_env[env] → per-rule override
+
+product_id: patient-360
+
+dq_env:
+  DEV:
+    table_name: "dev_{schema}.{table}"
+    action_if_failed: ignore        # permissive in dev — log but don't block
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 0          # integer % — alert on any drop
+    priority: medium
+  QA:
+    table_name: "qa_{schema}.{table}"
+    action_if_failed: ignore         # NOT drop — drop is only valid for row_dq
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    priority: medium
+  PROD:
+    table_name: "{schema}.{table}"
+    action_if_failed: fail           # strictest — halt pipeline on failures
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2          # integer % — alert if >2% dropped
+    priority: high
+
+rules: []
+
+# ---------------------------------------------------------------------------
+# Generator metadata (NOT part of SE output)
+# Used by generate_se_rules.py to resolve schema names per Medallion layer.
+# This section is stripped before generating per-table SE YAML files.
+# ---------------------------------------------------------------------------
+_generator:
+  layer_schemas:
+    bronze: raw
+    silver: clinical
+    gold: analytics
+    source: synthea

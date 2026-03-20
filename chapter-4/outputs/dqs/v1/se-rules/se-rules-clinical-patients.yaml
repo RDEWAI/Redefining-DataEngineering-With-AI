@@ -1,0 +1,351 @@
+# SE Rules for clinical.clinical_patients
+# Generated from: DQS-2026-03-20-patient-360.md
+# Compatible with spark-expectations >= 2.6.0
+# Load with: load_rules_from_yaml(this_file, spark, options={"dq_env": "PROD"})
+# Product: patient-360
+# Generated: 2026-03-20
+# Rules: 19
+
+product_id: patient-360
+
+dq_env:
+  DEV:
+    table_name: "dev_clinical.clinical_patients"
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 0
+    priority: medium
+  QA:
+    table_name: "qa_clinical.clinical_patients"
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    priority: medium
+  PROD:
+    table_name: "clinical.clinical_patients"
+    action_if_failed: fail
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    priority: high
+
+rules:
+  # --- Field-Level Validation (row_dq) ---
+  - rule: DQ-FLD-046
+    rule_type: row_dq
+    column_name: patient_id
+    expectation: "patient_id IS NOT NULL"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Patient PK must not be null [STM DQ-001]"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-047
+    rule_type: row_dq
+    column_name: first_name
+    expectation: "first_name IS NOT NULL"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Patient first name must not be null [STM DQ-002]"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-048
+    rule_type: row_dq
+    column_name: last_name
+    expectation: "last_name IS NOT NULL"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Patient last name must not be null [STM DQ-003]"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-049
+    rule_type: row_dq
+    column_name: birth_date
+    expectation: "birth_date IS NOT NULL"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Patient birth date must not be null [STM DQ-004]"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-050
+    rule_type: row_dq
+    column_name: gender
+    expectation: "gender IS NOT NULL"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Patient gender must not be null [STM DQ-005]"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-051
+    rule_type: row_dq
+    column_name: gender
+    expectation: "gender IN ('MALE', 'FEMALE', 'OTHER', 'UNKNOWN')"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Gender must match HL7 AdministrativeGender enum [STM Code Systems]"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-052
+    rule_type: row_dq
+    column_name: birth_date
+    expectation: "birth_date >= '1900-01-01' AND birth_date <= CURRENT_DATE"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Birth date must be between 1900-01-01 and today [STM DQ-024]"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-053
+    rule_type: row_dq
+    column_name: marital_status
+    expectation: "marital_status IS NULL OR marital_status IN ('M', 'S', 'W', 'D')"
+    action_if_failed: drop
+    tag: field_validation
+    description: "Marital status must be valid enum or null [DRD SS3.2]"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: medium
+
+  - rule: DQ-FLD-054
+    rule_type: row_dq
+    column_name: patient_status
+    expectation: "patient_status IN ('ALIVE', 'DECEASED')"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Patient status must be ALIVE or DECEASED [DMS SS3.1]"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-055
+    rule_type: row_dq
+    column_name: patient_status
+    expectation: "(death_date IS NULL AND patient_status = 'ALIVE') OR (death_date IS NOT NULL AND patient_status = 'DECEASED')"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Patient status must be consistent with death_date"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-056
+    rule_type: row_dq
+    column_name: calculated_age
+    expectation: "calculated_age IS NULL OR (calculated_age >= 0 AND calculated_age <= 150)"
+    action_if_failed: drop
+    tag: field_validation
+    description: "Calculated age must be between 0 and 150 if present"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: medium
+
+  - rule: DQ-FLD-057
+    rule_type: row_dq
+    column_name: effective_from
+    expectation: "effective_from IS NOT NULL"
+    action_if_failed: fail
+    tag: field_validation
+    description: "SCD2 effective_from date must not be null"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-058
+    rule_type: row_dq
+    column_name: is_current
+    expectation: "is_current IS NOT NULL"
+    action_if_failed: fail
+    tag: field_validation
+    description: "SCD2 is_current flag must not be null"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-059
+    rule_type: row_dq
+    column_name: _record_hash
+    expectation: "_record_hash IS NOT NULL"
+    action_if_failed: fail
+    tag: field_validation
+    description: "SCD2 record hash must not be null for change detection"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  # --- Statistical Distribution (agg_dq) ---
+  - rule: DQ-STA-014
+    rule_type: agg_dq
+    column_name: ""
+    expectation: "count(*) > 5652 and count(*) < 5882"
+    action_if_failed: fail
+    tag: statistical_distribution
+    description: "Current patient row count within +/-2% of baseline (5,767) -- patient-critical"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  # --- Null Rate Baselines (agg_dq) ---
+  - rule: DQ-STA-020
+    rule_type: agg_dq
+    column_name: ""
+    expectation: "count(CASE WHEN death_date IS NULL THEN 1 END) * 100.0 / count(*) > 81 and count(CASE WHEN death_date IS NULL THEN 1 END) * 100.0 / count(*) < 95"
+    action_if_failed: ignore
+    tag: statistical_distribution
+    description: "death_date null rate baseline 86.7% -- WARNING if >92%, CRITICAL if >95%"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: medium
+
+  - rule: DQ-STA-021
+    rule_type: agg_dq
+    column_name: ""
+    expectation: "count(CASE WHEN marital_status IS NULL THEN 1 END) * 100.0 / count(*) > 25 and count(CASE WHEN marital_status IS NULL THEN 1 END) * 100.0 / count(*) < 45"
+    action_if_failed: ignore
+    tag: statistical_distribution
+    description: "marital_status null rate baseline 31.6% -- WARNING if >37%, CRITICAL if >45%"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: medium
+
+  - rule: DQ-STA-022
+    rule_type: agg_dq
+    column_name: ""
+    expectation: "count(CASE WHEN name_prefix IS NULL THEN 1 END) * 100.0 / count(*) > 12 and count(CASE WHEN name_prefix IS NULL THEN 1 END) * 100.0 / count(*) < 35"
+    action_if_failed: ignore
+    tag: statistical_distribution
+    description: "name_prefix null rate baseline 18.2% -- WARNING if >24%, CRITICAL if >35%"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: medium
+
+  # --- Reconciliation (query_dq) ---
+  - rule: DQ-REC-002
+    rule_type: query_dq
+    column_name: ""
+    expectation: >
+      CASE WHEN s.cnt = t.cnt
+      THEN 1 ELSE 0 END
+      FROM (SELECT COUNT(*) AS cnt FROM bronze.synthea_patients) s,
+           (SELECT COUNT(*) AS cnt FROM clinical.clinical_patients WHERE is_current = true) t
+    action_if_failed: fail
+    tag: reconciliation
+    description: "Bronze-to-Silver patient count -- exact match (is_current=TRUE) [SLA SS3]"
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: true
+    priority: high

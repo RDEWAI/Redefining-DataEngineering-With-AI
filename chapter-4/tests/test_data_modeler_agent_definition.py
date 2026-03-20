@@ -110,9 +110,9 @@ class TestAgentSystemPrompt:
 
     def test_references_skill_paths(self):
         _, body = _parse_agent_file()
-        assert "skills/create-dms/SKILL.md" in body
-        assert "skills/update-dms/SKILL.md" in body
-        assert "skills/validate-dms/SKILL.md" in body
+        assert "create-dms" in body
+        assert "update-dms" in body
+        assert "validate-dms" in body
 
     def test_enforces_readonly_database(self):
         _, body = _parse_agent_file()
@@ -157,3 +157,10 @@ class TestAgentSystemPrompt:
     def test_has_versioned_discovery(self):
         _, body = _parse_agent_file()
         assert "sort -V" in body, "Agent must use version-sorted discovery for inputs"
+
+    def test_agent_has_subagent_fallback(self):
+        """Agent must have fallback format for when AskUserQuestion is unavailable."""
+        _, body = _parse_agent_file()
+        assert "subagent" in body.lower() or "fallback" in body.lower()
+        # Check for lettered options pattern
+        assert "A)" in body or "A) " in body

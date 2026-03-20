@@ -26,6 +26,11 @@
       "name": "mapping-analyst-plugin",
       "source": "./mapping-analyst-plugin",
       "description": "Mapping Analyst Agent for generating, updating, and validating Source-to-Target Mapping (STM) Excel workbooks"
+    },
+    {
+      "name": "dq-engineer-plugin",
+      "source": "./dq-engineer-plugin",
+      "description": "Data Quality Engineer Agent for generating, updating, and validating Data Quality Specifications (DQS) and Spark-Expectations rules"
     }
   ]
 }

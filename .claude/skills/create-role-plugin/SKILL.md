@@ -135,6 +135,19 @@ Each input document should follow the pattern: metadata table at top, numbered
 sections with tables, domain-specific content tailored to the Patient 360
 healthcare use case.
 
+## Reference Documentation
+
+Before generating, review the official Claude Code sub-agents documentation for
+current best practices on frontmatter fields, skill injection, tool access, and
+hooks: https://code.claude.com/docs/en/sub-agents.md
+
+Key points from the docs:
+- `skills:` frontmatter injects full skill content into the agent's context at
+  startup — the agent does NOT need the Skill tool to use them
+- Subagents cannot spawn other subagents
+- Plugin subagents do not support `hooks`, `mcpServers`, or `permissionMode`
+  frontmatter fields (these are ignored; define hooks in hooks.json instead)
+
 ## Step 2: Read Canonical Templates
 
 Read all of these files from the architect-plugin — they are the canonical
@@ -207,6 +220,13 @@ Since the working directory is chapter-4/, use paths like `outputs/hld/v*`,
 - Replace `[DRD §X.Y]` traceability format with `[{UPSTREAM_ARTIFACT} §X.Y]`
 - AskUserQuestion is a native tool — instruct the agent to use it directly,
   do NOT instruct to fetch via ToolSearch or invoke via Bash
+
+**Agent skills frontmatter:**
+The agent's `skills:` frontmatter field auto-injects skill content into the
+agent's context at startup. The agent body should say "The full skill content
+is already injected into your context. Follow the skill workflow directly when
+needed." — NOT "invoke with Skill tool".
+See: https://code.claude.com/docs/en/sub-agents.md
 
 **Skill files (files #6, #9, #10) — MUST include agent content inline:**
 Skills run inline (not as subagents) and do NOT automatically load agent.md.

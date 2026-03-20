@@ -1543,3 +1543,276 @@ def placeholder_dms_file(tmp_path: Path) -> Path:
     f = tmp_path / "placeholder-dms.md"
     f.write_text(PLACEHOLDER_DMS, encoding="utf-8")
     return f
+
+
+# ---------------------------------------------------------------------------
+# DQS (Data Quality Specification) test constants
+# ---------------------------------------------------------------------------
+
+VALID_DQS = """\
+# Data Quality Specification: Patient 360 Pipeline
+
+| Field | Value |
+|-------|-------|
+| **Version** | 1.0 |
+| **Created** | 2026-03-17 |
+| **Last Modified** | 2026-03-17 |
+| **Author** | DQ Engineer Agent |
+| **Status** | Draft |
+| **STM Reference** | STM-2026-03-17-patient-360.xlsx v1.0 |
+| **DMS Reference** | DMS-2026-03-16-patient-360.md v1.0 |
+| **DRD Reference** | DRD-2026-02-11-patient-360.md v1.1 |
+
+## 1. Overview
+
+This Data Quality Specification defines validation rules for the Patient 360
+pipeline across bronze, silver, and gold layers.
+
+### Severity Definitions
+
+| Severity | Action | Description |
+|----------|--------|-------------|
+| **CRITICAL** | Halt pipeline / reject record | Data integrity at risk |
+| **WARNING** | Log and continue / quarantine row | Data quality degraded |
+| **INFO** | Record for monitoring only | Informational observation |
+
+### Rule ID Conventions
+
+| Prefix | Category | Applies To |
+|--------|----------|------------|
+| DQ-FLD | Field-level validations | All layers |
+| DQ-REF | Referential integrity | Silver, Gold |
+| DQ-STA | Statistical distribution | All layers |
+| DQ-REC | Reconciliation | Gold vs Source |
+| DQ-FRS | Freshness monitoring | All layers |
+
+## 2. Field-Level Validation Rules
+
+### Bronze Layer
+
+| Rule ID | Table | Column | Expression | Severity |
+|---------|-------|--------|------------|----------|
+| DQ-FLD-001 | bronze.patients | id | id IS NOT NULL | CRITICAL |
+| DQ-FLD-002 | bronze.patients | birthdate | FORMAT check | WARNING |
+| DQ-FLD-003 | bronze.encounters | id | id IS NOT NULL | CRITICAL |
+| DQ-FLD-004 | bronze.encounters | start | start IS NOT NULL | CRITICAL |
+
+### Silver Layer
+
+| Rule ID | Table | Column | Expression | Severity |
+|---------|-------|--------|------------|----------|
+| DQ-FLD-005 | clinical.patients | patient_id | NOT NULL | CRITICAL |
+| DQ-FLD-006 | clinical.patients | birth_date | RANGE check | WARNING |
+| DQ-FLD-007 | clinical.patients | gender | ENUM check | WARNING |
+| DQ-FLD-008 | clinical.encounters | encounter_class | ENUM check | WARNING |
+| DQ-FLD-009 | clinical.encounters | start_date | NOT NULL | CRITICAL |
+
+### Gold Layer
+
+| Rule ID | Table | Column | Expression | Severity |
+|---------|-------|--------|------------|----------|
+| DQ-FLD-010 | analytics.dim_patient | patient_sk | NOT NULL | CRITICAL |
+| DQ-FLD-011 | analytics.dim_patient | patient_id | UNIQUE check | CRITICAL |
+| DQ-FLD-012 | analytics.fact_encounter | encounter_sk | NOT NULL | CRITICAL |
+| DQ-FLD-013 | analytics.fact_encounter | patient_sk | NOT NULL | CRITICAL |
+| DQ-FLD-014 | analytics.fact_encounter | encounter_date | RANGE | WARNING |
+
+## 3. Referential Integrity Rules
+
+| Rule ID | Child Table | Child Col | Parent Table | Severity |
+|---------|-------------|-----------|--------------|----------|
+| DQ-REF-001 | clinical.encounters | patient_id | clinical.patients | CRITICAL |
+| DQ-REF-002 | clinical.conditions | patient_id | clinical.patients | CRITICAL |
+| DQ-REF-003 | fact_encounter | patient_sk | dim_patient | WARNING |
+| DQ-REF-004 | fact_encounter | provider_sk | dim_provider | WARNING |
+| DQ-REF-005 | fact_condition | encounter_sk | fact_encounter | CRITICAL |
+
+## 4. Statistical Distribution Tests
+
+| Rule ID | Table | Metric | Baseline | Threshold |
+|---------|-------|--------|----------|-----------|
+| DQ-STA-001 | bronze.patients | row_count | 1000 | ±20% |
+| DQ-STA-002 | bronze.encounters | row_count | 50000 | ±20% |
+| DQ-STA-003 | clinical.patients | null_rate(birth_date) | 0.5% | <5% |
+| DQ-STA-004 | clinical.encounters | value_dist | 60% | ±15% |
+| DQ-STA-005 | analytics.dim_patient | is_current_count | 1000 | ±10% |
+
+## 5. Reconciliation Rules
+
+| Rule ID | Source | Target | Comparison | Tolerance |
+|---------|--------|--------|------------|-----------|
+| DQ-REC-001 | bronze.patients | dim_patient | COUNT DISTINCT | ±0.1% |
+| DQ-REC-002 | bronze.encounters | fact_encounter | COUNT(*) | ±0.1% |
+| DQ-REC-003 | bronze.encounters | fact_encounter | SUM(cost) | ±0.01% |
+
+## 6. Freshness & SLA Monitoring
+
+| Consumer | Table | Max Latency | Check Frequency | Alert Channel | DRD Ref |
+|----------|-------|-------------|-----------------|---------------|---------|
+| Clinical Dashboard | analytics.dim_patient | 1 hour | Every 15 min | PagerDuty | DRD §5.1 |
+| Clinical Dashboard | analytics.fact_encounter | 1 hour | Every 15 min | PagerDuty | DRD §5.1 |
+| BI Analytics | analytics.dim_patient | 24 hours | Every 4 hours | Slack | DRD §5.2 |
+| Regulatory Reporting | analytics.fact_encounter | 30 days | Weekly | Email | DRD §5.4 |
+
+## 7. Alert & Escalation Framework
+
+### Severity Routing
+
+| Severity | Response Time | Notification Channel | Escalation |
+|----------|--------------|---------------------|------------|
+| CRITICAL | 15 minutes | PagerDuty + Slack #data-alerts | On-call data engineer |
+| WARNING | 4 hours | Slack #data-quality | Data quality team lead |
+| INFO | Next business day | Email digest | DQ dashboard only |
+
+### Threshold Breach Actions
+
+When error_drop_threshold is exceeded:
+- PROD: Halt pipeline, page on-call engineer
+- QA: Log warning, continue processing
+- DEV: Log info only
+
+## 8. Traceability Matrix
+
+| DQS Rule | DRD Req | DMS Ref | STM Sheet | Description |
+|----------|---------|---------|-----------|-------------|
+| DQ-FLD-001 | DRD §4 | DMS §2 | Src-Bronze | Patient ID |
+| DQ-FLD-005 | DRD §4 | DMS §3 | Brz-Silver | Patient ID |
+| DQ-FLD-010 | DRD §4 | DMS §4 | Slv-Gold | Patient SK |
+| DQ-REF-001 | DRD §4 | DMS §3 | Brz-Silver | Enc→Pat FK |
+| DQ-STA-001 | DRD §4 | DMS §2 | Src-Bronze | Row count |
+| DQ-REC-001 | DRD §4 | DMS §4 | Slv-Gold | Pat recon |
+| DQ-FRS-001 | DRD §5.1 | DMS §4 | N/A | Freshness |
+| DQ-FLD-014 | DRD §6 | DMS §4 | Slv-Gold | Date range |
+
+## 9. Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2026-03-17 | DQ Engineer Agent | Initial DQS for Patient 360 pipeline |
+"""
+
+MINIMAL_INVALID_DQS = """\
+# Data Quality Specification: Incomplete
+
+| Field | Value |
+|-------|-------|
+| **Version** | 0.1 |
+
+## 1. Overview
+
+This DQS is incomplete.
+"""
+
+EMPTY_SECTIONS_DQS = """\
+# Data Quality Specification: Empty Sections
+
+| Field | Value |
+|-------|-------|
+| **Version** | 0.1 |
+| **Created** | 2026-03-17 |
+| **Author** | Test |
+| **Status** | Draft |
+| **STM Reference** | STM-test.xlsx |
+| **DMS Reference** | DMS-test.md |
+
+## 1. Overview
+
+## 2. Field-Level Validation Rules
+
+## 3. Referential Integrity Rules
+
+## 4. Statistical Distribution Tests
+
+## 5. Reconciliation Rules
+
+## 6. Freshness & SLA Monitoring
+
+## 7. Alert & Escalation Framework
+
+## 8. Traceability Matrix
+
+## 9. Version History
+"""
+
+PLACEHOLDER_DQS = """\
+# Data Quality Specification: Placeholder
+
+| Field | Value |
+|-------|-------|
+| **Version** | 0.1 |
+| **Created** | 2026-03-17 |
+| **Author** | Test |
+| **Status** | Draft |
+| **STM Reference** | [TBD] |
+| **DMS Reference** | [TODO] |
+
+## 1. Overview
+
+[TO BE DETERMINED]
+
+## 2. Field-Level Validation Rules
+
+[TBD] - Rules will be defined after STM review.
+
+## 3. Referential Integrity Rules
+
+[PLACEHOLDER]
+
+## 4. Statistical Distribution Tests
+
+[TODO]
+
+## 5. Reconciliation Rules
+
+[TBD]
+
+## 6. Freshness & SLA Monitoring
+
+[TBD]
+
+## 7. Alert & Escalation Framework
+
+[TBD]
+
+## 8. Traceability Matrix
+
+[TBD]
+
+## 9. Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1 | 2026-03-17 | Test | Initial placeholder |
+"""
+
+
+@pytest.fixture
+def valid_dqs_file(tmp_path: Path) -> Path:
+    """Create a valid DQS file for testing."""
+    f = tmp_path / "valid-dqs.md"
+    f.write_text(VALID_DQS, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def invalid_dqs_file(tmp_path: Path) -> Path:
+    """Create an invalid (minimal) DQS file for testing."""
+    f = tmp_path / "invalid-dqs.md"
+    f.write_text(MINIMAL_INVALID_DQS, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def empty_dqs_sections_file(tmp_path: Path) -> Path:
+    """Create a DQS with empty required sections."""
+    f = tmp_path / "empty-sections-dqs.md"
+    f.write_text(EMPTY_SECTIONS_DQS, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def placeholder_dqs_file(tmp_path: Path) -> Path:
+    """Create a DQS with placeholder text."""
+    f = tmp_path / "placeholder-dqs.md"
+    f.write_text(PLACEHOLDER_DQS, encoding="utf-8")
+    return f

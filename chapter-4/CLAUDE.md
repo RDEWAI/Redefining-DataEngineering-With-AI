@@ -5,7 +5,7 @@
 This chapter implements the full planning workflow as Claude Code Plugins,
 each role producing a structured artifact that feeds the next.
 
-**Artifact chain**: DRD → **HLD** → **DMS** → **STM** → DQS → LLD → Stories
+**Artifact chain**: DRD → **HLD** → **DMS** → **STM** → **DQS** → LLD → Stories
 
 ## Plugins
 
@@ -58,6 +58,21 @@ The plugin lives in `mapping-analyst-plugin/` and is defined by
 
 **Note**: STM output is **.xlsx** (Excel workbook with 8 sheets), not markdown. Uses **openpyxl** for generation and validation.
 
+### DQ Engineer Plugin
+
+The plugin lives in `dq-engineer-plugin/` and is defined by
+`dq-engineer-plugin/.claude-plugin/plugin.json`.
+
+- `dq-engineer-plugin/skills/` - Skills: create-dqs, update-dqs, validate-dqs, generate-se-rules
+- `dq-engineer-plugin/hooks/` - PostToolUse hook for automatic DQS validation
+- `dq-engineer-plugin/scripts/` - Hook scripts (validate-dqs-hook.py, enforce-readonly-queries.py)
+
+**Inputs**: Latest STM from `outputs/stm/v{N}/` + DMS from `outputs/dms/v{N}/` + DRD from `outputs/drd/v{N}/` + `inputs/dqs/v{N}/` (DQ standards, SLA definitions, SE config template)
+
+**Outputs**: DQS documents in `outputs/dqs/v{N}/` + Spark-Expectations YAML rules in `outputs/dqs/v{N}/se-rules/`
+
+**Note**: DQS has **4 skills** (3 core + 1 bonus). The `generate-se-rules` skill converts DQS rules to per-table **Spark-Expectations YAML** files compatible with spark-expectations >= 2.6.0.
+
 ## Installing Plugins
 
 From the repo root:
@@ -67,6 +82,7 @@ From the repo root:
 /plugin install architect-plugin@rdewai-plugins
 /plugin install data-modeler-plugin@rdewai-plugins
 /plugin install mapping-analyst-plugin@rdewai-plugins
+/plugin install dq-engineer-plugin@rdewai-plugins
 ```
 
 ## Directory Layout
@@ -75,14 +91,17 @@ From the repo root:
 - `inputs/architect/v{N}/` - Architect Agent input documents (folder-versioned)
 - `inputs/dms/v{N}/` - Data Modeler input documents (folder-versioned)
 - `inputs/stm/v{N}/` - Mapping Analyst input documents (folder-versioned)
+- `inputs/dqs/v{N}/` - DQ Engineer input documents (folder-versioned)
 - `outputs/drd/v{N}/` - Generated DRD files (folder-versioned)
 - `outputs/hld/v{N}/` - Generated HLD files (folder-versioned)
 - `outputs/dms/v{N}/` - Generated DMS files (folder-versioned)
 - `outputs/stm/v{N}/` - Generated STM Excel workbooks (folder-versioned)
+- `outputs/dqs/v{N}/` - Generated DQS files + SE rules YAML (folder-versioned)
 - `ba-plugin/` - BA Agent plugin
 - `architect-plugin/` - Architect Agent plugin
 - `data-modeler-plugin/` - Data Modeler Agent plugin
 - `mapping-analyst-plugin/` - Mapping Analyst Agent plugin
+- `dq-engineer-plugin/` - DQ Engineer Agent plugin
 - `tests/` - All unit tests
 
 ## Versioning Convention
@@ -104,5 +123,6 @@ make validate-drd   # Validate all DRDs in outputs/drd/
 make validate-hld   # Validate all HLDs in outputs/hld/
 make validate-dms   # Validate all DMSs in outputs/dms/
 make validate-stm   # Validate all STMs in outputs/stm/
+make validate-dqs   # Validate all DQSs in outputs/dqs/
 make lint           # Run linter
 ```
