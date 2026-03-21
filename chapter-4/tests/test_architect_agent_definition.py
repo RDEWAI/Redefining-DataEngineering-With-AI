@@ -1,4 +1,9 @@
-"""Tests for the architect agent definition file structure and content."""
+"""Tests for the architect agent definition file structure and content.
+
+The agent is a slim routing layer that delegates to skills. Detailed workflow
+content (elicitation protocol, pitfall prevention, etc.) lives in skills and
+is tested in test_skill_frontmatter.py / test_skill_evals.py.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +15,8 @@ AGENT_FILE = (
     Path(__file__).resolve().parent.parent / "architect-plugin" / "agents" / "architect-agent.md"
 )
 
+SKILL_DIR = Path(__file__).resolve().parent.parent / "architect-plugin" / "skills"
+
 
 def _parse_agent_file() -> tuple[dict, str]:
     """Parse the agent markdown file into frontmatter and body."""
@@ -19,6 +26,16 @@ def _parse_agent_file() -> tuple[dict, str]:
     parts = content.split("---", 2)
     assert len(parts) >= 3, "Must have --- delimited frontmatter"
 
+    frontmatter = yaml.safe_load(parts[1])
+    body = parts[2]
+    return frontmatter, body
+
+
+def _parse_skill_file(skill_name: str) -> tuple[dict, str]:
+    """Parse a skill markdown file into frontmatter and body."""
+    skill_file = SKILL_DIR / skill_name / "SKILL.md"
+    content = skill_file.read_text(encoding="utf-8")
+    parts = content.split("---", 2)
     frontmatter = yaml.safe_load(parts[1])
     body = parts[2]
     return frontmatter, body
@@ -35,7 +52,7 @@ class TestAgentFileExists:
 
 
 class TestAgentFrontmatter:
-    """YAML frontmatter must contain required fields."""
+    """YAML frontmatter must contain required fields with correct values."""
 
     def test_name_is_architect_agent(self):
         fm, _ = _parse_agent_file()
@@ -48,7 +65,7 @@ class TestAgentFrontmatter:
     def test_has_description(self):
         fm, _ = _parse_agent_file()
         assert "description" in fm
-        assert len(fm["description"]) > 50
+        assert len(fm["description"]) > 50, "Description should be detailed"
 
     def test_tools_include_required_set(self):
         fm, _ = _parse_agent_file()
@@ -71,89 +88,137 @@ class TestAgentFrontmatter:
 
 
 class TestAgentSystemPrompt:
-    """The system prompt body must contain key sections."""
+    """The agent body must contain routing, behavioral rules, and skill references."""
 
-    def test_has_architecture_pattern_framework(self):
-        _, body = _parse_agent_file()
-        assert "Medallion" in body
-        assert "Lambda" in body or "Kappa" in body
-        assert "Data Vault" in body
-
-    def test_has_four_responsibilities(self):
-        _, body = _parse_agent_file()
-        assert "Architecture Pattern" in body or "Pattern Selection" in body
-        assert "Technology Selection" in body or "Technology" in body
-        assert "Layer Design" in body or "Layer Specifications" in body
-        assert "Non-Functional" in body or "Capacity" in body
-
-    def test_has_traceability_enforcement(self):
-        _, body = _parse_agent_file()
-        assert "DRD" in body
-        assert "traceab" in body.lower() or "cite" in body.lower()
-
-    def test_has_workflow_phases(self):
-        _, body = _parse_agent_file()
-        for phase in ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5"]:
-            assert phase in body, f"Missing {phase}"
-
-    def test_has_pitfall_prevention(self):
-        _, body = _parse_agent_file()
-        assert "Pitfall" in body or "pitfall" in body
-        assert "resume" in body.lower() or "over-engineer" in body.lower()
-
-    def test_has_anti_patterns(self):
-        _, body = _parse_agent_file()
-        assert "Anti-Pattern" in body or "Anti-pattern" in body
-
-    def test_references_skill_paths(self):
+    def test_references_all_skills(self):
         _, body = _parse_agent_file()
         assert "create-hld" in body
         assert "update-hld" in body
         assert "validate-hld" in body
 
+    def test_has_skills_delegation_statement(self):
+        """Agent must state that skills own the workflow."""
+        _, body = _parse_agent_file()
+        assert "skill" in body.lower()
+        assert "delegate" in body.lower() or "workflow" in body.lower()
+
+    def test_has_behavioral_rules(self):
+        """Agent must have cross-cutting behavioral rules."""
+        _, body = _parse_agent_file()
+        assert "Behavioral Rules" in body or "behavioral rules" in body
+
     def test_enforces_readonly_database(self):
         _, body = _parse_agent_file()
         assert "-readonly" in body
 
-    def test_blocks_on_missing_database(self):
+    def test_has_traceability_enforcement(self):
         _, body = _parse_agent_file()
-        assert "STOP" in body or "Do NOT proceed" in body
+        assert "trace" in body.lower()
+        assert "DRD" in body
 
-    def test_references_memory_directory(self):
+    def test_enforces_user_confirmation(self):
         _, body = _parse_agent_file()
-        assert "architect-plugin/memory/" in body
+        assert "confirmation" in body.lower() or "confirm" in body.lower()
 
     def test_instructs_ask_user_question(self):
         _, body = _parse_agent_file()
         assert "AskUserQuestion" in body
 
-    def test_has_decision_documentation_format(self):
-        _, body = _parse_agent_file()
-        assert "Options Considered" in body or "Rationale" in body
-        assert "Trade-off" in body or "trade-off" in body
-
-    def test_references_hld_sections(self):
-        _, body = _parse_agent_file()
-        assert "Executive Summary" in body
-        assert "Architecture Overview" in body
-        assert "Data Architecture" in body or "Layer Design" in body
-        assert "Technology Decisions" in body
-        assert "CDC" in body
-        assert "Scalability" in body or "Capacity" in body
-
-    def test_references_architect_inputs(self):
-        _, body = _parse_agent_file()
-        assert "infrastructure-constraints" in body or "Infrastructure" in body
-        assert "team-capabilities" in body or "Team Capabilities" in body
-        assert "technology-catalog" in body or "Technology Catalog" in body
-
-    def test_has_versioned_discovery(self):
-        _, body = _parse_agent_file()
-        assert "sort -V" in body, "Agent must use version-sorted discovery for inputs"
-
     def test_agent_has_subagent_fallback(self):
         """Agent must have fallback format for when AskUserQuestion is unavailable."""
         _, body = _parse_agent_file()
         assert "subagent" in body.lower() or "fallback" in body.lower()
-        # Check for lettered options pattern
         assert "A)" in body or "A) " in body
+
+
+class TestSkillsContainAgentWorkflow:
+    """Skills must contain the detailed workflow that was moved from the agent.
+
+    This ensures no content was lost during the agent-to-skill migration.
+    """
+
+    # --- create-hld ---
+
+    def test_create_hld_has_elicitation_protocol(self):
+        _, body = _parse_skill_file("create-hld")
+        assert "Elicitation Protocol" in body
+
+    def test_create_hld_has_four_responsibilities(self):
+        _, body = _parse_skill_file("create-hld")
+        assert "Architecture Pattern Selection" in body
+        assert "Technology Selection" in body
+        assert "Layer Design" in body
+        assert "Non-Functional Requirements" in body or "Scalability & Capacity" in body
+
+    def test_create_hld_has_workflow_phases(self):
+        _, body = _parse_skill_file("create-hld")
+        for phase in ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5"]:
+            assert phase in body, f"create-hld missing {phase}"
+
+    def test_create_hld_has_pitfall_prevention(self):
+        _, body = _parse_skill_file("create-hld")
+        assert "Pitfall" in body
+        assert "Over-Engineering" in body
+        assert "Skipping Data Exploration" in body
+        assert "Missing DRD Traceability" in body
+
+    def test_create_hld_has_anti_patterns(self):
+        _, body = _parse_skill_file("create-hld")
+        assert "Anti-Pattern" in body or "Anti-pattern" in body
+
+    def test_create_hld_has_db_gate(self):
+        _, body = _parse_skill_file("create-hld")
+        assert "-readonly" in body
+        assert "STOP" in body or "Do NOT proceed" in body
+
+    def test_create_hld_has_versioned_discovery(self):
+        _, body = _parse_skill_file("create-hld")
+        assert "sort -V" in body
+
+    def test_create_hld_has_session_memory(self):
+        _, body = _parse_skill_file("create-hld")
+        assert "architect-plugin/memory/" in body
+
+    def test_create_hld_has_decision_documentation(self):
+        _, body = _parse_skill_file("create-hld")
+        assert "Options Considered" in body
+        assert "Rationale" in body
+        assert "Trade-off" in body
+
+    def test_create_hld_has_writing_style(self):
+        _, body = _parse_skill_file("create-hld")
+        assert "Writing Style" in body
+        assert "High-level over implementation" in body
+
+    def test_create_hld_has_hld_sections_reference(self):
+        _, body = _parse_skill_file("create-hld")
+        assert "HLD Sections Reference" in body or "Section Guide" in body
+        assert "Executive Summary" in body
+        assert "Data Architecture" in body
+        assert "Technology Decisions" in body
+
+    # --- update-hld ---
+
+    def test_update_hld_has_elicitation_protocol(self):
+        _, body = _parse_skill_file("update-hld")
+        assert "Elicitation Protocol" in body
+
+    def test_update_hld_has_workflow_phases(self):
+        _, body = _parse_skill_file("update-hld")
+        for phase in ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5"]:
+            assert phase in body, f"update-hld missing {phase}"
+
+    def test_update_hld_has_pitfall_prevention(self):
+        _, body = _parse_skill_file("update-hld")
+        assert "Pitfall" in body
+        assert "Over-Engineering" in body
+        assert "Skipping Data Exploration" in body
+        assert "Missing DRD Traceability" in body
+
+    def test_update_hld_has_session_memory(self):
+        _, body = _parse_skill_file("update-hld")
+        assert "architect-plugin/memory/" in body
+
+    def test_update_hld_has_cross_section_consistency(self):
+        _, body = _parse_skill_file("update-hld")
+        assert "consistency" in body.lower() or "cross-section" in body.lower()
