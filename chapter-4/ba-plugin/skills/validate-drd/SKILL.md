@@ -1,13 +1,25 @@
 ---
 name: validate-drd
 description: >
-  Validates a Data Requirements Document against completeness and quality
-  standards. Checks all required sections, metadata, source systems, consumers,
-  SLAs, and business rules. Reports issues as CRITICAL, WARNING, or INFO with
-  suggested fixes. Use when the user asks to validate, check, review, or
-  verify a DRD.
-argument-hint: "[path-to-drd-file]"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
+  Validates a Data Requirements Document (DRD) against completeness and
+  quality standards. Checks all required sections, business context,
+  source discovery tables, data quality rules, consumer requirements,
+  and regulatory compliance. Reports issues as CRITICAL, WARNING, or
+  INFO with suggested fixes.
+  Also known as: DRD review, requirements quality check, DRD audit.
+  Input formats: DRD Markdown (.md) file.
+  Output format: Validation report with severity-ranked findings.
+  Use when the user asks to:
+  - Validate, check, review, verify, or audit a DRD
+  - Assess DRD completeness or quality
+  - Find issues or gaps in a requirements document
+  - Run quality checks on a DRD before handoff
+argument-hint: "[drd-file-path]"
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+hooks:
+  before:
+    - matcher: Bash
+      script: "${CLAUDE_PLUGIN_ROOT}/scripts/enforce-readonly-queries.py"
 ---
 
 # Validate Data Requirements Document
@@ -126,3 +138,28 @@ Summary: 0 critical (fixed), 1 warning, 1 info
 - Fixes applied (bulleted list)
 - Key decisions made and their rationale
 - Remaining issues the user chose not to address (with assigned owners and due dates)
+
+If the user corrected any output during this session, also append to
+`ba-plugin/memory/learnings-queue.jsonl`:
+```json
+{"skill": "validate-drd", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
+```
+
+## Learnings & Corrections
+
+> **Meta-rules for adding learnings:**
+> 1. Each learning MUST be an absolute directive ("Always X", "Never Y")
+> 2. Lead with the problem, then the fix: "When X happens, do Y"
+> 3. Include a concrete command or example, not just prose
+> 4. One learning per bullet — no compound rules
+> 5. Delete learnings that contradict each other; keep the newer one
+> 6. Maximum 20 learnings per skill — if at capacity, merge related items
+
+### Active Learnings
+
+_No learnings recorded yet. Learnings are added when corrections occur during skill execution._
+
+<!-- Example format:
+- **L-001** (2026-03-20): Always use CAST(col AS DATE) not TO_DATE(col) for date conversions.
+- **L-002** (2026-03-21): Never generate placeholder SLA values — ask the user for specific numeric targets.
+-->

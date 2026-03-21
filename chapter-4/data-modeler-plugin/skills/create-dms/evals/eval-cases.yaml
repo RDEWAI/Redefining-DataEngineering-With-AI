@@ -1,0 +1,70 @@
+skill: create-dms
+version: "1.0"
+cases:
+  - id: TC-001
+    name: "Complete inputs produce valid DMS"
+    description: "Given HLD and DRD, skill produces a DMS that passes validation"
+    inputs:
+      folder: "inputs/dms/v1"
+      upstream: "outputs/hld/v1"
+    expected:
+      - type: validation_pass
+      - type: section_present
+        sections:
+          - "1. Overview"
+          - "2. Bronze Layer"
+          - "3. Silver Layer"
+          - "4. Gold Layer"
+          - "5. SCD Strategy"
+          - "6. Naming Conventions"
+          - "7. Version History"
+      - type: content_contains
+        patterns: ["```yaml"]
+      - type: no_vague_language
+        banned: ["real-time", "all data", "comprehensive"]
+    success_criteria: "All expected checks pass"
+
+  - id: TC-002
+    name: "YAML schema blocks are valid"
+    description: "Embedded YAML schema blocks must parse without errors"
+    inputs:
+      folder: "inputs/dms/v1"
+      upstream: "outputs/hld/v1"
+    expected:
+      - type: yaml_valid
+        description: "All ```yaml blocks parse as valid YAML"
+    success_criteria: "No YAML parse errors"
+
+  - id: TC-003
+    name: "Database unavailable blocks generation"
+    description: "When database path is invalid, skill must STOP"
+    inputs:
+      folder: "inputs/dms/v1"
+      override_db_path: "/nonexistent/path.db"
+    expected:
+      - type: asks_question
+        about: "database"
+      - type: no_output_generated
+    success_criteria: "Skill does not generate DMS"
+
+  - id: TC-004
+    name: "SCD strategy documented per dimension"
+    description: "Every gold layer dimension must have explicit SCD type"
+    inputs:
+      folder: "inputs/dms/v1"
+      upstream: "outputs/hld/v1"
+    expected:
+      - type: content_contains
+        patterns: ["SCD Type", "scd_type"]
+    success_criteria: "SCD strategies documented for all dimensions"
+
+  - id: TC-005
+    name: "HLD traceability maintained"
+    description: "Schema decisions reference HLD layer specifications"
+    inputs:
+      folder: "inputs/dms/v1"
+      upstream: "outputs/hld/v1"
+    expected:
+      - type: content_contains
+        patterns: ["[HLD"]
+    success_criteria: "HLD section references found throughout DMS"

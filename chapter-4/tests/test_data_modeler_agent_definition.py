@@ -1,4 +1,9 @@
-"""Tests for the data modeler agent definition file structure and content."""
+"""Tests for the data modeler agent definition file structure and content.
+
+The agent is a slim routing layer that delegates to skills. Detailed workflow
+content (elicitation protocol, pitfall prevention, etc.) lives in skills and
+is tested in test_skill_frontmatter.py / test_skill_evals.py.
+"""
 
 from __future__ import annotations
 
@@ -13,6 +18,8 @@ AGENT_FILE = (
     / "data-modeler-agent.md"
 )
 
+SKILL_DIR = Path(__file__).resolve().parent.parent / "data-modeler-plugin" / "skills"
+
 
 def _parse_agent_file() -> tuple[dict, str]:
     """Parse the agent markdown file into frontmatter and body."""
@@ -22,6 +29,16 @@ def _parse_agent_file() -> tuple[dict, str]:
     parts = content.split("---", 2)
     assert len(parts) >= 3, "Must have --- delimited frontmatter"
 
+    frontmatter = yaml.safe_load(parts[1])
+    body = parts[2]
+    return frontmatter, body
+
+
+def _parse_skill_file(skill_name: str) -> tuple[dict, str]:
+    """Parse a skill markdown file into frontmatter and body."""
+    skill_file = SKILL_DIR / skill_name / "SKILL.md"
+    content = skill_file.read_text(encoding="utf-8")
+    parts = content.split("---", 2)
     frontmatter = yaml.safe_load(parts[1])
     body = parts[2]
     return frontmatter, body
@@ -74,69 +91,89 @@ class TestAgentFrontmatter:
 
 
 class TestAgentSystemPrompt:
-    """The system prompt body must contain key sections."""
+    """The agent body must contain routing, behavioral rules, and skill references."""
 
-    def test_has_schema_design_focus(self):
-        _, body = _parse_agent_file()
-        assert "bronze" in body.lower()
-        assert "silver" in body.lower()
-        assert "gold" in body.lower()
-
-    def test_has_four_responsibilities(self):
-        _, body = _parse_agent_file()
-        assert "Bronze Layer Schema" in body
-        assert "Silver Layer Schema" in body
-        assert "Gold Layer Schema" in body
-        assert "Naming Convention" in body
-
-    def test_has_hld_traceability_enforcement(self):
-        _, body = _parse_agent_file()
-        assert "HLD" in body
-        assert "traceab" in body.lower() or "cite" in body.lower()
-
-    def test_has_workflow_phases(self):
-        _, body = _parse_agent_file()
-        for phase in ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5"]:
-            assert phase in body, f"Missing {phase}"
-
-    def test_has_pitfall_prevention(self):
-        _, body = _parse_agent_file()
-        assert "Pitfall" in body or "pitfall" in body
-        assert "DESCRIBE" in body or "source" in body.lower()
-
-    def test_has_anti_patterns(self):
-        _, body = _parse_agent_file()
-        assert "Anti-Pattern" in body or "Anti-pattern" in body
-
-    def test_references_skill_paths(self):
+    def test_references_all_skills(self):
         _, body = _parse_agent_file()
         assert "create-dms" in body
         assert "update-dms" in body
         assert "validate-dms" in body
 
+    def test_has_skills_delegation_statement(self):
+        """Agent must state that skills own the workflow."""
+        _, body = _parse_agent_file()
+        assert "skill" in body.lower()
+        assert "delegate" in body.lower() or "workflow" in body.lower()
+
+    def test_has_behavioral_rules(self):
+        """Agent must have cross-cutting behavioral rules."""
+        _, body = _parse_agent_file()
+        assert "Behavioral Rules" in body or "behavioral rules" in body
+
     def test_enforces_readonly_database(self):
         _, body = _parse_agent_file()
         assert "-readonly" in body
 
-    def test_blocks_on_missing_database(self):
+    def test_has_traceability_enforcement(self):
         _, body = _parse_agent_file()
-        assert "STOP" in body or "Do NOT proceed" in body
+        assert "HLD" in body
+        assert "cite" in body.lower() or "traceab" in body.lower()
 
-    def test_references_memory_directory(self):
+    def test_enforces_user_confirmation(self):
         _, body = _parse_agent_file()
-        assert "data-modeler-plugin/memory/" in body
+        assert "confirmation" in body.lower() or "confirm" in body.lower()
 
     def test_instructs_ask_user_question(self):
         _, body = _parse_agent_file()
         assert "AskUserQuestion" in body
 
-    def test_has_decision_documentation_format(self):
+    def test_agent_has_subagent_fallback(self):
+        """Agent must have fallback format for when AskUserQuestion is unavailable."""
         _, body = _parse_agent_file()
-        assert "Options Considered" in body or "Rationale" in body
+        assert "subagent" in body.lower() or "fallback" in body.lower()
+        assert "A)" in body or "A) " in body
+
+
+class TestSkillsContainAgentWorkflow:
+    """Skills must contain the detailed workflow that was moved from the agent.
+
+    This ensures no content was lost during the agent-to-skill migration.
+    """
+
+    # ---- create-dms ----
+
+    def test_create_dms_has_elicitation_protocol(self):
+        _, body = _parse_skill_file("create-dms")
+        assert "Elicitation Protocol" in body
+
+    def test_create_dms_has_four_responsibilities(self):
+        _, body = _parse_skill_file("create-dms")
+        assert "Bronze Layer Schema" in body
+        assert "Silver Layer Schema" in body
+        assert "Gold Layer Schema" in body
+        assert "Naming Convention" in body
+
+    def test_create_dms_has_workflow_phases(self):
+        _, body = _parse_skill_file("create-dms")
+        for phase in ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5"]:
+            assert phase in body, f"create-dms missing {phase}"
+
+    def test_create_dms_has_pitfall_prevention(self):
+        _, body = _parse_skill_file("create-dms")
+        assert "Pitfall" in body
+        assert "Modeling Without Querying Source" in body or "DESCRIBE" in body
+
+    def test_create_dms_has_anti_patterns(self):
+        _, body = _parse_skill_file("create-dms")
+        assert "Anti-Pattern" in body or "Anti-pattern" in body
+
+    def test_create_dms_has_decision_documentation(self):
+        _, body = _parse_skill_file("create-dms")
+        assert "Options Considered" in body
         assert "Trade-off" in body or "trade-off" in body
 
-    def test_references_dms_sections(self):
-        _, body = _parse_agent_file()
+    def test_create_dms_references_dms_sections(self):
+        _, body = _parse_skill_file("create-dms")
         assert "Design Overview" in body
         assert "Bronze Layer Schema" in body
         assert "Silver Layer Schema" in body
@@ -145,22 +182,48 @@ class TestAgentSystemPrompt:
         assert "Naming Convention" in body
         assert "Traceability Matrix" in body
 
-    def test_has_scd_type_framework(self):
-        _, body = _parse_agent_file()
-        assert "SCD" in body or "scd" in body
-        assert "Type 1" in body or "Type 2" in body
+    def test_create_dms_has_db_gate(self):
+        _, body = _parse_skill_file("create-dms")
+        assert "-readonly" in body
+        assert "STOP" in body or "Do NOT proceed" in body
 
-    def test_has_yaml_schema_block_guidance(self):
-        _, body = _parse_agent_file()
+    def test_create_dms_has_yaml_schema_blocks(self):
+        _, body = _parse_skill_file("create-dms")
         assert "YAML" in body or "yaml" in body
+        assert "schema block" in body.lower() or "YAML block" in body
 
-    def test_has_versioned_discovery(self):
-        _, body = _parse_agent_file()
-        assert "sort -V" in body, "Agent must use version-sorted discovery for inputs"
+    def test_create_dms_has_versioned_discovery(self):
+        _, body = _parse_skill_file("create-dms")
+        assert "sort -V" in body
 
-    def test_agent_has_subagent_fallback(self):
-        """Agent must have fallback format for when AskUserQuestion is unavailable."""
-        _, body = _parse_agent_file()
-        assert "subagent" in body.lower() or "fallback" in body.lower()
-        # Check for lettered options pattern
-        assert "A)" in body or "A) " in body
+    def test_create_dms_has_session_memory(self):
+        _, body = _parse_skill_file("create-dms")
+        assert "data-modeler-plugin/memory/" in body
+
+    # ---- update-dms ----
+
+    def test_update_dms_has_elicitation_protocol(self):
+        _, body = _parse_skill_file("update-dms")
+        assert "Elicitation Protocol" in body
+
+    def test_update_dms_has_workflow_phases(self):
+        _, body = _parse_skill_file("update-dms")
+        for phase in ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5"]:
+            assert phase in body, f"update-dms missing {phase}"
+
+    def test_update_dms_has_pitfall_prevention(self):
+        _, body = _parse_skill_file("update-dms")
+        assert "Pitfall" in body
+
+    def test_update_dms_has_decision_documentation(self):
+        _, body = _parse_skill_file("update-dms")
+        assert "Options Considered" in body
+        assert "Trade-off" in body or "trade-off" in body
+
+    def test_update_dms_has_cross_section_consistency(self):
+        _, body = _parse_skill_file("update-dms")
+        assert "consistency" in body.lower() or "cross-section" in body.lower()
+
+    def test_update_dms_has_session_memory(self):
+        _, body = _parse_skill_file("update-dms")
+        assert "data-modeler-plugin/memory/" in body

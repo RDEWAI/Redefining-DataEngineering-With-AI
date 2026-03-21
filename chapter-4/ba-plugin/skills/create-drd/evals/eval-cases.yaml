@@ -1,0 +1,82 @@
+skill: create-drd
+version: "1.0"
+cases:
+  - id: TC-001
+    name: "Complete inputs produce valid DRD"
+    description: "Given all 4 input types, skill produces a DRD that passes validation"
+    inputs:
+      folder: "inputs/drd/v1"
+    expected:
+      - type: validation_pass
+        description: "DRD passes validate-drd with 0 CRITICAL issues"
+      - type: section_present
+        sections:
+          - "Executive Summary"
+          - "1. Business Context"
+          - "2. Source Discovery"
+          - "3. Data Quality"
+          - "4. Consumer Requirements"
+          - "5. Business Rules"
+          - "6. Assumptions"
+          - "7. Regulatory"
+      - type: content_contains
+        patterns: ["patient_id", "encounters", "HIPAA"]
+      - type: no_vague_language
+        banned: ["real-time", "all data", "comprehensive", "fast"]
+    success_criteria: "All expected checks pass"
+
+  - id: TC-002
+    name: "Missing source system docs triggers Q&A"
+    description: "When source_system_docs.md is absent, skill must ask user"
+    inputs:
+      folder: "inputs/drd/v1"
+      remove_files: ["source_system_docs.md"]
+    expected:
+      - type: asks_question
+        about: "source system"
+    success_criteria: "Skill uses AskUserQuestion about missing source docs"
+
+  - id: TC-003
+    name: "Database unavailable blocks generation"
+    description: "When database path is invalid, skill must STOP"
+    inputs:
+      folder: "inputs/drd/v1"
+      override_db_path: "/nonexistent/path.db"
+    expected:
+      - type: asks_question
+        about: "database"
+      - type: no_output_generated
+    success_criteria: "Skill does not generate DRD; asks user to resolve DB access"
+
+  - id: TC-004
+    name: "Vague user answers rejected"
+    description: "When user gives vague SLA answers like 'fast', skill rejects and re-asks"
+    inputs:
+      folder: "inputs/drd/v1"
+      user_answers:
+        - question_pattern: "SLA.*target"
+          answer: "fast"
+    expected:
+      - type: asks_question
+        about: "specific numeric"
+    success_criteria: "Skill rejects vague answer and asks for specific metrics"
+
+  - id: TC-005
+    name: "Metadata table present in output"
+    description: "Generated DRD must start with version metadata table"
+    inputs:
+      folder: "inputs/drd/v1"
+    expected:
+      - type: content_contains
+        patterns: ["Version", "Created", "Author", "Status", "Business Sponsor"]
+    success_criteria: "Metadata table with all required fields is present"
+
+  - id: TC-006
+    name: "Session memory written"
+    description: "After generation, session memory file is created"
+    inputs:
+      folder: "inputs/drd/v1"
+    expected:
+      - type: file_created
+        pattern: "ba-plugin/memory/session-*.md"
+    success_criteria: "Session memory file exists with decisions and findings"

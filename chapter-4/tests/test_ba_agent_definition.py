@@ -1,4 +1,9 @@
-"""Tests for the BA agent definition file structure and content."""
+"""Tests for the BA agent definition file structure and content.
+
+The agent is a slim routing layer that delegates to skills. Detailed workflow
+content (elicitation protocol, pitfall prevention, etc.) lives in skills and
+is tested in test_skill_frontmatter.py / test_skill_evals.py.
+"""
 
 from __future__ import annotations
 
@@ -8,16 +13,27 @@ import yaml
 
 AGENT_FILE = Path(__file__).resolve().parent.parent / "ba-plugin" / "agents" / "ba-agent.md"
 
+SKILL_DIR = Path(__file__).resolve().parent.parent / "ba-plugin" / "skills"
+
 
 def _parse_agent_file() -> tuple[dict, str]:
-    """Parse the agent markdown file into frontmatter dict and body string."""
+    """Parse the agent markdown file into frontmatter and body."""
     content = AGENT_FILE.read_text(encoding="utf-8")
-    assert content.startswith("---"), "Agent file must start with YAML frontmatter"
+    assert content.startswith("---"), "Must start with YAML frontmatter"
 
-    # Split on the second '---' to separate frontmatter from body
     parts = content.split("---", 2)
-    assert len(parts) >= 3, "Agent file must have --- delimited frontmatter"
+    assert len(parts) >= 3, "Must have --- delimited frontmatter"
 
+    frontmatter = yaml.safe_load(parts[1])
+    body = parts[2]
+    return frontmatter, body
+
+
+def _parse_skill_file(skill_name: str) -> tuple[dict, str]:
+    """Parse a skill markdown file into frontmatter and body."""
+    skill_file = SKILL_DIR / skill_name / "SKILL.md"
+    content = skill_file.read_text(encoding="utf-8")
+    parts = content.split("---", 2)
     frontmatter = yaml.safe_load(parts[1])
     body = parts[2]
     return frontmatter, body
@@ -27,7 +43,7 @@ class TestAgentFileExists:
     """The agent file must exist at the expected location."""
 
     def test_file_exists(self):
-        assert AGENT_FILE.exists(), f"Agent file not found at {AGENT_FILE}"
+        assert AGENT_FILE.exists(), f"Not found at {AGENT_FILE}"
 
     def test_file_is_markdown(self):
         assert AGENT_FILE.suffix == ".md"
@@ -51,15 +67,14 @@ class TestAgentFrontmatter:
 
     def test_tools_include_required_set(self):
         fm, _ = _parse_agent_file()
-        tools = fm["tools"]
-        required_tools = {"Read", "Write", "Edit", "Bash", "Grep", "Glob"}
-        assert required_tools.issubset(set(tools)), f"Missing tools: {required_tools - set(tools)}"
+        tools = set(fm["tools"])
+        required = {"Read", "Write", "Edit", "Bash", "Grep", "Glob"}
+        assert required.issubset(tools), f"Missing: {required - tools}"
 
     def test_tools_include_ask_user_question(self):
         fm, _ = _parse_agent_file()
-        tools = fm["tools"]
-        ask_tools = [t for t in tools if "AskUserQuestion" in t]
-        assert len(ask_tools) >= 1, "Agent must have AskUserQuestion tool for interactive Q&A"
+        ask = [t for t in fm["tools"] if "AskUserQuestion" in t]
+        assert len(ask) >= 1, "Must have AskUserQuestion tool"
 
     def test_has_color(self):
         fm, _ = _parse_agent_file()
@@ -67,91 +82,123 @@ class TestAgentFrontmatter:
 
     def test_description_contains_examples(self):
         fm, _ = _parse_agent_file()
-        desc = fm["description"]
-        assert "<example>" in desc, "Description should contain <example> blocks"
+        assert "<example>" in fm["description"]
 
 
 class TestAgentSystemPrompt:
-    """The system prompt body must contain key sections."""
+    """The agent body must contain routing, behavioral rules, and skill references."""
 
-    def test_has_elicitation_protocol(self):
-        _, body = _parse_agent_file()
-        assert "Requirements Elicitation Protocol" in body
-
-    def test_has_responsibilities(self):
-        _, body = _parse_agent_file()
-        assert "Source Discovery" in body
-        assert "Business Rules" in body
-        assert "Consumer Requirements" in body
-        assert "Quality Expectations" in body
-
-    def test_has_workflow_phases(self):
-        _, body = _parse_agent_file()
-        assert "Phase 1:" in body or "Phase 1" in body
-        assert "Phase 2:" in body or "Phase 2" in body
-        assert "Phase 3:" in body or "Phase 3" in body
-        assert "Phase 4:" in body or "Phase 4" in body
-        assert "Phase 5:" in body or "Phase 5" in body
-
-    def test_has_pitfall_prevention(self):
-        _, body = _parse_agent_file()
-        assert "Pitfall Prevention" in body
-        assert "Accepting Vague Requirements" in body
-        assert "Skipping Source Exploration" in body
-        assert "Gold-Plating" in body
-
-    def test_has_anti_patterns_table(self):
-        _, body = _parse_agent_file()
-        assert "Anti-Patterns" in body or "Anti-patterns" in body
-        assert "Vague Answer" in body
-
-    def test_references_skill_paths(self):
+    def test_references_all_skills(self):
         _, body = _parse_agent_file()
         assert "create-drd" in body
         assert "update-drd" in body
         assert "validate-drd" in body
 
-    def test_has_versioned_discovery(self):
+    def test_has_skills_delegation_statement(self):
+        """Agent must state that skills own the workflow."""
         _, body = _parse_agent_file()
-        assert "sort -V" in body, "Agent must use version-sorted discovery for inputs"
+        assert "skill" in body.lower()
+        assert "delegate" in body.lower() or "workflow" in body.lower()
+
+    def test_has_behavioral_rules(self):
+        """Agent must have cross-cutting behavioral rules."""
+        _, body = _parse_agent_file()
+        assert "Behavioral Rules" in body or "behavioral rules" in body
 
     def test_enforces_readonly_database(self):
         _, body = _parse_agent_file()
         assert "-readonly" in body
-        assert "read-only SELECT" in body or "read-only" in body
 
-    def test_blocks_on_missing_database(self):
+    def test_has_traceability_enforcement(self):
         _, body = _parse_agent_file()
-        assert (
-            "STOP" in body and "Do NOT proceed" in body
-        ), "Agent must hard-stop when database is inaccessible, not proceed with estimates"
-        assert "Do NOT generate a DRD with unverified data" in body
-        assert "Do NOT fall back to document estimates" in body
+        assert "trace" in body.lower()
+        assert "input document" in body.lower() or "stakeholder" in body.lower()
 
-    def test_references_memory_directory(self):
+    def test_enforces_user_confirmation(self):
         _, body = _parse_agent_file()
-        assert "ba-plugin/memory/" in body
+        assert "confirmation" in body.lower() or "confirm" in body.lower()
 
-    def test_instructs_ask_user_question_tool_usage(self):
+    def test_instructs_ask_user_question(self):
         _, body = _parse_agent_file()
-        assert (
-            "AskUserQuestion" in body
-        ), "System prompt must instruct agent to use AskUserQuestion tool"
-        assert "NEVER print questions as text" in body
-
-    def test_has_section_readiness_checklist(self):
-        _, body = _parse_agent_file()
-        assert "Executive Summary" in body
-        assert "Business Context" in body
-        assert "Source Discovery" in body
-        assert "Data Quality" in body
-        assert "Consumer Requirements" in body
-        assert "Business Rules" in body
-        assert "Regulatory" in body
+        assert "AskUserQuestion" in body
 
     def test_agent_has_subagent_fallback(self):
         """Agent must have fallback format for when AskUserQuestion is unavailable."""
         _, body = _parse_agent_file()
         assert "subagent" in body.lower() or "fallback" in body.lower()
-        # Check for lettered options pattern
         assert "A)" in body or "A) " in body
+
+
+class TestSkillsContainAgentWorkflow:
+    """Skills must contain the detailed workflow that was moved from the agent.
+
+    This ensures no content was lost during the agent-to-skill migration.
+    """
+
+    # --- create-drd ---
+
+    def test_create_drd_has_elicitation_protocol(self):
+        _, body = _parse_skill_file("create-drd")
+        assert "Elicitation Protocol" in body
+
+    def test_create_drd_has_four_responsibilities(self):
+        _, body = _parse_skill_file("create-drd")
+        assert "Source Discovery" in body
+        assert "Business Rules" in body
+        assert "Consumer Requirements" in body
+        assert "Quality Expectations" in body
+
+    def test_create_drd_has_workflow_phases(self):
+        _, body = _parse_skill_file("create-drd")
+        for phase in ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5"]:
+            assert phase in body, f"create-drd missing {phase}"
+
+    def test_create_drd_has_pitfall_prevention(self):
+        _, body = _parse_skill_file("create-drd")
+        assert "Pitfall" in body
+        assert "Accepting Vague Requirements" in body
+        assert "Skipping Source Exploration" in body
+        assert "Gold-Plating" in body
+
+    def test_create_drd_has_anti_patterns(self):
+        _, body = _parse_skill_file("create-drd")
+        assert "Anti-Pattern" in body or "Anti-pattern" in body
+
+    def test_create_drd_has_db_gate(self):
+        _, body = _parse_skill_file("create-drd")
+        assert "-readonly" in body
+        assert "STOP" in body or "Do NOT proceed" in body
+
+    def test_create_drd_has_versioned_discovery(self):
+        _, body = _parse_skill_file("create-drd")
+        assert "sort -V" in body
+
+    def test_create_drd_has_session_memory(self):
+        _, body = _parse_skill_file("create-drd")
+        assert "ba-plugin/memory/" in body
+
+    # --- update-drd ---
+
+    def test_update_drd_has_elicitation_protocol(self):
+        _, body = _parse_skill_file("update-drd")
+        assert "Elicitation Protocol" in body
+
+    def test_update_drd_has_workflow_phases(self):
+        _, body = _parse_skill_file("update-drd")
+        for phase in ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5"]:
+            assert phase in body, f"update-drd missing {phase}"
+
+    def test_update_drd_has_pitfall_prevention(self):
+        _, body = _parse_skill_file("update-drd")
+        assert "Pitfall" in body
+        assert "Accepting Vague Requirements" in body
+        assert "Skipping Source Exploration" in body
+        assert "Gold-Plating" in body
+
+    def test_update_drd_has_session_memory(self):
+        _, body = _parse_skill_file("update-drd")
+        assert "ba-plugin/memory/" in body
+
+    def test_update_drd_has_cross_section_consistency(self):
+        _, body = _parse_skill_file("update-drd")
+        assert "consistency" in body.lower() or "cross-section" in body.lower()

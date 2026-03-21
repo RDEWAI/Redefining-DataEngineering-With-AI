@@ -6,10 +6,26 @@ description: >
   field-level validation rules, referential integrity checks, statistical
   distribution tests, reconciliation rules, freshness/SLA monitoring, and an
   alert/escalation framework.
-  Use when the user asks to create, generate, or draft a DQS, or when an STM
-  needs to be translated into data quality rules.
+  Also known as: data quality rules, DQ specification, quality gate definition,
+  validation rule set, data quality framework.
+  Input formats: STM (.xlsx) + DMS (.md) + DRD (.md) + DQ standards (.md).
+  Output format: Markdown (.md) DQS document.
+  Use when the user asks to:
+  - Create, generate, draft, or write a DQS
+  - Define data quality rules for a pipeline
+  - Translate STM mappings into validation rules
+  - "What quality checks do we need?"
+  - Start a new data quality specification
 argument-hint: "[stm-file-path]"
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+context: fork
+hooks:
+  before:
+    - matcher: Bash
+      script: "${CLAUDE_PLUGIN_ROOT}/scripts/enforce-readonly-queries.py"
+  after:
+    - matcher: "Write|Edit"
+      script: "${CLAUDE_PLUGIN_ROOT}/scripts/validate-dqs-hook.py"
 ---
 
 # Create Data Quality Specification
@@ -27,252 +43,290 @@ Data Quality Specifications (DQS) that define validation rules, statistical
 baselines, reconciliation checks, and alert/escalation frameworks across all
 Medallion layers.
 
-## Step 0: Read the STM
+---
 
-If the user specifies an STM path via `$ARGUMENTS`, read that file. Otherwise,
-discover the latest STM:
+## DQ Elicitation Protocol
 
-```bash
-LATEST_STM_DIR=$(ls -d outputs/stm/v* | sort -V | tail -1)
-ls -t "$LATEST_STM_DIR"/*.xlsx 2>/dev/null || ls -t "$LATEST_STM_DIR"/*.md
-```
+This is your most important behavior. You MUST ask clarifying questions and
+gather complete design decisions BEFORE generating any DQS content. Never
+assume thresholds, severities, or alert channels — always ask.
 
-The STM is your primary input — every field-level rule must trace back to a
-mapping row in it.
+### Step 1: Read Available Inputs
 
-Extract from the STM:
-- Source tables and columns mapped
-- Target tables and columns per layer (bronze, silver, gold)
-- Transformation expressions applied to each column
-- Business rule references (BR-nnn)
-- Data type conversions and their potential failure modes
+Discover and read the latest version of all input documents:
 
-## Step 1: Read DMS and DRD
+1. **Latest STM** (output from Mapping Analyst):
 
-Discover and read the latest DMS:
+   If the user specifies an STM path via `$ARGUMENTS`, read that file. Otherwise:
+   ```bash
+   ls -d outputs/stm/v* | sort -V | tail -1
+   ```
+   Identify the most recent STM workbook. Extract mapping rules, source tables,
+   target tables, and transformation logic.
 
-```bash
-ls -d outputs/dms/v* | sort -V | tail -1
-```
+2. **Latest DMS** (output from Data Modeler):
+   ```bash
+   ls -d outputs/dms/v* | sort -V | tail -1
+   ```
+   Read the DMS for table schemas, primary keys, foreign key relationships, and
+   grain statements across all layers.
 
-Extract from the DMS:
-- Table schemas for all three layers (bronze, silver, gold)
-- Primary key and foreign key definitions
-- Grain statements (one row per what?)
-- SCD type assignments
-- Nullable constraints per column
+3. **Latest DRD** (output from BA Agent):
+   ```bash
+   ls -d outputs/drd/v* | sort -V | tail -1
+   ```
+   Extract data quality expectations, SLA requirements, and compliance needs.
 
-Discover and read the latest DRD:
+4. **DQ Engineer inputs**:
+   ```bash
+   ls -d inputs/dqs/v* | sort -V | tail -1
+   ```
+   Read all files in that folder:
+   - `dq-standards.md` — enterprise DQ rule standards, severity definitions
+   - `sla-definitions.md` — consumer freshness requirements and tolerances
+   - `se-config-template.yaml` — Spark-Expectations environment config
 
-```bash
-ls -d outputs/drd/v* | sort -V | tail -1
-```
+5. **Prior session notes** from `dq-engineer-plugin/memory/` (if any exist)
 
-Extract from the DRD:
-- Data quality expectations (Section 3)
-- Consumer SLA requirements (Section 4.3 and 4.4)
-- Critical fields that must never be null
-- Referential integrity requirements
-- Regulatory compliance requirements (Section 7)
+### Step 2: Assess Gaps Per DQS Section
 
-## Step 1.5: Read DQ Engineer Inputs
-
-Discover and read all DQ engineer input documents:
-
-```bash
-ls -d inputs/dqs/v* | sort -V | tail -1
-```
-
-Read all files in that version folder:
-
-| Input | Filename | What to extract |
-|-------|----------|----------------|
-| **DQ Standards** | `dq-standards.md` | Severity definitions, rule ID formats, threshold defaults |
-| **SLA Definitions** | `sla-definitions.md` | Consumer freshness requirements, reconciliation tolerances |
-| **SE Config Template** | `se-config-template.yaml` | Spark-Expectations environment structure |
-
-If any input is missing, document the gap in the DQS's Open Questions section
-with `[TO BE DETERMINED - requires input from {source}]`.
-
-## Step 1.7: Requirements Analysis (Q&A Loop)
-
-After gathering all inputs, assess whether you have enough information to make
-DQ design decisions for each DQS section.
-
-### Assess gaps per DQS section
-
-Build an internal checklist:
+After reading inputs, evaluate completeness for each DQS section. Build an
+internal checklist:
 
 | DQS Section | Required Information | Status |
 |---|---|---|
-| **1. Overview** | Severity definitions, rule ID conventions confirmed | ? |
-| **2. Field-Level Validation Rules** | Rules for bronze, silver, AND gold | ? |
-| **3. Referential Integrity** | FK checks with orphan actions | ? |
-| **4. Statistical Distribution** | Baselines and thresholds per table | ? |
-| **5. Reconciliation Rules** | Source-to-target tolerances confirmed | ? |
-| **6. Freshness/SLA** | Per-consumer latency targets | ? |
-| **7. Alert/Escalation** | Severity routing, notification channels | ? |
-| **8. Traceability** | Rule-to-DRD and rule-to-STM mapping | ? |
+| **Overview** | Severity definitions, rule ID conventions | ? |
+| **Field-Level Validation Rules** | Rules for bronze, silver, AND gold layers | ? |
+| **Referential Integrity** | FK checks across all layers | ? |
+| **Statistical Distribution** | Baselines and thresholds per table | ? |
+| **Reconciliation** | Source-to-target count and sum comparisons | ? |
+| **Freshness/SLA** | Per-consumer latency targets and alert channels | ? |
+| **Alert/Escalation** | Severity routing, response times, notification channels | ? |
+| **Traceability** | Rule-to-DRD and rule-to-STM mapping | ? |
 
 Mark each section as COMPLETE, PARTIAL, or MISSING.
 
-### Ask targeted questions
+### Step 3: Ask Targeted Questions Using AskUserQuestion Tool
 
 For every section that is PARTIAL or MISSING, call the `AskUserQuestion` tool.
-Ask 1-4 questions per call, each with 2-4 structured options.
 
-**Example tool call for Reconciliation gaps:**
+**AskUserQuestion tool schema — every call MUST match this format exactly:**
 ```json
 {
   "questions": [
     {
-      "question": "What row-count tolerance applies to gold-layer reconciliation?",
-      "header": "Reconcile",
+      "question": "The full question text",
+      "header": "Short Tag",
       "multiSelect": false,
       "options": [
-        { "label": "±0.1% strict", "description": "Financial-grade tolerance" },
-        { "label": "±1% standard", "description": "Standard enterprise DQ" },
-        { "label": "±5% relaxed", "description": "Research/dev tolerance" }
-      ]
-    },
-    {
-      "question": "Should aggregate sum checks be included for financial columns?",
-      "header": "Sum Checks",
-      "multiSelect": false,
-      "options": [
-        { "label": "Yes, all sums", "description": "Compare all numeric aggregates" },
-        { "label": "Key columns only", "description": "Only DRD-identified financial cols" },
-        { "label": "No sum checks", "description": "Row count only" }
+        { "label": "Option A", "description": "What this option means" },
+        { "label": "Option B", "description": "What this option means" }
       ]
     }
   ]
 }
 ```
 
-**Rules:**
+**Required fields per question:**
+- `question` (string): The complete question text
+- `header` (string): Short label — **max 12 characters**
+- `multiSelect` (boolean): `true` to allow multiple selections
+- `options` (array of 2-4 objects): Each with `label` (1-5 words) and
+  `description`
+
+**Example — Alert Framework gaps:**
+```json
+{
+  "questions": [
+    {
+      "question": "What is the notification channel for CRITICAL DQ failures?",
+      "header": "Alerts",
+      "multiSelect": false,
+      "options": [
+        { "label": "PagerDuty", "description": "On-call paging with escalation" },
+        { "label": "Slack + email", "description": "Slack channel + email digest" },
+        { "label": "Email only", "description": "Email to DQ team distribution list" }
+      ]
+    },
+    {
+      "question": "What tolerance applies to gold-layer reconciliation checks?",
+      "header": "Reconcile",
+      "multiSelect": false,
+      "options": [
+        { "label": "\u00b10.1% strict", "description": "Financial-grade row count tolerance" },
+        { "label": "\u00b11% standard", "description": "Standard enterprise tolerance" },
+        { "label": "\u00b15% relaxed", "description": "Development/research tolerance" }
+      ]
+    }
+  ]
+}
+```
+
+**Rules for asking questions:**
 - ALWAYS call the AskUserQuestion tool — NEVER print questions as text
-- Ask questions section-by-section, not all at once
+- Ask 1-4 questions per call, grouped by DQS section
 - After receiving answers, assess whether follow-ups are needed
+- If an answer is vague, call AskUserQuestion again with more specific options
 
-### Enforce anti-patterns
+### Step 4: Iterate Until Complete
 
-If an answer is vague, use `AskUserQuestion` again to probe for specifics:
+After each round of user answers:
+1. Update the checklist — which sections moved from PARTIAL to COMPLETE?
+2. Check for new ambiguity — did the answer introduce undefined terms?
+3. Check for contradictions — does this answer conflict with the SLA definitions?
+4. If gaps remain, use `AskUserQuestion` again with follow-up questions
 
-| Vague Answer | Your Follow-Up |
-|---|---|
-| "Standard thresholds" | "Which enterprise standard? What numeric value per DQ standards doc?" |
-| "Alert the team" | "Which channel (PagerDuty/Slack/email)? Response time for CRITICAL?" |
-| "Check important fields" | "Which exact columns? Which DRD section identifies them as critical?" |
-| "No reconciliation needed" | "Which DRD section confirms this? Who signed off on skipping reconciliation?" |
-| "Alert threshold is obvious" | "What is the exact error_drop_threshold value — a number, not a concept?" |
+**You may need 2, 3, or more rounds. That is expected and correct.**
 
-### Confirm readiness
+### Step 5: Confirm Readiness
 
-When all sections are COMPLETE, present a summary of your planned DQ design,
-then call `AskUserQuestion` to confirm:
+When all sections are COMPLETE, present a summary of design decisions, then call
+`AskUserQuestion` to confirm:
 
 ```json
 {
   "questions": [
     {
-      "question": "I've gathered design decisions for all DQS sections (summary above). Should I proceed to generate the DQS?",
+      "question": "I've gathered design decisions for all DQS sections (summary above). Is this complete and accurate? Should I proceed to generate the DQS?",
       "header": "Proceed?",
       "multiSelect": false,
       "options": [
         { "label": "Yes, generate", "description": "Proceed to generate the DQS document" },
-        { "label": "No, corrections", "description": "I have corrections or additions" }
+        { "label": "No, corrections", "description": "I have corrections or additions to make" }
       ]
     }
   ]
 }
 ```
 
-Only proceed after user confirms.
+Only proceed to DQS generation after user confirms.
 
-## Step 1.9: Database Gate (REQUIRED — cannot skip)
+### Anti-Patterns to Enforce During Q&A
 
-**Do NOT proceed to Step 2 without verified row counts for statistical baselines.**
+You MUST reject vague or ambiguous answers and ask for specifics:
 
-A DQS built on estimates instead of actual table volumes produces incorrect
-statistical thresholds that either miss real anomalies or generate constant
-false alarms.
+| Vague Answer | Your Follow-Up |
+|---|---|
+| "Standard thresholds" | "What specific numeric tolerance? Which DRD section specifies the acceptable null rate?" |
+| "Alert the team" | "Which channel — PagerDuty, Slack, or email? What response time is required for CRITICAL?" |
+| "Check the important fields" | "Which specific columns are flagged CRITICAL in the DRD? List them." |
+| "no reconciliation" | "Which DRD section confirms reconciliation is out of scope? Who signed off on this?" |
+| "missing alert threshold" for a rule | "What is the exact numeric threshold that triggers this alert? Per DRD SLA?" |
 
-### Verify data availability
+If the user insists on proceeding without specifics, document the gap as:
+`[TBD - requires decision from {stakeholder name}]` with an assigned
+owner and due date in the Open Questions section.
 
-```bash
-ls -la data/duckdb/raw.db 2>/dev/null || echo "Database not found"
-```
+---
 
-### If database is missing — STOP
+## Four Responsibilities
 
-Call `AskUserQuestion` to inform the user and block:
+Every DQS engagement must cover these four areas. If any area is incomplete,
+the DQS is not ready for handoff to the engineering team.
 
-```json
-{
-  "questions": [
-    {
-      "question": "The source database is not accessible. I cannot set accurate statistical baselines without real row counts. How would you like to resolve this?",
-      "header": "DB Missing",
-      "multiSelect": false,
-      "options": [
-        { "label": "Set up DB", "description": "I'll set up the database now" },
-        { "label": "Different path", "description": "Database is at a different path" },
-        { "label": "Use DRD counts", "description": "Use DRD-verified row counts instead" }
-      ]
-    }
-  ]
-}
-```
+### 1. Field-Level Validations
+- Define NOT NULL, FORMAT, RANGE, ENUM, and UNIQUENESS checks per column
+- Cover **bronze, silver, AND gold layers** — never validate gold-layer-only
+  (gold layer only coverage misses upstream defects that propagate silently)
+- Assign severity: CRITICAL (halt/reject), WARNING (log/quarantine), INFO (monitor)
+- Reference the STM column that feeds each rule
+- Use rule IDs: `DQ-FLD-{nnn}` (001, 002, ...)
 
-**Do NOT proceed with guessed baselines.**
+### 2. Referential Integrity
+- Define FK checks for all parent-child relationships in the DMS
+- Specify the orphan action: Reject, Default SK, or Quarantine
+- Cover Silver (normalized FK) and Gold (surrogate key) relationships
+- Use rule IDs: `DQ-REF-{nnn}`
 
-### Query actual data
+### 3. Statistical Distribution
+- Establish row count baselines and tolerance thresholds per table per layer
+- Include null rate tests, value distribution checks, and anomaly baselines
+- Specify the monitoring frequency (per batch, daily, weekly)
+- Use rule IDs: `DQ-STA-{nnn}`
 
-Once the database is accessible, run these queries (all with `-readonly`):
+### 4. Reconciliation
+- Compare source table counts to target table counts across layers
+- Compare financial/aggregate sums where the DRD requires it
+- Define row-level tolerances (e.g., +/-0.1% for financial)
+- Use rule IDs: `DQ-REC-{nnn}`
 
-**1. Row counts for statistical baselines:**
-```bash
-duckdb data/duckdb/raw.db -readonly -c "
-  SELECT table_schema, table_name, estimated_size
-  FROM duckdb_tables()
-  ORDER BY estimated_size DESC;
-"
-```
+---
 
-**2. Null rate sampling for key columns:**
-```bash
-duckdb data/duckdb/raw.db -readonly -c "
-  SELECT COUNT(*) AS total,
-         SUM(CASE WHEN id IS NULL THEN 1 ELSE 0 END) AS null_id,
-         SUM(CASE WHEN BIRTHDATE IS NULL THEN 1 ELSE 0 END) AS null_birthdate
-  FROM synthea.patients;
-"
-```
+## Workflow
 
-Use actual volumes for statistical baseline thresholds.
+### Phase 1: Understand the Request
+1. Discover the latest STM version folder and identify the workbook:
+   `ls -d outputs/stm/v* | sort -V | tail -1`
+2. Discover the latest DMS version folder and read all files:
+   `ls -d outputs/dms/v* | sort -V | tail -1`
+3. Discover the latest DRD version folder and read all files:
+   `ls -d outputs/drd/v* | sort -V | tail -1`
+4. Discover the latest DQ inputs version folder and read all files:
+   `ls -d inputs/dqs/v* | sort -V | tail -1`
+5. Read prior session notes from `dq-engineer-plugin/memory/` if they exist
+6. Identify the DQ problem, upstream artifacts, and success criteria
 
-## Pitfall Prevention
+### Phase 2: Elicit DQ Design Decisions (Q&A Loop)
+1. Assess gaps per DQS section (see Elicitation Protocol above)
+2. Ask targeted questions for each gap using `AskUserQuestion`
+3. Iterate until all sections have specific, justified, non-vague decisions
+4. Confirm the complete DQ design summary with the user
 
-### Pitfall 1: Gold-Layer-Only Validation
-- **Never** define rules for gold only while ignoring bronze and silver
-- gold layer only coverage misses upstream defects that propagate silently
-- "Validate only the analytical tables" is not acceptable without explicit
-  sign-off and documented rationale
-- Always start with bronze ingestion checks, then silver FK/type checks, then
-  gold uniqueness and aggregation checks
+**This is the longest and most important phase. Do not rush through it.**
 
-### Pitfall 2: No Reconciliation Rules
-- **ABSOLUTE RULE: Never deliver a DQS without at least one reconciliation check.**
-- Compare source row count to gold row count for every major fact table
-- If the user says "no reconciliation", ask which DRD stakeholder signed off
-  and document with `[TBD - confirmed skipped by {stakeholder} on {date}]`
+### Phase 3: Validate Source Data (GATE — cannot proceed without DB access)
 
-### Pitfall 3: Missing Alert Thresholds
-- Every WARNING and CRITICAL rule must have a defined numeric threshold
-- "missing alert threshold" means the rule cannot be deployed in SE
-- document missing thresholds as `[TBD - threshold to be defined by DQ lead]`
+1. Read infrastructure constraints for database connection details
+2. Verify the source database exists:
+   ```bash
+   ls -la data/duckdb/raw.db 2>/dev/null || echo "Database not found"
+   ```
+3. **If the database is missing or inaccessible, STOP. Do NOT proceed to Phase 4.**
+   Call `AskUserQuestion` to inform the user:
+   ```json
+   {
+     "questions": [
+       {
+         "question": "The source database is not accessible. I cannot generate statistical baselines without actual row counts. How would you like to resolve this?",
+         "header": "DB Missing",
+         "multiSelect": false,
+         "options": [
+           { "label": "Set up DB", "description": "I'll set up the database now" },
+           { "label": "Different path", "description": "The database is at a different path" },
+           { "label": "Use DRD counts", "description": "Use DRD-verified estimates instead" }
+         ]
+       }
+     ]
+   }
+   ```
 
-## Step 2: Read the template
+4. Once database is accessible, verify row counts using `-readonly`:
+   ```bash
+   duckdb data/duckdb/raw.db -readonly -c \
+     "SELECT table_schema, table_name, estimated_size FROM duckdb_tables();"
+   ```
+
+5. Run null rate sampling for key columns:
+   ```bash
+   duckdb data/duckdb/raw.db -readonly -c "
+     SELECT COUNT(*) AS total,
+            SUM(CASE WHEN id IS NULL THEN 1 ELSE 0 END) AS null_id,
+            SUM(CASE WHEN BIRTHDATE IS NULL THEN 1 ELSE 0 END) AS null_birthdate
+     FROM synthea.patients;
+   "
+   ```
+
+   Use actual volumes for statistical baseline thresholds.
+
+**CRITICAL: All database queries MUST be read-only SELECT statements.**
+Always use `duckdb {db_path} -readonly -c "..."`.
+Never run INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, or TRUNCATE.
+
+### Phase 4: Generate the DQS
+
+**Prerequisite: Phase 3 must have verified volume data or DRD has verified counts.**
+
+#### 4a. Read the template
 
 Read the DQS template to understand the required structure:
 
@@ -283,39 +337,12 @@ cat dq-engineer-plugin/skills/create-dqs/DQS_template.j2
 For a complete example of a finished DQS, see
 [examples/sample-dqs.md](examples/sample-dqs.md).
 
-## Four Responsibilities
-
-Every DQS engagement must cover these four areas.
-
-### 1. Field-Level Validations
-- Define NOT NULL, FORMAT, RANGE, ENUM, and UNIQUENESS checks per column
-- Cover bronze, silver, AND gold layers
-- Assign severity: CRITICAL (halt/reject), WARNING (log/quarantine), INFO (monitor)
-- Reference the STM column feeding each rule
-- Rule IDs: `DQ-FLD-{nnn}`
-
-### 2. Referential Integrity
-- Define FK checks for all parent-child relationships in the DMS
-- Specify orphan action: Reject, Default SK, or Quarantine
-- Rule IDs: `DQ-REF-{nnn}`
-
-### 3. Statistical Distribution
-- Establish row count baselines and tolerance thresholds per table per layer
-- Include null rate tests, value distribution checks
-- Rule IDs: `DQ-STA-{nnn}`
-
-### 4. Reconciliation
-- Compare source table counts to target table counts
-- Compare financial/aggregate sums where DRD requires it
-- Define tolerances (e.g., ±0.1% for financial)
-- Rule IDs: `DQ-REC-{nnn}`
-
-## Step 3: Generate the DQS
+#### 4b. Write the DQS
 
 Write the DQS in Markdown following the template structure. Cover all four
 responsibility areas.
 
-### Metadata Table
+**Metadata Table**
 
 Every DQS starts with this metadata table:
 
@@ -330,66 +357,58 @@ Every DQS starts with this metadata table:
 | **DMS Reference** | {DMS filename and version} |
 | **DRD Reference** | {DRD filename and version} |
 
-### Overview (Section 1)
-
+**Overview (Section 1)**
 - Define CRITICAL, WARNING, and INFO severity levels with actions
 - Document rule ID conventions (DQ-FLD, DQ-REF, DQ-STA, DQ-REC, DQ-FRS)
 - Reference the upstream STM and DMS
 
-### Field-Level Validation Rules (Section 2)
-
+**Field-Level Validation Rules (Section 2)**
 For each layer (bronze, silver, gold):
 - Table and column checked
 - Check type (NOT NULL, FORMAT, RANGE, ENUM, UNIQUE)
 - Expression or condition
 - Severity and action
 
-### Referential Integrity Rules (Section 3)
-
+**Referential Integrity Rules (Section 3)**
 For each FK relationship from DMS:
 - Child table and column
 - Parent table and column
 - Layer (Silver or Gold)
 - Orphan action and severity
 
-### Statistical Distribution Tests (Section 4)
-
+**Statistical Distribution Tests (Section 4)**
 For each key table per layer:
 - Metric (row count, null rate, value distribution)
 - Baseline value (from actual DB query or DRD estimate)
-- Threshold (±% or absolute)
+- Threshold (+/-% or absolute)
 - Monitoring frequency and alert severity
 
-### Reconciliation Rules (Section 5)
-
+**Reconciliation Rules (Section 5)**
 For each source-to-target pair:
 - Source table and target table
 - Comparison (COUNT, SUM, etc.)
-- Tolerance (e.g., ±0.1%)
+- Tolerance (e.g., +/-0.1%)
 - Frequency and escalation path
 
-### Freshness & SLA Monitoring (Section 6)
-
+**Freshness & SLA Monitoring (Section 6)**
 For each consumer from DRD Section 4.4:
 - Maximum acceptable latency
 - Check frequency
 - Alert channel
 - DRD reference
 
-### Alert & Escalation Framework (Section 7)
-
+**Alert & Escalation Framework (Section 7)**
 - Severity routing table with response times and notification channels
 - Threshold breach actions per environment (DEV/QA/PROD)
 - Escalation contacts
 
-### Traceability Matrix (Section 8)
-
+**Traceability Matrix (Section 8)**
 For each rule:
 - DRD requirement it satisfies
 - DMS section it implements
 - STM sheet it traces to
 
-## Step 4: Decision Documentation
+#### 4c. Decision Documentation
 
 For every major DQ design decision, document using this format:
 
@@ -401,7 +420,7 @@ For every major DQ design decision, document using this format:
 - **Trade-offs Accepted**: [what you give up]
 ```
 
-## Step 5: Save and validate
+#### 4d. Save the output
 
 Save the output to the latest version folder in `outputs/dqs/`:
 
@@ -411,17 +430,18 @@ LATEST_DQS_DIR=$(ls -d outputs/dqs/v* | sort -V | tail -1)
 
 Use naming convention: `DQS-{YYYY-MM-DD}-{short-name}.md`
 
-Then validate:
+### Phase 5: Validate and Record
 
-```bash
-uv run python dq-engineer-plugin/skills/validate-dqs/scripts/validate_dqs.py \
-  outputs/dqs/{filename}.md
-```
+1. Run the validator:
+   ```bash
+   uv run python dq-engineer-plugin/skills/validate-dqs/scripts/validate_dqs.py \
+     {dqs_path}
+   ```
+2. Fix all CRITICAL issues before presenting to the user
+3. Report WARNINGS and suggest fixes
+4. Report INFO items as improvement opportunities
 
-Fix any CRITICAL issues before finalizing. Report the validation summary
-to the user.
-
-## Step 6: Spark-Expectations YAML Rules (Auto-Generated)
+**Spark-Expectations YAML Rules (Auto-Generated)**
 
 The PostToolUse hook automatically generates per-table SE YAML files after
 DQS validation passes. No manual action needed — the files appear in
@@ -448,15 +468,234 @@ uv run python dq-engineer-plugin/skills/generate-se-rules/scripts/generate_se_ru
   -o outputs/dqs/{version}/se-rules/
 ```
 
-## Step 7: Session memory
+5. Write a session summary to `dq-engineer-plugin/memory/session-{YYYY-MM-DD}.md`:
+   - What was created (DQS filename, version)
+   - Key DQ design decisions and their rationale
+   - Upstream artifacts referenced (STM, DMS, DRD versions)
+   - Database row counts used for statistical baselines
+   - Validation results (CRITICAL/WARNING/INFO counts)
+   - SE YAML files generated (count, paths, validation status)
+   - Open questions that remain unresolved
 
-**Always write session notes regardless of outcome.** Write to
-`dq-engineer-plugin/memory/session-{YYYY-MM-DD}.md`:
+If the user corrected any output during this session, also append to
+`dq-engineer-plugin/memory/learnings-queue.jsonl`:
+```json
+{"skill": "create-dqs", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
+```
 
-- What was created (DQS filename, version)
-- Key DQ design decisions and their rationale
-- Upstream artifacts referenced (STM, DMS, DRD versions)
-- Database row counts used for statistical baselines
-- Validation results (CRITICAL/WARNING/INFO counts)
-- SE YAML files generated (count, paths, validation status)
-- Open questions that remain unresolved
+---
+
+## Pitfall Prevention
+
+Guard against these three common DQ engineer mistakes:
+
+### Pitfall 1: Gold-Layer-Only Validation
+- **Never** define rules for the gold layer only while ignoring bronze and silver
+- gold layer only validation misses upstream defects that silently propagate
+- When a stakeholder says "just validate the gold tables", ask: "Which bronze
+  ingestion checks will catch format errors before they reach silver? Which
+  silver FK checks prevent broken foreign keys from reaching gold?"
+- A DQS without bronze validation has no early-warning system
+
+### Pitfall 2: No Reconciliation Rules
+- **ABSOLUTE RULE: Never deliver a DQS without reconciliation checks.**
+  If the DRD has row count expectations, there MUST be at least one reconciliation
+  rule comparing source counts to target counts. "no reconciliation" is not
+  acceptable unless a DRD stakeholder explicitly signed off with documented
+  rationale.
+- Always verify: Does the gold table row count match the source row count within
+  tolerance? Are financial sums preserved through the pipeline?
+- Run at minimum: COUNT(*) comparison between source and gold for each fact table
+
+### Pitfall 3: Missing Alert Threshold Definitions
+- **Every** WARNING and CRITICAL rule must have a defined numeric threshold
+- "missing alert threshold" means the rule cannot fire in Spark-Expectations
+- Do not create rules without specifying: what constitutes a failure,
+  what is the tolerance, and which channel receives the notification
+- Use the format `error_drop_threshold: 0.001` for 0.1% tolerance
+
+---
+
+## Decision Documentation Standard
+
+All major DQ design decisions MUST follow this format. Tests check for
+"Options Considered" and "Rationale":
+
+```markdown
+### Decision: [Decision Title]
+
+**Options Considered**:
+1. Option A — brief description
+2. Option B — brief description
+
+**Selected**: Option A
+
+**Rationale**: Why Option A was chosen over alternatives.
+
+**Trade-off**: What is sacrificed by choosing Option A (and why it is
+acceptable).
+```
+
+---
+
+## DQS Sections Reference
+
+A complete DQS contains these sections:
+
+- **Overview**: Business context, severity definitions (CRITICAL/WARNING/INFO),
+  rule ID conventions (DQ-FLD, DQ-REF, DQ-STA, DQ-REC, DQ-FRS)
+- **Field-Level Validation Rules**: NOT NULL, FORMAT, RANGE, ENUM, UNIQUENESS
+  rules across bronze, silver, and gold layers
+- **Referential Integrity**: FK checks with orphan action and severity
+- **Statistical Distribution Tests**: Row count baselines, null rates, value
+  distribution checks with numeric thresholds
+- **Reconciliation Rules**: Source-to-target count and sum comparisons with
+  tolerance
+- **Freshness/SLA Monitoring**: Per-consumer latency targets and monitoring
+  frequency
+- **Alert/Escalation Framework**: Severity routing table, response times,
+  notification channels, Traceability contacts
+- **Traceability Matrix**: Rule-to-DRD requirement and rule-to-STM mapping
+- **Version History**: Change log entries
+
+---
+
+## Severity Definitions
+
+| Severity | Pipeline Action | Example Use Case |
+|----------|----------------|------------------|
+| **CRITICAL** | Halt pipeline or reject record | NULL in primary key, broken FK |
+| **WARNING** | Log and continue / quarantine row | Out-of-range date, unexpected enum |
+| **INFO** | Record for monitoring only | Slightly elevated null rate |
+
+---
+
+## Rule ID Conventions
+
+All rules follow `DQ-{CATEGORY}-{nnn}` format:
+
+| Prefix | Category | Example |
+|--------|----------|---------|
+| `DQ-FLD` | Field-Level Validation | DQ-FLD-001 |
+| `DQ-REF` | Referential Integrity | DQ-REF-001 |
+| `DQ-STA` | Statistical Distribution | DQ-STA-001 |
+| `DQ-REC` | Reconciliation | DQ-REC-001 |
+| `DQ-FRS` | Freshness/SLA | DQ-FRS-001 |
+
+---
+
+## Spark-Expectations Integration
+
+When generating SE rules (skill: **generate-se-rules**), rules map to
+spark-expectations rule types:
+
+| Rule Type | SE Config Key | When to Use |
+|-----------|--------------|-------------|
+| `row_dq` | Per-row validation | NOT NULL, FORMAT, RANGE, ENUM, FK checks |
+| `agg_dq` | Aggregate validation | Row count, null rate, sum comparisons |
+| `query_dq` | Custom SQL query | Cross-table reconciliation, complex checks |
+
+**spark-expectations** (also known as spark_expectations) requires 17 columns
+in the rules table (15 per-rule SE columns + `product_id` and `table_name` at
+the top/dq_env level). The `generate-se-rules` skill handles this schema
+automatically.
+
+The `create-dqs` skill automatically generates SE YAML files after DQS
+creation, once validation passes with zero CRITICAL issues.
+
+Each rule maps to `action_if_failed`:
+- `row_dq`: `ignore` (INFO), `drop` (WARNING, row_dq only), or `fail` (CRITICAL)
+- `agg_dq`: `ignore` (WARNING/INFO) or `fail` (CRITICAL)
+- `query_dq`: `ignore` (WARNING/INFO) or `fail` (CRITICAL)
+
+Use `enable_error_drop_alert` (boolean) to alert on error drops. Do NOT use
+`enable_error_drop_analysis` — that field is not part of the SE schema.
+
+### Expectation Format Rules (Critical for SE Compatibility)
+
+SE evaluates expectations differently per rule_type. Getting this wrong means
+rules silently fail or error at runtime.
+
+**row_dq** — `F.expr(expectation)` per row -> must return boolean
+- Valid: `patient_id IS NOT NULL`, `age > 0`, `lower(trim(gender)) in ('male','female')`
+- Invalid: SELECT subqueries, CASE WHEN, BETWEEN
+
+**agg_dq** — parsed via regex -> `agg_func(col) operator value`
+- Valid: `count(*) > 0`, `sum(cost) > 10000`, `count(*) > 900 and count(*) < 1100`
+- Invalid: `COUNT(CASE WHEN ...)`, complex expressions that don't match regex
+
+**query_dq** — wrapped as `SELECT (expectation) AS OUTPUT` -> int, non-zero = pass
+- Valid: `CASE WHEN (...) = 0 THEN 1 ELSE 0 END FROM (...) s, (...) t`
+- Invalid: Starting with SELECT (double-wrapping), returning rows via WHERE
+
+### SE Field Semantics (from source code)
+
+**Cascade**: `COLUMN_DEFAULTS -> file defaults -> dq_env[env] -> per-rule override`
+Per-rule values always win. dq_env provides the fallback for rules without explicit fields.
+
+**action_if_failed** — dq_env default must be safe for ALL rule types:
+- `row_dq` allows: `ignore`, `drop`, `fail`
+- `agg_dq` allows: `ignore`, `fail` only (NO `drop`)
+- `query_dq` allows: `ignore`, `fail` only (NO `drop`)
+- Therefore dq_env default must be `ignore` or `fail` — NEVER `drop`
+- Recommended: DEV=`ignore`, QA=`ignore`, PROD=`fail`
+
+**error_drop_threshold** — integer percentage (NOT decimal):
+- `5` means "alert if >5% of rows dropped"
+- `0` means "alert on any drop"
+- SE stores as `int`, compares against `((input - output) / input) * 100`
+
+**priority** — controls notification channel routing:
+- `high` -> all channels including PagerDuty
+- `medium` -> email + Slack + Teams
+- `low` -> Slack only (filtered by `_min_priority_*` settings)
+
+**enable_for_source_dq_validation** — 3-phase pipeline:
+- Phase 1 (source=true): agg_dq + query_dq on raw input before row filtering
+- Phase 2: row_dq always runs
+- Phase 3 (target=true): agg_dq + query_dq on filtered output
+- Set `source: true` for query_dq reconciliation rules (check both sides)
+
+---
+
+## Writing Style
+- **Specific over vague**: "DQ-FLD-001: patient_id IS NOT NULL (CRITICAL — halt)"
+  not "validate the patient ID"
+- **Complete tables**: Every markdown table must have data rows, not just headers
+- **No empty sections**: Use `[TBD - requires decision from {source}]` for
+  missing information, never leave a section blank
+- **Traceable**: Each rule must cite the upstream STM column or DRD requirement
+  it implements
+- **Layered**: Rules must span bronze, silver, AND gold — never gold layer only
+
+## File Conventions
+- New DQS: `outputs/dqs/v{N}/DQS-{YYYY-MM-DD}-{short-name}.md`
+- SE rules: `outputs/dqs/v{N}/se-rules/se-rules-{table-name}.yaml`
+- Input documents: `inputs/dqs/v{N}/`
+- Session memory: `dq-engineer-plugin/memory/session-{YYYY-MM-DD}.md`
+- Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
+
+## Database Access
+
+**CRITICAL: All database queries MUST be read-only SELECT statements.**
+Always use `duckdb {db_path} -readonly -c "..."`.
+Never run INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, or TRUNCATE.
+
+## Learnings & Corrections
+
+> **Meta-rules for adding learnings:**
+> 1. Each learning MUST be an absolute directive ("Always X", "Never Y")
+> 2. Lead with the problem, then the fix: "When X happens, do Y"
+> 3. Include a concrete command or example, not just prose
+> 4. One learning per bullet — no compound rules
+> 5. Delete learnings that contradict each other; keep the newer one
+> 6. Maximum 20 learnings per skill — if at capacity, merge related items
+
+### Active Learnings
+
+_No learnings recorded yet. Learnings are added when corrections occur during skill execution._
+
+<!-- Example format:
+- **L-001** (2026-03-20): Always use CAST(col AS DATE) not TO_DATE(col) for date conversions.
+- **L-002** (2026-03-21): Never generate placeholder SLA values — ask the user for specific numeric targets.
+-->

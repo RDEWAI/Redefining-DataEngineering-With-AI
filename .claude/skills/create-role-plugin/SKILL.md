@@ -161,12 +161,16 @@ architect-plugin/skills/create-hld/HLD_template.j2
 architect-plugin/skills/update-hld/SKILL.md
 architect-plugin/skills/validate-hld/SKILL.md
 architect-plugin/skills/validate-hld/scripts/validate_hld.py
+architect-plugin/skills/apply-learnings/SKILL.md
+architect-plugin/skills/create-hld/evals/eval-cases.yaml
 architect-plugin/hooks/hooks.json
 architect-plugin/scripts/enforce-readonly-queries.py
 architect-plugin/scripts/validate-hld-hook.py
 tests/test_architect_agent_definition.py
 tests/test_validate_hld.py
 tests/test_validate_hld_hook.py
+tests/test_skill_frontmatter.py
+tests/test_skill_evals.py
 tests/conftest.py
 .claude-plugin/marketplace.json
 CLAUDE.md
@@ -202,6 +206,11 @@ AskUserQuestion answers from Step 1.
 | 16 | `tests/test_validate_hld.py` | `tests/test_validate_{artifact}.py` | validator imports, fixture names, check function names |
 | 17 | `tests/test_validate_hld_hook.py` | `tests/test_validate_{artifact}_hook.py` | hook script path, output path pattern, fixture names |
 | 18 | — | `{plugin_name}/README.md` | Plugin README with overview, skills, usage, directory layout |
+| 19 | `architect-plugin/skills/apply-learnings/SKILL.md` | `{plugin_name}/skills/apply-learnings/SKILL.md` | Replace `architect-plugin` with `{plugin_name}` |
+| 20 | — | `{plugin_name}/memory/learnings-queue.jsonl` | empty file |
+| 21 | `architect-plugin/skills/create-hld/evals/eval-cases.yaml` | `{plugin_name}/skills/create-{artifact}/evals/eval-cases.yaml` | artifact names, section names, upstream refs |
+| 22 | — | `{plugin_name}/skills/update-{artifact}/evals/eval-cases.yaml` | Adapted from create eval pattern: version increment, change log, preservation, validation |
+| 23 | — | `{plugin_name}/skills/validate-{artifact}/evals/eval-cases.yaml` | Adapted: valid passes, missing sections CRITICAL, empty sections WARNING |
 
 ### Critical Rules for Generation
 
@@ -227,6 +236,42 @@ agent's context at startup. The agent body should say "The full skill content
 is already injected into your context. Follow the skill workflow directly when
 needed." — NOT "invoke with Skill tool".
 See: https://code.claude.com/docs/en/sub-agents.md
+
+**Skills 2.0 patterns (ALL generated SKILL.md files MUST include):**
+- `context: fork` in frontmatter for create and update skills (NOT validate)
+- `hooks:` in frontmatter documenting before/after hook bindings:
+  - create/update: both `before` (enforce-readonly) and `after` (validate hook)
+  - validate: only `before` (enforce-readonly)
+- Expanded `description` with synonyms, input/output formats, and
+  "Use when the user asks to:" trigger list (5+ trigger phrases)
+- `## Learnings & Corrections` section at end of body with meta-rules for
+  adding learnings as absolute directives ("Always X", "Never Y")
+- Session memory step must include learnings-queue.jsonl logging instruction
+- Frontmatter template for create skills:
+  ```yaml
+  ---
+  name: create-{artifact}
+  description: >
+    Generates a {artifact_full} ({ARTIFACT}) from {upstream} and {role} inputs.
+    Also known as: {synonyms}.
+    Input formats: {upstream type} + {role inputs}.
+    Output format: {Markdown (.md) | Excel (.xlsx)} {ARTIFACT} document.
+    Use when the user asks to:
+    - Create, generate, draft, or write a {ARTIFACT}
+    - {domain-specific trigger phrases}
+    - Start a new {artifact} from the latest {upstream}
+  argument-hint: "[input-folder-path]"
+  allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+  context: fork
+  hooks:
+    before:
+      - matcher: Bash
+        script: "${CLAUDE_PLUGIN_ROOT}/scripts/enforce-readonly-queries.py"
+    after:
+      - matcher: "Write|Edit"
+        script: "${CLAUDE_PLUGIN_ROOT}/scripts/validate-{artifact}-hook.py"
+  ---
+  ```
 
 **Skill files (files #6, #9, #10) — MUST include agent content inline:**
 Skills run inline (not as subagents) and do NOT automatically load agent.md.
@@ -303,6 +348,7 @@ Generate `{plugin_name}/README.md` with:
 | create-{artifact} | `/{plugin_name}:create-{artifact}` | Generate a new {ARTIFACT} from upstream artifacts |
 | update-{artifact} | `/{plugin_name}:update-{artifact}` | Update an existing {ARTIFACT} with changes |
 | validate-{artifact} | `/{plugin_name}:validate-{artifact}` | Validate a {ARTIFACT} for completeness |
+| apply-learnings | `/{plugin_name}:apply-learnings` | Apply pending corrections to improve skills |
 
 ## Usage
 
@@ -325,16 +371,22 @@ Or invoke the agent directly:
 │   ├── create-{artifact}/
 │   │   ├── SKILL.md
 │   │   ├── {ARTIFACT}_template.j2
+│   │   ├── evals/eval-cases.yaml
 │   │   └── examples/sample-{artifact}.md
-│   ├── update-{artifact}/SKILL.md
-│   └── validate-{artifact}/
-│       ├── SKILL.md
-│       └── scripts/validate_{artifact}.py
+│   ├── update-{artifact}/
+│   │   ├── SKILL.md
+│   │   └── evals/eval-cases.yaml
+│   ├── validate-{artifact}/
+│   │   ├── SKILL.md
+│   │   ├── evals/eval-cases.yaml
+│   │   └── scripts/validate_{artifact}.py
+│   └── apply-learnings/SKILL.md
 ├── hooks/hooks.json
 ├── scripts/
 │   ├── validate-{artifact}-hook.py
 │   └── enforce-readonly-queries.py
 └── memory/
+    └── learnings-queue.jsonl
 ```
 
 ## Inputs
@@ -356,6 +408,7 @@ Run these commands and fix any issues:
 
 ```bash
 uv run pytest tests/test_{role_underscore}_agent_definition.py tests/test_validate_{artifact}.py tests/test_validate_{artifact}_hook.py -v
+uv run pytest tests/test_skill_frontmatter.py tests/test_skill_evals.py -v
 uv run ruff check {plugin_name}/ tests/test_{role_underscore}_agent_definition.py tests/test_validate_{artifact}.py tests/test_validate_{artifact}_hook.py
 uv run ruff format --check {plugin_name}/ tests/
 ```

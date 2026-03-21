@@ -1,3 +1,26 @@
+---
+name: validate-stm
+description: >
+  Validates a Source-to-Target Mapping (STM) Excel workbook for completeness
+  and quality. Checks all 8 required sheets, column headers, transformation
+  completeness, DMS traceability, and lineage coverage. Reports issues as
+  CRITICAL, WARNING, or INFO with suggested fixes.
+  Also known as: STM review, mapping quality check, transformation audit.
+  Input formats: STM Excel workbook (.xlsx).
+  Output format: Validation report with severity-ranked findings.
+  Use when the user asks to:
+  - Validate, check, review, verify, or audit an STM
+  - Assess STM completeness or mapping quality
+  - Find issues or gaps in transformation mappings
+  - Run quality checks on an STM before handoff
+argument-hint: "[stm-file-path]"
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+hooks:
+  before:
+    - matcher: Bash
+      script: "${CLAUDE_PLUGIN_ROOT}/scripts/enforce-readonly-queries.py"
+---
+
 # Validate STM
 
 Validate a Source-to-Target Mapping (STM) Excel workbook for completeness and quality.
@@ -49,3 +72,36 @@ transformations. The output format is .xlsx (not markdown).
    - Summary counts (CRITICAL / WARNING / INFO)
    - Specific issues found and fixes applied
    - Remaining warnings for user awareness
+
+### 6. Write Session Memory
+
+Save session summary to `mapping-analyst-plugin/memory/session-{YYYY-MM-DD}.md`:
+- File validated and outcome (PASS / FAIL)
+- CRITICAL and WARNING counts
+- Issues found and fixes applied
+- Open items for next session
+
+If the user corrected any output during this session, also append to
+`mapping-analyst-plugin/memory/learnings-queue.jsonl`:
+```json
+{"skill": "validate-stm", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
+```
+
+## Learnings & Corrections
+
+> **Meta-rules for adding learnings:**
+> 1. Each learning MUST be an absolute directive ("Always X", "Never Y")
+> 2. Lead with the problem, then the fix: "When X happens, do Y"
+> 3. Include a concrete command or example, not just prose
+> 4. One learning per bullet — no compound rules
+> 5. Delete learnings that contradict each other; keep the newer one
+> 6. Maximum 20 learnings per skill — if at capacity, merge related items
+
+### Active Learnings
+
+_No learnings recorded yet. Learnings are added when corrections occur during skill execution._
+
+<!-- Example format:
+- **L-001** (2026-03-20): Always use CAST(col AS DATE) not TO_DATE(col) for date conversions.
+- **L-002** (2026-03-21): Never generate placeholder SLA values — ask the user for specific numeric targets.
+-->

@@ -1,0 +1,45 @@
+skill: update-stm
+version: "1.0"
+cases:
+  - id: TC-001
+    name: "Version incremented in Summary sheet"
+    description: "Updated STM must have incremented version in Summary sheet"
+    inputs:
+      existing_artifact: "outputs/stm/v1/"
+      changes: "Add new column mapping for lab_results"
+    expected:
+      - type: content_contains
+        patterns: ["Version"]
+    success_criteria: "Version number incremented in Summary sheet"
+
+  - id: TC-002
+    name: "New mappings added to correct sheet"
+    description: "New column mappings appear in the appropriate layer sheet"
+    inputs:
+      existing_artifact: "outputs/stm/v1/"
+      changes: "Add bronze-to-silver mapping for lab_result_value"
+    expected:
+      - type: content_contains
+        patterns: ["lab_result_value"]
+    success_criteria: "New mapping appears in Bronze-to-Silver sheet"
+
+  - id: TC-003
+    name: "Unchanged sheets preserved"
+    description: "Sheets not affected by the update remain intact"
+    inputs:
+      existing_artifact: "outputs/stm/v1/"
+      changes: "Update null handling for one column"
+    expected:
+      - type: sheet_present
+        sheets: ["Source-to-Bronze", "Silver-to-Gold", "Lineage"]
+    success_criteria: "Unrelated sheets unchanged"
+
+  - id: TC-004
+    name: "Updated STM passes validation"
+    description: "After update, the modified STM still passes validation"
+    inputs:
+      existing_artifact: "outputs/stm/v1/"
+      changes: "Minor transformation expression fix"
+    expected:
+      - type: validation_pass
+    success_criteria: "Updated STM passes validate-stm"

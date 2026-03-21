@@ -4,10 +4,27 @@ description: >
   Converts a Data Quality Specification (DQS) markdown document into per-table
   Spark-Expectations YAML rule files. Reads the DQS, groups rules by target
   table, and generates one YAML file per table compatible with
-  spark-expectations >= 2.6.0. Use when the user asks to generate SE rules,
-  convert DQS to YAML, or produce Spark-Expectations configs from a DQS.
+  spark-expectations >= 2.6.0.
+  Also known as: SE rules generation, Spark-Expectations config, DQS-to-YAML
+  conversion, quality rules export.
+  Input formats: DQS Markdown (.md) file.
+  Output format: Per-table YAML files in outputs/dqs/v{N}/se-rules/.
+  Use when the user asks to:
+  - Generate SE rules or Spark-Expectations YAML
+  - Convert DQS to YAML rule files
+  - Produce Spark-Expectations configs from a DQS
+  - Export quality rules for spark-expectations framework
+  - "Create the SE YAML files from the DQS"
 argument-hint: "[path-to-dqs-file]"
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+context: fork
+hooks:
+  before:
+    - matcher: Bash
+      script: "${CLAUDE_PLUGIN_ROOT}/scripts/enforce-readonly-queries.py"
+  after:
+    - matcher: "Write|Edit"
+      script: "${CLAUDE_PLUGIN_ROOT}/scripts/validate-dqs-hook.py"
 ---
 
 # Generate Spark-Expectations Rules from DQS
@@ -282,3 +299,28 @@ Create the `se-rules/` subdirectory if it does not exist.
 - SE YAML files generated (list)
 - Validation results
 - Any schema/expression issues found and fixed
+
+If the user corrected any output during this session, also append to
+`dq-engineer-plugin/memory/learnings-queue.jsonl`:
+```json
+{"skill": "generate-se-rules", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
+```
+
+## Learnings & Corrections
+
+> **Meta-rules for adding learnings:**
+> 1. Each learning MUST be an absolute directive ("Always X", "Never Y")
+> 2. Lead with the problem, then the fix: "When X happens, do Y"
+> 3. Include a concrete command or example, not just prose
+> 4. One learning per bullet — no compound rules
+> 5. Delete learnings that contradict each other; keep the newer one
+> 6. Maximum 20 learnings per skill — if at capacity, merge related items
+
+### Active Learnings
+
+_No learnings recorded yet. Learnings are added when corrections occur during skill execution._
+
+<!-- Example format:
+- **L-001** (2026-03-20): Always use CAST(col AS DATE) not TO_DATE(col) for date conversions.
+- **L-002** (2026-03-21): Never generate placeholder SLA values — ask the user for specific numeric targets.
+-->

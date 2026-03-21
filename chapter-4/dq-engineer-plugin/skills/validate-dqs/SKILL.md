@@ -1,13 +1,25 @@
 ---
 name: validate-dqs
 description: >
-  Validates a Data Quality Specification document against completeness and
-  quality standards. Checks all required sections, metadata, field-level rules,
-  referential integrity, statistical tests, reconciliation rules, alert framework,
-  and traceability. Reports issues as CRITICAL, WARNING, or INFO with suggested
-  fixes. Use when the user asks to validate, check, review, or verify a DQS.
-argument-hint: "[path-to-dqs-file]"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
+  Validates a Data Quality Specification (DQS) document against completeness
+  and quality standards. Checks all required sections, metadata, field-level
+  rules, referential integrity, statistical tests, reconciliation rules,
+  alert framework, and traceability. Reports issues as CRITICAL, WARNING,
+  or INFO with suggested fixes.
+  Also known as: DQS review, quality rules audit, DQ specification check.
+  Input formats: DQS Markdown (.md) file.
+  Output format: Validation report with severity-ranked findings.
+  Use when the user asks to:
+  - Validate, check, review, verify, or audit a DQS
+  - Assess DQS completeness or rule quality
+  - Find issues or gaps in quality specifications
+  - Run quality checks on a DQS before handoff
+argument-hint: "[dqs-file-path]"
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+hooks:
+  before:
+    - matcher: Bash
+      script: "${CLAUDE_PLUGIN_ROOT}/scripts/enforce-readonly-queries.py"
 ---
 
 # Validate Data Quality Specification
@@ -137,3 +149,28 @@ Summary: 0 critical (fixed), 1 warning, 1 info
 - Fixes applied
 - Remaining issues
 - Coverage gaps identified (missing layers, missing table rules)
+
+If the user corrected any output during this session, also append to
+`dq-engineer-plugin/memory/learnings-queue.jsonl`:
+```json
+{"skill": "validate-dqs", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
+```
+
+## Learnings & Corrections
+
+> **Meta-rules for adding learnings:**
+> 1. Each learning MUST be an absolute directive ("Always X", "Never Y")
+> 2. Lead with the problem, then the fix: "When X happens, do Y"
+> 3. Include a concrete command or example, not just prose
+> 4. One learning per bullet — no compound rules
+> 5. Delete learnings that contradict each other; keep the newer one
+> 6. Maximum 20 learnings per skill — if at capacity, merge related items
+
+### Active Learnings
+
+_No learnings recorded yet. Learnings are added when corrections occur during skill execution._
+
+<!-- Example format:
+- **L-001** (2026-03-20): Always use CAST(col AS DATE) not TO_DATE(col) for date conversions.
+- **L-002** (2026-03-21): Never generate placeholder SLA values — ask the user for specific numeric targets.
+-->

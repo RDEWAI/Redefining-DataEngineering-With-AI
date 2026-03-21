@@ -1,0 +1,44 @@
+skill: update-dms
+version: "1.0"
+cases:
+  - id: TC-001
+    name: "Version incremented on update"
+    description: "Updated DMS must have incremented version number"
+    inputs:
+      existing_artifact: "outputs/dms/v1/"
+      changes: "Add SCD Type 2 tracking for provider specialty"
+    expected:
+      - type: content_contains
+        patterns: ["Version"]
+    success_criteria: "Version number incremented"
+
+  - id: TC-002
+    name: "YAML schema blocks remain valid after update"
+    description: "Embedded YAML blocks must still parse after editing"
+    inputs:
+      existing_artifact: "outputs/dms/v1/"
+      changes: "Add new column to silver layer schema"
+    expected:
+      - type: yaml_valid
+    success_criteria: "All YAML blocks parse without errors"
+
+  - id: TC-003
+    name: "Unchanged layers preserved"
+    description: "Layers not affected by the update remain intact"
+    inputs:
+      existing_artifact: "outputs/dms/v1/"
+      changes: "Update gold layer grain for fact_encounters"
+    expected:
+      - type: section_present
+        sections: ["2. Bronze Layer", "3. Silver Layer"]
+    success_criteria: "Unrelated layers unchanged"
+
+  - id: TC-004
+    name: "Updated DMS passes validation"
+    description: "After update, the modified DMS still passes validation"
+    inputs:
+      existing_artifact: "outputs/dms/v1/"
+      changes: "Minor naming convention clarification"
+    expected:
+      - type: validation_pass
+    success_criteria: "Updated DMS passes validate-dms with 0 CRITICAL issues"
