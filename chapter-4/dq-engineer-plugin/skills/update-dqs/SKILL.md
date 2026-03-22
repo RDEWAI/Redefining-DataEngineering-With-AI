@@ -84,7 +84,7 @@ Discover and read the latest version of all documents:
    Read all files: `dq-standards.md`, `sla-definitions.md`,
    `se-config-template.yaml`.
 
-6. **Prior session notes** from `dq-engineer-plugin/memory/` (if any exist)
+6. **Prior session notes** from `memory/dqs/` (if any exist)
 
 ### Step 2: Assess Impact Per DQS Section
 
@@ -225,7 +225,7 @@ the DQS is not ready for handoff to the engineering team.
 3. Discover the latest DMS version folder and read all files
 4. Discover the latest DRD version folder and read all files
 5. Discover the latest DQ inputs version folder and read all files
-6. Read prior session notes from `dq-engineer-plugin/memory/` if they exist
+6. Read prior session notes from `memory/dqs/` if they exist
 7. Identify what the user wants changed and why
 
 ### Phase 2: Elicit Update Decisions (Q&A Loop)
@@ -342,7 +342,7 @@ In the Version History section, add:
 4. Report INFO items as improvement opportunities
 5. Report: changes made, contradictions found, remaining open items,
    validation summary, SE YAML files regenerated
-6. Write a session summary to `dq-engineer-plugin/memory/session-{YYYY-MM-DD}.md`:
+6. Write a session summary to `memory/dqs/session-{YYYY-MM-DD}.md`:
    - What was updated (DQS filename, version change)
    - Changes made (bulleted list of added/modified/removed rules)
    - Upstream artifact version changes referenced
@@ -351,7 +351,7 @@ In the Version History section, add:
    - Remaining open items
 
 If the user corrected any output during this session, also append to
-`dq-engineer-plugin/memory/learnings-queue.jsonl`:
+`memory/dqs/learnings-queue.jsonl`:
 ```json
 {"skill": "update-dqs", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
 ```
@@ -462,7 +462,7 @@ All rules follow `DQ-{CATEGORY}-{nnn}` format:
 - DQS files: `outputs/dqs/v{N}/DQS-{YYYY-MM-DD}-{short-name}.md`
 - SE rules: `outputs/dqs/v{N}/se-rules/se-rules-{table-name}.yaml`
 - Input documents: `inputs/dqs/v{N}/`
-- Session memory: `dq-engineer-plugin/memory/session-{YYYY-MM-DD}.md`
+- Session memory: `memory/dqs/session-{YYYY-MM-DD}.md`
 - Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
 
 ## Learnings & Corrections

@@ -210,7 +210,7 @@ class TestSkillsContainAgentWorkflow:
 
     def test_create_dqs_has_session_memory(self):
         _, body = _parse_skill_file("create-dqs")
-        assert "dq-engineer-plugin/memory/" in body
+        assert "memory/dqs/" in body
 
     # --- update-dqs ---
 
@@ -238,4 +238,4 @@ class TestSkillsContainAgentWorkflow:
 
     def test_update_dqs_has_session_memory(self):
         _, body = _parse_skill_file("update-dqs")
-        assert "dq-engineer-plugin/memory/" in body
+        assert "memory/dqs/" in body

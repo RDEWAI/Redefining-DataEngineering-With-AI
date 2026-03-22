@@ -68,7 +68,7 @@ Discover and read the latest version of all documents:
    - `team-capabilities.md`
    - `technology-catalog.md`
 
-4. **Prior session notes** from `architect-plugin/memory/` (if any exist)
+4. **Prior session notes** from `memory/hld/` (if any exist)
 
 ### Step 2: Assess Impact Per HLD Section
 
@@ -187,7 +187,7 @@ the HLD is not ready for handoff to the data modeling team.
 ### Phase 1: Understand the Request
 1. Discover the latest HLD version folder and read the existing HLD
 2. Discover the latest DRD and architect inputs for context
-3. Read prior session notes from `architect-plugin/memory/` if they exist
+3. Read prior session notes from `memory/hld/` if they exist
 4. Identify what changed and what sections are affected
 
 ### Phase 2: Elicit Change Decisions (Q&A Loop)
@@ -298,7 +298,7 @@ All major design decisions MUST follow this format:
 3. Report WARNINGS and suggest fixes
 4. Report INFO items as improvement opportunities
 5. Report: changes made, contradictions found, remaining open items, validation summary
-6. Write a session summary to `architect-plugin/memory/session-{YYYY-MM-DD}.md`:
+6. Write a session summary to `memory/hld/session-{YYYY-MM-DD}.md`:
    - What was updated (HLD filename, version change)
    - Changes made (bulleted list)
    - Design decisions changed and rationale
@@ -357,7 +357,7 @@ the HLD is not ready for handoff to the data modeling team.
 ## File Conventions
 - Updated HLDs: `outputs/hld/v{N}/HLD-{YYYY-MM-DD}-{short-name}.md`
 - Input documents: `inputs/architect/v{N}/`
-- Session memory: `architect-plugin/memory/session-{YYYY-MM-DD}.md`
+- Session memory: `memory/hld/session-{YYYY-MM-DD}.md`
 - Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
 
 ## Learnings & Corrections

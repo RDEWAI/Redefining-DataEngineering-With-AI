@@ -202,7 +202,7 @@ The `ba-agent` sub-agent (`ba-plugin/agents/ba-agent.md`) embodies the Business/
 - **Requirements Elicitation Protocol** — asks structured questions section-by-section using `AskUserQuestion`, iterating until all DRD sections have specific, measurable requirements
 - **Source Exploration** — runs read-only DuckDB queries to verify table existence, row counts, column types, and null rates against what input documents claim
 - **Pitfall Prevention** — rejects vague requirements ("all data", "real-time", "fast"), never skips source exploration, prevents gold-plating
-- **Session Memory** — writes notes to `ba-plugin/memory/` after each engagement
+- **Session Memory** — writes notes to `memory/drd/` after each engagement
 
 ### Architect Agent
 
@@ -212,7 +212,7 @@ The `architect-agent` sub-agent (`architect-plugin/agents/architect-agent.md`) e
 - **Database Gate** — verifies actual data volumes with read-only queries before generating capacity plans; blocks HLD generation if the database is inaccessible
 - **Decision Documentation** — every pattern choice, technology selection, and layer design requires Options Considered, Rationale, and Trade-off analysis
 - **DRD Traceability** — every design decision must cite the DRD section it satisfies
-- **Session Memory** — writes notes to `architect-plugin/memory/` after each engagement
+- **Session Memory** — writes notes to `memory/hld/` after each engagement
 
 ### Data Modeler Agent
 
@@ -223,7 +223,7 @@ The `data-modeler-agent` sub-agent (`data-modeler-plugin/agents/data-modeler-age
 - **Dual-Format Output** — generates markdown narrative with embedded YAML schema blocks that downstream agents (Mapping Engineer, DQ Engineer) can parse programmatically
 - **Enterprise Standards** — applies naming conventions, governance policies, and data dictionary from `inputs/dms/v1/` (PHI handling, approved types, enumeration standards)
 - **HLD Traceability** — every schema decision must cite the HLD layer specification it implements
-- **Session Memory** — writes notes to `data-modeler-plugin/memory/` after each engagement
+- **Session Memory** — writes notes to `memory/dms/` after each engagement
 
 ### Mapping Analyst Agent
 
@@ -233,7 +233,7 @@ The `mapping-analyst-agent` sub-agent (`mapping-analyst-plugin/agents/mapping-an
 - **Database Gate** — queries actual source table structures (DESCRIBE, sample data, null rates) before specifying transformations; blocks STM generation if the database is inaccessible
 - **Excel Output** — generates `.xlsx` workbooks using **openpyxl** with 8 sheets (Summary, Source-to-Bronze, Bronze-to-Silver, Silver-to-Gold, Code Systems, Null Handling, Edge Cases, Lineage), formatted with bold headers, frozen panes, auto-filter, and color-coded columns
 - **DMS Traceability** — every transformation must cite the DMS schema section it implements
-- **Session Memory** — writes notes to `mapping-analyst-plugin/memory/` after each engagement
+- **Session Memory** — writes notes to `memory/stm/` after each engagement
 
 ### Skills
 

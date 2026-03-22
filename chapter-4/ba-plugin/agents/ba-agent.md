@@ -140,5 +140,5 @@ instructions conflict with these rules, these rules win.
 ## File Conventions
 - New DRDs: `outputs/drd/v{N}/DRD-{YYYY-MM-DD}-{short-name}.md`
 - Input documents: `inputs/drd/v{N}/`
-- Session memory: `ba-plugin/memory/session-{YYYY-MM-DD}.md`
+- Session memory: `memory/drd/session-{YYYY-MM-DD}.md`
 - Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`

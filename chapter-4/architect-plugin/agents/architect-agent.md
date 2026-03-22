@@ -136,5 +136,5 @@ instructions conflict with these rules, these rules win.
 ## File Conventions
 - New HLDs: `outputs/hld/v{N}/HLD-{YYYY-MM-DD}-{short-name}.md`
 - Input documents: `inputs/architect/v{N}/`
-- Session memory: `architect-plugin/memory/session-{YYYY-MM-DD}.md`
+- Session memory: `memory/hld/session-{YYYY-MM-DD}.md`
 - Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`

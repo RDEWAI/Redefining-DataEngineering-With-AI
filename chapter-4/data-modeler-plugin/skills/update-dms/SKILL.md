@@ -88,7 +88,7 @@ Discover and read the latest version of all documents:
    Read all files: `enterprise-naming-standards.md`, `data-governance-policies.md`,
    `enterprise-data-dictionary.md`.
 
-5. **Prior session notes** from `data-modeler-plugin/memory/` (if any exist)
+5. **Prior session notes** from `memory/dms/` (if any exist)
 
 ### Step 2: Assess Impact Per DMS Section
 
@@ -239,7 +239,7 @@ the DMS is not ready for handoff to the Mapping Engineer.
 2. Discover the latest HLD version folder and read the most recent HLD
 3. Discover the latest DRD version folder and read the most recent DRD
 4. Discover the latest modeler input version folder and read all files
-5. Read prior session notes from `data-modeler-plugin/memory/` if they exist
+5. Read prior session notes from `memory/dms/` if they exist
 6. Identify what the user wants changed and why
 
 ### Phase 2: Elicit Update Decisions (Q&A Loop)
@@ -348,7 +348,7 @@ In the Version History section, add:
 3. Report WARNINGS and suggest fixes
 4. Report INFO items as improvement opportunities
 5. Report: changes made, contradictions found, remaining open items, validation summary
-6. Write a session summary to `data-modeler-plugin/memory/session-{YYYY-MM-DD}.md`:
+6. Write a session summary to `memory/dms/session-{YYYY-MM-DD}.md`:
    - What was updated (DMS filename, version change)
    - Changes made (bulleted list)
    - Schema decisions changed and rationale
@@ -357,7 +357,7 @@ In the Version History section, add:
    - Validation results (CRITICAL/WARNING/INFO counts)
 
 If the user corrected any output during this session, also append to
-`data-modeler-plugin/memory/learnings-queue.jsonl`:
+`memory/dms/learnings-queue.jsonl`:
 ```json
 {"skill": "update-dms", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
 ```
@@ -442,7 +442,7 @@ A complete DMS contains these sections:
 ## File Conventions
 - DMS files: `outputs/dms/v{N}/DMS-{YYYY-MM-DD}-{short-name}.md`
 - Input documents: `inputs/dms/v{N}/`
-- Session memory: `data-modeler-plugin/memory/session-{YYYY-MM-DD}.md`
+- Session memory: `memory/dms/session-{YYYY-MM-DD}.md`
 - Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
 
 ## Learnings & Corrections

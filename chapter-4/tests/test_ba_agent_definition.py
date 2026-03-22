@@ -175,7 +175,7 @@ class TestSkillsContainAgentWorkflow:
 
     def test_create_drd_has_session_memory(self):
         _, body = _parse_skill_file("create-drd")
-        assert "ba-plugin/memory/" in body
+        assert "memory/drd/" in body
 
     # --- update-drd ---
 
@@ -197,7 +197,7 @@ class TestSkillsContainAgentWorkflow:
 
     def test_update_drd_has_session_memory(self):
         _, body = _parse_skill_file("update-drd")
-        assert "ba-plugin/memory/" in body
+        assert "memory/drd/" in body
 
     def test_update_drd_has_cross_section_consistency(self):
         _, body = _parse_skill_file("update-drd")

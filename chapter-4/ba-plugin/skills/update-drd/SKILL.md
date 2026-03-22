@@ -65,7 +65,7 @@ Discover and read the latest version of all documents:
    Read all files: business request, stakeholder interviews, source system docs,
    data catalogs.
 
-3. **Prior session notes** from `ba-plugin/memory/` (if any exist)
+3. **Prior session notes** from `memory/drd/` (if any exist)
 
 ### Step 2: Assess Impact Per DRD Section
 
@@ -211,7 +211,7 @@ the DRD is not ready for handoff to the architect.
 ### Phase 1: Understand the Request
 1. Discover and read the existing DRD (latest version folder or user-specified path)
 2. Discover the latest DRD input version folder and read all input files
-3. Read prior session notes from `ba-plugin/memory/` if they exist
+3. Read prior session notes from `memory/drd/` if they exist
 4. Identify what the user wants changed and why
 
 ### Phase 2: Elicit Update Decisions (Q&A Loop)
@@ -323,7 +323,7 @@ In section 8 (Version History), add a new row:
    - Any contradictions found (and how they were resolved)
    - Any remaining `[TO BE DETERMINED]` or `[NEEDS VERIFICATION]` items
    - Validation summary (CRITICAL/WARNING/INFO counts)
-5. Write a session summary to `ba-plugin/memory/session-{YYYY-MM-DD}.md`:
+5. Write a session summary to `memory/drd/session-{YYYY-MM-DD}.md`:
    - What was updated (DRD filename, version change) — or what was attempted if update failed
    - Changes made (bulleted list)
    - Key decisions made and their rationale
@@ -332,7 +332,7 @@ In section 8 (Version History), add a new row:
    - Remaining open items (with assigned owners and due dates)
 
 If the user corrected any output during this session, also append to
-`ba-plugin/memory/learnings-queue.jsonl`:
+`memory/drd/learnings-queue.jsonl`:
 ```json
 {"skill": "update-drd", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
 ```
@@ -387,7 +387,7 @@ Guard against these three common BA mistakes:
 ## File Conventions
 - DRDs: `outputs/drd/v{N}/DRD-{YYYY-MM-DD}-{short-name}.md`
 - Input documents: `inputs/drd/v{N}/`
-- Session memory: `ba-plugin/memory/session-{YYYY-MM-DD}.md`
+- Session memory: `memory/drd/session-{YYYY-MM-DD}.md`
 - Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
 
 ## Learnings & Corrections

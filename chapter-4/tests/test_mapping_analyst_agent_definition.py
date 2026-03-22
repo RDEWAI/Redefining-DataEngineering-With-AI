@@ -191,7 +191,7 @@ class TestSkillsContainAgentWorkflow:
 
     def test_create_stm_has_session_memory(self):
         _, body = _parse_skill_file("create-stm")
-        assert "mapping-analyst-plugin/memory/" in body
+        assert "memory/stm/" in body
 
     # ---- update-stm ----
 
@@ -214,4 +214,4 @@ class TestSkillsContainAgentWorkflow:
 
     def test_update_stm_has_session_memory(self):
         _, body = _parse_skill_file("update-stm")
-        assert "mapping-analyst-plugin/memory/" in body
+        assert "memory/stm/" in body

@@ -22,7 +22,7 @@ generalized rules to the relevant skill files.
 ## Step 1: Read the Learnings Queue
 
 ```bash
-cat mapping-analyst-plugin/memory/learnings-queue.jsonl
+cat memory/stm/learnings-queue.jsonl
 ```
 
 If the file is empty or contains no `"status": "pending"` entries, report
@@ -87,7 +87,7 @@ For each approved learning:
 
 ## Step 5: Update the Queue
 
-After all learnings are processed, update `mapping-analyst-plugin/memory/learnings-queue.jsonl`:
+After all learnings are processed, update `memory/stm/learnings-queue.jsonl`:
 - Change `"status": "pending"` to `"status": "applied"` for applied entries
 - Change `"status": "pending"` to `"status": "rejected"` for rejected entries
 

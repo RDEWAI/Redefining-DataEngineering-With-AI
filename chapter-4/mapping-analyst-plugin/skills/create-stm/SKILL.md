@@ -87,7 +87,7 @@ Discover and read the latest version of all input documents:
    - `transformation-standards.md` -- Idempotency rules, type casting, null handling conventions
    - `code-system-mappings.md` -- SNOMED-CT, RxNorm, LOINC code lookups
 
-5. **Prior session notes** from `mapping-analyst-plugin/memory/` (if any exist)
+5. **Prior session notes** from `memory/stm/` (if any exist)
 
 ### Step 2: Assess Gaps Per STM Sheet
 
@@ -324,7 +324,7 @@ Comprehensive handling and traceability:
    `ls -d outputs/drd/v* | sort -V | tail -1`
 4. Read all role-specific inputs from the latest STM input folder:
    `ls -d inputs/stm/v* | sort -V | tail -1`
-5. Read prior session notes from `mapping-analyst-plugin/memory/` if they exist
+5. Read prior session notes from `memory/stm/` if they exist
 6. Identify the mapping problem, constraints, and success criteria
 
 ### Phase 2: Input Analysis & Elicitation Q&A
@@ -450,7 +450,7 @@ wb.save(output_path)
 2. Fix all CRITICAL issues before presenting to the user
 3. Report WARNINGS and suggest fixes
 4. Report INFO items as improvement opportunities
-5. Write a session summary to `mapping-analyst-plugin/memory/session-{YYYY-MM-DD}.md`:
+5. Write a session summary to `memory/stm/session-{YYYY-MM-DD}.md`:
    - What was created (STM filename, version)
    - Key mapping decisions made
    - Source tables verified with DESCRIBE
@@ -460,7 +460,7 @@ wb.save(output_path)
    - Open questions for next session
 
 If the user corrected any output during this session, also append to
-`mapping-analyst-plugin/memory/learnings-queue.jsonl`:
+`memory/stm/learnings-queue.jsonl`:
 ```json
 {"skill": "create-stm", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
 ```
@@ -566,7 +566,7 @@ TRANSFORM_FILL = PatternFill(start_color="FEF9E7", end_color="FEF9E7", fill_type
 
 - **Output path**: `outputs/stm/v{N}/STM-{YYYY-MM-DD}-{pipeline-name}.xlsx`
 - **Version discovery**: `ls -d outputs/stm/v* | sort -V | tail -1`
-- **Session memory**: `mapping-analyst-plugin/memory/session-{YYYY-MM-DD}.md`
+- **Session memory**: `memory/stm/session-{YYYY-MM-DD}.md`
 - **Always validate** after generation using `validate_stm.py`
 - **File format**: .xlsx (Excel workbook) -- NOT markdown
 

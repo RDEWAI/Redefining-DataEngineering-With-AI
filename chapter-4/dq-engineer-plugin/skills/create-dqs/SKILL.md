@@ -86,7 +86,7 @@ Discover and read the latest version of all input documents:
    - `sla-definitions.md` — consumer freshness requirements and tolerances
    - `se-config-template.yaml` — Spark-Expectations environment config
 
-5. **Prior session notes** from `dq-engineer-plugin/memory/` (if any exist)
+5. **Prior session notes** from `memory/dqs/` (if any exist)
 
 ### Step 2: Assess Gaps Per DQS Section
 
@@ -263,7 +263,7 @@ the DQS is not ready for handoff to the engineering team.
    `ls -d outputs/drd/v* | sort -V | tail -1`
 4. Discover the latest DQ inputs version folder and read all files:
    `ls -d inputs/dqs/v* | sort -V | tail -1`
-5. Read prior session notes from `dq-engineer-plugin/memory/` if they exist
+5. Read prior session notes from `memory/dqs/` if they exist
 6. Identify the DQ problem, upstream artifacts, and success criteria
 
 ### Phase 2: Elicit DQ Design Decisions (Q&A Loop)
@@ -468,7 +468,7 @@ uv run python dq-engineer-plugin/skills/generate-se-rules/scripts/generate_se_ru
   -o outputs/dqs/{version}/se-rules/
 ```
 
-5. Write a session summary to `dq-engineer-plugin/memory/session-{YYYY-MM-DD}.md`:
+5. Write a session summary to `memory/dqs/session-{YYYY-MM-DD}.md`:
    - What was created (DQS filename, version)
    - Key DQ design decisions and their rationale
    - Upstream artifacts referenced (STM, DMS, DRD versions)
@@ -478,7 +478,7 @@ uv run python dq-engineer-plugin/skills/generate-se-rules/scripts/generate_se_ru
    - Open questions that remain unresolved
 
 If the user corrected any output during this session, also append to
-`dq-engineer-plugin/memory/learnings-queue.jsonl`:
+`memory/dqs/learnings-queue.jsonl`:
 ```json
 {"skill": "create-dqs", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
 ```
@@ -672,7 +672,7 @@ Per-rule values always win. dq_env provides the fallback for rules without expli
 - New DQS: `outputs/dqs/v{N}/DQS-{YYYY-MM-DD}-{short-name}.md`
 - SE rules: `outputs/dqs/v{N}/se-rules/se-rules-{table-name}.yaml`
 - Input documents: `inputs/dqs/v{N}/`
-- Session memory: `dq-engineer-plugin/memory/session-{YYYY-MM-DD}.md`
+- Session memory: `memory/dqs/session-{YYYY-MM-DD}.md`
 - Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
 
 ## Database Access

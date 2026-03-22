@@ -189,7 +189,7 @@ AskUserQuestion answers from Step 1.
 | # | Source File (read) | Target File (write) | Key Substitutions |
 |---|---|---|---|
 | 1 | `architect-plugin/.claude-plugin/plugin.json` | `{plugin_name}/.claude-plugin/plugin.json` | name, description, keywords |
-| 2 | — | `{plugin_name}/memory/.gitkeep` | empty file |
+| 2 | — | `memory/{artifact}/.gitkeep` | empty file (top-level memory dir, outside plugin) |
 | 3 | — | `inputs/{artifact}/v1/.gitkeep` | empty file |
 | 4 | — | `outputs/{artifact}/v1/.gitkeep` | empty file |
 | 5 | `architect-plugin/agents/architect-agent.md` | `{plugin_name}/agents/{agent_name}.md` | name, color, role description, examples, sections, responsibilities, upstream refs, artifact names, skill paths |
@@ -207,7 +207,7 @@ AskUserQuestion answers from Step 1.
 | 17 | `tests/test_validate_hld_hook.py` | `tests/test_validate_{artifact}_hook.py` | hook script path, output path pattern, fixture names |
 | 18 | — | `{plugin_name}/README.md` | Plugin README with overview, skills, usage, directory layout |
 | 19 | `architect-plugin/skills/apply-learnings/SKILL.md` | `{plugin_name}/skills/apply-learnings/SKILL.md` | Replace `architect-plugin` with `{plugin_name}` |
-| 20 | — | `{plugin_name}/memory/learnings-queue.jsonl` | empty file |
+| 20 | — | `memory/{artifact}/learnings-queue.jsonl` | empty file (top-level memory dir, outside plugin) |
 | 21 | `architect-plugin/skills/create-hld/evals/eval-cases.yaml` | `{plugin_name}/skills/create-{artifact}/evals/eval-cases.yaml` | artifact names, section names, upstream refs |
 | 22 | — | `{plugin_name}/skills/update-{artifact}/evals/eval-cases.yaml` | Adapted from create eval pattern: version increment, change log, preservation, validation |
 | 23 | — | `{plugin_name}/skills/validate-{artifact}/evals/eval-cases.yaml` | Adapted: valid passes, missing sections CRITICAL, empty sections WARNING |
@@ -382,11 +382,14 @@ Or invoke the agent directly:
 │   │   └── scripts/validate_{artifact}.py
 │   └── apply-learnings/SKILL.md
 ├── hooks/hooks.json
-├── scripts/
-│   ├── validate-{artifact}-hook.py
-│   └── enforce-readonly-queries.py
-└── memory/
-    └── learnings-queue.jsonl
+└── scripts/
+    ├── validate-{artifact}-hook.py
+    └── enforce-readonly-queries.py
+
+# Top-level memory directory (outside plugin, survives plugin replacement):
+memory/{artifact}/
+├── .gitkeep
+└── learnings-queue.jsonl
 ```
 
 ## Inputs

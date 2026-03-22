@@ -78,5 +78,5 @@ cases:
       folder: "inputs/drd/v1"
     expected:
       - type: file_created
-        pattern: "ba-plugin/memory/session-*.md"
+        pattern: "memory/drd/session-*.md"
     success_criteria: "Session memory file exists with decisions and findings"

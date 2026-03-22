@@ -198,7 +198,7 @@ class TestSkillsContainAgentWorkflow:
 
     def test_create_dms_has_session_memory(self):
         _, body = _parse_skill_file("create-dms")
-        assert "data-modeler-plugin/memory/" in body
+        assert "memory/dms/" in body
 
     # ---- update-dms ----
 
@@ -226,4 +226,4 @@ class TestSkillsContainAgentWorkflow:
 
     def test_update_dms_has_session_memory(self):
         _, body = _parse_skill_file("update-dms")
-        assert "data-modeler-plugin/memory/" in body
+        assert "memory/dms/" in body

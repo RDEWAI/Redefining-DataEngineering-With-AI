@@ -77,7 +77,7 @@ Discover and read the latest version of all input documents:
    If any input is missing, document the gap in the HLD's Open Questions section
    with `[TO BE DETERMINED - requires input from {source}]`.
 
-3. **Prior session notes** from `architect-plugin/memory/` (if any exist)
+3. **Prior session notes** from `memory/hld/` (if any exist)
 
 ### Step 2: Assess Gaps Per HLD Section
 
@@ -260,7 +260,7 @@ the HLD is not ready for handoff to the data modeling team.
    `ls -d outputs/drd/v* | sort -V | tail -1`
 2. Discover the latest architect input version folder and read all files:
    `ls -d inputs/architect/v* | sort -V | tail -1`
-3. Read prior session notes from `architect-plugin/memory/` if they exist
+3. Read prior session notes from `memory/hld/` if they exist
 4. Identify the architecture problem, constraints, and success criteria
 
 ### Phase 2: Elicit Design Decisions (Q&A Loop)
@@ -454,7 +454,7 @@ These belong in the LLD or DMS, not the HLD:
 3. Fix all CRITICAL issues before presenting to the user
 4. Report WARNINGS and suggest fixes
 5. Report INFO items as improvement opportunities
-6. Write a session summary to `architect-plugin/memory/session-{YYYY-MM-DD}.md`:
+6. Write a session summary to `memory/hld/session-{YYYY-MM-DD}.md`:
    - What was accomplished (created / updated / validated)
    - Key design decisions and their Rationale
    - Open questions that remain unresolved
@@ -510,7 +510,7 @@ A complete HLD contains these sections:
 ## File Conventions
 - New HLDs: `outputs/hld/v{N}/HLD-{YYYY-MM-DD}-{short-name}.md`
 - Input documents: `inputs/architect/v{N}/`
-- Session memory: `architect-plugin/memory/session-{YYYY-MM-DD}.md`
+- Session memory: `memory/hld/session-{YYYY-MM-DD}.md`
 - Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
 
 ## Metadata

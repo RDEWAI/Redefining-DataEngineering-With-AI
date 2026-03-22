@@ -291,7 +291,7 @@ Create the `se-rules/` subdirectory if it does not exist.
 ## Step 8: Session memory
 
 **Always write session notes.** Write to
-`dq-engineer-plugin/memory/session-{YYYY-MM-DD}.md`:
+`memory/dqs/session-{YYYY-MM-DD}.md`:
 
 - DQS file processed
 - Tables covered (list)
@@ -301,7 +301,7 @@ Create the `se-rules/` subdirectory if it does not exist.
 - Any schema/expression issues found and fixed
 
 If the user corrected any output during this session, also append to
-`dq-engineer-plugin/memory/learnings-queue.jsonl`:
+`memory/dqs/learnings-queue.jsonl`:
 ```json
 {"skill": "generate-se-rules", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
 ```

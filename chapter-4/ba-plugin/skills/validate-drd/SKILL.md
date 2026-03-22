@@ -131,7 +131,7 @@ Summary: 0 critical (fixed), 1 warning, 1 info
 ## Step 4: Session memory
 
 **Always write session notes regardless of validation outcome.** Write to
-`ba-plugin/memory/session-{YYYY-MM-DD}.md`:
+`memory/drd/session-{YYYY-MM-DD}.md`:
 
 - What was validated (DRD filename)
 - CRITICAL/WARNING/INFO counts (before and after fixes)
@@ -140,7 +140,7 @@ Summary: 0 critical (fixed), 1 warning, 1 info
 - Remaining issues the user chose not to address (with assigned owners and due dates)
 
 If the user corrected any output during this session, also append to
-`ba-plugin/memory/learnings-queue.jsonl`:
+`memory/drd/learnings-queue.jsonl`:
 ```json
 {"skill": "validate-drd", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
 ```

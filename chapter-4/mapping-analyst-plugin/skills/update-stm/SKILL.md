@@ -91,7 +91,7 @@ Discover and read the latest version of all documents:
    ```
    Read all files: `transformation-standards.md`, `code-system-mappings.md`.
 
-6. **Prior session notes** from `mapping-analyst-plugin/memory/` (if any exist)
+6. **Prior session notes** from `memory/stm/` (if any exist)
 
 ### Step 2: Assess Impact Per STM Sheet
 
@@ -250,7 +250,7 @@ Comprehensive handling and traceability:
 3. Discover the latest HLD and DRD version folders and read them
 4. Read all role-specific inputs from the latest STM input folder:
    `ls -d inputs/stm/v* | sort -V | tail -1`
-5. Read prior session notes from `mapping-analyst-plugin/memory/` if they exist
+5. Read prior session notes from `memory/stm/` if they exist
 6. Identify what the user wants changed and why
 
 ### Phase 2: Elicit Update Decisions (Q&A Loop)
@@ -355,7 +355,7 @@ In the Summary sheet:
 4. Report WARNINGS and suggest fixes
 5. Report INFO items as improvement opportunities
 6. Report: changes made, contradictions found, remaining open items, validation summary
-7. Write a session summary to `mapping-analyst-plugin/memory/session-{YYYY-MM-DD}.md`:
+7. Write a session summary to `memory/stm/session-{YYYY-MM-DD}.md`:
    - What was updated (STM filename, version change)
    - Changes made (bulleted list)
    - Mapping decisions changed and rationale
@@ -364,7 +364,7 @@ In the Summary sheet:
    - Validation results (CRITICAL/WARNING/INFO counts)
 
 If the user corrected any output during this session, also append to
-`mapping-analyst-plugin/memory/learnings-queue.jsonl`:
+`memory/stm/learnings-queue.jsonl`:
 ```json
 {"skill": "update-stm", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
 ```
@@ -470,7 +470,7 @@ TRANSFORM_FILL = PatternFill(start_color="FEF9E7", end_color="FEF9E7", fill_type
 
 - **Output path**: `outputs/stm/v{N}/STM-{YYYY-MM-DD}-{pipeline-name}.xlsx`
 - **Version discovery**: `ls -d outputs/stm/v* | sort -V | tail -1`
-- **Session memory**: `mapping-analyst-plugin/memory/session-{YYYY-MM-DD}.md`
+- **Session memory**: `memory/stm/session-{YYYY-MM-DD}.md`
 - **Always validate** after generation using `validate_stm.py`
 - **File format**: .xlsx (Excel workbook) -- NOT markdown
 

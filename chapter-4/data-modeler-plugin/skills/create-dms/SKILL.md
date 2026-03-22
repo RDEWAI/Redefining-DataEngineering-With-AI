@@ -107,7 +107,7 @@ Discover and read the latest version of all input documents:
    - Apply null handling defaults unless DRD specifies otherwise
    - Follow SCD policy guidelines: Type 2 for patient demographics, Type 1 for reference data
 
-4. **Prior session notes** from `data-modeler-plugin/memory/` (if any exist)
+4. **Prior session notes** from `memory/dms/` (if any exist)
 
 ### Step 2: Assess Gaps Per DMS Section
 
@@ -299,7 +299,7 @@ the DMS is not ready for handoff to the Mapping Engineer.
    `ls -d outputs/drd/v* | sort -V | tail -1`
 3. Discover the latest modeler input version folder and read all files:
    `ls -d inputs/dms/v* | sort -V | tail -1`
-4. Read prior session notes from `data-modeler-plugin/memory/` if they exist
+4. Read prior session notes from `memory/dms/` if they exist
 5. Identify the schema design scope from the HLD layer specifications
 
 ### Phase 2: Elicit Schema Decisions (Q&A Loop)
@@ -508,7 +508,7 @@ Use naming convention: `DMS-{YYYY-MM-DD}-{short-name}.md`
 2. Fix all CRITICAL issues before presenting to the user
 3. Report WARNINGS and suggest fixes
 4. Report INFO items as improvement opportunities
-5. Write a session summary to `data-modeler-plugin/memory/session-{YYYY-MM-DD}.md`:
+5. Write a session summary to `memory/dms/session-{YYYY-MM-DD}.md`:
    - What was created (DMS filename, version)
    - Key schema decisions (SCD types, naming conventions, partition strategies)
    - Source data observations (unexpected types, null rates, missing columns)
@@ -517,7 +517,7 @@ Use naming convention: `DMS-{YYYY-MM-DD}-{short-name}.md`
    - Open questions that remain unresolved
 
 If the user corrected any output during this session, also append to
-`data-modeler-plugin/memory/learnings-queue.jsonl`:
+`memory/dms/learnings-queue.jsonl`:
 ```json
 {"skill": "create-dms", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
 ```
@@ -602,7 +602,7 @@ A complete DMS contains these sections:
 ## File Conventions
 - New DMS: `outputs/dms/v{N}/DMS-{YYYY-MM-DD}-{short-name}.md`
 - Input documents: `inputs/dms/v{N}/`
-- Session memory: `data-modeler-plugin/memory/session-{YYYY-MM-DD}.md`
+- Session memory: `memory/dms/session-{YYYY-MM-DD}.md`
 - Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
 
 ## Metadata

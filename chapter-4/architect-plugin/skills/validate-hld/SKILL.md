@@ -133,7 +133,7 @@ Summary: 0 critical (fixed), 1 warning, 1 info
 ## Step 4: Session memory
 
 **Always write session notes.** Write to
-`architect-plugin/memory/session-{YYYY-MM-DD}.md`:
+`memory/hld/session-{YYYY-MM-DD}.md`:
 
 - What was validated (HLD filename)
 - CRITICAL/WARNING/INFO counts (before and after fixes)
@@ -141,7 +141,7 @@ Summary: 0 critical (fixed), 1 warning, 1 info
 - Remaining issues
 
 If the user corrected any output during this session, also append to
-`architect-plugin/memory/learnings-queue.jsonl`:
+`memory/hld/learnings-queue.jsonl`:
 ```json
 {"skill": "validate-hld", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
 ```

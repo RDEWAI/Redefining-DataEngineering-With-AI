@@ -177,7 +177,7 @@ class TestSkillsContainAgentWorkflow:
 
     def test_create_hld_has_session_memory(self):
         _, body = _parse_skill_file("create-hld")
-        assert "architect-plugin/memory/" in body
+        assert "memory/hld/" in body
 
     def test_create_hld_has_decision_documentation(self):
         _, body = _parse_skill_file("create-hld")
@@ -217,7 +217,7 @@ class TestSkillsContainAgentWorkflow:
 
     def test_update_hld_has_session_memory(self):
         _, body = _parse_skill_file("update-hld")
-        assert "architect-plugin/memory/" in body
+        assert "memory/hld/" in body
 
     def test_update_hld_has_cross_section_consistency(self):
         _, body = _parse_skill_file("update-hld")

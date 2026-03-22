@@ -22,7 +22,7 @@ generalized rules to the relevant skill files.
 ## Step 1: Read the Learnings Queue
 
 ```bash
-cat dq-engineer-plugin/memory/learnings-queue.jsonl
+cat memory/dqs/learnings-queue.jsonl
 ```
 
 If the file is empty or contains no `"status": "pending"` entries, report
@@ -87,7 +87,7 @@ For each approved learning:
 
 ## Step 5: Update the Queue
 
-After all learnings are processed, update `dq-engineer-plugin/memory/learnings-queue.jsonl`:
+After all learnings are processed, update `memory/dqs/learnings-queue.jsonl`:
 - Change `"status": "pending"` to `"status": "applied"` for applied entries
 - Change `"status": "pending"` to `"status": "rejected"` for rejected entries
 

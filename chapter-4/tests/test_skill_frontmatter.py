@@ -195,12 +195,22 @@ class TestSkillLearningsSection:
         assert "### Active Learnings" in body, f"{skill} missing '### Active Learnings' subsection"
 
 
+PLUGIN_TO_ARTIFACT = {
+    "ba-plugin": "drd",
+    "architect-plugin": "hld",
+    "data-modeler-plugin": "dms",
+    "mapping-analyst-plugin": "stm",
+    "dq-engineer-plugin": "dqs",
+}
+
+
 class TestLearningsQueueFiles:
-    """Each plugin must have a learnings-queue.jsonl file."""
+    """Each plugin must have a learnings-queue.jsonl in the top-level memory dir."""
 
     @pytest.mark.parametrize("plugin", PLUGINS.keys())
     def test_learnings_queue_exists(self, plugin):
-        path = CHAPTER_4 / plugin / "memory" / "learnings-queue.jsonl"
+        artifact = PLUGIN_TO_ARTIFACT[plugin]
+        path = CHAPTER_4 / "memory" / artifact / "learnings-queue.jsonl"
         assert path.exists(), f"learnings-queue.jsonl not found at {path}"
 
 

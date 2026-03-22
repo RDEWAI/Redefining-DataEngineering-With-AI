@@ -142,7 +142,7 @@ Summary: 0 critical (fixed), 1 warning, 1 info
 ## Step 4: Session memory
 
 **Always write session notes.** Write to
-`dq-engineer-plugin/memory/session-{YYYY-MM-DD}.md`:
+`memory/dqs/session-{YYYY-MM-DD}.md`:
 
 - What was validated (DQS filename)
 - CRITICAL/WARNING/INFO counts (before and after fixes)
@@ -151,7 +151,7 @@ Summary: 0 critical (fixed), 1 warning, 1 info
 - Coverage gaps identified (missing layers, missing table rules)
 
 If the user corrected any output during this session, also append to
-`dq-engineer-plugin/memory/learnings-queue.jsonl`:
+`memory/dqs/learnings-queue.jsonl`:
 ```json
 {"skill": "validate-dqs", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
 ```

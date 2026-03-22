@@ -75,14 +75,14 @@ transformations. The output format is .xlsx (not markdown).
 
 ### 6. Write Session Memory
 
-Save session summary to `mapping-analyst-plugin/memory/session-{YYYY-MM-DD}.md`:
+Save session summary to `memory/stm/session-{YYYY-MM-DD}.md`:
 - File validated and outcome (PASS / FAIL)
 - CRITICAL and WARNING counts
 - Issues found and fixes applied
 - Open items for next session
 
 If the user corrected any output during this session, also append to
-`mapping-analyst-plugin/memory/learnings-queue.jsonl`:
+`memory/stm/learnings-queue.jsonl`:
 ```json
 {"skill": "validate-stm", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
 ```

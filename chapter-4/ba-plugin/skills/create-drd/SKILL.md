@@ -65,7 +65,7 @@ Read all documents from that version folder. Look for:
 - Source system documentation (schemas, access methods)
 - Data catalogs (existing inventories)
 
-Also read any prior session notes from `ba-plugin/memory/`.
+Also read any prior session notes from `memory/drd/`.
 
 ### Step 2: Assess Gaps Per DRD Section
 
@@ -252,7 +252,7 @@ the DRD is not ready for handoff to the architect.
 ### Phase 1: Understand the Request
 1. Discover the latest input version folder and read all documents:
    `ls -d inputs/drd/v* | sort -V | tail -1`
-2. Read prior session notes from `ba-plugin/memory/` if they exist
+2. Read prior session notes from `memory/drd/` if they exist
 3. Identify the business problem, objectives, and success criteria
 
 ### Phase 2: Elicit Requirements (Q&A Loop)
@@ -406,7 +406,7 @@ Use naming convention: `DRD-{YYYY-MM-DD}-{short-name}.md`
 2. Fix all CRITICAL issues before presenting to the user
 3. Report WARNINGS and suggest fixes
 4. Report INFO items as improvement opportunities
-5. Write a session summary to `ba-plugin/memory/session-{YYYY-MM-DD}.md`:
+5. Write a session summary to `memory/drd/session-{YYYY-MM-DD}.md`:
    - What was accomplished (created / updated / validated)
    - Key decisions made and their rationale
    - Open questions that remain unresolved
@@ -414,7 +414,7 @@ Use naming convention: `DRD-{YYYY-MM-DD}-{short-name}.md`
    - Validation results (CRITICAL/WARNING/INFO counts)
 
 If the user corrected any output during this session, also append to
-`ba-plugin/memory/learnings-queue.jsonl`:
+`memory/drd/learnings-queue.jsonl`:
 ```json
 {"skill": "create-drd", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
 ```
@@ -470,7 +470,7 @@ Guard against these three common BA mistakes:
 ## File Conventions
 - New DRDs: `outputs/drd/v{N}/DRD-{YYYY-MM-DD}-{short-name}.md`
 - Input documents: `inputs/drd/v{N}/`
-- Session memory: `ba-plugin/memory/session-{YYYY-MM-DD}.md`
+- Session memory: `memory/drd/session-{YYYY-MM-DD}.md`
 - Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
 
 ## Metadata
