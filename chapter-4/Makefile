@@ -1,4 +1,4 @@
-.PHONY: help dev-setup test test-unit validate-drd validate-hld validate-dms validate-stm validate-dqs lint format clean
+.PHONY: help dev-setup test test-unit validate-drd validate-hld validate-dms validate-stm validate-dqs validate-lld lint format clean
 
 help: ##@ Show available commands
 	@echo "Chapter 4: Planning with Context — Multi-Agent Artifact Chain"
@@ -13,6 +13,7 @@ help: ##@ Show available commands
 	@echo "  validate-dms     - Validate all DMSs in outputs/dms/"
 	@echo "  validate-stm     - Validate all STMs in outputs/stm/"
 	@echo "  validate-dqs     - Validate all DQSs in outputs/dqs/"
+	@echo "  validate-lld     - Validate all LLDs in outputs/lld/"
 	@echo ""
 	@echo "=== Testing & Quality ==="
 	@echo "  test             - Run all tests"
@@ -42,11 +43,14 @@ validate-stm: ##@ Validate all STMs in outputs/stm/
 validate-dqs: ##@ Validate all DQSs in outputs/dqs/
 	uv run python dq-engineer-plugin/skills/validate-dqs/scripts/validate_dqs.py --all outputs/dqs/
 
+validate-lld: ##@ Validate all LLDs in outputs/lld/
+	uv run python technical-lead-plugin/skills/validate-lld/scripts/validate_lld.py --all outputs/lld/
+
 lint: ##@ Run ruff linter
-	uv run ruff check ba-plugin/ architect-plugin/ data-modeler-plugin/ mapping-analyst-plugin/ dq-engineer-plugin/ tests/
+	uv run ruff check ba-plugin/ architect-plugin/ data-modeler-plugin/ mapping-analyst-plugin/ dq-engineer-plugin/ technical-lead-plugin/ tests/
 
 format: ##@ Auto-format code
-	uv run ruff format ba-plugin/ architect-plugin/ data-modeler-plugin/ mapping-analyst-plugin/ dq-engineer-plugin/ tests/
+	uv run ruff format ba-plugin/ architect-plugin/ data-modeler-plugin/ mapping-analyst-plugin/ dq-engineer-plugin/ technical-lead-plugin/ tests/
 
 clean: ##@ Remove generated files and caches
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

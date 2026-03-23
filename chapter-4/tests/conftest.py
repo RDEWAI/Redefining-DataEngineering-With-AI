@@ -1797,3 +1797,390 @@ def placeholder_dqs_file(tmp_path: Path) -> Path:
     f = tmp_path / "placeholder-dqs.md"
     f.write_text(PLACEHOLDER_DQS, encoding="utf-8")
     return f
+
+
+# ── LLD (Low-Level Design) fixtures ──────────────────────────────────────────
+
+VALID_LLD = """\
+# Low-Level Design: Patient 360 Pipeline
+
+| Field | Value |
+|-------|-------|
+| **Version** | 1.0 |
+| **Created** | 2026-03-22 |
+| **Last Modified** | 2026-03-22 |
+| **Author** | Technical Lead Agent |
+| **Status** | Draft |
+| **DRD Reference** | DRD-2026-03-10-patient-360.md v1.0 |
+| **HLD Reference** | HLD-2026-03-12-patient-360.md v1.0 |
+| **DMS Reference** | DMS-2026-03-14-patient-360.md v1.0 |
+| **STM Reference** | STM-2026-03-16-patient-360.xlsx v1.0 |
+| **DQS Reference** | DQS-2026-03-18-patient-360.md v1.0 |
+
+---
+
+## 1. Design Overview
+
+This LLD specifies the implementation details for the Patient 360 data pipeline.
+The pipeline uses a Medallion architecture (Bronze/Silver/Gold) with PySpark
+on a Docker-based Spark cluster, orchestrated via Airflow DAGs. Key decisions
+include Delta Lake for storage format [HLD §5.1], daily batch processing
+[DRD §4.4], and Spark-Expectations for DQ validation [DQS §2].
+
+## 2. Code Architecture
+
+The project follows a layered structure per development standards.
+
+```
+src/
+├── pipelines/
+│   ├── bronze/
+│   ├── silver/
+│   └── gold/
+├── common/
+│   ├── config.py
+│   └── utils.py
+└── tests/
+```
+
+Coding conventions follow PEP 8 with Ruff linting. For schema definitions,
+see DMS §4.2. Testing targets 80% coverage with pytest.
+
+## 3. File Formats & Storage Layout
+
+Storage uses Delta Lake format with Snappy compression per HLD §5.1.
+Partitioning strategy follows the DMS layer definitions [DMS §3].
+
+| Layer | Format | Compression | Partitioning |
+|-------|--------|-------------|-------------|
+| Bronze | Delta | Snappy | ingestion_date |
+| Silver | Delta | Snappy | processing_date |
+| Gold | Delta | Zstd | report_date |
+
+Directory layout: `/data/{layer}/{domain}/{table}/year={YYYY}/month={MM}/`.
+
+## 4. DAG Specification
+
+The pipeline DAG runs daily at 02:00 UTC with the following tasks.
+Critical path: ingest → cleanse → denormalize → validate (4.5 hours).
+
+| Task | Type | Layer | Dependencies | Timeout | Retries |
+|------|------|-------|-------------|---------|---------|
+| ingest_patients | ingestion | bronze | none | 30m | 3 |
+| ingest_encounters | ingestion | bronze | none | 30m | 3 |
+| ingest_conditions | ingestion | bronze | none | 30m | 3 |
+| cleanse_patients | transform | silver | ingest_patients | 45m | 2 |
+| cleanse_encounters | transform | silver | ingest_encounters | 45m | 2 |
+| build_patient_360 | denorm | gold | cleanse_patients, cleanse_encounters | 60m | 1 |
+| validate_gold | dq_check | gold | build_patient_360 | 15m | 1 |
+
+```mermaid
+graph TD
+    A[ingest_patients] --> D[cleanse_patients]
+    B[ingest_encounters] --> E[cleanse_encounters]
+    C[ingest_conditions] --> F[cleanse_conditions]
+    D --> G[build_patient_360]
+    E --> G
+    G --> H[validate_gold]
+```
+
+## 5. Task Implementation Details
+
+Each task has explicit I/O contracts per STM Tab:source-to-bronze mappings.
+
+| Task | Input Path | Output Path | Transform Ref | DQ Check |
+|------|-----------|-------------|---------------|----------|
+| ingest_patients | raw/patients.csv | bronze/patients/ | STM src-to-bronze | DQS §2 |
+| cleanse_patients | bronze/patients/ | silver/patients/ | STM brz-to-silver | DQS §2 |
+| build_patient_360 | silver/patients/ | gold/patient_360/ | STM slv-to-gold | DQS §4 |
+| validate_gold | /data/gold/patient_360/ | validation_report | DQS §5 | DQS §5 (DQ-REC-001) |
+
+When input is empty, ingestion tasks write a zero-row Delta table with schema preserved.
+
+## 6. Performance & Optimization
+
+Spark cluster: 4 executors x 4 cores x 8GB each = 128GB total [HLD §5.4].
+Target file size: 128MB per partition. Broadcast join threshold: 10MB.
+Parallelism: 16 partitions default. Cache silver tables used by multiple gold tasks.
+
+## 7. Configuration Schema
+
+| Parameter | Type | Default | Description | Per-Environment |
+|-----------|------|---------|-------------|----------------|
+| schedule_cron | string | 0 2 * * * | DAG schedule | Yes |
+| spark_executor_memory | string | 8g | Executor memory | Yes |
+| spark_num_executors | int | 4 | Number of executors | Yes |
+| base_data_path | string | /data | Root storage path | Yes |
+| retry_max_attempts | int | 3 | Max task retries | Yes |
+| alert_channel | string | #pipeline-alerts | Slack channel | Yes |
+| dq_fail_threshold | float | 0.05 | DQ failure rate threshold | Yes |
+
+## 8. Error Handling
+
+Retry policy: ingestion tasks retry 3 times with 60-second exponential backoff.
+Transform tasks retry 2 times with 120-second backoff. DQ tasks retry once.
+
+Dead letter / quarantine: failed records written to `/data/quarantine/{table}/{date}/`
+with retention of 30 days. Alert triggered when quarantine volume exceeds 5%.
+
+Alerting: CRITICAL failures page on-call via PagerDuty. WARNING issues post to
+#pipeline-alerts Slack channel. All failures logged to monitoring dashboard.
+
+## 9. Deployment
+
+Environments: DEV (2 executors, 4GB each), STAGING (4 executors, 8GB each),
+PROD (8 executors, 16GB each).
+
+Promotion: PR merge → CI tests → DEV deploy → smoke test → STAGING deploy →
+integration test → PROD deploy with manual approval gate.
+
+Rollback procedure:
+1. Detect failure via monitoring dashboard alert
+2. Revert to previous container image tag
+3. Re-process affected date partitions from source
+4. Notify stakeholders via #pipeline-alerts
+5. Post-mortem within 24 hours
+
+## 10. Monitoring
+
+| Metric | Type | Collection | Threshold | Alert Channel |
+|--------|------|-----------|-----------|---------------|
+| task_duration | timer | OpenTelemetry | > 2x baseline | Slack |
+| row_count_delta | gauge | Custom metric | > 20% change | PagerDuty |
+| dq_pass_rate | gauge | SE framework | < 95% | PagerDuty |
+| pipeline_latency | timer | Airflow | > SLA target | PagerDuty |
+
+Dashboard: Grafana board refreshed every 5 minutes showing task durations,
+row counts, DQ pass rates, and SLA compliance per DRD §4.3.
+
+## 11. Upstream Artifact References
+
+| Topic | Upstream Artifact | Section |
+|-------|-------------------|---------|
+| Business requirements & SLAs | DRD | DRD §1, DRD §4.3, DRD §4.4 |
+| Architecture pattern & tech stack | HLD | HLD §4.1, HLD §5.1-5.6 |
+| Logical/physical schemas | DMS | DMS §2-4, DMS §6-7 |
+| Transformation mappings | STM | STM Tabs: source-to-bronze, bronze-to-silver |
+| DQ rules & thresholds | DQS | DQS §2-5, DQS §7 |
+
+## 12. Traceability Matrix
+
+| Requirement | Source | LLD Component |
+|-------------|--------|---------------|
+| FR-1: Consolidate sources | DRD §2.1 | Task: build_patient_360 |
+| FR-2: Track demographics | DRD §3.2 | Silver layer SCD Type 2 |
+| NFR-1: Query < 2s | DRD §4.3 | Gold partitioning + Zstd |
+| NFR-2: Daily freshness | DRD §4.4 | DAG schedule: 02:00 UTC |
+
+## 13. Decision Log
+
+### Decision: Storage Format
+
+**Options Considered**:
+1. Parquet — simple, widely supported
+2. Delta Lake — ACID, time travel, schema evolution
+3. Iceberg — catalog integration, partition evolution
+
+**Selected**: Delta Lake
+
+**Rationale**: Delta provides ACID transactions and time travel needed for
+SCD Type 2 tracking and rollback capability per HLD §5.1.
+
+**Trade-off**: Vendor lock-in to Databricks ecosystem accepted because
+the team has Delta expertise (team capabilities assessment).
+
+## 14. Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2026-03-22 | Technical Lead Agent | Initial LLD creation |
+"""
+
+MINIMAL_INVALID_LLD = """\
+# Low-Level Design: Incomplete
+
+| Field | Value |
+|-------|-------|
+| **Version** | 0.1 |
+
+## 1. Design Overview
+
+This is a minimal LLD.
+"""
+
+EMPTY_SECTIONS_LLD = """\
+# Low-Level Design: Empty Sections
+
+| Field | Value |
+|-------|-------|
+| **Version** | 0.1 |
+| **Created** | 2026-03-22 |
+| **Author** | Test |
+| **Status** | Draft |
+| **DRD Reference** | test |
+| **HLD Reference** | test |
+| **DMS Reference** | test |
+| **STM Reference** | test |
+| **DQS Reference** | test |
+
+## 1. Design Overview
+
+## 2. Code Architecture
+
+## 3. File Formats & Storage Layout
+
+## 4. DAG Specification
+
+## 5. Task Implementation Details
+
+## 6. Performance & Optimization
+
+## 7. Configuration Schema
+
+## 8. Error Handling
+
+## 9. Deployment
+
+## 10. Monitoring
+
+## 11. Upstream Artifact References
+
+## 12. Traceability Matrix
+
+## 13. Decision Log
+
+## 14. Version History
+"""
+
+PLACEHOLDER_LLD = """\
+# Low-Level Design: Placeholder
+
+| Field | Value |
+|-------|-------|
+| **Version** | 0.1 |
+| **Created** | 2026-03-22 |
+| **Author** | Test |
+| **Status** | Draft |
+| **DRD Reference** | DRD v1 |
+| **HLD Reference** | HLD v1 |
+| **DMS Reference** | DMS v1 |
+| **STM Reference** | STM v1 |
+| **DQS Reference** | DQS v1 |
+
+## 1. Design Overview
+
+The pipeline implements the Patient 360 use case. It processes healthcare
+data through bronze, silver, and gold layers. DRD §1 defines the scope and
+HLD §4.1 specifies the Medallion pattern. DMS §2 has schema definitions.
+STM Tab:source covers mappings. DQS §2 defines field rules.
+
+## 2. Code Architecture
+
+[TBD - awaiting development standards review]
+
+## 3. File Formats & Storage Layout
+
+| Layer | Format | Compression |
+|-------|--------|-------------|
+| Bronze | Delta | Snappy |
+| Silver | Delta | Snappy |
+| Gold | Delta | Zstd |
+
+## 4. DAG Specification
+
+| Task | Type | Layer | Dependencies | Timeout | Retries |
+|------|------|-------|-------------|---------|---------|
+| ingest_patients | ingestion | bronze | none | 30m | 3 |
+| cleanse_patients | transform | silver | ingest_patients | 45m | 2 |
+| build_patient_360 | denorm | gold | cleanse_patients | 60m | 1 |
+
+Critical path analysis pending.
+
+## 5. Task Implementation Details
+
+| Task | Input Path | Output Path | Transform Ref | DQ Check |
+|------|-----------|-------------|---------------|----------|
+| ingest_patients | /raw/patients.csv | /bronze/patients/ | STM Tab:src | DQS §2 |
+| cleanse_patients | /bronze/patients/ | /silver/patients/ | STM Tab:brz | DQS §2 |
+| build_patient_360 | /silver/patients/ | /gold/patient_360/ | STM Tab:slv | DQS §4 |
+
+## 6. Performance & Optimization
+
+Cluster: 4 executors x 4 cores x 8GB each = 128GB total.
+
+## 7. Configuration Schema
+
+| Parameter | Type | Default | Description | Per-Environment |
+|-----------|------|---------|-------------|----------------|
+| schedule_cron | string | 0 2 * * * | DAG schedule | Yes |
+| spark_executor_memory | string | 8g | Executor memory | Yes |
+| base_data_path | string | /data | Root path | Yes |
+
+## 8. Error Handling
+
+[TODO - define retry and dead letter strategy]
+
+## 9. Deployment
+
+DEV and PROD environments defined. Rollback is manual.
+
+## 10. Monitoring
+
+[TBD - monitoring metrics to be defined]
+
+## 11. Upstream Artifact References
+
+| Topic | Upstream | Section |
+|-------|----------|---------|
+| Requirements | DRD | DRD §1 |
+| Architecture | HLD | HLD §4 |
+| Schemas | DMS | DMS §2 |
+| Mappings | STM | STM Tabs |
+| DQ Rules | DQS | DQS §2 |
+
+## 12. Traceability Matrix
+
+[TBD]
+
+## 13. Decision Log
+
+Options Considered and Rationale pending review.
+
+## 14. Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1 | 2026-03-22 | Test | Initial placeholder |
+"""
+
+
+@pytest.fixture
+def valid_lld_file(tmp_path: Path) -> Path:
+    """Create a valid LLD file for testing."""
+    f = tmp_path / "valid-lld.md"
+    f.write_text(VALID_LLD, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def invalid_lld_file(tmp_path: Path) -> Path:
+    """Create an invalid (minimal) LLD file for testing."""
+    f = tmp_path / "invalid-lld.md"
+    f.write_text(MINIMAL_INVALID_LLD, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def empty_lld_sections_file(tmp_path: Path) -> Path:
+    """Create an LLD with empty required sections."""
+    f = tmp_path / "empty-sections-lld.md"
+    f.write_text(EMPTY_SECTIONS_LLD, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def placeholder_lld_file(tmp_path: Path) -> Path:
+    """Create an LLD with placeholder text."""
+    f = tmp_path / "placeholder-lld.md"
+    f.write_text(PLACEHOLDER_LLD, encoding="utf-8")
+    return f

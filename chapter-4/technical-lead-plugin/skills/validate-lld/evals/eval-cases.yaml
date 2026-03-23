@@ -1,0 +1,53 @@
+skill: validate-lld
+version: "1.0"
+cases:
+  - id: TC-001
+    name: "Valid LLD passes validation"
+    description: "A complete LLD with all 14 sections and proper metadata should pass"
+    inputs:
+      lld_path: "outputs/lld/v1/LLD-2026-03-22-patient-360.md"
+    expected:
+      - type: validation_pass
+        description: "0 CRITICAL issues reported"
+    success_criteria: "Validator reports no critical issues"
+
+  - id: TC-002
+    name: "Missing sections produce CRITICAL"
+    description: "An LLD missing required sections must report CRITICAL errors"
+    inputs:
+      lld_content: "# LLD: Test\n\n## 1. Design Overview\n\nSome content."
+    expected:
+      - type: validation_fail
+        description: "CRITICAL issues for missing sections"
+    success_criteria: "Validator identifies all missing required sections"
+
+  - id: TC-003
+    name: "Empty sections produce CRITICAL"
+    description: "An LLD with empty required sections must report CRITICAL errors"
+    inputs:
+      lld_content: "Full LLD with empty section bodies"
+    expected:
+      - type: validation_fail
+        description: "CRITICAL issues for empty sections"
+    success_criteria: "Validator flags sections with no meaningful content"
+
+  - id: TC-004
+    name: "Missing upstream references produce CRITICAL"
+    description: "Section 11 must reference all 5 upstream artifacts"
+    inputs:
+      lld_content: "LLD with Section 11 missing DMS reference"
+    expected:
+      - type: validation_fail
+        description: "CRITICAL for missing upstream artifact reference"
+    success_criteria: "Validator flags missing upstream artifact references"
+
+  - id: TC-005
+    name: "Missing companion files produce INFO"
+    description: "When dag-definition.yaml, dag-pipeline.mmd, or impl-sequence.md are absent, INFO is reported"
+    inputs:
+      lld_path: "outputs/lld/v1/LLD-2026-03-22-patient-360.md"
+      remove_files: ["dag/dag-definition.yaml", "dag/dag-pipeline.mmd", "impl-sequence.md"]
+    expected:
+      - type: content_contains
+        patterns: ["dag-definition.yaml", "dag-pipeline.mmd", "impl-sequence.md"]
+    success_criteria: "Validator reports INFO for missing derived artifacts"

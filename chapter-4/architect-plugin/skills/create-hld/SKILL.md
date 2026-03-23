@@ -526,6 +526,20 @@ Every HLD starts with this metadata table:
 | **Status** | Draft |
 | **DRD Reference** | {DRD filename and version} |
 
+### Correction Capture (MANDATORY)
+
+After EVERY user correction — whether they edit the artifact, ask you to change
+something, or reject a section — you MUST append a learning entry BEFORE continuing:
+
+```bash
+echo '{"skill": "create-hld", "date": "{YYYY-MM-DD}", "correction": "{what the user said or changed}", "pattern": "{generalized rule}", "status": "pending"}' >> memory/hld/learnings-queue.jsonl
+```
+
+**What counts as a correction:** user says "no, change X to Y", edits artifact
+directly, rejects a proposed decision, or provides a specific value replacing
+a vague one you generated. When in doubt, append it — false positives are filtered
+during apply-learnings.
+
 ## Learnings & Corrections
 
 > **Meta-rules for adding learnings:**

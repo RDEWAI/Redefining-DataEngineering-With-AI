@@ -4,17 +4,17 @@
 
 | Source | Type | Access Pattern | Tables Consumed |
 |--------|------|---------------|-----------------|
-| Synthea Healthcare EHR | DuckDB database (636 MB verified) | Read-only SQL for validation; CSV file read for ingestion [DRD §2.1] | 13 Phase 1 tables: patients, encounters, conditions, medications, observations, allergies, immunizations, procedures, claims, careplans, organizations, providers, payers |
+| Synthea Healthcare EHR | DuckDB database (636 MB verified) | Read-only SQL for validation; CSV file read for ingestion [DRD SS2.1] | 13 Phase 1 tables: patients, encounters, conditions, medications, observations, allergies, immunizations, procedures, claims, careplans, organizations, providers, payers |
 
 ### 3.2 Consumer Access Pattern
 
 | Consumer Group | Access Method | Gold Tables | SLA |
 |---------------|--------------|-------------|-----|
-| Physicians (120) | Unity Catalog REST API | patient_summary, patient_clinical_history | < 2s at p90 [DRD §4.3], hourly refresh [DRD §4.4] |
-| Nurses (200) | Unity Catalog REST API | patient_summary, patient_clinical_history | < 2s at p90 [DRD §4.3], hourly refresh [DRD §4.4] |
-| Care Coordinators (30) | Unity Catalog REST API | patient_summary | < 2s at p90 [DRD §4.3], daily refresh [DRD §4.4] |
-| Billing Staff (50) | Unity Catalog REST API | patient_billing_summary | < 2s at p90 [DRD §4.3], daily refresh [DRD §4.4] |
-| Department Heads (15) | Unity Catalog REST API | patient_summary (aggregates) | < 2s at p90 [DRD §4.3], daily refresh [DRD §4.4] |
+| Physicians (120) | Unity Catalog REST API | patient_summary, patient_clinical_history | < 2s at p90 [DRD SS4.3], hourly refresh [DRD SS4.4] |
+| Nurses (200) | Unity Catalog REST API | patient_summary, patient_clinical_history | < 2s at p90 [DRD SS4.3], hourly refresh [DRD SS4.4] |
+| Care Coordinators (30) | Unity Catalog REST API | patient_summary | < 2s at p90 [DRD SS4.3], daily refresh [DRD SS4.4] |
+| Billing Staff (50) | Unity Catalog REST API | patient_billing_summary | < 2s at p90 [DRD SS4.3], daily refresh [DRD SS4.4] |
+| Department Heads (15) | Unity Catalog REST API | patient_summary (aggregates) | < 2s at p90 [DRD SS4.3], daily refresh [DRD SS4.4] |
 
 ### 3.3 System Context Diagram
 
@@ -27,7 +27,10 @@ flowchart TB
     end
 
     subgraph Platform["Patient 360 Data Platform"]
+        airflow["Apache Airflow\nCross-pipeline scheduling\nDependency management"]
+        sdp["Spark Declarative Pipelines\nIntra-pipeline orchestration\nDependency resolution + incremental processing"]
         pipeline["Medallion Pipeline\nBronze - Silver - Gold\nDQ gates between layers"]
+        config["Per-Table YAML Configs\n13 config files\nBronze ingestion driver"]
     end
 
     subgraph External["External Systems"]
@@ -37,6 +40,9 @@ flowchart TB
         grafana["Grafana\nPipeline metrics dashboards"]
     end
 
+    airflow -->|"Schedule + trigger"| sdp
+    config -->|"Drive ingestion"| sdp
+    sdp -->|"Orchestrate"| pipeline
     ehr -->|"Full Snapshot CDC\nHourly batch"| pipeline
     pipeline -->|"Gold tables\n< 2s p90, hourly refresh"| clinical
     pipeline -->|"Billing summary\n< 2s p90, daily refresh"| billing

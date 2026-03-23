@@ -27,6 +27,10 @@ EVAL_SKILLS = [
     ("dq-engineer-plugin", "update-dqs"),
     ("dq-engineer-plugin", "validate-dqs"),
     ("dq-engineer-plugin", "generate-se-rules"),
+    ("technical-lead-plugin", "create-lld"),
+    ("technical-lead-plugin", "update-lld"),
+    ("technical-lead-plugin", "validate-lld"),
+    ("technical-lead-plugin", "generate-config-template"),
 ]
 
 VALID_EXPECTED_TYPES = {

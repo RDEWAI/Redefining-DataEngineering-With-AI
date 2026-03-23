@@ -31,6 +31,11 @@
       "name": "dq-engineer-plugin",
       "source": "./dq-engineer-plugin",
       "description": "Data Quality Engineer Agent for generating, updating, and validating Data Quality Specifications (DQS) and Spark-Expectations rules"
+    },
+    {
+      "name": "technical-lead-plugin",
+      "source": "./technical-lead-plugin",
+      "description": "Technical Lead Agent for generating, updating, and validating Low-Level Design (LLD) documents and configuration templates"
     }
   ]
 }

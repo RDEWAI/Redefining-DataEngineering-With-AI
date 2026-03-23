@@ -37,6 +37,13 @@ PLUGINS = {
         "generate-se-rules",
         "apply-learnings",
     ],
+    "technical-lead-plugin": [
+        "create-lld",
+        "update-lld",
+        "validate-lld",
+        "generate-config-template",
+        "apply-learnings",
+    ],
 }
 
 # Skills that should have context: fork
@@ -52,6 +59,9 @@ FORK_SKILLS = {
     "update-stm",
     "update-dqs",
     "generate-se-rules",
+    "create-lld",
+    "update-lld",
+    "generate-config-template",
 }
 
 
@@ -201,6 +211,7 @@ PLUGIN_TO_ARTIFACT = {
     "data-modeler-plugin": "dms",
     "mapping-analyst-plugin": "stm",
     "dq-engineer-plugin": "dqs",
+    "technical-lead-plugin": "lld",
 }
 
 

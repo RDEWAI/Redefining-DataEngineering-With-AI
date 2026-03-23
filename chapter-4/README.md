@@ -1,6 +1,6 @@
 # Chapter 4: Planning with Context — Multi-Agent Artifact Chain
 
-Four Claude Code plugins that act as a **Business Analyst Agent**, **Data Architect Agent**, **Data Modeler Agent**, and **Mapping Analyst Agent**, producing structured artifacts that feed the next role in the chain.
+Six Claude Code plugins that act as a **Business Analyst Agent**, **Data Architect Agent**, **Data Modeler Agent**, **Mapping Analyst Agent**, **DQ Engineer Agent**, and **Technical Lead Agent**, producing structured artifacts that feed the next role in the chain.
 
 **Artifact chain**: DRD → **HLD** → **DMS** → **STM** → DQS → LLD → Stories
 
@@ -41,6 +41,8 @@ From the repo root, open Claude Code and add the local marketplace:
 /plugin install architect-plugin@rdewai-plugins
 /plugin install data-modeler-plugin@rdewai-plugins
 /plugin install mapping-analyst-plugin@rdewai-plugins
+/plugin install dq-engineer-plugin@rdewai-plugins
+/plugin install technical-lead-plugin@rdewai-plugins
 ```
 
 You can verify the install by running `/plugin` — you should see:
@@ -67,6 +69,18 @@ data-modeler-plugin (v1.0.0)
 mapping-analyst-plugin (v1.0.0)
   Skills: create-stm, update-stm, validate-stm
   Agents: mapping-analyst-agent
+  Hooks: PreToolUse, PostToolUse
+  Status: Enabled
+
+dq-engineer-plugin (v1.0.0)
+  Skills: create-dqs, update-dqs, validate-dqs, generate-se-rules
+  Agents: dq-engineer-agent
+  Hooks: PreToolUse, PostToolUse
+  Status: Enabled
+
+technical-lead-plugin (v1.0.0)
+  Skills: create-lld, update-lld, validate-lld, generate-config-template, apply-learnings
+  Agents: technical-lead-agent
   Hooks: PreToolUse, PostToolUse
   Status: Enabled
 ```
@@ -169,7 +183,60 @@ Other agent invocations:
 @mapping-analyst-plugin:mapping-analyst-agent Validate the STM at outputs/stm/v1/STM-2026-03-16-patient-360.xlsx
 ```
 
-### 8. Use skills directly (alternative)
+### 8. Use the DQ Engineer Agent
+
+The DQ Engineer Agent translates STM transformation specifications into data quality rules and Spark-Expectations YAML files:
+
+```
+@dq-engineer-plugin:dq-engineer-agent Create the DQS from the latest STM
+```
+
+The agent will:
+1. Discover the latest STM, DMS, DRD, and DQ engineer input version folders automatically
+2. Read STM mappings, DMS schemas, DRD quality expectations, DQ standards, and SLA definitions
+3. Assess gaps across 9 DQS sections (Field-Level Validations, Referential Integrity, Statistical Distribution, Reconciliation, etc.)
+4. Ask you data quality decisions via structured `AskUserQuestion` UI — one rule category at a time
+5. Verify source table structures with read-only database queries
+6. Generate the DQS as markdown with embedded YAML rule blocks
+7. Auto-generate per-table **Spark-Expectations YAML** files in `outputs/dqs/v{N}/se-rules/`
+8. Validate automatically and fix any critical issues
+
+**Note**: The DQS produces **dual output** — a markdown specification plus machine-readable SE YAML rule files (one per target table), compatible with spark-expectations >= 2.6.0.
+
+Other agent invocations:
+
+```
+@dq-engineer-plugin:dq-engineer-agent Update the DQS with revised null rate thresholds
+@dq-engineer-plugin:dq-engineer-agent Validate the DQS at outputs/dqs/v1/DQS-2026-03-20-patient-360.md
+```
+
+### 9. Use the Technical Lead Agent
+
+The Technical Lead Agent translates all upstream artifacts into a Low-Level Design with config templates, DAG definitions, and implementation sequence:
+
+```
+@technical-lead-plugin:technical-lead-agent Create the LLD for the project
+```
+
+The agent will:
+1. Discover all 5 upstream artifacts (DRD, HLD, DMS, STM, DQS) and technical lead input version folders automatically
+2. Read development standards, infrastructure specs, and orchestration patterns
+3. Assess gaps across 12 LLD sections (Module Design, DAG Orchestration, Config Management, Error Handling, etc.)
+4. Ask you implementation decisions via structured `AskUserQuestion` UI — one section at a time
+5. Generate the LLD as a **hub document** that references upstream artifacts by section number
+6. Auto-generate 3 derived artifacts: **config template** (from §7), **DAG definition YAML + Mermaid diagram** (from §4), and **implementation sequence** (from §2/§4/§9/§12)
+7. Validate automatically and fix any critical issues
+
+**Note**: The LLD is a hub document — it references upstream artifacts instead of duplicating content. The `create-lld` workflow auto-generates config, DAG, and implementation sequence as separate files.
+
+Other agent invocations:
+
+```
+@technical-lead-plugin:technical-lead-agent Update the LLD with revised error handling strategy
+@technical-lead-plugin:technical-lead-agent Validate the LLD at outputs/lld/v1/LLD-2026-03-22-patient-360.md
+```
+
+### 10. Use skills directly (alternative)
 
 You can also invoke skills directly without the agent wrapper. Make sure you have `data/duckdb/raw.db` already created.
 
@@ -191,6 +258,14 @@ Other skills:
 /mapping-analyst-plugin:create-stm
 /mapping-analyst-plugin:update-stm outputs/stm/v1/STM-2026-03-16-patient-360.xlsx
 /mapping-analyst-plugin:validate-stm outputs/stm/v1/STM-2026-03-16-patient-360.xlsx
+/dq-engineer-plugin:create-dqs
+/dq-engineer-plugin:update-dqs outputs/dqs/v1/DQS-2026-03-20-patient-360.md
+/dq-engineer-plugin:validate-dqs outputs/dqs/v1/DQS-2026-03-20-patient-360.md
+/dq-engineer-plugin:generate-se-rules outputs/dqs/v1/DQS-2026-03-20-patient-360.md
+/technical-lead-plugin:create-lld
+/technical-lead-plugin:update-lld outputs/lld/v1/LLD-2026-03-22-patient-360.md
+/technical-lead-plugin:validate-lld outputs/lld/v1/LLD-2026-03-22-patient-360.md
+/technical-lead-plugin:generate-config-template outputs/lld/v1/LLD-2026-03-22-patient-360.md
 ```
 
 ## How the Plugins Work
@@ -235,6 +310,27 @@ The `mapping-analyst-agent` sub-agent (`mapping-analyst-plugin/agents/mapping-an
 - **DMS Traceability** — every transformation must cite the DMS schema section it implements
 - **Session Memory** — writes notes to `memory/stm/` after each engagement
 
+### DQ Engineer Agent
+
+The `dq-engineer-agent` sub-agent (`dq-engineer-plugin/agents/dq-engineer-agent.md`) embodies the DQ Engineer role with:
+
+- **Quality Rule Elicitation Protocol** — asks data quality decisions category-by-category using `AskUserQuestion`, covering field-level validations, referential integrity, statistical distribution, and reconciliation rules
+- **Database Gate** — queries actual source table structures before specifying quality thresholds; blocks DQS generation if the database is inaccessible
+- **Dual Output** — generates markdown DQS specification plus per-table **Spark-Expectations YAML** files compatible with spark-expectations >= 2.6.0
+- **Four DQS Responsibilities** — every DQS covers field-level validations (NOT NULL, FORMAT, RANGE, ENUM), referential integrity (FK checks), statistical distribution (baselines, null rates), and reconciliation (source-to-target comparisons)
+- **STM/DMS Traceability** — every quality rule must cite the STM transformation or DMS schema it validates
+- **Session Memory** — writes notes to `memory/dqs/` after each engagement
+
+### Technical Lead Agent
+
+The `technical-lead-agent` sub-agent (`technical-lead-plugin/agents/technical-lead-agent.md`) embodies the Technical Lead role with:
+
+- **Implementation Elicitation Protocol** — asks implementation decisions section-by-section using `AskUserQuestion`, covering module design, DAG orchestration, config management, error handling, testing strategy, and deployment
+- **Hub Document Pattern** — generates the LLD as a reference hub that cites upstream artifacts (DRD, HLD, DMS, STM, DQS) by section number instead of duplicating content
+- **Derived Artifact Generation** — auto-generates 3 additional artifacts from the LLD: config template YAML (from §7), DAG definition YAML + Mermaid diagram (from §4), and implementation sequence (from §2/§4/§9/§12)
+- **All-Upstream Traceability** — every design decision must cite the upstream artifact section it implements
+- **Session Memory** — writes notes to `memory/lld/` after each engagement
+
 ### Skills
 
 | Plugin | Skill | What it does |
@@ -251,10 +347,18 @@ The `mapping-analyst-agent` sub-agent (`mapping-analyst-plugin/agents/mapping-an
 | mapping-analyst-plugin | `create-stm` | Reads DMS + HLD + transformation standards, generates a complete STM as .xlsx with 8 sheets |
 | mapping-analyst-plugin | `update-stm` | Merges transformation changes into an existing STM workbook |
 | mapping-analyst-plugin | `validate-stm` | Runs 15 validation checks on an STM .xlsx (sheets, headers, traceability, formatting) |
+| dq-engineer-plugin | `create-dqs` | Reads STM + DMS + DRD + DQ standards, generates a DQS with YAML rule blocks; auto-generates SE YAML files |
+| dq-engineer-plugin | `update-dqs` | Merges rule changes into an existing DQS, preserving unchanged content |
+| dq-engineer-plugin | `validate-dqs` | Runs validation checks on a DQS (sections, YAML syntax, rule categories, traceability) |
+| dq-engineer-plugin | `generate-se-rules` | Converts DQS rules to per-table Spark-Expectations YAML files |
+| technical-lead-plugin | `create-lld` | Reads all 5 upstream artifacts + tech lead inputs, generates LLD + config template + DAG definition + impl sequence |
+| technical-lead-plugin | `update-lld` | Merges implementation changes into an existing LLD, preserving unchanged content |
+| technical-lead-plugin | `validate-lld` | Runs validation checks on an LLD (sections, artifact references, DAG syntax) |
+| technical-lead-plugin | `generate-config-template` | Generates environment config YAML from LLD §7 |
 
 ### Hooks
 
-All four plugins register two hooks each:
+All six plugins register two hooks each:
 
 **PreToolUse — Read-Only Query Enforcement**
 
@@ -262,9 +366,9 @@ Fires before every `Bash` command. Blocks database write operations (INSERT, UPD
 
 **PostToolUse — Automatic Validation**
 
-Fires after every `Write` or `Edit` operation. When Claude writes a file to `outputs/drd/`, `outputs/hld/`, `outputs/dms/`, or `outputs/stm/`:
+Fires after every `Write` or `Edit` operation. When Claude writes a file to `outputs/drd/`, `outputs/hld/`, `outputs/dms/`, `outputs/stm/`, `outputs/dqs/`, or `outputs/lld/`:
 
-1. The hook script checks if the file is a DRD/HLD/DMS (`.md`) or STM (`.xlsx`) in the outputs directory
+1. The hook script checks if the file is a DRD/HLD/DMS/DQS/LLD (`.md`) or STM (`.xlsx`) in the outputs directory
 2. Runs the Python validator against the file
 3. **CRITICAL issues** → blocks Claude and feeds errors back for auto-fix
 4. **Warnings** → passed as non-blocking context
@@ -311,6 +415,22 @@ ls -d {path}/v* | sort -V | tail -1
 |------|----------|
 | `transformation-standards.md` | Idempotency rules, type casting, null handling conventions, dedup rules, string standardization, date/time standards, surrogate key generation, SCD merge patterns |
 | `code-system-mappings.md` | SNOMED-CT, RxNorm, LOINC codes for Patient 360, encounter/gender enumerations, CASE expression templates |
+
+**DQ Engineer Agent inputs** — `inputs/dqs/v1/`:
+
+| File | Contents |
+|------|----------|
+| `dq-standards.md` | Severity definitions, threshold defaults, rule naming conventions |
+| `sla-definitions.md` | Consumer freshness requirements, availability targets |
+| `se-config-template.yaml` | Spark-Expectations environment configuration template |
+
+**Technical Lead Agent inputs** — `inputs/lld/v1/`:
+
+| File | Contents |
+|------|----------|
+| `development-standards.md` | Coding standards, branching strategy, PR conventions |
+| `infrastructure-specs.md` | Compute specs, storage layout, networking, monitoring |
+| `orchestration-patterns.md` | DAG design patterns, retry policies, alerting conventions |
 
 ## Plugin Directory Structure
 
@@ -410,17 +530,92 @@ chapter-4/
 │   └── scripts/
 │       ├── validate-stm-hook.py
 │       └── enforce-readonly-queries.py
+├── dq-engineer-plugin/                    # DQ Engineer Agent plugin
+│   ├── .claude-plugin/
+│   │   └── plugin.json
+│   ├── agents/
+│   │   └── dq-engineer-agent.md
+│   ├── skills/
+│   │   ├── create-dqs/
+│   │   │   ├── SKILL.md
+│   │   │   ├── DQS_template.j2
+│   │   │   └── examples/
+│   │   │       └── sample-dqs.md
+│   │   ├── update-dqs/
+│   │   │   └── SKILL.md
+│   │   ├── validate-dqs/
+│   │   │   ├── SKILL.md
+│   │   │   └── scripts/
+│   │   │       └── validate_dqs.py
+│   │   └── generate-se-rules/
+│   │       ├── SKILL.md
+│   │       ├── scripts/
+│   │       │   └── generate_se_rules.py
+│   │       └── examples/
+│   │           └── sample-se-rules/
+│   ├── hooks/
+│   │   └── hooks.json
+│   └── scripts/
+│       ├── validate-dqs-hook.py
+│       └── enforce-readonly-queries.py
+├── technical-lead-plugin/                 # Technical Lead Agent plugin
+│   ├── .claude-plugin/
+│   │   └── plugin.json
+│   ├── agents/
+│   │   └── technical-lead-agent.md
+│   ├── skills/
+│   │   ├── create-lld/
+│   │   │   ├── SKILL.md
+│   │   │   ├── LLD_template.j2
+│   │   │   ├── scripts/
+│   │   │   │   ├── generate_dag_definition.py
+│   │   │   │   └── generate_impl_sequence.py
+│   │   │   └── examples/
+│   │   │       ├── sample-lld.md
+│   │   │       ├── sample-dag-definition.yaml
+│   │   │       ├── sample-dag-pipeline.mmd
+│   │   │       └── sample-impl-sequence.md
+│   │   ├── update-lld/
+│   │   │   └── SKILL.md
+│   │   ├── validate-lld/
+│   │   │   ├── SKILL.md
+│   │   │   └── scripts/
+│   │   │       └── validate_lld.py
+│   │   ├── generate-config-template/
+│   │   │   ├── SKILL.md
+│   │   │   ├── scripts/
+│   │   │   │   └── generate_config_template.py
+│   │   │   └── examples/
+│   │   │       └── sample-config-template.yaml
+│   │   └── apply-learnings/
+│   │       └── SKILL.md
+│   ├── hooks/
+│   │   └── hooks.json
+│   └── scripts/
+│       ├── validate-lld-hook.py
+│       └── enforce-readonly-queries.py
 ├── inputs/
 │   ├── drd/v1/                         # BA Agent inputs (versioned)
 │   ├── architect/v1/                   # Architect Agent inputs (versioned)
 │   ├── dms/v1/                         # Data Modeler inputs (versioned)
-│   └── stm/v1/                         # Mapping Analyst inputs (versioned)
+│   ├── stm/v1/                         # Mapping Analyst inputs (versioned)
+│   ├── dqs/v1/                         # DQ Engineer inputs (versioned)
+│   └── lld/v1/                         # Technical Lead inputs (versioned)
 ├── outputs/
 │   ├── drd/v1/                         # Generated DRDs (versioned)
 │   ├── hld/v1/                         # Generated HLDs (versioned)
 │   ├── dms/v1/                         # Generated DMSs (versioned)
-│   └── stm/v1/                         # Generated STM Excel workbooks (versioned)
-├── tests/                              # Unit tests (299 tests)
+│   ├── stm/v1/                         # Generated STM Excel workbooks (versioned)
+│   ├── dqs/v1/                         # Generated DQS + SE YAML rules (versioned)
+│   └── lld/v1/                         # Generated LLD + config + DAG + impl sequence (versioned)
+├── memory/                             # Session memory (cross-session persistence)
+│   ├── drd/                            # BA Agent session notes + learnings
+│   ├── hld/                            # Architect session notes + learnings
+│   ├── dms/                            # Data Modeler session notes + learnings
+│   ├── stm/                            # Mapping Analyst session notes + learnings
+│   ├── dqs/                            # DQ Engineer session notes + learnings
+│   └── lld/                            # Technical Lead session notes + learnings
+├── tests/                              # Unit tests
 ├── pyproject.toml
 ├── Makefile
 └── README.md
@@ -435,7 +630,7 @@ cd chapter-4
 make test
 ```
 
-This runs 299 tests covering all four plugins: validators, validation hooks, read-only query enforcement, and agent definition structure.
+This runs all tests covering all six plugins: validators, validation hooks, read-only query enforcement, agent definition structure, and derived artifact generators.
 
 ### Run validators directly
 
@@ -454,18 +649,26 @@ uv run python data-modeler-plugin/skills/validate-dms/scripts/validate_dms.py ou
 # Validate a specific STM (.xlsx)
 uv run python mapping-analyst-plugin/skills/validate-stm/scripts/validate_stm.py outputs/stm/v1/STM-2026-03-16-patient-360.xlsx
 
+# Validate a specific DQS
+uv run python dq-engineer-plugin/skills/validate-dqs/scripts/validate_dqs.py outputs/dqs/v1/DQS-2026-03-20-patient-360.md
+
+# Validate a specific LLD
+uv run python technical-lead-plugin/skills/validate-lld/scripts/validate_lld.py outputs/lld/v1/LLD-2026-03-22-patient-360.md
+
 # Validate all artifacts
 make validate-drd
 make validate-hld
 make validate-dms
 make validate-stm
+make validate-dqs
+make validate-lld
 ```
 
 ### Test the plugin end-to-end
 
 1. Start Claude Code from the repo root (`claude`)
 2. Add marketplace: `/plugin marketplace add ./chapter-4`
-3. Install plugins: `/plugin install ba-plugin@rdewai-plugins`, `/plugin install architect-plugin@rdewai-plugins`, `/plugin install data-modeler-plugin@rdewai-plugins`, `/plugin install mapping-analyst-plugin@rdewai-plugins`
+3. Install plugins: `/plugin install ba-plugin@rdewai-plugins`, `/plugin install architect-plugin@rdewai-plugins`, `/plugin install data-modeler-plugin@rdewai-plugins`, `/plugin install mapping-analyst-plugin@rdewai-plugins`, `/plugin install dq-engineer-plugin@rdewai-plugins`, `/plugin install technical-lead-plugin@rdewai-plugins`
 4. Invoke the BA agent: `@ba-agent Create a DRD from inputs/drd/v1`
 5. Answer the agent's clarifying questions until it confirms readiness
 6. Verify a DRD was created in `outputs/drd/v1/`
@@ -478,6 +681,12 @@ make validate-stm
 13. Invoke the Mapping Analyst agent: `@mapping-analyst-plugin:mapping-analyst-agent Create the STM from the latest DMS`
 14. Answer transformation mapping questions until the agent confirms readiness
 15. Verify an STM `.xlsx` workbook was created in `outputs/stm/v1/`
+16. Invoke the DQ Engineer agent: `@dq-engineer-plugin:dq-engineer-agent Create the DQS from the latest STM`
+17. Answer data quality rule questions until the agent confirms readiness
+18. Verify a DQS was created in `outputs/dqs/v1/` and SE YAML files in `outputs/dqs/v1/se-rules/`
+19. Invoke the Technical Lead agent: `@technical-lead-plugin:technical-lead-agent Create the LLD for the project`
+20. Answer implementation design questions until the agent confirms readiness
+21. Verify an LLD was created in `outputs/lld/v1/` with config, DAG, and impl-sequence files
 
 ### Debug plugin loading
 
@@ -507,6 +716,12 @@ Or uninstall and reinstall:
 
 /plugin uninstall mapping-analyst-plugin@rdewai-plugins
 /plugin install mapping-analyst-plugin@rdewai-plugins
+
+/plugin uninstall dq-engineer-plugin@rdewai-plugins
+/plugin install dq-engineer-plugin@rdewai-plugins
+
+/plugin uninstall technical-lead-plugin@rdewai-plugins
+/plugin install technical-lead-plugin@rdewai-plugins
 ```
 
 ## Makefile Targets
@@ -514,11 +729,13 @@ Or uninstall and reinstall:
 ```bash
 make help           # Show all commands
 make dev-setup      # Install Python dependencies
-make test           # Run all 299 tests
-make validate-drd   # Validate all DRDs in outputs/
-make validate-hld   # Validate all HLDs in outputs/
-make validate-dms   # Validate all DMSs in outputs/
-make validate-stm   # Validate all STMs (.xlsx) in outputs/
+make test           # Run all tests
+make validate-drd   # Validate all DRDs in outputs/drd/
+make validate-hld   # Validate all HLDs in outputs/hld/
+make validate-dms   # Validate all DMSs in outputs/dms/
+make validate-stm   # Validate all STMs (.xlsx) in outputs/stm/
+make validate-dqs   # Validate all DQSs in outputs/dqs/
+make validate-lld   # Validate all LLDs in outputs/lld/
 make lint           # Run ruff linter
 make format         # Auto-format code
 make clean          # Remove caches

@@ -21,6 +21,11 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-stm-hook.py",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/check-learnings-queue.py",
+            "timeout": 10
           }
         ]
       }

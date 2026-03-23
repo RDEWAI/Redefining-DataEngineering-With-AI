@@ -413,11 +413,19 @@ Use naming convention: `DRD-{YYYY-MM-DD}-{short-name}.md`
    - Discrepancies found between inputs and actual data
    - Validation results (CRITICAL/WARNING/INFO counts)
 
-If the user corrected any output during this session, also append to
-`memory/drd/learnings-queue.jsonl`:
-```json
-{"skill": "create-drd", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
+### Correction Capture (MANDATORY)
+
+After EVERY user correction — whether they edit the artifact, ask you to change
+something, or reject a section — you MUST append a learning entry BEFORE continuing:
+
+```bash
+echo '{"skill": "create-drd", "date": "{YYYY-MM-DD}", "correction": "{what the user said or changed}", "pattern": "{generalized rule}", "status": "pending"}' >> memory/drd/learnings-queue.jsonl
 ```
+
+**What counts as a correction:** user says "no, change X to Y", edits artifact
+directly, rejects a proposed decision, or provides a specific value replacing
+a vague one you generated. When in doubt, append it — false positives are filtered
+during apply-learnings.
 
 ---
 

@@ -360,6 +360,20 @@ the HLD is not ready for handoff to the data modeling team.
 - Session memory: `memory/hld/session-{YYYY-MM-DD}.md`
 - Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
 
+### Correction Capture (MANDATORY)
+
+After EVERY user correction — whether they edit the artifact, ask you to change
+something, or reject a section — you MUST append a learning entry BEFORE continuing:
+
+```bash
+echo '{"skill": "update-hld", "date": "{YYYY-MM-DD}", "correction": "{what the user said or changed}", "pattern": "{generalized rule}", "status": "pending"}' >> memory/hld/learnings-queue.jsonl
+```
+
+**What counts as a correction:** user says "no, change X to Y", edits artifact
+directly, rejects a proposed decision, or provides a specific value replacing
+a vague one you generated. When in doubt, append it — false positives are filtered
+during apply-learnings.
+
 ## Learnings & Corrections
 
 > **Meta-rules for adding learnings:**

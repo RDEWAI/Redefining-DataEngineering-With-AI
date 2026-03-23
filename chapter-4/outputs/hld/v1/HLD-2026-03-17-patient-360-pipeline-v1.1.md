@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Created** | 2026-03-16 |
-| **Last Modified** | 2026-03-17 |
+| **Last Modified** | 2026-03-23 |
 | **Author** | Architect Agent |
 | **Status** | Draft |
 | **DRD Reference** | DRD-2026-02-11-patient-360.md (v1.1) |
@@ -239,7 +239,7 @@ flowchart TB
 | Table Format | Delta Lake | ACID writes, time travel for rollback, MERGE INTO for SCD2; mandated by infrastructure constraints [infrastructure-constraints.md §2] |
 | Metastore | Unity Catalog OSS | Catalog/schema hierarchy for table registration; REST API for consumer access [technology-catalog.md §2] |
 | Lineage | OpenLineage + Marquez | HIPAA audit trail support [DRD §7.5]; captures Bronze to Silver to Gold job-level lineage [technology-catalog.md §3] |
-| Data Quality | Spark Expectations | YAML rule-based DQ enforcement at each layer boundary; row_dq, agg_dq, and query_dq rule types [technology-catalog.md §5] |
+| Data Quality | Spark Expectations (sole DQ engine) | All DQ enforcement at each layer boundary via SE YAML rules (row_dq, agg_dq, query_dq) [technology-catalog.md §5] |
 | Pipeline Metrics | Grafana | Dashboard visualization for pipeline runtime, throughput, and error rates; complements Marquez lineage with operational monitoring |
 | Containerization | Docker + Docker Compose | All services (Spark, UC, Marquez, PostgreSQL, Grafana) in containers; local dev environment [technology-catalog.md §4] |
 | Language | Python (PySpark) | Team high proficiency [team-capabilities.md §1]; pytest ecosystem for testing [team-capabilities.md §4] |
@@ -355,7 +355,7 @@ Pipeline observability uses three complementary tools:
 
 1. **OpenLineage + Marquez** [technology-catalog.md §3]: Every pipeline job emits lineage events capturing input/output dataset relationships. The Marquez web UI provides a visual Bronze to Silver to Gold lineage graph. Supports HIPAA audit trail requirements [DRD §7.5].
 
-2. **Spark Expectations** [technology-catalog.md §5]: DQ results logged per layer with pass/fail/warn counts. Rule definitions in YAML enable version-controlled quality gates. Failed records quarantined with rejection reasons.
+2. **Spark Expectations** [technology-catalog.md §5]: Sole DQ engine for the pipeline. DQ results logged per layer with pass/fail/warn counts. Rule definitions in YAML enable version-controlled quality gates. Failed records quarantined with rejection reasons. All DQ is handled exclusively through Spark Expectations.
 
 3. **Grafana**: Pipeline metrics dashboards showing job runtime, throughput (rows/second), error rates, and DQ pass rates. Alert rules trigger notifications when pipeline runtime exceeds 30 minutes or DQ failure rates exceed thresholds.
 
@@ -395,7 +395,7 @@ Pipeline observability uses three complementary tools:
 
 ### 6.3 Data Quality Strategy
 
-Data quality is enforced at layer boundaries using Spark Expectations [technology-catalog.md §5] with YAML rule definitions per table.
+Data quality is enforced at layer boundaries using Spark Expectations as the sole DQ engine [technology-catalog.md §5], with YAML rule definitions per table. SE executes all DQ checks inline before writes at each layer boundary.
 
 **Bronze gate**: Schema validation (all expected columns present, data types match StructType definition), not-null checks on identity fields (patient `id`), valid range checks on dates (no future dates for birthdate, encounter start/stop) [DRD §3.2]. Actions: `fail` for identity fields, `drop` for invalid date ranges, `ignore` (log only) for optional fields [DRD §3.1].
 
@@ -511,6 +511,19 @@ HIPAA compliance architecture is a separate workstream per DRD [§6.1 Assumption
 
 **Trade-off**: Clinical users could lose access for up to 4 hours during an outage. Acceptable because source EHR remains available for direct lookup.
 
+### Decision 8: Spark Expectations as Sole DQ Engine
+
+**Options Considered**:
+1. Spark Expectations (SE) only -- YAML-driven DQ rules executed inline before writes
+2. SDP Declarative Expectations (`@dlt.expect*` / `@dp.expect*`) -- decorator-based DQ
+3. Hybrid SE + SDP approach
+
+**Selected**: Spark Expectations only
+
+**Rationale**: SDP `@dlt.expect*` and `@dp.expect*` decorators are features of Databricks Lakeflow Declarative Pipelines (formerly Delta Live Tables). They are not available in open-source Apache Spark 4.x. Since the pipeline runs on open-source Spark [infrastructure-constraints.md §1], SE is the only viable DQ engine. SE provides row_dq, agg_dq, and query_dq rule types with YAML-based configuration [technology-catalog.md §5], satisfying all DRD DQ requirements [DRD §3.1-§3.4].
+
+**Trade-off**: SE requires explicit YAML rule authoring per table rather than inline decorators. Acceptable because YAML rules are version-controlled and testable independently of pipeline code.
+
 ---
 
 ## 8. Open Questions & Risks
@@ -548,6 +561,7 @@ HIPAA compliance architecture is a separate workstream per DRD [§6.1 Assumption
 |---------|------|--------|---------|
 | 1.0 | 2026-03-16 | Architect Agent | Initial HLD: Medallion pattern; hourly Full Snapshot CDC; SCD Type 2 on dimensions; 3 consumer-aligned Gold tables; Spark Expectations + Marquez + Grafana; relaxed DR (4h RTO / 24h RPO) |
 | 1.1 | 2026-03-17 | Architect Agent | Restructured to 9-section template: added explicit FR/NFR traceability (§2), consolidated Governance (§6), added Data Domain diagram (§4.4), split Integration Architecture from Data Architecture |
+| 1.2 | 2026-03-23 | Architect Agent | DQ correction: clarified Spark Expectations as sole DQ engine; documented that SDP @dlt.expect*/@dp.expect* decorators are Databricks Lakeflow-only, not available in open-source Spark 4.x; added Decision 8 to Decision Log |
 
 ### Approval
 

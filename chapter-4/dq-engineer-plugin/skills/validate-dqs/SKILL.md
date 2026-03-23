@@ -150,11 +150,19 @@ Summary: 0 critical (fixed), 1 warning, 1 info
 - Remaining issues
 - Coverage gaps identified (missing layers, missing table rules)
 
-If the user corrected any output during this session, also append to
-`memory/dqs/learnings-queue.jsonl`:
-```json
-{"skill": "validate-dqs", "date": "{today}", "correction": "{what user said}", "pattern": "{generalized rule}", "status": "pending"}
+### Correction Capture (MANDATORY)
+
+After EVERY user correction — whether they edit the artifact, ask you to change
+something, or reject a section — you MUST append a learning entry BEFORE continuing:
+
+```bash
+echo '{"skill": "validate-dqs", "date": "{YYYY-MM-DD}", "correction": "{what the user said or changed}", "pattern": "{generalized rule}", "status": "pending"}' >> memory/dqs/learnings-queue.jsonl
 ```
+
+**What counts as a correction:** user says "no, change X to Y", edits artifact
+directly, rejects a proposed decision, or provides a specific value replacing
+a vague one you generated. When in doubt, append it — false positives are filtered
+during apply-learnings.
 
 ## Learnings & Corrections
 

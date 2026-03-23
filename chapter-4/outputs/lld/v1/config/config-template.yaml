@@ -1,0 +1,205 @@
+# Configuration Template: Patient 360 Medallion Pipeline
+# Generated from: LLD-2026-03-23-patient-360.md Section 7 (v1.3)
+# Generated: 2026-03-23
+#
+# Usage: Copy to your deployment config and adjust values per environment.
+# See LLD Section 7 for parameter descriptions and rationale.
+#
+# v1.3 changes: All environments now local-only with Unity Catalog OSS as
+# catalog/metastore. Removed pipeline.source_db_path (DuckDB). Added
+# catalog.unity_catalog_url, catalog.catalog_name, catalog.warehouse_path.
+# All monitoring endpoints use localhost (local deployment).
+
+pipeline:
+  name: patient-360-medallion-pipeline
+  version: "1.3"
+  source_schema: synthea
+
+# -- Ingestion Framework (Bronze only) ----------------------------------------
+# Config-driven ingestion for 13 source-to-bronze tasks with inline SE.
+# See LLD SS2.3 and Decisions 6-11 for rationale.
+ingestion:
+  config_dir: "src/config/tables"                          # Per-table YAML configs
+  default_empty_input_behavior: write_empty                # Global default; critical tables override to "fail"
+  dq_rules_file: "src/quality/rules/bronze_rules.yaml"     # SE rules for convention-based discovery
+  dq_rules_convention: table_name                          # Match rules by table name tag
+  spark_submit_class: "src.pipelines.bronze.ingestion_runner"  # Entry point for SparkSubmitOperator
+  inline_se:
+    enabled: true
+    rule_types: [row_dq, agg_dq]
+    default_action_if_failed: drop                         # Non-critical tables quarantine failing rows
+
+environments:
+  DEV:
+    scheduling:
+      cron: "0 * * * *"
+      timezone: UTC
+      max_active_runs: 1
+      catchup: true
+
+    compute:
+      spark_driver_memory: "2g"
+      spark_driver_cores: 1
+      spark_executor_memory: "2g"
+      spark_executor_cores: 1
+      spark_num_executors: 1
+      spark_dynamic_allocation: false
+      spark_max_executors: 1
+      spark_shuffle_partitions: 8
+      spark_broadcast_threshold: "50m"
+
+    storage:
+      base_path: "warehouse/dev"
+      format: delta
+      compression: snappy
+      target_file_size_mb: 128
+      vacuum_retention_hours: 168
+      auto_compact: false
+      dead_letter_path: "warehouse/dev/dead-letter"
+      checkpoint_path: "warehouse/dev/checkpoints"
+
+    catalog:
+      unity_catalog_url: "http://localhost:8080/api/2.1/unity-catalog"
+      catalog_name: "spark_catalog"
+      warehouse_path: "warehouse/dev"
+
+    retry:
+      bronze_max_attempts: 3
+      bronze_delay_seconds: 60
+      silver_max_attempts: 2
+      silver_delay_seconds: 120
+      gold_max_attempts: 2
+      gold_delay_seconds: 120
+      reconciliation_max_attempts: 1
+      reconciliation_delay_seconds: 60
+      backoff_multiplier: 2.0
+
+    alerting:
+      critical_channel: "p360-critical"
+      warning_channel: "#data-alerts-dev"
+      pagerduty_enabled: false
+      allergy_escalation: true
+
+    monitoring:
+      opentelemetry_endpoint: "http://localhost:4317"
+      marquez_endpoint: "http://localhost:5001"
+      grafana_endpoint: "http://localhost:3000"
+
+    pipeline:
+      timeout_minutes: 60
+
+  STAGING:
+    scheduling:
+      cron: "0 * * * *"
+      timezone: UTC
+      max_active_runs: 1
+      catchup: true
+
+    compute:
+      spark_driver_memory: "4g"
+      spark_driver_cores: 2
+      spark_executor_memory: "4g"
+      spark_executor_cores: 2
+      spark_num_executors: 2
+      spark_dynamic_allocation: true
+      spark_max_executors: 4
+      spark_shuffle_partitions: 16
+      spark_broadcast_threshold: "50m"
+
+    storage:
+      base_path: "warehouse/staging"
+      format: delta
+      compression: snappy
+      target_file_size_mb: 128
+      vacuum_retention_hours: 168
+      auto_compact: false
+      dead_letter_path: "warehouse/staging/dead-letter"
+      checkpoint_path: "warehouse/staging/checkpoints"
+
+    catalog:
+      unity_catalog_url: "http://localhost:8080/api/2.1/unity-catalog"
+      catalog_name: "spark_catalog"
+      warehouse_path: "warehouse/staging"
+
+    retry:
+      bronze_max_attempts: 3
+      bronze_delay_seconds: 60
+      silver_max_attempts: 2
+      silver_delay_seconds: 120
+      gold_max_attempts: 2
+      gold_delay_seconds: 120
+      reconciliation_max_attempts: 1
+      reconciliation_delay_seconds: 60
+      backoff_multiplier: 2.0
+
+    alerting:
+      critical_channel: "p360-critical"
+      warning_channel: "#data-alerts-staging"
+      pagerduty_enabled: false
+      allergy_escalation: true
+
+    monitoring:
+      opentelemetry_endpoint: "http://localhost:4317"
+      marquez_endpoint: "http://localhost:5001"
+      grafana_endpoint: "http://localhost:3000"
+
+    pipeline:
+      timeout_minutes: 90
+
+  PROD:
+    scheduling:
+      cron: "0 * * * *"
+      timezone: UTC
+      max_active_runs: 1
+      catchup: true
+
+    compute:
+      spark_driver_memory: "8g"
+      spark_driver_cores: 4
+      spark_executor_memory: "8g"
+      spark_executor_cores: 4
+      spark_num_executors: 4
+      spark_dynamic_allocation: true
+      spark_max_executors: 8
+      spark_shuffle_partitions: 32
+      spark_broadcast_threshold: "50m"
+
+    storage:
+      base_path: "warehouse/prod"
+      format: delta
+      compression: snappy
+      target_file_size_mb: 128
+      vacuum_retention_hours: 168
+      auto_compact: true
+      dead_letter_path: "warehouse/prod/dead-letter"
+      checkpoint_path: "warehouse/prod/checkpoints"
+
+    catalog:
+      unity_catalog_url: "http://localhost:8080/api/2.1/unity-catalog"
+      catalog_name: "spark_catalog"
+      warehouse_path: "warehouse/prod"
+
+    retry:
+      bronze_max_attempts: 3
+      bronze_delay_seconds: 60
+      silver_max_attempts: 2
+      silver_delay_seconds: 120
+      gold_max_attempts: 2
+      gold_delay_seconds: 120
+      reconciliation_max_attempts: 1
+      reconciliation_delay_seconds: 60
+      backoff_multiplier: 2.0
+
+    alerting:
+      critical_channel: "p360-critical"
+      warning_channel: "#data-alerts-prod"
+      pagerduty_enabled: true
+      allergy_escalation: true
+
+    monitoring:
+      opentelemetry_endpoint: "http://localhost:4317"
+      marquez_endpoint: "http://localhost:5001"
+      grafana_endpoint: "http://localhost:3000"
+
+    pipeline:
+      timeout_minutes: 120

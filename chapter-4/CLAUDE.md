@@ -5,7 +5,7 @@
 This chapter implements the full planning workflow as Claude Code Plugins,
 each role producing a structured artifact that feeds the next.
 
-**Artifact chain**: DRD → **HLD** → **DMS** → **STM** → **DQS** → LLD → Stories
+**Artifact chain**: DRD → **HLD** → **DMS** → **STM** → **DQS** → **LLD** → Stories
 
 ## Plugins
 
@@ -73,6 +73,21 @@ The plugin lives in `dq-engineer-plugin/` and is defined by
 
 **Note**: DQS has **4 skills** (3 core + 1 bonus). The `generate-se-rules` skill converts DQS rules to per-table **Spark-Expectations YAML** files compatible with spark-expectations >= 2.6.0.
 
+### Technical Lead Plugin
+
+The plugin lives in `technical-lead-plugin/` and is defined by
+`technical-lead-plugin/.claude-plugin/plugin.json`.
+
+- `technical-lead-plugin/skills/` - Skills: create-lld, update-lld, validate-lld, generate-config-template
+- `technical-lead-plugin/hooks/` - PostToolUse hook for automatic LLD validation
+- `technical-lead-plugin/scripts/` - Hook scripts (validate-lld-hook.py, enforce-readonly-queries.py)
+
+**Inputs**: All 5 upstream artifacts (DRD, HLD, DMS, STM, DQS) + `inputs/lld/v{N}/` (development standards, infrastructure specs, orchestration patterns)
+
+**Outputs**: LLD documents in `outputs/lld/v{N}/` + config templates in `outputs/lld/v{N}/config/` + DAG definitions in `outputs/lld/v{N}/dag/` + implementation sequence in `outputs/lld/v{N}/impl-sequence.md`
+
+**Note**: LLD has **5 skills** (3 core + 1 bonus + apply-learnings). The create-lld workflow auto-generates 3 derived artifacts: **config template** (from §7), **DAG definition YAML + Mermaid diagram** (from §4), and **implementation sequence** (from §2/§4/§9/§12). The LLD is a **hub document** — it references upstream artifacts by section number instead of duplicating content.
+
 ## Installing Plugins
 
 From the repo root:
@@ -83,6 +98,7 @@ From the repo root:
 /plugin install data-modeler-plugin@rdewai-plugins
 /plugin install mapping-analyst-plugin@rdewai-plugins
 /plugin install dq-engineer-plugin@rdewai-plugins
+/plugin install technical-lead-plugin@rdewai-plugins
 ```
 
 ## Directory Layout
@@ -97,11 +113,14 @@ From the repo root:
 - `outputs/dms/v{N}/` - Generated DMS files (folder-versioned)
 - `outputs/stm/v{N}/` - Generated STM Excel workbooks (folder-versioned)
 - `outputs/dqs/v{N}/` - Generated DQS files + SE rules YAML (folder-versioned)
+- `inputs/lld/v{N}/` - Technical Lead input documents (folder-versioned)
+- `outputs/lld/v{N}/` - Generated LLD files + config templates + DAG definitions + impl sequence (folder-versioned)
 - `ba-plugin/` - BA Agent plugin
 - `architect-plugin/` - Architect Agent plugin
 - `data-modeler-plugin/` - Data Modeler Agent plugin
 - `mapping-analyst-plugin/` - Mapping Analyst Agent plugin
 - `dq-engineer-plugin/` - DQ Engineer Agent plugin
+- `technical-lead-plugin/` - Technical Lead Agent plugin
 - `tests/` - All unit tests
 
 ## Versioning Convention
@@ -114,6 +133,23 @@ auto-discover the latest version via:
 ls -d {path}/v* | sort -V | tail -1
 ```
 
+## Learnings & Corrections Protocol
+
+After ANY user correction during skill execution, the agent MUST immediately
+append to the role's learnings queue:
+
+```bash
+echo '{"skill": "{skill-name}", "date": "{YYYY-MM-DD}", "correction": "{what}", "pattern": "{rule}", "status": "pending"}' >> memory/{role}/learnings-queue.jsonl
+```
+
+**What counts as a correction:** user says "no, change X to Y", edits artifact
+directly, rejects a proposed decision, or provides a specific value replacing
+a vague one you generated. When in doubt, append — false positives are filtered
+during apply-learnings.
+
+At the end of any skill session where the learnings queue has pending entries,
+run `/apply-learnings` before finishing.
+
 ## Key Commands
 
 ```bash
@@ -124,5 +160,6 @@ make validate-hld   # Validate all HLDs in outputs/hld/
 make validate-dms   # Validate all DMSs in outputs/dms/
 make validate-stm   # Validate all STMs in outputs/stm/
 make validate-dqs   # Validate all DQSs in outputs/dqs/
+make validate-lld   # Validate all LLDs in outputs/lld/
 make lint           # Run linter
 ```
