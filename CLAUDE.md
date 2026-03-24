@@ -38,9 +38,9 @@ make test           # Run all tests
 
 ## Chapter 4: Multi-Agent Artifact Chain (continuation of Chapter 3)
 
-- **Plugins**: BA (DRD) → Architect (HLD) → Data Modeler (DMS) → Mapping Analyst (STM)
+- **Plugins**: BA (DRD) → Architect (HLD) → Data Modeler (DMS) → Mapping Analyst (STM) → DQ Engineer (DQS) → Technical Lead (LLD) → Scrum Master (Stories)
 - **Inputs**: `chapter-4/inputs/{role}/v{N}/` (folder-versioned per role)
-- **Outputs**: `chapter-4/outputs/{artifact}/v{N}/` (DRD=markdown, HLD=markdown, DMS=markdown, STM=xlsx)
+- **Outputs**: `chapter-4/outputs/{artifact}/v{N}/` (DRD=markdown, HLD=markdown, DMS=markdown, STM=xlsx, DQS=markdown+YAML, LLD=markdown+config+DAG, Stories=markdown multi-file)
 - **Dependencies**: jinja2, pyyaml, openpyxl (for STM Excel workbook generation)
 - **Tests**: `cd chapter-4 && uv run pytest tests/ -v`
 

@@ -2184,3 +2184,310 @@ def placeholder_lld_file(tmp_path: Path) -> Path:
     f = tmp_path / "placeholder-lld.md"
     f.write_text(PLACEHOLDER_LLD, encoding="utf-8")
     return f
+
+
+# ---------------------------------------------------------------------------
+# Stories (Sprint Backlog) fixtures
+# ---------------------------------------------------------------------------
+
+VALID_BACKLOG = """\
+# Sprint Backlog: Patient 360 Data Pipeline
+
+| Field | Value |
+|-------|-------|
+| **Version** | 1.0 |
+| **Created** | 2026-03-23 |
+| **Last Modified** | 2026-03-23 |
+| **Author** | Scrum Master Agent |
+| **Status** | Draft |
+| **LLD Reference** | LLD-2026-03-23-patient-360.md v1.0 |
+
+---
+
+## 1. Executive Summary
+
+The Patient 360 sprint backlog decomposes the LLD into 3 epics and 6 stories
+across 3 sprints. Total effort is estimated at 45 story points.
+
+---
+
+## 2. Epic Overview
+
+| Epic | Title | Stories | Points | Sprints | LLD Section |
+|------|-------|---------|--------|---------|-------------|
+| EPIC-01 | Infrastructure Setup | 2 | 10 | 1 | §2 |
+| EPIC-02 | Bronze Ingestion | 2 | 15 | 1-2 | §4.1 |
+| EPIC-03 | Silver Transformation | 2 | 20 | 2-3 | §4.2 |
+
+**Total**: 6 stories, 45 points across 3 sprints
+
+---
+
+## 3. Dependency Graph
+
+```mermaid
+flowchart LR
+    S01001[STORY-01-001] --> S01002[STORY-01-002]
+    S01002 --> S02001[STORY-02-001]
+    S01002 --> S02002[STORY-02-002]
+    S02001 --> S03001[STORY-03-001]
+    S02002 --> S03002[STORY-03-002]
+```
+
+---
+
+## 4. Sprint Plan
+
+### Sprint 1: Foundation
+
+| Story ID | Title | Points | Epic |
+|----------|-------|--------|------|
+| STORY-01-001 | Set up DuckDB environment | 5 | EPIC-01 |
+| STORY-01-002 | Create bronze schemas | 5 | EPIC-01 |
+
+**Sprint Total**: 10 points
+
+---
+
+## 5. Traceability Matrix
+
+| Epic / Story | LLD | DMS | STM | DQS | DRD | HLD |
+|-------------|-----|-----|-----|-----|-----|-----|
+| EPIC-01 | §2 | §4.1 | — | — | §2.1 | §4 |
+| STORY-01-001 | §2.1 | §4.1.1 | — | — | §2.1 | §4.1 |
+
+---
+
+## 6. Risks & Assumptions
+
+- **Risk**: Sam R. at 50% allocation may delay Bronze stories _(Mitigation: Alex as backup)_
+
+### Assumptions
+
+- All upstream artifacts (DRD through LLD) are approved and stable
+
+---
+
+## 7. Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2026-03-23 | Scrum Master Agent | Initial backlog creation |
+"""
+
+VALID_EPIC = """\
+# EPIC-01: Infrastructure Setup
+
+| Field | Value |
+|-------|-------|
+| **LLD Section** | §2 |
+| **Stories** | 2 |
+| **Total Points** | 10 |
+| **Sprints** | 1 |
+| **Status** | Draft |
+
+## Objective
+
+Set up the DuckDB development environment and create all bronze layer schemas
+required for the Patient 360 data pipeline.
+
+## Scope
+
+### In Scope
+- DuckDB environment configuration
+- Bronze schema DDL for all 18 Synthea tables
+
+### Out of Scope
+- Data loading (covered in EPIC-02)
+
+## Stories
+
+| ID | Title | Points | Sprint | Dependencies |
+|----|-------|--------|--------|-------------|
+| STORY-01-001 | Set up DuckDB environment | 5 | 1 | None |
+| STORY-01-002 | Create bronze schemas | 5 | 1 | STORY-01-001 |
+
+## Acceptance Criteria (Epic-Level)
+
+- [ ] DuckDB environment operational with all required extensions [LLD §2.1]
+- [ ] All 18 bronze tables created matching DMS §4.1 specifications [DMS §4.1]
+
+## Risks & Assumptions
+
+- Assumes DuckDB version compatibility with required extensions
+"""
+
+VALID_STORY = """\
+# STORY-01-001: Set up DuckDB environment
+
+| Field | Value |
+|-------|-------|
+| **Epic** | EPIC-01: Infrastructure Setup |
+| **Priority** | P1 |
+| **Story Points** | 5 |
+| **Sprint** | 1 |
+| **Dependencies** | None |
+| **Status** | Draft |
+
+## User Story
+
+As a data engineer, I want a configured DuckDB environment so that I can begin
+building the Patient 360 data pipeline.
+
+## Description
+
+Set up the DuckDB development environment with all required extensions and
+configurations per the LLD specifications. This includes installing DuckDB,
+configuring the database file location, and verifying connectivity.
+
+## Acceptance Criteria
+
+- [ ] DuckDB installed and accessible via CLI [LLD §2.1]
+- [ ] Database file created at configured path [LLD §2.2]
+- [ ] Required extensions loaded (httpfs, parquet) [LLD §2.3]
+- [ ] Read-only connection verified for source data [DMS §4.1]
+
+## Technical Notes
+
+- Upstream references: LLD §2.1-2.3, HLD §5.1
+- Implementation hints: Use DuckDB 1.1.3 per LLD §5.1 technology table
+
+## Estimation Support
+
+| Artifact | Sections Covered |
+|----------|-----------------|
+| LLD | §2.1 Environment Setup, §2.2 Database Configuration, §2.3 Extensions |
+| HLD | §5.1 Technology Decisions (DuckDB) |
+| DMS | §4.1 Bronze Layer Schema Overview |
+"""
+
+MINIMAL_INVALID_BACKLOG = """\
+# Sprint Backlog: Incomplete
+
+## 1. Executive Summary
+
+Too short.
+"""
+
+EMPTY_SECTIONS_BACKLOG = """\
+# Sprint Backlog: Empty Sections
+
+| Field | Value |
+|-------|-------|
+| **Version** | 1.0 |
+| **Created** | 2026-03-23 |
+| **Author** | Test |
+| **Status** | Draft |
+| **LLD Reference** | test |
+
+## 1. Executive Summary
+
+A short summary sentence here.
+
+## 2. Epic Overview
+
+## 3. Dependency Graph
+
+## 4. Sprint Plan
+
+## 5. Traceability Matrix
+
+## 6. Risks & Assumptions
+
+## 7. Version History
+"""
+
+PLACEHOLDER_BACKLOG = """\
+# Sprint Backlog: With Placeholders
+
+| Field | Value |
+|-------|-------|
+| **Version** | 1.0 |
+| **Created** | 2026-03-23 |
+| **Author** | Test |
+| **Status** | Draft |
+| **LLD Reference** | test |
+
+## 1. Executive Summary
+
+The Patient 360 pipeline [TBD - add details].
+
+## 2. Epic Overview
+
+[TODO: Add epic table]
+
+## 3. Dependency Graph
+
+```mermaid
+flowchart LR
+    A --> B
+```
+
+## 4. Sprint Plan
+
+[TO BE DETERMINED]
+
+## 5. Traceability Matrix
+
+TBD
+
+## 6. Risks & Assumptions
+
+None identified yet.
+
+## 7. Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2026-03-23 | Test | Initial |
+"""
+
+
+@pytest.fixture
+def valid_backlog_file(tmp_path: Path) -> Path:
+    """Create a valid backlog file for testing."""
+    f = tmp_path / "BACKLOG-2026-03-23-test.md"
+    f.write_text(VALID_BACKLOG, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def invalid_backlog_file(tmp_path: Path) -> Path:
+    """Create an invalid (minimal) backlog file for testing."""
+    f = tmp_path / "BACKLOG-invalid.md"
+    f.write_text(MINIMAL_INVALID_BACKLOG, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def empty_backlog_sections_file(tmp_path: Path) -> Path:
+    """Create a backlog with empty required sections."""
+    f = tmp_path / "BACKLOG-empty.md"
+    f.write_text(EMPTY_SECTIONS_BACKLOG, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def placeholder_backlog_file(tmp_path: Path) -> Path:
+    """Create a backlog with placeholder text."""
+    f = tmp_path / "BACKLOG-placeholder.md"
+    f.write_text(PLACEHOLDER_BACKLOG, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def valid_stories_dir(tmp_path: Path) -> Path:
+    """Create a complete valid stories directory structure for testing."""
+    stories_dir = tmp_path / "stories"
+    stories_dir.mkdir()
+
+    # Write backlog index
+    (stories_dir / "BACKLOG-2026-03-23-patient-360.md").write_text(VALID_BACKLOG, encoding="utf-8")
+
+    # Create epic directory with epic and story files
+    epic_dir = stories_dir / "EPIC-01-infrastructure-setup"
+    epic_dir.mkdir()
+    (epic_dir / "EPIC-01.md").write_text(VALID_EPIC, encoding="utf-8")
+    (epic_dir / "STORY-01-001-setup-duckdb.md").write_text(VALID_STORY, encoding="utf-8")
+
+    return stories_dir

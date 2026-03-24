@@ -36,6 +36,11 @@
       "name": "technical-lead-plugin",
       "source": "./technical-lead-plugin",
       "description": "Technical Lead Agent for generating, updating, and validating Low-Level Design (LLD) documents and configuration templates"
+    },
+    {
+      "name": "scrum-master-plugin",
+      "source": "./scrum-master-plugin",
+      "description": "Scrum Master Agent for generating, updating, and validating Sprint Backlog (Epics and Stories) documents"
     }
   ]
 }

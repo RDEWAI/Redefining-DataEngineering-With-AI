@@ -88,6 +88,21 @@ The plugin lives in `technical-lead-plugin/` and is defined by
 
 **Note**: LLD has **5 skills** (3 core + 1 bonus + apply-learnings). The create-lld workflow auto-generates 3 derived artifacts: **config template** (from §7), **DAG definition YAML + Mermaid diagram** (from §4), and **implementation sequence** (from §2/§4/§9/§12). The LLD is a **hub document** — it references upstream artifacts by section number instead of duplicating content.
 
+### Scrum Master Plugin
+
+The plugin lives in `scrum-master-plugin/` and is defined by
+`scrum-master-plugin/.claude-plugin/plugin.json`.
+
+- `scrum-master-plugin/skills/` - Skills: create-stories, update-stories, validate-stories
+- `scrum-master-plugin/hooks/` - PostToolUse hook for automatic backlog validation
+- `scrum-master-plugin/scripts/` - Hook scripts (validate-stories-hook.py, enforce-readonly-queries.py)
+
+**Inputs**: All 6 upstream artifacts (DRD, HLD, DMS, STM, DQS, LLD) + `inputs/stories/v{N}/` (team capacity, story standards)
+
+**Outputs**: Sprint Backlog in `outputs/stories/v{N}/` — BACKLOG index + EPIC-NN-{slug}/ directories containing individual EPIC and STORY markdown files
+
+**Note**: Unlike other plugins that produce a single artifact file, the Scrum Master produces a **directory of files**: one BACKLOG index, one file per epic, and one file per story. Story IDs use `STORY-{NN}-{NNN}` format (2-digit epic + 3-digit story) for globally unique identifiers.
+
 ## Installing Plugins
 
 From the repo root:
@@ -99,6 +114,7 @@ From the repo root:
 /plugin install mapping-analyst-plugin@rdewai-plugins
 /plugin install dq-engineer-plugin@rdewai-plugins
 /plugin install technical-lead-plugin@rdewai-plugins
+/plugin install scrum-master-plugin@rdewai-plugins
 ```
 
 ## Directory Layout
@@ -115,12 +131,15 @@ From the repo root:
 - `outputs/dqs/v{N}/` - Generated DQS files + SE rules YAML (folder-versioned)
 - `inputs/lld/v{N}/` - Technical Lead input documents (folder-versioned)
 - `outputs/lld/v{N}/` - Generated LLD files + config templates + DAG definitions + impl sequence (folder-versioned)
+- `inputs/stories/v{N}/` - Scrum Master input documents (folder-versioned)
+- `outputs/stories/v{N}/` - Generated Sprint Backlog: BACKLOG index + EPIC/STORY files (folder-versioned)
 - `ba-plugin/` - BA Agent plugin
 - `architect-plugin/` - Architect Agent plugin
 - `data-modeler-plugin/` - Data Modeler Agent plugin
 - `mapping-analyst-plugin/` - Mapping Analyst Agent plugin
 - `dq-engineer-plugin/` - DQ Engineer Agent plugin
 - `technical-lead-plugin/` - Technical Lead Agent plugin
+- `scrum-master-plugin/` - Scrum Master Agent plugin
 - `tests/` - All unit tests
 
 ## Versioning Convention
@@ -160,6 +179,7 @@ make validate-hld   # Validate all HLDs in outputs/hld/
 make validate-dms   # Validate all DMSs in outputs/dms/
 make validate-stm   # Validate all STMs in outputs/stm/
 make validate-dqs   # Validate all DQSs in outputs/dqs/
-make validate-lld   # Validate all LLDs in outputs/lld/
-make lint           # Run linter
+make validate-lld       # Validate all LLDs in outputs/lld/
+make validate-stories   # Validate all Stories in outputs/stories/
+make lint               # Run linter
 ```

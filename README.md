@@ -205,7 +205,7 @@ Redefining-DataEngineering-With-AI/
 │
 ├── chapter-2/                     # AI Engineering (RAG, MCP, Agentic AI)
 ├── chapter-3/                     # Business Analyst Agent (DRD Plugin)
-├── chapter-4/                     # Multi-Agent Artifact Chain (6 plugins)
+├── chapter-4/                     # Multi-Agent Artifact Chain (7 plugins)
 │
 ├── scripts/
 │   ├── validate-environment.sh    # Prerequisite validation
@@ -247,7 +247,7 @@ See [chapter-3/README.md](chapter-3/README.md) for full details.
 
 ### Chapter 4: Multi-Agent Artifact Chain
 
-Six Claude Code plugins forming a **multi-agent artifact chain** where each role produces a structured artifact that feeds the next:
+Seven Claude Code plugins forming a **multi-agent artifact chain** where each role produces a structured artifact that feeds the next:
 
 ```
 DRD → HLD → DMS → STM → DQS → LLD → Stories
@@ -261,6 +261,7 @@ DRD → HLD → DMS → STM → DQS → LLD → Stories
 | mapping-analyst-plugin | Mapping Analyst | STM (Source-to-Target Mapping) | Excel (.xlsx) |
 | dq-engineer-plugin | DQ Engineer | DQS (Data Quality Specification) | Markdown + SE YAML |
 | technical-lead-plugin | Technical Lead | LLD (Low-Level Design) | Markdown + Config + DAG |
+| scrum-master-plugin | Scrum Master | Sprint Backlog (Epics & Stories) | Markdown (multi-file) |
 
 See [chapter-4/README.md](chapter-4/README.md) for full details.
 
