@@ -209,7 +209,8 @@ Redefining-DataEngineering-With-AI/
 │
 ├── scripts/
 │   ├── validate-environment.sh    # Prerequisite validation
-│   └── add_duckdb_connection.py   # Auto-configure DuckDB in Superset
+│   ├── add_duckdb_connection.py   # Auto-configure DuckDB in Superset
+│   └── clean-outputs.sh           # Reset chapter-3/4 outputs & memory for fresh runs
 │
 ├── tests/
 │   ├── integration/               # Integration tests
@@ -264,6 +265,17 @@ DRD → HLD → DMS → STM → DQS → LLD → Stories
 | scrum-master-plugin | Scrum Master | Sprint Backlog (Epics & Stories) | Markdown (multi-file) |
 
 See [chapter-4/README.md](chapter-4/README.md) for full details.
+
+**Want to try it yourself?** After cloning, reset the reference outputs and run the agents to generate your own artifacts:
+
+```bash
+# 1. Clean existing outputs (keeps DRD as starting input)
+./scripts/clean-outputs.sh
+
+# 2. Follow the step-by-step walkthrough
+```
+
+See the [Hands-On Guide](chapter-4/HANDS-ON-GUIDE.md) for the full walkthrough — from plugin installation through generating all 7 artifacts.
 
 ---
 
