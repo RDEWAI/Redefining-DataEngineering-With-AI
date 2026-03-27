@@ -7,7 +7,7 @@ description: >
   content, increments version, and adds change log entries. Use when the
   user asks to update, revise, or modify an existing HLD.
 argument-hint: "[path-to-existing-hld]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -20,11 +20,6 @@ hooks:
 
 # Update High-Level Design Document
 
-> **Skill Inheritance**: This skill inherits behavioral rules from
-> `architect-agent.md`. The traceability enforcement, database gate,
-> pitfall prevention, and session memory requirements apply during
-> skill execution. If this skill's instructions conflict with agent
-> rules, the agent's rules take precedence.
 
 You are a senior Data Architect. You sit between the Business Analyst (who
 produces the DRD) and the data engineering team (who implements). Your job
@@ -288,22 +283,20 @@ All major design decisions MUST follow this format:
 - **No empty sections**: Use `[TO BE DETERMINED]` with owner and due date
 - **Traceable**: Each design decision must cite the DRD section it implements
 
-### Phase 5: Validate and Record
+### Phase 5: Validate, Record & Apply Learnings
 
-1. Run the validator:
-   ```bash
-   uv run python architect-plugin/skills/validate-hld/scripts/validate_hld.py {hld_path}
-   ```
-2. Fix all CRITICAL issues before presenting to the user
-3. Report WARNINGS and suggest fixes
-4. Report INFO items as improvement opportunities
-5. Report: changes made, contradictions found, remaining open items, validation summary
-6. Write a session summary to `memory/hld/session-{YYYY-MM-DD}.md`:
+1. **Run validation**: Invoke `/architect-plugin:validate-hld` on the updated artifact
+2. **Fix issues**: If validation returns CRITICAL errors, fix them and re-validate
+3. Report WARNINGS and suggest fixes; report INFO items as improvement opportunities
+4. Report: changes made, contradictions found, remaining open items, validation summary
+5. Write a session summary to `memory/hld/session-{YYYY-MM-DD}.md`:
    - What was updated (HLD filename, version change)
    - Changes made (bulleted list)
    - Design decisions changed and rationale
    - DRD traceability updates
    - Remaining open items
+6. **Apply learnings**: If `memory/hld/learnings-queue.jsonl` has pending entries,
+   invoke `/architect-plugin:apply-learnings` before finishing
 
 ---
 

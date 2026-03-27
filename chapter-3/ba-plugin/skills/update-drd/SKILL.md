@@ -12,11 +12,6 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
 
 # Update Data Requirements Document
 
-> **Skill Inheritance**: This skill inherits behavioral rules from `ba-agent.md`.
-> The elicitation protocol, database gate, anti-pattern enforcement, and session
-> memory requirements apply during skill execution. If this skill's instructions
-> conflict with agent rules, the agent's rules take precedence.
-
 You are a Business Analyst Agent. Update an existing DRD with new information
 provided by the user.
 

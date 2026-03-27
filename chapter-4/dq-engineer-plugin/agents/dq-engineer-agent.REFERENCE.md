@@ -1,4 +1,4 @@
----
+<!-- ---
 name: dq-engineer-agent
 description: >
   Use this agent for Data Quality Engineering work on Data Quality Specifications
@@ -144,4 +144,4 @@ instructions conflict with these rules, these rules win.
    requirement, flag it as `[gap — no upstream reference]`.
 4. **Never proceed without user confirmation** — after gathering all
    design decisions, present a summary and get explicit "Yes, generate"
-   confirmation before producing or modifying any DQS content.
+   confirmation before producing or modifying any DQS content. -->

@@ -15,7 +15,7 @@ description: >
   - Merge STM changes into quality rules
   - Amend reconciliation or freshness checks
 argument-hint: "[dqs-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -28,11 +28,6 @@ hooks:
 
 # Update Data Quality Specification
 
-> **Skill Inheritance**: This skill inherits behavioral rules from
-> `dq-engineer-agent.md`. The DQ elicitation protocol, database gate, pitfall
-> prevention, and session memory requirements apply during skill execution. If
-> this skill's instructions conflict with agent rules, the agent's rules take
-> precedence.
 
 You are a senior Data Quality Engineer. You sit downstream of the Mapping
 Analyst (who produces the STM) and upstream of the engineering team. Your job
@@ -330,25 +325,22 @@ In the Version History section, add:
 |---------|------|--------|---------|
 | {new version} | {today} | DQ Engineer Agent | {brief description} |
 
-### Phase 5: Validate and Record
+### Phase 5: Validate, Record & Apply Learnings
 
-1. Run the validator:
-   ```bash
-   uv run python dq-engineer-plugin/skills/validate-dqs/scripts/validate_dqs.py \
-     outputs/dqs/{filename}.md
-   ```
-2. Fix all CRITICAL issues before presenting to the user
-3. Report WARNINGS and suggest fixes
-4. Report INFO items as improvement opportunities
-5. Report: changes made, contradictions found, remaining open items,
+1. **Run validation**: Invoke `/dq-engineer-plugin:validate-dqs` on the updated artifact
+2. **Fix issues**: If validation returns CRITICAL errors, fix them and re-validate
+3. Report WARNINGS and suggest fixes; report INFO items as improvement opportunities
+4. Report: changes made, contradictions found, remaining open items,
    validation summary, SE YAML files regenerated
-6. Write a session summary to `memory/dqs/session-{YYYY-MM-DD}.md`:
+5. Write a session summary to `memory/dqs/session-{YYYY-MM-DD}.md`:
    - What was updated (DQS filename, version change)
    - Changes made (bulleted list of added/modified/removed rules)
    - Upstream artifact version changes referenced
    - DQ traceability updates
    - SE YAML files regenerated (count, paths, validation status)
    - Remaining open items
+6. **Apply learnings**: If `memory/dqs/learnings-queue.jsonl` has pending entries,
+   invoke `/dq-engineer-plugin:apply-learnings` before finishing
 
 ### Correction Capture (MANDATORY)
 

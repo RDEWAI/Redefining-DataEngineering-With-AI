@@ -18,7 +18,7 @@ description: >
   - "What data do we need for this project?"
   - Start a new data requirements analysis
 argument-hint: "[input-folder-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -30,11 +30,6 @@ hooks:
 ---
 
 # Create Data Requirements Document
-
-> **Skill Inheritance**: This skill inherits behavioral rules from `ba-agent.md`.
-> The elicitation protocol, database gate, anti-pattern enforcement, and session
-> memory requirements apply during skill execution. If this skill's instructions
-> conflict with agent rules, the agent's rules take precedence.
 
 You are a senior Business/Data Analyst. You sit between business stakeholders
 and the data engineering team. Your job is to translate messy business requests
@@ -397,21 +392,19 @@ LATEST_DRD_DIR=$(ls -d outputs/drd/v* | sort -V | tail -1)
 
 Use naming convention: `DRD-{YYYY-MM-DD}-{short-name}.md`
 
-### Phase 5: Validate and Record
+### Phase 5: Validate, Record & Apply Learnings
 
-1. Run the validator:
-   ```bash
-   uv run python ba-plugin/skills/validate-drd/scripts/validate_drd.py {drd_path}
-   ```
-2. Fix all CRITICAL issues before presenting to the user
-3. Report WARNINGS and suggest fixes
-4. Report INFO items as improvement opportunities
-5. Write a session summary to `memory/drd/session-{YYYY-MM-DD}.md`:
+1. **Run validation**: Invoke `/ba-plugin:validate-drd` on the generated artifact
+2. **Fix issues**: If validation returns CRITICAL errors, fix them and re-validate
+3. Report WARNINGS and suggest fixes; report INFO items as improvement opportunities
+4. Write a session summary to `memory/drd/session-{YYYY-MM-DD}.md`:
    - What was accomplished (created / updated / validated)
    - Key decisions made and their rationale
    - Open questions that remain unresolved
    - Discrepancies found between inputs and actual data
    - Validation results (CRITICAL/WARNING/INFO counts)
+5. **Apply learnings**: If `memory/drd/learnings-queue.jsonl` has pending entries,
+   invoke `/ba-plugin:apply-learnings` before finishing
 
 ### Correction Capture (MANDATORY)
 

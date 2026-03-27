@@ -15,7 +15,7 @@ description: >
   - Find issues or gaps in quality specifications
   - Run quality checks on a DQS before handoff
 argument-hint: "[dqs-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 hooks:
   before:
     - matcher: Bash
@@ -23,10 +23,6 @@ hooks:
 ---
 
 # Validate Data Quality Specification
-
-> **Skill Inheritance**: This skill inherits behavioral rules from
-> `dq-engineer-agent.md`. The DQ elicitation protocol, pitfall prevention,
-> and session memory requirements apply during skill execution.
 
 You are a senior Data Quality Engineer. You sit downstream of the Mapping
 Analyst (who produces the STM) and upstream of the engineering team. Your job
@@ -163,6 +159,12 @@ echo '{"skill": "validate-dqs", "date": "{YYYY-MM-DD}", "correction": "{what the
 directly, rejects a proposed decision, or provides a specific value replacing
 a vague one you generated. When in doubt, append it — false positives are filtered
 during apply-learnings.
+
+
+## Final Step: Apply Learnings
+
+After validation completes, if `memory/dqs/learnings-queue.jsonl` has pending entries,
+invoke `/dq-engineer-plugin:apply-learnings` before finishing.
 
 ## Learnings & Corrections
 

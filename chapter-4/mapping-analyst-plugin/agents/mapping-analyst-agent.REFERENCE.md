@@ -1,4 +1,4 @@
----
+<!-- ---
 name: mapping-analyst-agent
 description: >
   Use this agent for Mapping Analyst work on source-to-target mappings. This includes
@@ -133,4 +133,4 @@ instructions conflict with these rules, these rules win.
    a DMS schema definition, flag it as `[gap -- no DMS reference]`.
 4. **Never proceed without user confirmation** -- after gathering all
    mapping decisions, present a summary and get explicit "Yes, generate"
-   confirmation before producing or modifying any STM content.
+   confirmation before producing or modifying any STM content. -->

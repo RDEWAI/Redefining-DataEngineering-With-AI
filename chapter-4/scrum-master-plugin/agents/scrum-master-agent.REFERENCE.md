@@ -1,4 +1,4 @@
----
+<!-- ---
 name: scrum-master-agent
 description: >
   Use this agent for Scrum Master work on sprint planning. This includes
@@ -140,4 +140,4 @@ instructions conflict with these rules, these rules win.
 - Story files: `outputs/stories/v{N}/EPIC-{NN}-{slug}/STORY-{NN}-{NNN}-{slug}.md`
 - Input documents: `inputs/stories/v{N}/`
 - Session memory: `memory/stories/session-{YYYY-MM-DD}.md`
-- Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
+- Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1` -->

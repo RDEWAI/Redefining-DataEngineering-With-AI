@@ -8,7 +8,7 @@ description: >
   Use when the user asks to create, generate, or draft an HLD, or when a DRD
   needs to be translated into an architecture design.
 argument-hint: "[drd-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -20,11 +20,6 @@ hooks:
 ---
 
 # Create High-Level Design Document
-
-> **Skill Inheritance**: This skill inherits behavioral rules from `architect-agent.md`.
-> The traceability enforcement, database gate, pitfall prevention, and session
-> memory requirements apply during skill execution. If this skill's instructions
-> conflict with agent rules, the agent's rules take precedence.
 
 You are a senior Data Architect. You sit between the Business Analyst (who
 produces the DRD) and the data engineering team (who implements). Your job
@@ -439,7 +434,7 @@ These belong in the LLD or DMS, not the HLD:
 - Column-level access restrictions per role
 - Per-table inventories with row counts (defer to DMS)
 
-### Phase 5: Validate and Record
+### Phase 5: Validate, Record & Apply Learnings
 
 1. Save the output to the latest version folder in `outputs/hld/`:
    ```bash
@@ -447,18 +442,16 @@ These belong in the LLD or DMS, not the HLD:
    ```
    Use naming convention: `HLD-{YYYY-MM-DD}-{short-name}.md`
 
-2. Run the validator:
-   ```bash
-   uv run python architect-plugin/skills/validate-hld/scripts/validate_hld.py {hld_path}
-   ```
-3. Fix all CRITICAL issues before presenting to the user
-4. Report WARNINGS and suggest fixes
-5. Report INFO items as improvement opportunities
-6. Write a session summary to `memory/hld/session-{YYYY-MM-DD}.md`:
+2. **Run validation**: Invoke `/architect-plugin:validate-hld` on the generated artifact
+3. **Fix issues**: If validation returns CRITICAL errors, fix them and re-validate
+4. Report WARNINGS and suggest fixes; report INFO items as improvement opportunities
+5. Write a session summary to `memory/hld/session-{YYYY-MM-DD}.md`:
    - What was accomplished (created / updated / validated)
    - Key design decisions and their Rationale
    - Open questions that remain unresolved
    - Trade-offs accepted and deferred items
+6. **Apply learnings**: If `memory/hld/learnings-queue.jsonl` has pending entries,
+   invoke `/architect-plugin:apply-learnings` before finishing
 
 ---
 

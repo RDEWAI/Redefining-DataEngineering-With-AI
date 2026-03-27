@@ -15,7 +15,7 @@ description: >
   - Run quality checks on an LLD before development
   - "Check if the LLD is ready for the development team"
 argument-hint: "[lld-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 hooks:
   before:
     - matcher: Bash
@@ -23,10 +23,6 @@ hooks:
 ---
 
 # Validate Low-Level Design Document
-
-> **Skill Inheritance**: This skill inherits behavioral rules from
-> `technical-lead-agent.md`. The traceability enforcement, pitfall prevention,
-> and session memory requirements apply during skill execution.
 
 You are a senior Technical Lead. You sit downstream of the Business Analyst
 (DRD), Data Architect (HLD), Data Modeler (DMS), Mapping Analyst (STM), and
@@ -162,6 +158,12 @@ echo '{"skill": "validate-lld", "date": "{YYYY-MM-DD}", "correction": "{what the
 directly, rejects a proposed decision, or provides a specific value replacing
 a vague one you generated. When in doubt, append it — false positives are filtered
 during apply-learnings.
+
+
+## Final Step: Apply Learnings
+
+After validation completes, if `memory/lld/learnings-queue.jsonl` has pending entries,
+invoke `/technical-lead-plugin:apply-learnings` before finishing.
 
 ## Learnings & Corrections
 

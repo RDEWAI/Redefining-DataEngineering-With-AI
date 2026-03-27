@@ -16,7 +16,7 @@ description: >
   - Export quality rules for spark-expectations framework
   - "Create the SE YAML files from the DQS"
 argument-hint: "[path-to-dqs-file]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -28,10 +28,6 @@ hooks:
 ---
 
 # Generate Spark-Expectations Rules from DQS
-
-> **Skill Inheritance**: This skill inherits behavioral rules from
-> `dq-engineer-agent.md`. The session memory requirements apply during skill
-> execution.
 
 You are a senior Data Quality Engineer with deep knowledge of the
 spark-expectations (spark_expectations) framework >= 2.6.0. Your job is to
@@ -313,6 +309,12 @@ echo '{"skill": "generate-se-rules", "date": "{YYYY-MM-DD}", "correction": "{wha
 directly, rejects a proposed decision, or provides a specific value replacing
 a vague one you generated. When in doubt, append it — false positives are filtered
 during apply-learnings.
+
+
+## Final Step: Apply Learnings
+
+After SE rules generation completes, if `memory/dqs/learnings-queue.jsonl` has pending entries,
+invoke `/dq-engineer-plugin:apply-learnings` before finishing.
 
 ## Learnings & Corrections
 

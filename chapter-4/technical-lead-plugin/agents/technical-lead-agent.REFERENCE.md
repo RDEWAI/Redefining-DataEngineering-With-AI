@@ -1,4 +1,4 @@
----
+<!-- ---
 name: technical-lead-agent
 description: >
   Use this agent for Technical Lead work on low-level design. This includes
@@ -158,4 +158,4 @@ instructions conflict with these rules, these rules win.
 - Implementation sequence: `outputs/lld/v{N}/impl-sequence.md`
 - Input documents: `inputs/lld/v{N}/`
 - Session memory: `memory/lld/session-{YYYY-MM-DD}.md`
-- Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
+- Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1` -->

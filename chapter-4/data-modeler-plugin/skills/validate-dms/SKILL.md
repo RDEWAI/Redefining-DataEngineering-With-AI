@@ -14,7 +14,7 @@ description: >
   - Find issues or gaps in a data model specification
   - Run quality checks on a DMS before handoff
 argument-hint: "[dms-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 hooks:
   before:
     - matcher: Bash
@@ -22,10 +22,6 @@ hooks:
 ---
 
 # Validate Data Model Specification Document
-
-> **Skill Inheritance**: This skill inherits behavioral rules from
-> `data-modeler-agent.md`. The traceability enforcement, pitfall prevention,
-> and session memory requirements apply during skill execution.
 
 You are a senior Data Modeler. You sit between the Data Architect (who
 produces the HLD) and the Mapping Engineer (who specifies column-level
@@ -163,6 +159,12 @@ echo '{"skill": "validate-dms", "date": "{YYYY-MM-DD}", "correction": "{what the
 directly, rejects a proposed decision, or provides a specific value replacing
 a vague one you generated. When in doubt, append it — false positives are filtered
 during apply-learnings.
+
+
+## Final Step: Apply Learnings
+
+After validation completes, if `memory/dms/learnings-queue.jsonl` has pending entries,
+invoke `/data-modeler-plugin:apply-learnings` before finishing.
 
 ## Learnings & Corrections
 

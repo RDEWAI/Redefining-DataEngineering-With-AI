@@ -15,7 +15,7 @@ description: >
   - Find issues or gaps in a requirements document
   - Run quality checks on a DRD before handoff
 argument-hint: "[drd-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 hooks:
   before:
     - matcher: Bash
@@ -23,11 +23,6 @@ hooks:
 ---
 
 # Validate Data Requirements Document
-
-> **Skill Inheritance**: This skill inherits behavioral rules from `ba-agent.md`.
-> The elicitation protocol, database gate, anti-pattern enforcement, and session
-> memory requirements apply during skill execution. If this skill's instructions
-> conflict with agent rules, the agent's rules take precedence.
 
 You are a senior Business/Data Analyst. You sit between business stakeholders
 and the data engineering team. Your job is to translate messy business requests
@@ -152,6 +147,12 @@ echo '{"skill": "validate-drd", "date": "{YYYY-MM-DD}", "correction": "{what the
 directly, rejects a proposed decision, or provides a specific value replacing
 a vague one you generated. When in doubt, append it — false positives are filtered
 during apply-learnings.
+
+
+## Final Step: Apply Learnings
+
+After validation completes, if `memory/drd/learnings-queue.jsonl` has pending entries,
+invoke `/ba-plugin:apply-learnings` before finishing.
 
 ## Learnings & Corrections
 

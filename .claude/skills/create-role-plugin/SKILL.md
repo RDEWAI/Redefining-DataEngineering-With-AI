@@ -137,16 +137,8 @@ healthcare use case.
 
 ## Reference Documentation
 
-Before generating, review the official Claude Code sub-agents documentation for
-current best practices on frontmatter fields, skill injection, tool access, and
-hooks: https://code.claude.com/docs/en/sub-agents.md
-
-Key points from the docs:
-- `skills:` frontmatter injects full skill content into the agent's context at
-  startup — the agent does NOT need the Skill tool to use them
-- Subagents cannot spawn other subagents
-- Plugin subagents do not support `hooks`, `mcpServers`, or `permissionMode`
-  frontmatter fields (these are ignored; define hooks in hooks.json instead)
+Before generating, review the official Claude Code skills documentation for
+current best practices on frontmatter fields, tool access, and hooks.
 
 ## Step 2: Read Canonical Templates
 
@@ -155,7 +147,7 @@ patterns for generating new plugins:
 
 ```
 architect-plugin/.claude-plugin/plugin.json
-architect-plugin/agents/architect-agent.md
+architect-plugin/agents/architect-agent.REFERENCE.md
 architect-plugin/skills/create-hld/SKILL.md
 architect-plugin/skills/create-hld/HLD_template.j2
 architect-plugin/skills/update-hld/SKILL.md
@@ -192,7 +184,7 @@ AskUserQuestion answers from Step 1.
 | 2 | — | `memory/{artifact}/.gitkeep` | empty file (top-level memory dir, outside plugin) |
 | 3 | — | `inputs/{artifact}/v1/.gitkeep` | empty file |
 | 4 | — | `outputs/{artifact}/v1/.gitkeep` | empty file |
-| 5 | `architect-plugin/agents/architect-agent.md` | `{plugin_name}/agents/{agent_name}.md` | name, color, role description, examples, sections, responsibilities, upstream refs, artifact names, skill paths |
+| 5 | `architect-plugin/agents/architect-agent.REFERENCE.md` | `{plugin_name}/agents/{agent_name}.REFERENCE.md` | name, color, role description, examples, sections, responsibilities, upstream refs, artifact names, skill paths |
 | 6 | `architect-plugin/skills/create-hld/SKILL.md` | `{plugin_name}/skills/create-{artifact}/SKILL.md` | artifact paths, upstream refs, section checklist, template path |
 | 7 | `architect-plugin/skills/create-hld/HLD_template.j2` | `{plugin_name}/skills/create-{artifact}/{ARTIFACT}_template.j2` | section headers adapted to new artifact |
 | 8 | — | `{plugin_name}/skills/create-{artifact}/examples/sample-{artifact}.md` | placeholder: `# Sample {artifact_full}\n\nTODO: Add a complete example.` |
@@ -218,24 +210,16 @@ AskUserQuestion answers from Step 1.
 Since the working directory is chapter-4/, use paths like `outputs/hld/v*`,
 `{plugin_name}/skills/...`, `inputs/{artifact}/v*` — NOT `chapter-4/outputs/...`.
 
-**Agent definition (file #5):**
+**Agent REFERENCE doc (file #5):**
+This file is a REFERENCE document (not a launchable subagent). It captures the
+role's domain knowledge, responsibilities, and workflow for skills to inline.
+Comment out the YAML frontmatter with `<!-- -->` so it is not parsed as an agent.
 - Keep the exact same structural sections: Elicitation Protocol (Steps 1-5),
   Four Responsibilities, Workflow (Phases 1-5), Pitfall Prevention (3 pitfalls),
   Writing Style, Sections Reference, File Conventions
-- AskUserQuestion examples MUST use the correct Claude Code schema:
-  `{questions: [{question, header (max 12 chars), multiSelect, options: [{label, description}]}]}`
 - Version discovery: `ls -d {path}/v* | sort -V | tail -1`
 - If DB gate is enabled, include Phase 3 database gate; if disabled, skip it
 - Replace `[DRD §X.Y]` traceability format with `[{UPSTREAM_ARTIFACT} §X.Y]`
-- AskUserQuestion is a native tool — instruct the agent to use it directly,
-  do NOT instruct to fetch via ToolSearch or invoke via Bash
-
-**Agent skills frontmatter:**
-The agent's `skills:` frontmatter field auto-injects skill content into the
-agent's context at startup. The agent body should say "The full skill content
-is already injected into your context. Follow the skill workflow directly when
-needed." — NOT "invoke with Skill tool".
-See: https://code.claude.com/docs/en/sub-agents.md
 
 **Skills 2.0 patterns (ALL generated SKILL.md files MUST include):**
 - `context: fork` in frontmatter for create and update skills (NOT validate)
@@ -261,7 +245,7 @@ See: https://code.claude.com/docs/en/sub-agents.md
     - {domain-specific trigger phrases}
     - Start a new {artifact} from the latest {upstream}
   argument-hint: "[input-folder-path]"
-  allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+  allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
   context: fork
   hooks:
     before:
@@ -273,16 +257,24 @@ See: https://code.claude.com/docs/en/sub-agents.md
   ---
   ```
 
-**Skill files (files #6, #9, #10) — MUST include agent content inline:**
-Skills run inline (not as subagents) and do NOT automatically load agent.md.
-The "Skill Inheritance" comment is NOT sufficient. Each skill MUST physically
-include these sections from the agent definition:
-- **Role context**: The full role description (position in chain, artifact format)
-- **Four Responsibilities**: What completeness looks like for this artifact
-- **Pitfall Prevention**: The 3 common mistakes to guard against
-- **create skill** gets all 3 sections + Decision Documentation Standard
-- **update skill** gets Role context + Pitfall Prevention + Reference: Four Responsibilities (at end)
-- **validate skill** gets Role context + Sections Reference (list of required sections)
+**Skill files (files #6, #9, #10) — self-contained, no inheritance block:**
+Skills run directly (not as subagents). Each skill MUST inline the relevant
+role context from the agent REFERENCE doc — do NOT add a "Skill Inheritance"
+blockquote. Instead, physically include these sections in each skill body:
+- **create skill**: Role context + Four Responsibilities + Pitfall Prevention + Decision Documentation Standard
+- **update skill**: Role context + Pitfall Prevention + Reference: Four Responsibilities (at end)
+- **validate skill**: Role context + Sections Reference (list of required sections)
+
+**Skill-to-skill invocation (ALL generated SKILL.md files MUST include):**
+All create, update, and validate skills MUST have `Skill` in `allowed-tools`
+and include a final phase for skill-to-skill invocation:
+- **create/update skills** add a final `## Phase 5: Validate & Apply Learnings`:
+  1. Invoke `/{plugin_name}:validate-{artifact}` on the generated/updated artifact
+  2. Fix CRITICAL errors and re-validate if needed
+  3. If `memory/{artifact}/learnings-queue.jsonl` has pending entries, invoke `/{plugin_name}:apply-learnings`
+- **validate skills** add a final `## Final Step: Apply Learnings`:
+  After validation completes, if `memory/{artifact}/learnings-queue.jsonl` has pending entries,
+  invoke `/{plugin_name}:apply-learnings` before finishing
 
 **Validator (file #11):**
 - Keep `ValidationLevel`, `ValidationResult`, `ValidationReport` classes verbatim
@@ -356,17 +348,12 @@ Generate `{plugin_name}/README.md` with:
 /{plugin_name}:create-{artifact}
 ```
 
-Or invoke the agent directly:
-```
-@{plugin_name}:{agent_name} Create the {ARTIFACT} for the project
-```
-
 ## Directory Layout
 
 ```
 {plugin_name}/
 ├── .claude-plugin/plugin.json
-├── agents/{agent_name}.md
+├── agents/{agent_name}.REFERENCE.md
 ├── skills/
 │   ├── create-{artifact}/
 │   │   ├── SKILL.md
@@ -435,13 +422,9 @@ After all files are generated and tests pass, report:
    /plugin marketplace add .
    /plugin install {plugin_name}@rdewai-plugins
    ```
-4. How to invoke the new skills (interactive mode with AskUserQuestion):
+4. How to invoke the new skills:
    ```
    /{plugin_name}:create-{artifact}
    /{plugin_name}:update-{artifact}
    /{plugin_name}:validate-{artifact}
-   ```
-   Or invoke the agent (may run as subagent without interactive UI):
-   ```
-   @{plugin_name}:{agent_name} Create the {ARTIFACT} for the project
    ```

@@ -14,7 +14,7 @@ description: >
   - Find issues or gaps in transformation mappings
   - Run quality checks on an STM before handoff
 argument-hint: "[stm-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 hooks:
   before:
     - matcher: Bash
@@ -94,6 +94,12 @@ echo '{"skill": "validate-stm", "date": "{YYYY-MM-DD}", "correction": "{what the
 directly, rejects a proposed decision, or provides a specific value replacing
 a vague one you generated. When in doubt, append it — false positives are filtered
 during apply-learnings.
+
+
+## Final Step: Apply Learnings
+
+After validation completes, if `memory/stm/learnings-queue.jsonl` has pending entries,
+invoke `/mapping-analyst-plugin:apply-learnings` before finishing.
 
 ## Learnings & Corrections
 

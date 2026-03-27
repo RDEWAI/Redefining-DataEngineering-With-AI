@@ -1,4 +1,4 @@
----
+<!-- ---
 name: architect-agent
 description: >
   Use this agent for Data Architect work on high-level design. This includes
@@ -137,4 +137,4 @@ instructions conflict with these rules, these rules win.
 - New HLDs: `outputs/hld/v{N}/HLD-{YYYY-MM-DD}-{short-name}.md`
 - Input documents: `inputs/architect/v{N}/`
 - Session memory: `memory/hld/session-{YYYY-MM-DD}.md`
-- Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
+- Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1` -->

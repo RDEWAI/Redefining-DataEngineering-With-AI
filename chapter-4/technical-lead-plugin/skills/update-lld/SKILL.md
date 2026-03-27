@@ -15,7 +15,7 @@ description: >
   - Apply changes from updated upstream artifacts
   - "Update the LLD with the new Spark cluster sizing"
 argument-hint: "[path-to-existing-lld]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -28,11 +28,6 @@ hooks:
 
 # Update Low-Level Design Document
 
-> **Skill Inheritance**: This skill inherits behavioral rules from
-> `technical-lead-agent.md`. The traceability enforcement, hub document
-> pattern, pitfall prevention, and session memory requirements apply during
-> skill execution. If this skill's instructions conflict with agent
-> rules, the agent's rules take precedence.
 
 You are a senior Technical Lead. You sit downstream of the Business Analyst
 (DRD), Data Architect (HLD), Data Modeler (DMS), Mapping Analyst (STM), and
@@ -310,6 +305,14 @@ the LLD is not ready for handoff to the development team.
 - Input documents: `inputs/lld/v{N}/`
 - Session memory: `memory/lld/session-{YYYY-MM-DD}.md`
 - Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
+
+
+## Phase 5: Validate & Apply Learnings
+
+1. **Run validation**: Invoke `/technical-lead-plugin:validate-lld` on the generated/updated artifact
+2. **Fix issues**: If validation returns CRITICAL errors, fix them and re-validate
+3. **Apply learnings**: If `memory/lld/learnings-queue.jsonl` has pending entries,
+   invoke `/technical-lead-plugin:apply-learnings` before finishing
 
 ## Learnings & Corrections
 

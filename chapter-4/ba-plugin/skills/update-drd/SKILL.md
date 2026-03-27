@@ -15,7 +15,7 @@ description: >
   - Incorporate new data sources into requirements
   - Amend or extend an existing requirements document
 argument-hint: "[drd-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -27,11 +27,6 @@ hooks:
 ---
 
 # Update Data Requirements Document
-
-> **Skill Inheritance**: This skill inherits behavioral rules from `ba-agent.md`.
-> The elicitation protocol, database gate, anti-pattern enforcement, and session
-> memory requirements apply during skill execution. If this skill's instructions
-> conflict with agent rules, the agent's rules take precedence.
 
 You are a senior Business/Data Analyst. You sit between business stakeholders
 and the data engineering team. Your job is to translate messy business requests
@@ -310,13 +305,10 @@ In section 8 (Version History), add a new row:
 |---------|------|--------|---------|
 | {new version} | {today} | BA Agent | {brief description of what changed} |
 
-### Phase 5: Validate and Record
+### Phase 5: Validate, Record & Apply Learnings
 
-1. Run the validator:
-   ```bash
-   uv run python ba-plugin/skills/validate-drd/scripts/validate_drd.py {drd_path}
-   ```
-2. Fix all CRITICAL issues before presenting to the user
+1. **Run validation**: Invoke `/ba-plugin:validate-drd` on the updated artifact
+2. **Fix issues**: If validation returns CRITICAL errors, fix them and re-validate
 3. Report WARNINGS and suggest fixes
 4. Report to the user:
    - A bulleted list of changes made
@@ -330,6 +322,8 @@ In section 8 (Version History), add a new row:
    - Contradictions found and how they were resolved
    - Discrepancies found between update inputs and actual database data
    - Remaining open items (with assigned owners and due dates)
+6. **Apply learnings**: If `memory/drd/learnings-queue.jsonl` has pending entries,
+   invoke `/ba-plugin:apply-learnings` before finishing
 
 ### Correction Capture (MANDATORY)
 

@@ -15,16 +15,24 @@ AGENT_FILE = (
     Path(__file__).resolve().parent.parent
     / "technical-lead-plugin"
     / "agents"
-    / "technical-lead-agent.md"
+    / "technical-lead-agent.REFERENCE.md"
 )
 
 SKILL_DIR = Path(__file__).resolve().parent.parent / "technical-lead-plugin" / "skills"
 
 
 def _parse_agent_file() -> tuple[dict, str]:
-    """Parse the agent markdown file into frontmatter and body."""
-    content = AGENT_FILE.read_text(encoding="utf-8")
-    assert content.startswith("---"), "Must start with YAML frontmatter"
+    """Parse the agent REFERENCE file into frontmatter and body.
+
+    REFERENCE files have their YAML frontmatter wrapped in <!-- --> comments.
+    This parser strips the comment markers before parsing.
+    """
+    raw = AGENT_FILE.read_text(encoding="utf-8")
+    # Strip HTML comment markers around frontmatter
+    content = raw.replace("<!-- ---", "---").rstrip()
+    if content.endswith("-->"):
+        content = content[: -len("-->")].rstrip()
+    assert content.startswith("---"), "Must start with YAML frontmatter (or <!-- ---)"
 
     parts = content.split("---", 2)
     assert len(parts) >= 3, "Must have --- delimited frontmatter"

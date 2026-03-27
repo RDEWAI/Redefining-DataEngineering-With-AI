@@ -15,7 +15,7 @@ description: >
   - Find issues or gaps in a design document
   - Run quality checks on an HLD before handoff
 argument-hint: "[hld-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 hooks:
   before:
     - matcher: Bash
@@ -23,10 +23,6 @@ hooks:
 ---
 
 # Validate High-Level Design Document
-
-> **Skill Inheritance**: This skill inherits behavioral rules from
-> `architect-agent.md`. The traceability enforcement, pitfall prevention,
-> and session memory requirements apply during skill execution.
 
 You are a senior Data Architect. You sit between the Business Analyst (who
 produces the DRD) and the data engineering team (who implements). Your job
@@ -153,6 +149,12 @@ echo '{"skill": "validate-hld", "date": "{YYYY-MM-DD}", "correction": "{what the
 directly, rejects a proposed decision, or provides a specific value replacing
 a vague one you generated. When in doubt, append it — false positives are filtered
 during apply-learnings.
+
+
+## Final Step: Apply Learnings
+
+After validation completes, if `memory/hld/learnings-queue.jsonl` has pending entries,
+invoke `/architect-plugin:apply-learnings` before finishing.
 
 ## Learnings & Corrections
 

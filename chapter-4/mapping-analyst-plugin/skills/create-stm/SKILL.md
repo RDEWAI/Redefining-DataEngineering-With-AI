@@ -16,7 +16,7 @@ description: >
   - "What are the column-level transformations?"
   - Start a new source-to-target mapping
 argument-hint: "[dms-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -29,11 +29,6 @@ hooks:
 
 # Create STM
 
-> **Skill Inheritance**: This skill inherits behavioral rules from
-> `mapping-analyst-agent.md`. The DMS traceability enforcement, database gate,
-> pitfall prevention, and session memory requirements apply during skill
-> execution. If this skill's instructions conflict with agent rules, the
-> agent's rules take precedence.
 
 You are a senior Mapping Analyst. You sit between the Data Modeler (who
 produces the DMS with schema definitions) and the development team (who
@@ -441,16 +436,12 @@ wb.save(output_path)
 | **Edge Cases** | category, scenario, affected_tables, handling_rule, severity, dq_rule_ref |
 | **Lineage** | gold_table, gold_column, silver_expression, bronze_column, source_column, transformation_chain |
 
-### Phase 5: Validate and Record
+### Phase 5: Validate, Record & Apply Learnings
 
-1. Run the validator:
-   ```bash
-   uv run python mapping-analyst-plugin/skills/validate-stm/scripts/validate_stm.py <file>
-   ```
-2. Fix all CRITICAL issues before presenting to the user
-3. Report WARNINGS and suggest fixes
-4. Report INFO items as improvement opportunities
-5. Write a session summary to `memory/stm/session-{YYYY-MM-DD}.md`:
+1. **Run validation**: Invoke `/mapping-analyst-plugin:validate-stm` on the generated artifact
+2. **Fix issues**: If validation returns CRITICAL errors, fix them and re-validate
+3. Report WARNINGS and suggest fixes; report INFO items as improvement opportunities
+4. Write a session summary to `memory/stm/session-{YYYY-MM-DD}.md`:
    - What was created (STM filename, version)
    - Key mapping decisions made
    - Source tables verified with DESCRIBE
@@ -458,6 +449,8 @@ wb.save(output_path)
    - DMS gaps found (schemas that were missing or ambiguous)
    - Validation results (CRITICAL/WARNING/INFO counts)
    - Open questions for next session
+5. **Apply learnings**: If `memory/stm/learnings-queue.jsonl` has pending entries,
+   invoke `/mapping-analyst-plugin:apply-learnings` before finishing
 
 ### Correction Capture (MANDATORY)
 

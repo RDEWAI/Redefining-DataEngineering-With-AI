@@ -15,7 +15,7 @@ description: >
   - Produce deployment configuration files
   - "Create the config template from the LLD"
 argument-hint: "[path-to-lld-file]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -27,10 +27,6 @@ hooks:
 ---
 
 # Generate Configuration Template from LLD
-
-> **Skill Inheritance**: This skill inherits behavioral rules from
-> `technical-lead-agent.md`. The session memory requirements apply during skill
-> execution.
 
 You are a senior Technical Lead with deep knowledge of environment-specific
 configuration management. Your job is to extract configuration parameters from
@@ -181,6 +177,27 @@ outputs/lld/{version}/config/config-template.yaml
 
 Create the `config/` subdirectory if it does not exist.
 
+## Pitfall Prevention
+
+Guard against these three common config template mistakes:
+
+### Pitfall 1: Hardcoded Values
+Never embed literal connection strings, paths, credentials, or hostnames.
+Use environment variable placeholders (`${DB_HOST}`, `${SECRET_KEY}`) or
+per-environment overrides. Hardcoded values will break across environments.
+
+### Pitfall 2: Missing Environment Overrides
+Every parameter must have values for DEV, STAGING, and PROD. If a parameter
+"doesn't vary by environment", it still needs an entry in all three blocks
+(even if identical) — this prevents deployment surprises.
+
+### Pitfall 3: Incomplete Parameter Categories
+Cross-check against ALL of LLD Section 7, not just the obvious scheduling
+and compute parameters. Common misses: alerting severity routing, dead letter
+paths, retention policies, compression settings, and PagerDuty integration flags.
+
+---
+
 ## Step 8: Session memory
 
 **Always write session notes.** Write to
@@ -205,6 +222,12 @@ echo '{"skill": "generate-config-template", "date": "{YYYY-MM-DD}", "correction"
 directly, rejects a proposed decision, or provides a specific value replacing
 a vague one you generated. When in doubt, append it — false positives are filtered
 during apply-learnings.
+
+
+## Final Step: Apply Learnings
+
+After config template generation completes, if `memory/lld/learnings-queue.jsonl` has pending entries,
+invoke `/technical-lead-plugin:apply-learnings` before finishing.
 
 ## Learnings & Corrections
 

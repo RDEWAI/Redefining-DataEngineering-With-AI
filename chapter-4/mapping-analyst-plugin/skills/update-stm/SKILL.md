@@ -15,7 +15,7 @@ description: >
   - Merge DMS changes into existing STM sheets
   - Amend transformation expressions
 argument-hint: "[stm-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -28,11 +28,6 @@ hooks:
 
 # Update STM
 
-> **Skill Inheritance**: This skill inherits behavioral rules from
-> `mapping-analyst-agent.md`. The DMS traceability enforcement, database gate,
-> pitfall prevention, and session memory requirements apply during skill
-> execution. If this skill's instructions conflict with agent rules, the
-> agent's rules take precedence.
 
 You are a senior Mapping Analyst. You sit between the Data Modeler (who
 produces the DMS with schema definitions) and the development team (who
@@ -341,27 +336,25 @@ In the Summary sheet:
 - Update **Last Modified** to today's date
 - Add change description row
 
-### Phase 5: Validate and Record
+### Phase 5: Validate, Record & Apply Learnings
 
 1. Save the updated workbook:
    ```python
    wb.save("outputs/stm/v{N}/STM-{YYYY-MM-DD}-{pipeline-name}.xlsx")
    ```
-2. Run the validator:
-   ```bash
-   uv run python mapping-analyst-plugin/skills/validate-stm/scripts/validate_stm.py <file>
-   ```
-3. Fix all CRITICAL issues before presenting to the user
-4. Report WARNINGS and suggest fixes
-5. Report INFO items as improvement opportunities
-6. Report: changes made, contradictions found, remaining open items, validation summary
-7. Write a session summary to `memory/stm/session-{YYYY-MM-DD}.md`:
+2. **Run validation**: Invoke `/mapping-analyst-plugin:validate-stm` on the updated artifact
+3. **Fix issues**: If validation returns CRITICAL errors, fix them and re-validate
+4. Report WARNINGS and suggest fixes; report INFO items as improvement opportunities
+5. Report: changes made, contradictions found, remaining open items, validation summary
+6. Write a session summary to `memory/stm/session-{YYYY-MM-DD}.md`:
    - What was updated (STM filename, version change)
    - Changes made (bulleted list)
    - Mapping decisions changed and rationale
    - DMS traceability updates
    - Remaining open items
    - Validation results (CRITICAL/WARNING/INFO counts)
+7. **Apply learnings**: If `memory/stm/learnings-queue.jsonl` has pending entries,
+   invoke `/mapping-analyst-plugin:apply-learnings` before finishing
 
 ### Correction Capture (MANDATORY)
 

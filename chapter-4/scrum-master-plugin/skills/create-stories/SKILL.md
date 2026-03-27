@@ -15,7 +15,7 @@ description: >
   - Break down the implementation plan into work items
   - Start story writing from the latest design documents
 argument-hint: "[lld-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -27,11 +27,6 @@ hooks:
 ---
 
 # Create Sprint Backlog (Epics & Stories)
-
-> **Skill Inheritance**: This skill inherits behavioral rules from `scrum-master-agent.md`.
-> The traceability enforcement, pitfall prevention, and session
-> memory requirements apply during skill execution. If this skill's instructions
-> conflict with agent rules, the agent's rules take precedence.
 
 You are a Scrum Master responsible for decomposing technical designs into
 implementable work items. You sit at the end of the artifact chain — consuming
@@ -125,6 +120,17 @@ internal checklist:
 | **Acceptance Criteria** | Standards for AC format, upstream refs | ? |
 
 Mark each area as COMPLETE, PARTIAL, or MISSING.
+
+Also track upstream input coverage:
+
+| Input Area | Status | Gap Description |
+|-----------|--------|-----------------|
+| LLD hub doc | COMPLETE / PARTIAL / MISSING | ... |
+| DQS rules | COMPLETE / PARTIAL / MISSING | ... |
+| DMS schemas | COMPLETE / PARTIAL / MISSING | ... |
+| STM mappings | COMPLETE / PARTIAL / MISSING | ... |
+| HLD architecture | COMPLETE / PARTIAL / MISSING | ... |
+| DRD requirements | COMPLETE / PARTIAL / MISSING | ... |
 
 ### Step 3: Ask Targeted Questions Using AskUserQuestion Tool
 
@@ -358,6 +364,17 @@ Each story file MUST include:
 - **Consistently sized**: Stories within an epic should be roughly similar in scope
 - **Complete**: No empty sections — use `[TBD - requires input from {source}]` with owner
 
+### Backlog Validation (Pre-Generation Check)
+
+Before writing files, verify the decomposition plan:
+
+1. **Sprint capacity**: Total story points per sprint must not exceed team velocity
+2. **Dependency DAG**: Dependencies must form an acyclic graph — no circular dependencies
+3. **Epic coverage**: Every epic must have at least one story
+4. **Traceability**: Every story must reference at least one upstream artifact section
+
+If any check fails, fix the decomposition plan before generating files.
+
 ### Phase 4: Validate and Record
 
 1. Save output to the latest version folder in `outputs/stories/`:
@@ -461,6 +478,14 @@ echo '{"skill": "create-stories", "date": "{YYYY-MM-DD}", "correction": "{what t
 directly, rejects a proposed decision, or provides a specific value replacing
 a vague one you generated. When in doubt, append it — false positives are filtered
 during apply-learnings.
+
+
+## Phase 5: Validate & Apply Learnings
+
+1. **Run validation**: Invoke `/scrum-master-plugin:validate-stories` on the generated/updated artifact
+2. **Fix issues**: If validation returns CRITICAL errors, fix them and re-validate
+3. **Apply learnings**: If `memory/stories/learnings-queue.jsonl` has pending entries,
+   invoke `/scrum-master-plugin:apply-learnings` before finishing
 
 ## Learnings & Corrections
 

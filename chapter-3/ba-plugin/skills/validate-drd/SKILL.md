@@ -12,11 +12,6 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 
 # Validate Data Requirements Document
 
-> **Skill Inheritance**: This skill inherits behavioral rules from `ba-agent.md`.
-> The elicitation protocol, database gate, anti-pattern enforcement, and session
-> memory requirements apply during skill execution. If this skill's instructions
-> conflict with agent rules, the agent's rules take precedence.
-
 You are a Business Analyst Agent. Validate a DRD against completeness and
 quality standards.
 

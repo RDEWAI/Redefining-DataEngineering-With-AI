@@ -7,7 +7,7 @@ description: >
   unchanged content, increments version, and adds change log entries.
   Use when the user asks to update, revise, or modify existing stories or epics.
 argument-hint: "[path-to-existing-backlog]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -19,11 +19,6 @@ hooks:
 ---
 
 # Update Sprint Backlog
-
-> **Skill Inheritance**: This skill inherits behavioral rules from
-> `scrum-master-agent.md`. The traceability enforcement, pitfall prevention,
-> and session memory requirements apply during skill execution. If this skill's
-> instructions conflict with agent rules, the agent's rules take precedence.
 
 You are a Scrum Master responsible for decomposing technical designs into
 implementable work items. You sit at the end of the artifact chain — consuming
@@ -104,6 +99,12 @@ Call the `AskUserQuestion` tool to clarify if the user's intent is ambiguous:
 - **Changed DQS rules** → update DQ-related story references
 - **Capacity change** → re-allocate stories across sprints
 - **Priority change** → re-order stories, may affect sprint allocation
+
+Document ripple effects:
+
+| Changed Item | Affected Epics | Affected Stories | Sprint Impact |
+|-------------|---------------|-----------------|---------------|
+| (describe change) | EPIC-XX | STORY-XX-YYY | Sprint N: +/- points |
 
 ### Step 3: Confirm Readiness
 
@@ -217,6 +218,14 @@ something, or reject a section — you MUST append a learning entry BEFORE conti
 ```bash
 echo '{"skill": "update-stories", "date": "{YYYY-MM-DD}", "correction": "{what the user said or changed}", "pattern": "{generalized rule}", "status": "pending"}' >> memory/stories/learnings-queue.jsonl
 ```
+
+
+## Phase 5: Validate & Apply Learnings
+
+1. **Run validation**: Invoke `/scrum-master-plugin:validate-stories` on the generated/updated artifact
+2. **Fix issues**: If validation returns CRITICAL errors, fix them and re-validate
+3. **Apply learnings**: If `memory/stories/learnings-queue.jsonl` has pending entries,
+   invoke `/scrum-master-plugin:apply-learnings` before finishing
 
 ## Learnings & Corrections
 

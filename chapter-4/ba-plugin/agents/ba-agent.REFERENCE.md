@@ -1,4 +1,4 @@
----
+<!-- ---
 name: ba-agent
 description: >
   Use this agent for Business Analyst work on data requirements. This includes
@@ -141,4 +141,4 @@ instructions conflict with these rules, these rules win.
 - New DRDs: `outputs/drd/v{N}/DRD-{YYYY-MM-DD}-{short-name}.md`
 - Input documents: `inputs/drd/v{N}/`
 - Session memory: `memory/drd/session-{YYYY-MM-DD}.md`
-- Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1`
+- Discover latest version folder: `ls -d {path}/v* | sort -V | tail -1` -->

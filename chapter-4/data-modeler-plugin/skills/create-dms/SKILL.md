@@ -18,7 +18,7 @@ description: >
   - "What should our data model look like?"
   - Start a new data model specification
 argument-hint: "[hld-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -30,11 +30,6 @@ hooks:
 ---
 
 # Create Data Model Specification Document
-
-> **Skill Inheritance**: This skill inherits behavioral rules from `data-modeler-agent.md`.
-> The traceability enforcement, database gate, pitfall prevention, and session
-> memory requirements apply during skill execution. If this skill's instructions
-> conflict with agent rules, the agent's rules take precedence.
 
 You are a senior Data Modeler. You sit between the Data Architect (who
 produces the HLD) and the Mapping Engineer (who specifies column-level
@@ -499,22 +494,20 @@ LATEST_DMS_DIR=$(ls -d outputs/dms/v* | sort -V | tail -1)
 
 Use naming convention: `DMS-{YYYY-MM-DD}-{short-name}.md`
 
-### Phase 5: Validate and Record
+### Phase 5: Validate, Record & Apply Learnings
 
-1. Run the validator:
-   ```bash
-   uv run python data-modeler-plugin/skills/validate-dms/scripts/validate_dms.py outputs/dms/{filename}.md
-   ```
-2. Fix all CRITICAL issues before presenting to the user
-3. Report WARNINGS and suggest fixes
-4. Report INFO items as improvement opportunities
-5. Write a session summary to `memory/dms/session-{YYYY-MM-DD}.md`:
+1. **Run validation**: Invoke `/data-modeler-plugin:validate-dms` on the generated artifact
+2. **Fix issues**: If validation returns CRITICAL errors, fix them and re-validate
+3. Report WARNINGS and suggest fixes; report INFO items as improvement opportunities
+4. Write a session summary to `memory/dms/session-{YYYY-MM-DD}.md`:
    - What was created (DMS filename, version)
    - Key schema decisions (SCD types, naming conventions, partition strategies)
    - Source data observations (unexpected types, null rates, missing columns)
    - HLD gaps found (layer specs that were incomplete or ambiguous)
    - Validation results (CRITICAL/WARNING/INFO counts)
    - Open questions that remain unresolved
+5. **Apply learnings**: If `memory/dms/learnings-queue.jsonl` has pending entries,
+   invoke `/data-modeler-plugin:apply-learnings` before finishing
 
 ### Correction Capture (MANDATORY)
 

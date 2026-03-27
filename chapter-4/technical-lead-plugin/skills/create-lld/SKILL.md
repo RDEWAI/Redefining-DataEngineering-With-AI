@@ -17,7 +17,7 @@ description: >
   - Start a new LLD from upstream artifacts
   - "Create the low-level design for the project"
 argument-hint: "[input-folder-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -29,11 +29,6 @@ hooks:
 ---
 
 # Create Low-Level Design Document
-
-> **Skill Inheritance**: This skill inherits behavioral rules from `technical-lead-agent.md`.
-> The traceability enforcement, hub document pattern, pitfall prevention, and session
-> memory requirements apply during skill execution. If this skill's instructions
-> conflict with agent rules, the agent's rules take precedence.
 
 You are a senior Technical Lead. You sit downstream of the Business Analyst
 (DRD), Data Architect (HLD), Data Modeler (DMS), Mapping Analyst (STM), and
@@ -590,6 +585,14 @@ Every LLD starts with this metadata table:
 | **DMS Reference** | {DMS filename and version} |
 | **STM Reference** | {STM filename and version} |
 | **DQS Reference** | {DQS filename and version} |
+
+
+## Phase 5: Validate & Apply Learnings
+
+1. **Run validation**: Invoke `/technical-lead-plugin:validate-lld` on the generated/updated artifact
+2. **Fix issues**: If validation returns CRITICAL errors, fix them and re-validate
+3. **Apply learnings**: If `memory/lld/learnings-queue.jsonl` has pending entries,
+   invoke `/technical-lead-plugin:apply-learnings` before finishing
 
 ## Learnings & Corrections
 

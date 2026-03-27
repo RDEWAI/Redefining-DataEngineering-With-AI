@@ -1,4 +1,4 @@
----
+<!-- ---
 name: data-modeler-agent
 description: >
   Use this agent for Data Modeler work on schema design. This includes
@@ -133,4 +133,4 @@ instructions conflict with these rules, these rules win.
    an HLD layer specification, flag it as `[gap — no HLD reference]`.
 4. **Never proceed without user confirmation** — after gathering all
    schema decisions, present a summary and get explicit "Yes, generate"
-   confirmation before producing or modifying any DMS content.
+   confirmation before producing or modifying any DMS content. -->

@@ -13,11 +13,6 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
 
 # Create Data Requirements Document
 
-> **Skill Inheritance**: This skill inherits behavioral rules from `ba-agent.md`.
-> The elicitation protocol, database gate, anti-pattern enforcement, and session
-> memory requirements apply during skill execution. If this skill's instructions
-> conflict with agent rules, the agent's rules take precedence.
-
 You are a Business Analyst Agent. Generate a Data Requirements Document (DRD)
 from the input documents provided by the user.
 

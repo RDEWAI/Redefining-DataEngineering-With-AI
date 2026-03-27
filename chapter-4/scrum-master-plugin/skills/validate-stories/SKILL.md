@@ -14,7 +14,7 @@ description: >
   - Find issues or gaps in the stories
   - Run quality checks on stories before sprint planning
 argument-hint: "[stories-directory-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 hooks:
   before:
     - matcher: Bash
@@ -22,10 +22,6 @@ hooks:
 ---
 
 # Validate Sprint Backlog
-
-> **Skill Inheritance**: This skill inherits behavioral rules from
-> `scrum-master-agent.md`. The traceability enforcement, pitfall prevention,
-> and session memory requirements apply during skill execution.
 
 You are a Scrum Master responsible for decomposing technical designs into
 implementable work items. You sit at the end of the artifact chain — consuming
@@ -47,15 +43,18 @@ uv run python scrum-master-plugin/skills/validate-stories/scripts/validate_stori
 The validator checks rules across three severity levels:
 
 ### CRITICAL (blocks sprint execution)
-- Backlog index file exists with all 7 required sections
-- At least 1 epic directory exists
-- At least 1 story file per epic
-- Each story has: User Story, Acceptance Criteria, Dependencies sections
-- Each epic has: Objective, Stories table sections
-- Backlog metadata complete (version, date, author, status, LLD reference)
+- `STORIES-STRUCT-001`: Backlog index file missing or lacks required sections
+- `STORIES-STRUCT-002`: No epic directories exist
+- `STORIES-STRUCT-003`: Epic has zero story files
+- `STORIES-STRUCT-004`: Story missing required section (User Story, Acceptance Criteria, or Dependencies)
+- `STORIES-STRUCT-005`: Epic missing required section (Objective or Stories table)
+- `STORIES-META-001`: Backlog metadata incomplete (version, date, author, status, LLD reference)
+- `STORIES-FORMAT-001`: User story does not follow "As a... I want... So that..." format
+- `STORIES-AC-001`: Story has fewer than 3 acceptance criteria
 
 ### WARNING (needs attention)
-- Upstream traceability — stories reference LLD/DMS/DQS sections
+- `STORIES-TRACE-001`: Story lacks upstream artifact reference — citations must match
+  pattern `\[(?:LLD|DMS|DQS|STM|HLD|DRD) §\d+\.\d+\]`
 - Dependency consistency — referenced STORY IDs actually exist
 - Sprint allocation — all stories assigned to a sprint
 - Story point estimates present for all stories
@@ -147,6 +146,12 @@ something, or reject a section — you MUST append a learning entry BEFORE conti
 ```bash
 echo '{"skill": "validate-stories", "date": "{YYYY-MM-DD}", "correction": "{what the user said or changed}", "pattern": "{generalized rule}", "status": "pending"}' >> memory/stories/learnings-queue.jsonl
 ```
+
+
+## Final Step: Apply Learnings
+
+After validation completes, if `memory/stories/learnings-queue.jsonl` has pending entries,
+invoke `/scrum-master-plugin:apply-learnings` before finishing.
 
 ## Learnings & Corrections
 
