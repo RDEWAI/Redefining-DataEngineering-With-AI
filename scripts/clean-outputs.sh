@@ -12,9 +12,9 @@ echo "=== Cleaning Chapter 3 ==="
 echo "  Removing chapter-3 DRD outputs..."
 find "$REPO_ROOT/chapter-3/outputs" -type f ! -name '.gitkeep' -delete 2>/dev/null || true
 
-# Chapter 3: ba-plugin/memory/ (session notes)
-echo "  Removing chapter-3 ba-plugin memory..."
-find "$REPO_ROOT/chapter-3/ba-plugin/memory" -type f ! -name '.gitkeep' -delete 2>/dev/null || true
+# Chapter 3: memory/ (session notes + learnings)
+echo "  Removing chapter-3 memory (session notes + learnings)..."
+find "$REPO_ROOT/chapter-3/memory" -type f \( -name 'session-*.md' -o -name 'learnings-queue.jsonl' \) -delete 2>/dev/null || true
 
 echo "=== Cleaning Chapter 4 ==="
 

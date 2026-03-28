@@ -98,7 +98,7 @@ The `ba-agent` sub-agent (`ba-plugin/agents/ba-agent.md`) is the primary interfa
 - **Requirements Elicitation Protocol** — asks structured questions section-by-section using `AskUserQuestion`, iterating until all DRD sections have specific, measurable requirements
 - **Source Exploration** — runs read-only DuckDB queries to verify table existence, row counts, column types, and null rates against what input documents claim
 - **Pitfall Prevention** — rejects vague requirements ("all data", "real-time", "fast"), never skips source exploration, prevents gold-plating
-- **Session Memory** — writes notes to `ba-plugin/memory/` after each engagement, tracking decisions, open questions, and DRD iteration history
+- **Session Memory** — writes notes to `memory/drd/` after each engagement, tracking decisions, open questions, and DRD iteration history
 
 ### Skills
 
@@ -226,7 +226,7 @@ echo $?   # 2
 5. Answer the agent's clarifying questions until it confirms readiness
 6. Verify a DRD was created in `chapter-3/outputs/drd/`
 7. The PostToolUse hook should have auto-validated it
-8. Session notes should appear in `ba-plugin/memory/`
+8. Session notes should appear in `memory/drd/`
 
 ### Debug plugin loading
 
