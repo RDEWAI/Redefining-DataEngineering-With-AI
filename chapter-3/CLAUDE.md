@@ -10,7 +10,8 @@ with skills to generate, update, and validate Data Requirements Documents (DRDs)
 The plugin lives in `ba-plugin/` and is defined by `ba-plugin/.claude-plugin/plugin.json`.
 The marketplace manifest is at `.claude-plugin/marketplace.json`.
 
-- `ba-plugin/skills/` - Skill definitions (create-drd, update-drd, validate-drd)
+- `ba-plugin/skills/` - Skill definitions (create-drd, update-drd, validate-drd, apply-learnings)
+- `ba-plugin/agents/` - Agent REFERENCE doc (domain knowledge, not a launchable agent)
 - `ba-plugin/hooks/` - PostToolUse hook for automatic DRD validation
 - `ba-plugin/scripts/` - Hook scripts (validate-drd-hook.py)
 
@@ -27,6 +28,9 @@ From the repo root:
 - **create-drd**: Generate a new DRD from input documents
 - **update-drd**: Update an existing DRD with new information
 - **validate-drd**: Validate a DRD against completeness standards
+- **apply-learnings**: Process pending corrections into generalized skill rules
+
+Skills invoke each other via the `Skill` tool (e.g., create-drd invokes validate-drd at the end).
 
 ## Hooks
 
@@ -38,7 +42,8 @@ the errors as feedback and auto-fixes them.
 
 - `inputs/drd/` - Input documents (business requests, stakeholder notes, source docs, catalogs)
 - `outputs/drd/` - Generated DRD output files
-- `ba-plugin/` - Plugin directory (skills, hooks, scripts)
+- `memory/drd/` - Session notes and learnings queue
+- `ba-plugin/` - Plugin directory (skills, hooks, scripts, agent REFERENCE)
 - `tests/` - Validator and hook unit tests
 
 ## Key Commands
