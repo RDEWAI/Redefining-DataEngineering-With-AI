@@ -1,0 +1,69 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    subgraph planning["Planning Phase"]
+        direction TB
+        BA["BA<br/><i>Business Analyst</i>"] -->|produces| DRD["DRD<br/><i>Data Requirements<br/>Document</i>"]
+        ARCH["Architect<br/><i>Data Architect</i>"] -->|produces| HLD["HLD<br/><i>High-Level Design</i>"]
+        DMR["DM<br/><i>Data Modeler</i>"] -->|produces| DMS["DMS<br/><i>Data Model<br/>Specification</i>"]
+    end
+
+    subgraph eng["Engineering Phase"]
+        direction TB
+        TA["TA / MA<br/><i>Mapping Analyst</i>"] -->|produces| STM["STM<br/><i>Source-to-Target<br/>Mapping</i>"]
+        DQE["DQE<br/><i>DQ Engineer</i>"] -->|produces| DQS["DQS<br/><i>Data Quality<br/>Specification</i>"]
+        TL["TL<br/><i>Technical Lead</i>"] -->|produces| LLD["LLD<br/><i>Low-Level Design</i>"]
+    end
+
+    subgraph delivery["Delivery Phase"]
+        direction TB
+        SM["SM<br/><i>Scrum Master</i>"] -->|produces| STORIES["Stories<br/><i>Epics & Tasks</i>"]
+    end
+
+    subgraph impl["Implementation Phase"]
+        direction TB
+        DE["DE<br/><i>Data Engineer</i>"] -->|builds| PIPELINE["Pipeline<br/><i>Data Pipeline</i>"]
+        DQA["DQA<br/><i>DQ Analyst</i>"] -->|tests| PIPELINE
+        DEVOPS["DevOps<br/><i>DevOps Engineer</i>"] -->|deploys| PIPELINE
+        DVE["DVE<br/><i>Data Viz Engineer</i>"] -->|visualizes| DASH["Dashboards<br/><i>Reports & Metrics</i>"]
+    end
+
+    DRD -->|feeds| ARCH
+    HLD -->|feeds| DMR
+    DMS -->|feeds| TA
+    DMS -->|feeds| DQE
+    DMS -->|feeds| TL
+    STM -->|feeds| DQE
+    STM -->|feeds| TL
+    DQS -->|feeds| TL
+    LLD -->|feeds| SM
+    DRD -->|feeds| SM
+    STORIES -->|feeds| DE
+    STORIES -->|feeds| DQA
+    STORIES -->|feeds| DEVOPS
+    STORIES -->|feeds| DVE
+
+    style planning fill:#e8f5e9,stroke:#4CAF50,stroke-width:2px
+    style eng fill:#fff3e0,stroke:#FF9800,stroke-width:2px
+    style delivery fill:#e3f2fd,stroke:#1976D2,stroke-width:2px
+    style impl fill:#fce4ec,stroke:#E91E63,stroke-width:2px
+
+    style BA fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style DRD fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style ARCH fill:#dcedc1,stroke:#333,stroke-width:2px
+    style HLD fill:#dcedc1,stroke:#333,stroke-width:2px
+    style DMR fill:#ffd3a5,stroke:#333,stroke-width:2px
+    style DMS fill:#ffd3a5,stroke:#333,stroke-width:2px
+    style TA fill:#ffaaa5,stroke:#333,stroke-width:2px
+    style STM fill:#ffaaa5,stroke:#333,stroke-width:2px
+    style DQE fill:#ff8b94,stroke:#333,stroke-width:2px
+    style DQS fill:#ff8b94,stroke:#333,stroke-width:2px
+    style TL fill:#d4a5ff,stroke:#333,stroke-width:2px
+    style LLD fill:#d4a5ff,stroke:#333,stroke-width:2px
+    style SM fill:#a5d4ff,stroke:#333,stroke-width:2px
+    style STORIES fill:#a5d4ff,stroke:#333,stroke-width:2px
+    style DE fill:#b3e5fc,stroke:#333,stroke-width:2px
+    style DQA fill:#b3e5fc,stroke:#333,stroke-width:2px
+    style DEVOPS fill:#b3e5fc,stroke:#333,stroke-width:2px
+    style DVE fill:#b3e5fc,stroke:#333,stroke-width:2px
+    style PIPELINE fill:#e1bee7,stroke:#333,stroke-width:2px
+    style DASH fill:#e1bee7,stroke:#333,stroke-width:2px
