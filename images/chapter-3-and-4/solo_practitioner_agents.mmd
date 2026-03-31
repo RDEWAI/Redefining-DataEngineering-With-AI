@@ -2,15 +2,15 @@
 graph LR
     subgraph agents["AI Agents"]
         direction LR
-        A1["Analyst"]
-        A2["Architect"]
-        A3["Modeler"]
-        A4["Mapper"]
-        A5["DQ"]
-        A6["Stories"]
+        A1["Business Analyst (BA)"]
+        A2["Data Architect (DA)"]
+        A3["Data Modeler (DM)"]
+        A4["Data Mapping Analyst (DMA)"]
+        A5["Data Quality Engineer (DQE)"]
+        A6["Technical Lead (TL)"]
     end
 
-    HUMAN["Data Engineer<br/><i>Reviews & Approves</i>"]
+    HUMAN["Data Engineer (HITL)<br/><i>Reviews & Approves</i>"]
 
     A1 --> A2 --> A3 --> A4 --> A5 --> A6
     A1 -.->|review| HUMAN

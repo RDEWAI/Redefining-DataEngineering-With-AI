@@ -2,16 +2,15 @@
 graph LR
     subgraph team["Enterprise Team"]
         direction LR
-        E1["Analyst"]
-        E2["Architect"]
-        E3["Modeler"]
-        E4["Mapper"]
-        E5["DQ"]
-        E6["Tech Lead"]
-        E7["Scrum"]
+        E1["Business Analyst (BA)"]
+        E2["Data Architect (DA)"]
+        E3["Data Modeler (DM)"]
+        E4["Data Mapping Analyst (DMA)"]
+        E5["Data Quality Engineer (DQE)"]
+        E6["Technical Lead (TL)"]
     end
 
-    E1 --> E2 --> E3 --> E4 --> E5 --> E6 --> E7
+    E1 --> E2 --> E3 --> E4 --> E5 --> E6
 
     style team fill:#fff3e0,stroke:#FF9800,stroke-width:2px
     style E1 fill:#a8e6cf,stroke:#333,stroke-width:2px
@@ -20,4 +19,3 @@ graph LR
     style E4 fill:#ffaaa5,stroke:#333,stroke-width:2px
     style E5 fill:#ff8b94,stroke:#333,stroke-width:2px
     style E6 fill:#d4a5ff,stroke:#333,stroke-width:2px
-    style E7 fill:#a5d4ff,stroke:#333,stroke-width:2px
