@@ -1,0 +1,9 @@
+{
+  "name": "library-assistant-plugin",
+  "version": "1.0.0",
+  "description": "Library Assistant Agent for querying books, checking availability, locating physical copies, and analyzing sales data against the chapter-2 DuckDB library database",
+  "author": {
+    "name": "RDEWAI"
+  },
+  "keywords": ["library", "books", "duckdb", "rfid", "sales", "analytics"]
+}
