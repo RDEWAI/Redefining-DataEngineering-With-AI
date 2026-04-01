@@ -269,6 +269,47 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ---
 
+## Section 4: Plugins (Library Assistant)
+
+This section packages the Library Assistant as a Claude Code plugin, demonstrating how to
+extend Claude Code with domain-specific skills, read-only enforcement hooks, and agent knowledge.
+
+### Plugin Structure
+
+The plugin lives in `library-assistant-plugin/` and is defined by
+`library-assistant-plugin/.claude-plugin/plugin.json`.
+The marketplace manifest is at `.claude-plugin/marketplace.json`.
+
+| Path | Purpose |
+|------|---------|
+| `library-assistant-plugin/skills/` | Skill definitions (`query-library`, `analyze-library`) |
+| `library-assistant-plugin/hooks/` | PreToolUse hook for read-only query enforcement |
+| `library-assistant-plugin/scripts/` | Hook scripts (`enforce-readonly-queries.py`) |
+| `library-assistant-plugin/agents/` | Agent reference docs (domain knowledge) |
+
+### Installing the Plugin
+
+From the repo root:
+
+```bash
+/plugin marketplace add ./chapter-2
+/plugin install library-assistant-plugin@rdewai-plugins
+```
+
+### Skills
+
+- **query-library**: Search books, check availability, locate by cabinet/rack/row,
+  list by category or status, identify weak RFID signal books, get library stats.
+- **analyze-library**: Analyze sales data — top sellers, revenue by segment/region/channel,
+  monthly trends, per-book sales breakdown.
+
+### Hooks
+
+The plugin includes a **PreToolUse** hook that blocks any write operations against
+the DuckDB database before execution. Only read-only `SELECT` queries are permitted.
+
+---
+
 ## All Make Commands (End of Chapter 2 excercise. From here it is for debugging or extra help)
 
 ### Setup
