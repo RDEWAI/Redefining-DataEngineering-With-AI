@@ -256,15 +256,19 @@ def check_required_sheets(wb, report: ValidationReport) -> None:
             )
 
 
+VALID_STATUSES = {"Draft", "Updated - Pending Review", "Approved"}
+
+
 def check_metadata(wb, report: ValidationReport) -> None:
     """Summary sheet must have required metadata keys."""
     if "Summary" not in wb.sheetnames:
         return
     ws = wb["Summary"]
-    found_keys = set()
+    found_keys: dict[str, str | None] = {}
     for row in ws.iter_rows(min_row=1, max_col=2, values_only=True):
         if row[0] is not None:
-            found_keys.add(str(row[0]).strip())
+            key = str(row[0]).strip()
+            found_keys[key] = str(row[1]).strip() if row[1] is not None else None
 
     for key in METADATA_KEYS:
         if key not in found_keys:
@@ -276,6 +280,18 @@ def check_metadata(wb, report: ValidationReport) -> None:
                     suggestion=f"Add '{key}' to column A of the Summary sheet",
                 )
             )
+
+    # Validate Status field value
+    status_value = found_keys.get("Status")
+    if status_value and status_value not in VALID_STATUSES:
+        report.add_result(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                check_name="metadata",
+                message=f"Status has unrecognized value: '{status_value}'",
+                suggestion=("Status must be one of: " + ", ".join(sorted(VALID_STATUSES))),
+            )
+        )
 
 
 def check_source_to_bronze(wb, report: ValidationReport) -> None:

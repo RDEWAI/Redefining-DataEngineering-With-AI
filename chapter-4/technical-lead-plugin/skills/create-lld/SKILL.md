@@ -297,6 +297,68 @@ the LLD is not ready for handoff to the development team.
 
 ## Workflow
 
+### Phase 0: Upstream Approval Gate (NON-NEGOTIABLE)
+
+Before ANY work begins, verify all 5 required upstream artifacts are approved.
+
+```bash
+# Check DRD
+LATEST_DRD_DIR=$(ls -d outputs/drd/v* | sort -V | tail -1)
+LATEST_DRD=$(ls -t "$LATEST_DRD_DIR"/DRD-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
+echo "Latest DRD: $LATEST_DRD"
+
+# Check HLD
+LATEST_HLD_DIR=$(ls -d outputs/hld/v* | sort -V | tail -1)
+LATEST_HLD=$(ls -t "$LATEST_HLD_DIR"/HLD-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
+echo "Latest HLD: $LATEST_HLD"
+
+# Check DMS
+LATEST_DMS_DIR=$(ls -d outputs/dms/v* | sort -V | tail -1)
+LATEST_DMS=$(ls -t "$LATEST_DMS_DIR"/DMS-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
+echo "Latest DMS: $LATEST_DMS"
+
+# Check STM (Excel — use python to read status from Summary sheet)
+LATEST_STM_DIR=$(ls -d outputs/stm/v* | sort -V | tail -1)
+LATEST_STM=$(ls -t "$LATEST_STM_DIR"/STM-*.xlsx 2>/dev/null | grep -v '\.bak$' | head -1)
+echo "Latest STM: $LATEST_STM"
+
+# Check DQS
+LATEST_DQS_DIR=$(ls -d outputs/dqs/v* | sort -V | tail -1)
+LATEST_DQS=$(ls -t "$LATEST_DQS_DIR"/DQS-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
+echo "Latest DQS: $LATEST_DQS"
+```
+
+For markdown artifacts (DRD, HLD, DMS, DQS), read the metadata table and extract the Status field.
+For STM (Excel), read the Status from the Summary sheet:
+```bash
+uv run python -c "
+import openpyxl
+wb = openpyxl.load_workbook('$LATEST_STM', read_only=True)
+ws = wb['Summary']
+for row in ws.iter_rows(min_row=1, max_col=2, values_only=True):
+    if row[0] and str(row[0]).strip() == 'Status':
+        print(str(row[1]).strip())
+        break
+wb.close()
+"
+```
+
+Status MUST be `Approved` for all upstream artifacts.
+
+**Required upstream artifacts (all must be Approved):**
+- **DRD**: `outputs/drd/v*/DRD-*.md`
+- **HLD**: `outputs/hld/v*/HLD-*.md`
+- **DMS**: `outputs/dms/v*/DMS-*.md`
+- **STM**: `outputs/stm/v*/STM-*.xlsx` (Status in Summary sheet)
+- **DQS**: `outputs/dqs/v*/DQS-*.md`
+
+**If ANY upstream artifact is NOT Approved:**
+1. List which artifacts are missing approval and their current status
+2. STOP immediately — do NOT proceed to Phase 1
+3. Inform the user which artifacts need approval first
+
+**This gate is absolute. There is no override or skip option.**
+
 ### Phase 1: Understand the Request
 1. Discover the latest version folders for all 5 upstream artifacts:
    ```bash

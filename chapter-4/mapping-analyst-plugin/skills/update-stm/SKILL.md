@@ -296,22 +296,68 @@ or changed source columns), re-verify source metadata using read-only queries:
 Always use `duckdb {db_path} -readonly -c "..."`.
 Never run INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, or TRUNCATE.
 
-### Phase 4: Modify Affected Sheets
+### Phase 4: Copy-Then-Edit (Excel Workbook)
 
-**Prerequisite: Phase 2 must have confirmed the change summary. Phase 3 must
-have verified source metadata if mappings are affected.**
+**Prerequisite**: Phase 2 must have confirmed the change summary. Phase 3 must
+have verified source metadata if mappings are affected.
 
-#### 4a. Apply changes
+#### 4a. Determine update scenario and prepare working file
 
+Discover current state:
+
+```bash
+LATEST_INPUT_V=$(ls -d inputs/stm/v* 2>/dev/null | sort -V | tail -1 | grep -o 'v[0-9]*')
+LATEST_OUTPUT_DIR=$(ls -d outputs/stm/v* | sort -V | tail -1)
+CURRENT_OUTPUT_V=$(echo "$LATEST_OUTPUT_DIR" | grep -o 'v[0-9]*')
+EXISTING_FILE=$(ls -t "$LATEST_OUTPUT_DIR"/STM-*.xlsx 2>/dev/null | grep -v '\.bak$' | head -1)
+FILE_DATE=$(echo "$EXISTING_FILE" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}')
+TODAY=$(date +%Y-%m-%d)
+SHORT_NAME=$(echo "$EXISTING_FILE" | sed "s/.*[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}-//" | sed "s/\.xlsx$//")
+```
+
+Run the versioning decision flowchart:
+
+1. **Scenario A — Cross-version** (input version > output version, OR user requested "new version"):
+   ```bash
+   NEW_V="v$((${CURRENT_OUTPUT_V#v} + 1))"
+   mkdir -p "outputs/stm/$NEW_V"
+   cp "$EXISTING_FILE" "outputs/stm/$NEW_V/STM-${TODAY}-${SHORT_NAME}.xlsx"
+   mv "$EXISTING_FILE" "${EXISTING_FILE}.bak"
+   ```
+   Working file: `outputs/stm/$NEW_V/STM-${TODAY}-${SHORT_NAME}.xlsx`
+
+2. **Scenario B — Same version, different date** (`$FILE_DATE != $TODAY`):
+   ```bash
+   NEW_FILE="${LATEST_OUTPUT_DIR}/STM-${TODAY}-${SHORT_NAME}.xlsx"
+   cp "$EXISTING_FILE" "$NEW_FILE"
+   mv "$EXISTING_FILE" "${EXISTING_FILE}.bak"
+   ```
+   Working file: `$NEW_FILE`
+
+3. **Scenario C — Same version, same date** (`$FILE_DATE == $TODAY`):
+   Working file: `$EXISTING_FILE` (modify in-place)
+
+#### 4b. Apply changes using openpyxl (NEVER create new Workbook)
+
+**CRITICAL: Always load the existing workbook with `openpyxl.load_workbook()`. NEVER create a new `Workbook()`.**
+
+Use Python scripts via Bash to modify only the affected cells/rows/sheets:
+
+```python
+import openpyxl
+wb = openpyxl.load_workbook(working_file)
+# Modify only affected cells
+# ...
+wb.save(working_file)
+```
+
+**Content rules:**
 - **Preserve all existing content** in sheets that have not changed
 - **Never remove rows** without explicit user approval
 - For contradictions, use `AskUserQuestion` to present both versions
-- **Re-verify DMS traceability**: Every mapping row in the updated STM
-  must still reference a DMS section. If a DMS reference is stale,
-  update or remove it.
-- Mark uncertain items with `[NEEDS VERIFICATION]`
+- **Re-verify DMS traceability**: Every mapping row must still reference a DMS section
 
-#### 4b. Maintain formatting
+#### 4c. Maintain formatting
 
 When modifying sheets, preserve all openpyxl formatting:
 - Bold headers with color coding (source=blue, target=green, transform=yellow)
@@ -319,21 +365,22 @@ When modifying sheets, preserve all openpyxl formatting:
 - Auto-filter: `ws.auto_filter.ref = ws.dimensions`
 - Column widths: 20-30 characters
 
-#### 4c. Cross-sheet consistency check
+#### 4d. Cross-sheet consistency check
 
-After merging, verify:
+After modifying, verify:
 1. Source-to-Bronze columns align with Bronze-to-Silver source columns
 2. Bronze-to-Silver target columns align with Silver-to-Gold source expressions
-3. Null Handling sheet covers every field in Bronze-to-Silver with null_handling
+3. Null Handling sheet covers every field with null_handling
 4. Lineage sheet traces every Gold column back to source
-5. Code Systems sheet covers every CASE expression in Bronze-to-Silver
-6. Edge Cases sheet addresses FK failures, schema evolution, and overflow for all tables
+5. Code Systems sheet covers every CASE expression
+6. Edge Cases sheet addresses FK failures, schema evolution, and overflow
 
-#### 4d. Update version tracking
+#### 4e. Update version tracking
 
-In the Summary sheet:
-- Update version number
+Use openpyxl to update the Summary sheet:
+- Set/increment version number per scenario rules (A: `{N+1}.0`, B/C: bump minor)
 - Update **Last Modified** to today's date
+- Set **Status** to `Updated - Pending Review`
 - Add change description row
 
 ### Phase 5: Validate, Record & Apply Learnings

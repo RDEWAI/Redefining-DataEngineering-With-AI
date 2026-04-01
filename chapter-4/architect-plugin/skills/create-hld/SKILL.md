@@ -250,6 +250,28 @@ the HLD is not ready for handoff to the data modeling team.
 
 ## Workflow
 
+### Phase 0: Upstream Approval Gate (NON-NEGOTIABLE)
+
+Before ANY work begins, verify all required upstream artifacts are approved.
+
+```bash
+LATEST_DRD_DIR=$(ls -d outputs/drd/v* | sort -V | tail -1)
+LATEST_DRD=$(ls -t "$LATEST_DRD_DIR"/DRD-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
+echo "Latest DRD: $LATEST_DRD"
+```
+
+Read the metadata table of the DRD and extract the Status field. Status MUST be `Approved`.
+
+**Required upstream artifacts (all must be Approved):**
+- **DRD**: `outputs/drd/v*/DRD-*.md`
+
+**If ANY upstream artifact is NOT Approved:**
+1. List which artifacts are missing approval and their current status
+2. STOP immediately — do NOT proceed to Phase 1
+3. Inform the user: "Run `/ba-plugin:approve-drd` first"
+
+**This gate is absolute. There is no override or skip option.**
+
 ### Phase 1: Understand the Request
 1. Discover the latest DRD version folder and read the most recent DRD:
    `ls -d outputs/drd/v* | sort -V | tail -1`

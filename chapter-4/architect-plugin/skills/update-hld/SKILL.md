@@ -7,7 +7,7 @@ description: >
   content, increments version, and adds change log entries. Use when the
   user asks to update, revise, or modify an existing HLD.
 argument-hint: "[path-to-existing-hld]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
+allowed-tools: Read, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -213,17 +213,65 @@ volumes using read-only queries:
 Always use `duckdb {db_path} -readonly -c "..."`.
 Never run INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, or TRUNCATE.
 
-### Phase 4: Merge Changes
+### Phase 4: Copy-Then-Edit
 
+**Prerequisite**: Phase 2 must have confirmed the change summary.
+
+#### 4a. Determine update scenario and prepare working file
+
+Discover current state:
+
+```bash
+LATEST_INPUT_V=$(ls -d inputs/architect/v* 2>/dev/null | sort -V | tail -1 | grep -o 'v[0-9]*')
+LATEST_OUTPUT_DIR=$(ls -d outputs/hld/v* | sort -V | tail -1)
+CURRENT_OUTPUT_V=$(echo "$LATEST_OUTPUT_DIR" | grep -o 'v[0-9]*')
+EXISTING_FILE=$(ls -t "$LATEST_OUTPUT_DIR"/HLD-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
+FILE_DATE=$(echo "$EXISTING_FILE" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}')
+TODAY=$(date +%Y-%m-%d)
+SHORT_NAME=$(echo "$EXISTING_FILE" | sed "s/.*[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}-//" | sed "s/\.md$//")
+```
+
+Run the versioning decision flowchart:
+
+1. **Scenario A — Cross-version** (input version > output version, OR user requested "new version"):
+   ```bash
+   NEW_V="v$((${CURRENT_OUTPUT_V#v} + 1))"
+   mkdir -p "outputs/hld/$NEW_V"
+   cp "$EXISTING_FILE" "outputs/hld/$NEW_V/HLD-${TODAY}-${SHORT_NAME}.md"
+   mv "$EXISTING_FILE" "${EXISTING_FILE}.bak"
+   ```
+   Working file: `outputs/hld/$NEW_V/HLD-${TODAY}-${SHORT_NAME}.md`
+   Set metadata version to `${NEW_V#v}.0`.
+
+2. **Scenario B — Same version, different date** (`$FILE_DATE != $TODAY`):
+   ```bash
+   NEW_FILE="${LATEST_OUTPUT_DIR}/HLD-${TODAY}-${SHORT_NAME}.md"
+   cp "$EXISTING_FILE" "$NEW_FILE"
+   mv "$EXISTING_FILE" "${EXISTING_FILE}.bak"
+   ```
+   Working file: `$NEW_FILE`
+   Bump minor version (e.g., 1.1 → 1.2).
+
+3. **Scenario C — Same version, same date** (`$FILE_DATE == $TODAY`):
+   Working file: `$EXISTING_FILE` (edit in-place)
+   Bump minor version (e.g., 1.1 → 1.2).
+
+#### 4b. Apply changes using Edit tool ONLY
+
+**CRITICAL: Use the `Edit` tool for every modification. NEVER use `Write` to replace the file.**
+
+For each change from Phase 2:
+1. Read the target section in the working file
+2. Use `Edit` with the exact old text and the new replacement
+3. Include 3-5 surrounding lines for unique matching
+
+**Content rules:**
 - **Preserve all existing content** that has not changed
 - **Never remove content** without explicit user approval
 - For contradictions, use `AskUserQuestion` to present both versions
-- **Re-verify traceability**: Every design decision in the updated HLD
-  must still cite a DRD requirement. If a DRD reference is stale,
-  update or remove it.
-- Mark uncertain items with `[NEEDS VERIFICATION]`
+- **Re-verify traceability**: Every design decision must still cite a DRD requirement
 
-#### Re-generate diagrams
+#### 4c. Re-generate diagrams
 
 When changes affect system boundaries, layer structure, or ingestion flow:
 1. Update the **System Context diagram** (§3.3) if external actors or system boundaries changed
@@ -231,57 +279,27 @@ When changes affect system boundaries, layer structure, or ingestion flow:
 3. Update the **Pipeline Architecture diagram** (§4.6) if layers, DQ gates, or consumer groups changed
 4. Update the **Ingestion Sequence diagram** (§5.3) if CDC strategy or DQ steps changed
 
-#### Cross-section consistency check
+#### 4d. Cross-section consistency check
 
-After merging, verify:
+After applying all edits, verify:
 1. §4 Data Architecture still aligns with §5.1 Technology Decisions
 2. §5.4 Scalability & Capacity matches current verified volumes
 3. §3 Integration Architecture matches source system capabilities and consumer SLAs
-4. §6 Governance covers all DRD regulatory requirements (classification, IAM, DQ, compliance)
-5. §5.2 CDC Strategy and §5.5 Reliability align with current SLA targets
-6. §2 Requirements Summary FR/NFR rows all have valid DRD references and "Satisfied By" entries
-7. All four diagrams (§3.3 system context, §4.4 domain map, §4.6 pipeline, §5.3 ingestion sequence) reflect the current architecture
+4. §6 Governance covers all DRD regulatory requirements
+5. All four diagrams reflect the current architecture
 
-#### Update version tracking
+#### 4e. Update version tracking
 
-In the metadata table:
-- Increment the minor version (1.0 -> 1.1 -> 1.2)
+Use `Edit` to update the metadata table:
+- Set/increment version number per scenario rules (A: `{N+1}.0`, B/C: bump minor)
 - Update **Last Modified** to today's date
-- Set **Status** to "Updated - Pending Review"
+- Set **Status** to `Updated - Pending Review`
 
-In the Version History section, add:
+Add a new row to the Version History table:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | {new version} | {today} | Architect Agent | {brief description} |
-
-#### Decision Documentation Standard
-
-All major design decisions MUST follow this format:
-
-```markdown
-### Decision: [Decision Title]
-
-**Options Considered**:
-1. Option A — brief description
-2. Option B — brief description
-3. Option C — brief description
-
-**Selected**: Option A
-
-**Rationale**: Why Option A was chosen over alternatives.
-
-**Trade-off**: What is sacrificed by choosing Option A (and why it is acceptable).
-```
-
-#### Writing Style
-- **High-level over implementation**: A CTO should be able to review this document
-  in 15 minutes. Defer implementation details to the LLD and DMS.
-- **Specific over vague**: "DuckDB for processing because the DRD projects <100K rows
-  (Section 5.1)" not "lightweight processing"
-- **Complete tables**: Every markdown table must have data rows, not just headers
-- **No empty sections**: Use `[TO BE DETERMINED]` with owner and due date
-- **Traceable**: Each design decision must cite the DRD section it implements
 
 ### Phase 5: Validate, Record & Apply Learnings
 

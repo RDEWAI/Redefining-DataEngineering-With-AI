@@ -129,24 +129,68 @@ Only proceed after user confirms.
 3. Iterate until all changes have specific, justified decisions
 4. Confirm the complete change plan with the user
 
-### Phase 3: Merge Changes
+### Phase 3: Copy-Then-Edit (Directory Tree)
 
+#### 3a. Determine update scenario and prepare working directory
+
+Discover current state:
+
+```bash
+LATEST_INPUT_V=$(ls -d inputs/stories/v* 2>/dev/null | sort -V | tail -1 | grep -o 'v[0-9]*')
+LATEST_OUTPUT_DIR=$(ls -d outputs/stories/v* | sort -V | tail -1)
+CURRENT_OUTPUT_V=$(echo "$LATEST_OUTPUT_DIR" | grep -o 'v[0-9]*')
+EXISTING_FILE=$(ls -t "$LATEST_OUTPUT_DIR"/BACKLOG-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
+FILE_DATE=$(echo "$EXISTING_FILE" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}')
+TODAY=$(date +%Y-%m-%d)
+SHORT_NAME=$(echo "$EXISTING_FILE" | sed "s/.*[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}-//" | sed "s/\.md$//")
+```
+
+Run the versioning decision flowchart:
+
+1. **Scenario A — Cross-version** (input version > output version, OR user requested "new version"):
+   ```bash
+   NEW_V="v$((${CURRENT_OUTPUT_V#v} + 1))"
+   cp -r "$LATEST_OUTPUT_DIR" "outputs/stories/$NEW_V"
+   # Rename the BACKLOG file with today's date
+   mv "outputs/stories/$NEW_V/$(basename $EXISTING_FILE)" "outputs/stories/$NEW_V/BACKLOG-${TODAY}-${SHORT_NAME}.md"
+   mv "$EXISTING_FILE" "${EXISTING_FILE}.bak"
+   ```
+   Working directory: `outputs/stories/$NEW_V/`
+   Set metadata version to `${NEW_V#v}.0`.
+
+2. **Scenario B — Same version, different date** (`$FILE_DATE != $TODAY`):
+   ```bash
+   NEW_FILE="${LATEST_OUTPUT_DIR}/BACKLOG-${TODAY}-${SHORT_NAME}.md"
+   cp "$EXISTING_FILE" "$NEW_FILE"
+   mv "$EXISTING_FILE" "${EXISTING_FILE}.bak"
+   ```
+   Working directory: `$LATEST_OUTPUT_DIR/`
+   Bump minor version (e.g., 1.1 → 1.2).
+
+3. **Scenario C — Same version, same date** (`$FILE_DATE == $TODAY`):
+   Working directory: `$LATEST_OUTPUT_DIR/` (edit in-place)
+   Bump minor version (e.g., 1.1 → 1.2).
+
+#### 3b. Apply changes using Edit tool (Write only for NEW files)
+
+**Use `Edit` for all modifications to existing files. Use `Write` ONLY for creating new epic/story files that don't exist yet.**
+
+**Content rules:**
 - **Preserve all existing content** that has not changed
 - **Never remove stories** without explicit user approval
 - For contradictions, use `AskUserQuestion` to present both versions
 - **Re-verify traceability**: Every story must still cite upstream refs
-- Mark uncertain items with `[NEEDS VERIFICATION]`
 - Update the dependency graph if story ordering changed
 - Re-calculate epic point totals and sprint allocations
 
-#### Update version tracking
+#### 3c. Update version tracking
 
-In the BACKLOG metadata table:
-- Increment the minor version (1.0 -> 1.1 -> 1.2)
+Use `Edit` to update the BACKLOG metadata table:
+- Set/increment version number per scenario rules (A: `{N+1}.0`, B/C: bump minor)
 - Update **Last Modified** to today's date
-- Set **Status** to "Updated - Pending Review"
+- Set **Status** to `Updated - Pending Review`
 
-In the Version History section, add:
+Add a new row to the Version History table:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|

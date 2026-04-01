@@ -139,6 +139,9 @@ def check_required_sections(sections: dict[str, str]) -> list[ValidationResult]:
     return results
 
 
+VALID_STATUSES = {"Draft", "Updated - Pending Review", "Approved"}
+
+
 def check_metadata(content: str) -> list[ValidationResult]:
     """Check that version metadata fields are present and non-empty."""
     results: list[ValidationResult] = []
@@ -154,6 +157,22 @@ def check_metadata(content: str) -> list[ValidationResult]:
                     message=f'Metadata field "{field_name}" is missing or empty.',
                     suggestion=(
                         f'Add a "{field_name}" field to the metadata table at the top of the DMS.'
+                    ),
+                )
+            )
+    # Validate Status field value
+    status_pattern = r"\*\*Status\*\*\s*\|\s*(.+)"
+    status_match = re.search(status_pattern, content)
+    if status_match:
+        status_value = status_match.group(1).strip().rstrip("|").strip()
+        if status_value not in VALID_STATUSES:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    section="Metadata",
+                    message=f'Status field has unrecognized value: "{status_value}".',
+                    suggestion=(
+                        "Status must be one of: " + ", ".join(sorted(VALID_STATUSES)) + "."
                     ),
                 )
             )

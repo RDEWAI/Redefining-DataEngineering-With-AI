@@ -15,7 +15,7 @@ description: >
   - Merge STM changes into quality rules
   - Amend reconciliation or freshness checks
 argument-hint: "[dqs-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
+allowed-tools: Read, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -274,52 +274,91 @@ re-verify source data volumes using read-only queries:
 Always use `duckdb {db_path} -readonly -c "..."`.
 Never run INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, or TRUNCATE.
 
-### Phase 4: Merge Changes
+### Phase 4: Copy-Then-Edit
 
-**Prerequisite: Phase 2 must have confirmed the change summary. Phase 3 must have
-verified volume data if baseline sections are affected.**
+**Prerequisite**: Phase 2 must have confirmed the change summary. Phase 3 must have
+verified volume data if baseline sections are affected.
 
-#### 4a. Apply changes
+#### 4a. Determine update scenario and prepare working file
 
+Discover current state:
+
+```bash
+LATEST_INPUT_V=$(ls -d inputs/dqs/v* 2>/dev/null | sort -V | tail -1 | grep -o 'v[0-9]*')
+LATEST_OUTPUT_DIR=$(ls -d outputs/dqs/v* | sort -V | tail -1)
+CURRENT_OUTPUT_V=$(echo "$LATEST_OUTPUT_DIR" | grep -o 'v[0-9]*')
+EXISTING_FILE=$(ls -t "$LATEST_OUTPUT_DIR"/DQS-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
+FILE_DATE=$(echo "$EXISTING_FILE" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}')
+TODAY=$(date +%Y-%m-%d)
+SHORT_NAME=$(echo "$EXISTING_FILE" | sed "s/.*[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}-//" | sed "s/\.md$//")
+```
+
+Run the versioning decision flowchart:
+
+1. **Scenario A — Cross-version** (input version > output version, OR user requested "new version"):
+   ```bash
+   NEW_V="v$((${CURRENT_OUTPUT_V#v} + 1))"
+   mkdir -p "outputs/dqs/$NEW_V"
+   cp "$EXISTING_FILE" "outputs/dqs/$NEW_V/DQS-${TODAY}-${SHORT_NAME}.md"
+   # Also copy SE rules directory if it exists
+   [ -d "${LATEST_OUTPUT_DIR}/se-rules" ] && cp -r "${LATEST_OUTPUT_DIR}/se-rules" "outputs/dqs/$NEW_V/se-rules"
+   mv "$EXISTING_FILE" "${EXISTING_FILE}.bak"
+   ```
+   Working file: `outputs/dqs/$NEW_V/DQS-${TODAY}-${SHORT_NAME}.md`
+   Set metadata version to `${NEW_V#v}.0`.
+
+2. **Scenario B — Same version, different date** (`$FILE_DATE != $TODAY`):
+   ```bash
+   NEW_FILE="${LATEST_OUTPUT_DIR}/DQS-${TODAY}-${SHORT_NAME}.md"
+   cp "$EXISTING_FILE" "$NEW_FILE"
+   mv "$EXISTING_FILE" "${EXISTING_FILE}.bak"
+   ```
+   Working file: `$NEW_FILE`
+   Bump minor version (e.g., 1.1 → 1.2).
+
+3. **Scenario C — Same version, same date** (`$FILE_DATE == $TODAY`):
+   Working file: `$EXISTING_FILE` (edit in-place)
+   Bump minor version (e.g., 1.1 → 1.2).
+
+#### 4b. Apply changes using Edit tool ONLY
+
+**CRITICAL: Use the `Edit` tool for every modification. NEVER use `Write` to replace the file.**
+
+**Content rules:**
 - **Preserve all existing content** that has not changed
-- **Never remove rules** without explicit user approval — removed rules create
-  silent DQ gaps
+- **Never remove rules** without explicit user approval — removed rules create silent DQ gaps
 - For contradictions, use `AskUserQuestion` to present both versions
-- **Re-verify traceability**: Every rule in the updated DQS must still trace to
-  a STM mapping or DRD requirement. If a reference is stale, update or flag it.
-- Mark uncertain items with `[NEEDS VERIFICATION]`
+- **Re-verify traceability**: Every rule must still trace to a STM mapping or DRD requirement
 
-#### 4b. Regenerate Spark-Expectations YAML Rules
+#### 4c. Regenerate Spark-Expectations YAML Rules
 
-After merging changes, the PostToolUse hook automatically regenerates
-per-table SE YAML files in `outputs/dqs/{version}/se-rules/`. This happens
-transparently — no manual action needed.
+After applying edits, the PostToolUse hook automatically regenerates per-table SE YAML
+files in `outputs/dqs/{version}/se-rules/`. If manual regeneration is needed:
 
-If manual regeneration is needed:
 ```bash
 uv run python dq-engineer-plugin/skills/generate-se-rules/scripts/generate_se_rules.py \
   {dqs_path} --config inputs/dqs/{version}/se-config-template.yaml \
   -o outputs/dqs/{version}/se-rules/
 ```
 
-#### 4c. Cross-section consistency check
+#### 4d. Cross-section consistency check
 
-After merging, verify:
+After applying all edits, verify:
 1. Field-Level Validation Rules align with current DMS column definitions
 2. Referential Integrity Rules reflect current DMS FK relationships
 3. Statistical Distribution baselines reflect current or estimated row counts
 4. Reconciliation Rules tolerance matches SLA definitions
-5. Alert/Escalation routing is internally consistent (CRITICAL faster than WARNING)
+5. Alert/Escalation routing is internally consistent
 6. Traceability Matrix covers all new/changed rules
 
-#### 4d. Update version tracking
+#### 4e. Update version tracking
 
-In the metadata table:
-- Increment the minor version (1.0 -> 1.1 -> 1.2)
+Use `Edit` to update the metadata table:
+- Set/increment version number per scenario rules (A: `{N+1}.0`, B/C: bump minor)
 - Update **Last Modified** to today's date
-- Set **Status** to "Updated - Pending Review"
+- Set **Status** to `Updated - Pending Review`
 
-In the Version History section, add:
+Add a new row to the Version History table:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|

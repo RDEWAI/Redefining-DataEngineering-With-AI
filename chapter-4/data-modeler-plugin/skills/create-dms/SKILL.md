@@ -287,6 +287,35 @@ the DMS is not ready for handoff to the Mapping Engineer.
 
 ## Workflow
 
+### Phase 0: Upstream Approval Gate (NON-NEGOTIABLE)
+
+Before ANY work begins, verify all required upstream artifacts are approved.
+
+```bash
+# Check DRD
+LATEST_DRD_DIR=$(ls -d outputs/drd/v* | sort -V | tail -1)
+LATEST_DRD=$(ls -t "$LATEST_DRD_DIR"/DRD-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
+echo "Latest DRD: $LATEST_DRD"
+
+# Check HLD
+LATEST_HLD_DIR=$(ls -d outputs/hld/v* | sort -V | tail -1)
+LATEST_HLD=$(ls -t "$LATEST_HLD_DIR"/HLD-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
+echo "Latest HLD: $LATEST_HLD"
+```
+
+Read the metadata table of each file and extract the Status field. Status MUST be `Approved`.
+
+**Required upstream artifacts (all must be Approved):**
+- **DRD**: `outputs/drd/v*/DRD-*.md`
+- **HLD**: `outputs/hld/v*/HLD-*.md`
+
+**If ANY upstream artifact is NOT Approved:**
+1. List which artifacts are missing approval and their current status
+2. STOP immediately — do NOT proceed to Phase 1
+3. Inform the user which artifacts need approval (e.g., "Run `/ba-plugin:approve-drd` and `/architect-plugin:approve-hld` first")
+
+**This gate is absolute. There is no override or skip option.**
+
 ### Phase 1: Understand the Request
 1. Discover the latest HLD version folder and read the most recent HLD:
    `ls -d outputs/hld/v* | sort -V | tail -1`

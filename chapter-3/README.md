@@ -37,7 +37,7 @@ You can verify the install by running `/plugin` — you should see:
 
 ```
 ba-plugin (v1.0.0)
-  Skills: create-drd, update-drd, validate-drd
+  Skills: create-drd, update-drd, validate-drd, approve-drd
   Agents: ba-agent
   Hooks: PreToolUse, PostToolUse
   Status: Enabled
@@ -64,6 +64,7 @@ Other agent invocations:
 ```
 @ba-agent Update the Patient 360 DRD with new billing team requirements
 @ba-agent Validate the DRD at chapter-3/outputs/drd/DRD-2026-02-10-patient-360-v1.md
+@ba-agent Approve the DRD
 ```
 
 ### 5. Use the skills directly (alternative)
@@ -87,7 +88,30 @@ Other skills:
 ```
 /update-drd chapter-3/outputs/drd/DRD-2026-02-10-patient-360-v1.md
 /validate-drd chapter-3/outputs/drd/DRD-2026-02-10-patient-360-v1.md
+/approve-drd chapter-3/outputs/drd/DRD-2026-02-10-patient-360-v1.md
 ```
+
+## Versioning & Approval Workflow
+
+### Update Versioning (3 Scenarios)
+
+When `update-drd` is invoked, it follows one of three scenarios:
+
+| Scenario | Trigger | Action |
+|----------|---------|--------|
+| **A. Cross-version** | `inputs/drd/v{N+1}/` exists or user says "new version" | Copy to `v{N+1}/` with today's date, `.bak` old, set version `{N+1}.0` |
+| **B. Same version, new date** | Artifact date ≠ today | Copy with today's date, `.bak` old, bump minor version |
+| **C. Same version, same date** | Artifact date = today (re-run) | Edit in-place, bump minor version |
+
+Updates use the **Edit** tool only (never Write) for incremental changes.
+
+### Status Lifecycle
+
+```
+Draft  →  Updated - Pending Review  →  Approved
+```
+
+The `approve-drd` skill changes the status to `Approved`. In chapter-4, this is the gate that enables downstream artifact creation (HLD, DMS, etc.).
 
 ## How the Plugin Works
 
@@ -105,8 +129,9 @@ The `ba-agent` sub-agent (`ba-plugin/agents/ba-agent.md`) is the primary interfa
 | Skill | What it does |
 |-------|-------------|
 | `create-drd` | Reads input documents, generates a complete DRD following a Jinja2 template |
-| `update-drd` | Merges new information into an existing DRD, preserving unchanged content |
+| `update-drd` | Copies the existing DRD, then applies incremental edits (Edit-only, no Write) |
 | `validate-drd` | Runs 15 validation checks (CRITICAL / WARNING / INFO) on a DRD |
+| `approve-drd` | Sets DRD status to Approved — the gate for downstream artifact creation |
 
 ### Hooks
 
@@ -158,6 +183,8 @@ chapter-3/
 │   │   │       └── sample-drd.md      # Complete example DRD
 │   │   ├── update-drd/
 │   │   │   └── SKILL.md
+│   │   ├── approve-drd/
+│   │   │   └── SKILL.md               # Sets status to Approved
 │   │   └── validate-drd/
 │   │       ├── SKILL.md
 │   │       └── scripts/

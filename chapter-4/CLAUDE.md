@@ -13,7 +13,7 @@ each role producing a structured artifact that feeds the next.
 
 The plugin lives in `ba-plugin/` and is defined by `ba-plugin/.claude-plugin/plugin.json`.
 
-- `ba-plugin/skills/` - Skills: create-drd, update-drd, validate-drd
+- `ba-plugin/skills/` - Skills: create-drd, update-drd, validate-drd, approve-drd
 - `ba-plugin/hooks/` - PostToolUse hook for automatic DRD validation
 - `ba-plugin/scripts/` - Hook scripts (validate-drd-hook.py, enforce-readonly-queries.py)
 
@@ -22,7 +22,7 @@ The plugin lives in `ba-plugin/` and is defined by `ba-plugin/.claude-plugin/plu
 The plugin lives in `architect-plugin/` and is defined by
 `architect-plugin/.claude-plugin/plugin.json`.
 
-- `architect-plugin/skills/` - Skills: create-hld, update-hld, validate-hld
+- `architect-plugin/skills/` - Skills: create-hld, update-hld, validate-hld, approve-hld
 - `architect-plugin/hooks/` - PostToolUse hook for automatic HLD validation
 - `architect-plugin/scripts/` - Hook scripts (validate-hld-hook.py, enforce-readonly-queries.py)
 
@@ -35,7 +35,7 @@ The plugin lives in `architect-plugin/` and is defined by
 The plugin lives in `data-modeler-plugin/` and is defined by
 `data-modeler-plugin/.claude-plugin/plugin.json`.
 
-- `data-modeler-plugin/skills/` - Skills: create-dms, update-dms, validate-dms
+- `data-modeler-plugin/skills/` - Skills: create-dms, update-dms, validate-dms, approve-dms
 - `data-modeler-plugin/hooks/` - PostToolUse hook for automatic DMS validation
 - `data-modeler-plugin/scripts/` - Hook scripts (validate-dms-hook.py, enforce-readonly-queries.py)
 
@@ -48,7 +48,7 @@ The plugin lives in `data-modeler-plugin/` and is defined by
 The plugin lives in `mapping-analyst-plugin/` and is defined by
 `mapping-analyst-plugin/.claude-plugin/plugin.json`.
 
-- `mapping-analyst-plugin/skills/` - Skills: create-stm, update-stm, validate-stm
+- `mapping-analyst-plugin/skills/` - Skills: create-stm, update-stm, validate-stm, approve-stm
 - `mapping-analyst-plugin/hooks/` - PostToolUse hook for automatic STM validation
 - `mapping-analyst-plugin/scripts/` - Hook scripts (validate-stm-hook.py, enforce-readonly-queries.py)
 
@@ -63,7 +63,7 @@ The plugin lives in `mapping-analyst-plugin/` and is defined by
 The plugin lives in `dq-engineer-plugin/` and is defined by
 `dq-engineer-plugin/.claude-plugin/plugin.json`.
 
-- `dq-engineer-plugin/skills/` - Skills: create-dqs, update-dqs, validate-dqs, generate-se-rules
+- `dq-engineer-plugin/skills/` - Skills: create-dqs, update-dqs, validate-dqs, generate-se-rules, approve-dqs
 - `dq-engineer-plugin/hooks/` - PostToolUse hook for automatic DQS validation
 - `dq-engineer-plugin/scripts/` - Hook scripts (validate-dqs-hook.py, enforce-readonly-queries.py)
 
@@ -78,7 +78,7 @@ The plugin lives in `dq-engineer-plugin/` and is defined by
 The plugin lives in `technical-lead-plugin/` and is defined by
 `technical-lead-plugin/.claude-plugin/plugin.json`.
 
-- `technical-lead-plugin/skills/` - Skills: create-lld, update-lld, validate-lld, generate-config-template
+- `technical-lead-plugin/skills/` - Skills: create-lld, update-lld, validate-lld, generate-config-template, approve-lld
 - `technical-lead-plugin/hooks/` - PostToolUse hook for automatic LLD validation
 - `technical-lead-plugin/scripts/` - Hook scripts (validate-lld-hook.py, enforce-readonly-queries.py)
 
@@ -93,7 +93,7 @@ The plugin lives in `technical-lead-plugin/` and is defined by
 The plugin lives in `scrum-master-plugin/` and is defined by
 `scrum-master-plugin/.claude-plugin/plugin.json`.
 
-- `scrum-master-plugin/skills/` - Skills: create-stories, update-stories, validate-stories
+- `scrum-master-plugin/skills/` - Skills: create-stories, update-stories, validate-stories, approve-stories
 - `scrum-master-plugin/hooks/` - PostToolUse hook for automatic backlog validation
 - `scrum-master-plugin/scripts/` - Hook scripts (validate-stories-hook.py, enforce-readonly-queries.py)
 
@@ -151,6 +151,60 @@ auto-discover the latest version via:
 ```bash
 ls -d {path}/v* | sort -V | tail -1
 ```
+
+### Update Versioning Rules (3 Scenarios)
+
+When an update skill is invoked, it MUST follow one of these three scenarios:
+
+**Scenario A — Cross-version (v1 → v2)**
+- **Trigger**: `inputs/{role}/v{N+1}/` exists but `outputs/{artifact}/v{N+1}/` does not, OR user explicitly requests a new version.
+- **Action**: Create `outputs/{artifact}/v{N+1}/`, copy latest artifact from v{N} with today's date in filename, rename the original as `.bak`, apply incremental edits. Set metadata version to `{N+1}.0`, status to `Draft`.
+
+**Scenario B — Same version, different date**
+- **Trigger**: Latest artifact filename date ≠ today (e.g., `DRD-2026-02-10-...md` but today is `2026-03-31`).
+- **Action**: Copy old file to new file with today's date, rename old as `.bak`, apply incremental edits. Bump minor version (e.g., 1.1 → 1.2). One active artifact file per version folder.
+
+**Scenario C — Same version, same date (re-run)**
+- **Trigger**: Latest artifact filename date = today.
+- **Action**: Edit in-place, bump minor version (e.g., 1.1 → 1.2). No `.bak` created.
+
+**Decision flowchart:**
+```
+update-{artifact} invoked
+  ├─ v{N+1} input exists AND v{N+1} output missing? → Scenario A
+  ├─ artifact date ≠ today? → Scenario B
+  └─ artifact date = today → Scenario C
+```
+
+### Artifact Status Lifecycle
+
+All artifacts use a 3-state status tracked in the metadata table:
+
+```
+Draft  →  Updated - Pending Review  →  Approved
+  ↑              ↑                        │
+  └──────────────┴── (update cycles) ─────┘
+```
+
+- **Draft**: Set on initial creation
+- **Updated - Pending Review**: Set after any update (minor version bump)
+- **Approved**: Set explicitly via `approve-{artifact}` skill — requires user/stakeholder sign-off
+
+### Upstream Approval Gate
+
+Before creating a downstream artifact, ALL required upstream artifacts MUST have `Status: Approved`. This is enforced in Phase 0 of each create skill.
+
+| create-* Skill | Required Approved Upstream Artifacts |
+|---|---|
+| create-drd | None (first in chain) |
+| create-hld | DRD |
+| create-dms | DRD, HLD |
+| create-stm | DRD, HLD, DMS |
+| create-dqs | DRD, DMS, STM |
+| create-lld | DRD, HLD, DMS, STM, DQS |
+| create-stories | DRD, HLD, DMS, STM, DQS, LLD |
+
+If any upstream artifact is not `Approved`, the create skill MUST stop and inform the user which artifacts need approval. This gate has no override.
 
 ## Learnings & Corrections Protocol
 

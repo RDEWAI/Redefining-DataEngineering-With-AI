@@ -179,6 +179,24 @@ def check_metadata(content: str) -> list[ValidationResult]:
             )
         )
 
+    # Validate Status field value
+    valid_statuses = {"Draft", "Updated - Pending Review", "Approved"}
+    status_pattern = r"\*\*Status\*\*\s*\|\s*(.+)"
+    status_match = re.search(status_pattern, content)
+    if status_match:
+        status_value = status_match.group(1).strip().rstrip("|").strip()
+        if status_value not in valid_statuses:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    section="Metadata",
+                    message=f'Status field has unrecognized value: "{status_value}".',
+                    suggestion=(
+                        "Status must be one of: " + ", ".join(sorted(valid_statuses)) + "."
+                    ),
+                )
+            )
+
     return results
 
 

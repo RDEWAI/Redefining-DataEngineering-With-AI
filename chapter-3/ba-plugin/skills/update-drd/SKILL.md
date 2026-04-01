@@ -15,7 +15,7 @@ description: >
   - Incorporate new data sources into requirements
   - Amend or extend an existing requirements document
 argument-hint: "[drd-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
+allowed-tools: Read, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -249,23 +249,68 @@ source data can actually support the new use case.
 Always use `duckdb {db_path} -readonly -c "..."`.
 Never run INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, or TRUNCATE.
 
-### Phase 4: Merge Changes
+### Phase 4: Copy-Then-Edit
 
-**Prerequisite: Phase 2 must have confirmed the change summary. Phase 3 must have
-verified source data if sections 2-5 are affected.**
+**Prerequisite**: Phase 2 must have confirmed the change summary. Phase 3 must have
+verified source data if sections 2-5 are affected.
 
-#### 4a. Apply changes
+#### 4a. Determine update scenario and prepare working file
 
+Discover current state:
+
+```bash
+LATEST_INPUT_V=$(ls -d inputs/drd/v* 2>/dev/null | sort -V | tail -1 | grep -o 'v[0-9]*')
+LATEST_OUTPUT_DIR=$(ls -d outputs/drd/v* | sort -V | tail -1)
+CURRENT_OUTPUT_V=$(echo "$LATEST_OUTPUT_DIR" | grep -o 'v[0-9]*')
+EXISTING_FILE=$(ls -t "$LATEST_OUTPUT_DIR"/DRD-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
+FILE_DATE=$(echo "$EXISTING_FILE" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}')
+TODAY=$(date +%Y-%m-%d)
+SHORT_NAME=$(echo "$EXISTING_FILE" | sed "s/.*[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}-//" | sed "s/\.md$//")
+```
+
+Run the versioning decision flowchart:
+
+1. **Scenario A — Cross-version** (input version > output version, OR user requested "new version"):
+   ```bash
+   NEW_V="v$((${CURRENT_OUTPUT_V#v} + 1))"
+   mkdir -p "outputs/drd/$NEW_V"
+   cp "$EXISTING_FILE" "outputs/drd/$NEW_V/DRD-${TODAY}-${SHORT_NAME}.md"
+   mv "$EXISTING_FILE" "${EXISTING_FILE}.bak"
+   ```
+   Working file: `outputs/drd/$NEW_V/DRD-${TODAY}-${SHORT_NAME}.md`
+   Set metadata version to `${NEW_V#v}.0`.
+
+2. **Scenario B — Same version, different date** (`$FILE_DATE != $TODAY`):
+   ```bash
+   NEW_FILE="${LATEST_OUTPUT_DIR}/DRD-${TODAY}-${SHORT_NAME}.md"
+   cp "$EXISTING_FILE" "$NEW_FILE"
+   mv "$EXISTING_FILE" "${EXISTING_FILE}.bak"
+   ```
+   Working file: `$NEW_FILE`
+   Bump minor version (e.g., 1.1 → 1.2).
+
+3. **Scenario C — Same version, same date** (`$FILE_DATE == $TODAY`):
+   Working file: `$EXISTING_FILE` (edit in-place)
+   Bump minor version (e.g., 1.1 → 1.2).
+
+#### 4b. Apply changes using Edit tool ONLY
+
+**CRITICAL: Use the `Edit` tool for every modification. NEVER use `Write` to replace the file.**
+
+For each change from Phase 2:
+1. Read the target section in the working file
+2. Use `Edit` with the exact old text and the new replacement
+3. Include 3-5 surrounding lines for unique matching
+
+**Content rules:**
 - **Preserve all existing content** that has not changed
 - **Never remove content** without explicit user approval
 - If new information **contradicts** existing content, call `AskUserQuestion`
   presenting both versions and asking which is correct
-- If the update **introduces vague language** where specific language existed,
-  flag this and ask the user to provide specifics before accepting the change
 - Mark any newly uncertain items with `[NEEDS VERIFICATION]`
 - Resolve any `[TO BE DETERMINED]` placeholders where new information provides answers
 
-#### 4b. Regulatory & Compliance updates (Section 7)
+#### 4c. Regulatory & Compliance updates (Section 7)
 
 If the update introduces new data sources, consumers, or business context, check
 whether Section 7 needs updating:
@@ -275,13 +320,9 @@ whether Section 7 needs updating:
 - **New regulations** → Update 7.1 (Applicable Regulations), 7.2 (Data Classification),
   7.3 (Retention), 7.4 (Access Controls), 7.5 (Audit Requirements) as applicable
 
-If the user's update inputs don't address regulatory impact, call
-`AskUserQuestion` to ask whether the new source/consumer/data affects
-regulatory or compliance requirements.
+#### 4d. Cross-section consistency check
 
-#### 4c. Cross-section consistency check
-
-After merging all changes, verify that all four responsibility areas remain
+After applying all edits, verify that all four responsibility areas remain
 internally consistent and complete:
 
 1. **Source Discovery** (Section 2): Are all referenced tables/fields documented?
@@ -289,17 +330,16 @@ internally consistent and complete:
 3. **Consumer Requirements** (Section 4): Do SLAs and freshness still hold?
 4. **Business Rules** (Section 5): Are formulas and edge cases updated for new data?
 
-If any responsibility area is now incomplete due to the update, use `AskUserQuestion`
-to gather the missing details before finalizing.
+If any area is now incomplete, use `AskUserQuestion` to gather the missing details.
 
-#### 4d. Update version tracking
+#### 4e. Update version tracking
 
-In the metadata table at the top:
-- Increment the minor version (1.0 -> 1.1 -> 1.2, etc.)
+Use `Edit` to update the metadata table:
+- Set/increment version number per scenario rules (A: `{N+1}.0`, B/C: bump minor)
 - Update **Last Modified** to today's date
-- Set **Status** to "Updated - Pending Review"
+- Set **Status** to `Updated - Pending Review`
 
-In section 8 (Version History), add a new row:
+Add a new row to the Version History table (Section 8):
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|

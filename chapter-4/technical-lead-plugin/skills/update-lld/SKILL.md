@@ -15,7 +15,7 @@ description: >
   - Apply changes from updated upstream artifacts
   - "Update the LLD with the new Spark cluster sizing"
 argument-hint: "[path-to-existing-lld]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
+allowed-tools: Read, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -176,48 +176,95 @@ Only proceed after user confirms.
 
 **This is the longest and most important phase. Do not rush through it.**
 
-### Phase 3: Merge Changes
+### Phase 3: Copy-Then-Edit
 
+#### 3a. Determine update scenario and prepare working files
+
+Discover current state:
+
+```bash
+LATEST_INPUT_V=$(ls -d inputs/lld/v* 2>/dev/null | sort -V | tail -1 | grep -o 'v[0-9]*')
+LATEST_OUTPUT_DIR=$(ls -d outputs/lld/v* | sort -V | tail -1)
+CURRENT_OUTPUT_V=$(echo "$LATEST_OUTPUT_DIR" | grep -o 'v[0-9]*')
+EXISTING_FILE=$(ls -t "$LATEST_OUTPUT_DIR"/LLD-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
+FILE_DATE=$(echo "$EXISTING_FILE" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}')
+TODAY=$(date +%Y-%m-%d)
+SHORT_NAME=$(echo "$EXISTING_FILE" | sed "s/.*[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}-//" | sed "s/\.md$//")
+```
+
+Run the versioning decision flowchart:
+
+1. **Scenario A — Cross-version** (input version > output version, OR user requested "new version"):
+   ```bash
+   NEW_V="v$((${CURRENT_OUTPUT_V#v} + 1))"
+   mkdir -p "outputs/lld/$NEW_V"
+   cp "$EXISTING_FILE" "outputs/lld/$NEW_V/LLD-${TODAY}-${SHORT_NAME}.md"
+   # Copy derived artifacts too
+   [ -d "${LATEST_OUTPUT_DIR}/config" ] && cp -r "${LATEST_OUTPUT_DIR}/config" "outputs/lld/$NEW_V/config"
+   [ -d "${LATEST_OUTPUT_DIR}/dag" ] && cp -r "${LATEST_OUTPUT_DIR}/dag" "outputs/lld/$NEW_V/dag"
+   [ -f "${LATEST_OUTPUT_DIR}/impl-sequence.md" ] && cp "${LATEST_OUTPUT_DIR}/impl-sequence.md" "outputs/lld/$NEW_V/impl-sequence.md"
+   mv "$EXISTING_FILE" "${EXISTING_FILE}.bak"
+   ```
+   Working file: `outputs/lld/$NEW_V/LLD-${TODAY}-${SHORT_NAME}.md`
+   Set metadata version to `${NEW_V#v}.0`.
+
+2. **Scenario B — Same version, different date** (`$FILE_DATE != $TODAY`):
+   ```bash
+   NEW_FILE="${LATEST_OUTPUT_DIR}/LLD-${TODAY}-${SHORT_NAME}.md"
+   cp "$EXISTING_FILE" "$NEW_FILE"
+   mv "$EXISTING_FILE" "${EXISTING_FILE}.bak"
+   ```
+   Working file: `$NEW_FILE`
+   Bump minor version (e.g., 1.1 → 1.2).
+
+3. **Scenario C — Same version, same date** (`$FILE_DATE == $TODAY`):
+   Working file: `$EXISTING_FILE` (edit in-place)
+   Bump minor version (e.g., 1.1 → 1.2).
+
+#### 3b. Apply changes using Edit tool ONLY
+
+**CRITICAL: Use the `Edit` tool for every modification. NEVER use `Write` to replace the file.**
+
+Edit the main LLD markdown file and any affected derived artifacts (`config/*.yaml`, `dag/*.yaml`, `impl-sequence.md`) individually with the `Edit` tool.
+
+**Content rules:**
 - **Preserve all existing content** that has not changed
 - **Never remove content** without explicit user approval
 - For contradictions, use `AskUserQuestion` to present both versions
-- **Re-verify traceability**: Every implementation decision in the updated LLD
-  must still trace to an upstream artifact. If a reference is stale,
-  update or remove it.
-- Mark uncertain items with `[NEEDS VERIFICATION]`
+- **Re-verify traceability**: Every implementation decision must still trace to an upstream artifact
 
-#### Re-generate diagrams
+#### 3c. Re-generate derived artifacts
 
 When changes affect DAG structure or task dependencies:
 1. Update the **DAG diagram** (§4) if task dependencies changed
-2. Re-generate `dag/dag-definition.yaml` and `dag/dag-pipeline.mmd`
+2. Re-generate `dag/dag-definition.yaml` and `dag/dag-pipeline.mmd` using `Edit`
 3. Update the **Traceability Matrix** (§12) if requirement mappings changed
 
 When changes affect code architecture (§2), deployment (§9), or task order (§4):
 4. Re-generate `impl-sequence.md` to reflect updated build phases
 
-#### Cross-section consistency check
+#### 3d. Cross-section consistency check
 
-After merging, verify:
+After applying all edits, verify:
 1. §4 DAG Specification still aligns with §5 Task Implementation Details
 2. §6 Performance settings match current infrastructure specs
 3. §7 Configuration Schema has entries for all configurable parameters
 4. §8 Error Handling retry policies align with §4 DAG timeout settings
 5. §9 Deployment environments match §7 Configuration environment overrides
 6. §10 Monitoring thresholds align with DRD SLAs
-7. §11 Upstream References have correct section numbers for current artifacts
+7. §11 Upstream References have correct section numbers
 8. §12 Traceability Matrix maps all requirements to implementation components
 9. DAG definition YAML matches §4 task inventory
 10. Implementation sequence phases align with §2 module structure and §4 task order
 
-#### Update version tracking
+#### 3e. Update version tracking
 
-In the metadata table:
-- Increment the minor version (1.0 → 1.1 → 1.2)
+Use `Edit` to update the metadata table:
+- Set/increment version number per scenario rules (A: `{N+1}.0`, B/C: bump minor)
 - Update **Last Modified** to today's date
-- Set **Status** to "Updated - Pending Review"
+- Set **Status** to `Updated - Pending Review`
 
-In the Version History section, add:
+Add a new row to the Version History table:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|

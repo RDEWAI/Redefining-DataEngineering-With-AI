@@ -50,43 +50,43 @@ You can verify the install by running `/plugin` — you should see:
 
 ```
 ba-plugin (v1.0.0)
-  Skills: create-drd, update-drd, validate-drd
+  Skills: create-drd, update-drd, validate-drd, approve-drd
   Agents: ba-agent
   Hooks: PreToolUse, PostToolUse
   Status: Enabled
 
 architect-plugin (v1.0.0)
-  Skills: create-hld, update-hld, validate-hld
+  Skills: create-hld, update-hld, validate-hld, approve-hld
   Agents: architect-agent
   Hooks: PreToolUse, PostToolUse
   Status: Enabled
 
 data-modeler-plugin (v1.0.0)
-  Skills: create-dms, update-dms, validate-dms
+  Skills: create-dms, update-dms, validate-dms, approve-dms
   Agents: data-modeler-agent
   Hooks: PreToolUse, PostToolUse
   Status: Enabled
 
 mapping-analyst-plugin (v1.0.0)
-  Skills: create-stm, update-stm, validate-stm
+  Skills: create-stm, update-stm, validate-stm, approve-stm
   Agents: mapping-analyst-agent
   Hooks: PreToolUse, PostToolUse
   Status: Enabled
 
 dq-engineer-plugin (v1.0.0)
-  Skills: create-dqs, update-dqs, validate-dqs, generate-se-rules
+  Skills: create-dqs, update-dqs, validate-dqs, generate-se-rules, approve-dqs
   Agents: dq-engineer-agent
   Hooks: PreToolUse, PostToolUse
   Status: Enabled
 
 technical-lead-plugin (v1.0.0)
-  Skills: create-lld, update-lld, validate-lld, generate-config-template, apply-learnings
+  Skills: create-lld, update-lld, validate-lld, generate-config-template, apply-learnings, approve-lld
   Agents: technical-lead-agent
   Hooks: PreToolUse, PostToolUse
   Status: Enabled
 
 scrum-master-plugin (v1.0.0)
-  Skills: create-stories, update-stories, validate-stories
+  Skills: create-stories, update-stories, validate-stories, approve-stories
   Agents: scrum-master-agent
   Hooks: PreToolUse, PostToolUse
   Status: Enabled
@@ -282,25 +282,32 @@ Other skills:
 ```
 /update-drd outputs/drd/v1/DRD-2026-02-10-patient-360.md
 /validate-drd outputs/drd/v1/DRD-2026-02-10-patient-360.md
+/approve-drd outputs/drd/v1/DRD-2026-02-10-patient-360.md
 /update-hld outputs/hld/v1/HLD-2026-03-15-pipeline.md
 /validate-hld outputs/hld/v1/HLD-2026-03-15-pipeline.md
+/architect-plugin:approve-hld outputs/hld/v1/HLD-2026-03-15-pipeline.md
 /data-modeler-plugin:create-dms
 /data-modeler-plugin:update-dms outputs/dms/v1/DMS-2026-03-16-patient-360.md
 /data-modeler-plugin:validate-dms outputs/dms/v1/DMS-2026-03-16-patient-360.md
+/data-modeler-plugin:approve-dms outputs/dms/v1/DMS-2026-03-16-patient-360.md
 /mapping-analyst-plugin:create-stm
 /mapping-analyst-plugin:update-stm outputs/stm/v1/STM-2026-03-16-patient-360.xlsx
 /mapping-analyst-plugin:validate-stm outputs/stm/v1/STM-2026-03-16-patient-360.xlsx
+/mapping-analyst-plugin:approve-stm outputs/stm/v1/STM-2026-03-16-patient-360.xlsx
 /dq-engineer-plugin:create-dqs
 /dq-engineer-plugin:update-dqs outputs/dqs/v1/DQS-2026-03-20-patient-360.md
 /dq-engineer-plugin:validate-dqs outputs/dqs/v1/DQS-2026-03-20-patient-360.md
 /dq-engineer-plugin:generate-se-rules outputs/dqs/v1/DQS-2026-03-20-patient-360.md
+/dq-engineer-plugin:approve-dqs outputs/dqs/v1/DQS-2026-03-20-patient-360.md
 /technical-lead-plugin:create-lld
 /technical-lead-plugin:update-lld outputs/lld/v1/LLD-2026-03-22-patient-360.md
 /technical-lead-plugin:validate-lld outputs/lld/v1/LLD-2026-03-22-patient-360.md
 /technical-lead-plugin:generate-config-template outputs/lld/v1/LLD-2026-03-22-patient-360.md
+/technical-lead-plugin:approve-lld outputs/lld/v1/LLD-2026-03-22-patient-360.md
 /scrum-master-plugin:create-stories
 /scrum-master-plugin:update-stories outputs/stories/v1/BACKLOG-2026-03-23-patient-360.md
 /scrum-master-plugin:validate-stories outputs/stories/v1/BACKLOG-2026-03-23-patient-360.md
+/scrum-master-plugin:approve-stories outputs/stories/v1/BACKLOG-2026-03-23-patient-360.md
 ```
 
 ## How the Plugins Work
@@ -381,28 +388,35 @@ The `scrum-master-agent` sub-agent (`scrum-master-plugin/agents/scrum-master-age
 | Plugin | Skill | What it does |
 |--------|-------|-------------|
 | ba-plugin | `create-drd` | Reads input documents, generates a complete DRD following a Jinja2 template |
-| ba-plugin | `update-drd` | Merges new information into an existing DRD, preserving unchanged content |
+| ba-plugin | `update-drd` | Copies existing DRD, applies incremental edits (Edit-only, no Write) |
 | ba-plugin | `validate-drd` | Runs 15 validation checks (CRITICAL / WARNING / INFO) on a DRD |
-| architect-plugin | `create-hld` | Reads DRD + architect inputs, generates a complete HLD following a Jinja2 template |
-| architect-plugin | `update-hld` | Merges changes into an existing HLD, verifying cross-section consistency |
+| ba-plugin | `approve-drd` | Sets DRD status to Approved — gate for downstream creation |
+| architect-plugin | `create-hld` | Reads DRD + architect inputs, generates a complete HLD (requires DRD approved) |
+| architect-plugin | `update-hld` | Copies existing HLD, applies incremental edits (Edit-only) |
 | architect-plugin | `validate-hld` | Runs validation checks on an HLD (sections, traceability, tech table, CDC, capacity) |
-| data-modeler-plugin | `create-dms` | Reads HLD + DRD + enterprise standards, generates a complete DMS with YAML schema blocks |
-| data-modeler-plugin | `update-dms` | Merges schema changes into an existing DMS, preserving unchanged content |
+| architect-plugin | `approve-hld` | Sets HLD status to Approved |
+| data-modeler-plugin | `create-dms` | Reads HLD + DRD + enterprise standards, generates a complete DMS (requires DRD+HLD approved) |
+| data-modeler-plugin | `update-dms` | Copies existing DMS, applies incremental edits (Edit-only) |
 | data-modeler-plugin | `validate-dms` | Runs validation checks on a DMS (sections, YAML syntax, SCD types, traceability) |
-| mapping-analyst-plugin | `create-stm` | Reads DMS + HLD + transformation standards, generates a complete STM as .xlsx with 8 sheets |
-| mapping-analyst-plugin | `update-stm` | Merges transformation changes into an existing STM workbook |
+| data-modeler-plugin | `approve-dms` | Sets DMS status to Approved |
+| mapping-analyst-plugin | `create-stm` | Reads DMS + HLD + transformation standards, generates STM .xlsx (requires DRD+HLD+DMS approved) |
+| mapping-analyst-plugin | `update-stm` | Copies existing STM, applies changes via openpyxl |
 | mapping-analyst-plugin | `validate-stm` | Runs 15 validation checks on an STM .xlsx (sheets, headers, traceability, formatting) |
-| dq-engineer-plugin | `create-dqs` | Reads STM + DMS + DRD + DQ standards, generates a DQS with YAML rule blocks; auto-generates SE YAML files |
-| dq-engineer-plugin | `update-dqs` | Merges rule changes into an existing DQS, preserving unchanged content |
+| mapping-analyst-plugin | `approve-stm` | Sets STM status to Approved |
+| dq-engineer-plugin | `create-dqs` | Reads STM + DMS + DRD + DQ standards, generates DQS + SE YAML (requires DRD+DMS+STM approved) |
+| dq-engineer-plugin | `update-dqs` | Copies existing DQS, applies incremental edits (Edit-only) |
 | dq-engineer-plugin | `validate-dqs` | Runs validation checks on a DQS (sections, YAML syntax, rule categories, traceability) |
 | dq-engineer-plugin | `generate-se-rules` | Converts DQS rules to per-table Spark-Expectations YAML files |
-| technical-lead-plugin | `create-lld` | Reads all 5 upstream artifacts + tech lead inputs, generates LLD + config template + DAG definition + impl sequence |
-| technical-lead-plugin | `update-lld` | Merges implementation changes into an existing LLD, preserving unchanged content |
+| dq-engineer-plugin | `approve-dqs` | Sets DQS status to Approved |
+| technical-lead-plugin | `create-lld` | Reads all 5 upstream artifacts + tech lead inputs, generates LLD + derived artifacts (requires all 5 approved) |
+| technical-lead-plugin | `update-lld` | Copies existing LLD, applies incremental edits (Edit-only) |
 | technical-lead-plugin | `validate-lld` | Runs validation checks on an LLD (sections, artifact references, DAG syntax) |
 | technical-lead-plugin | `generate-config-template` | Generates environment config YAML from LLD §7 |
-| scrum-master-plugin | `create-stories` | Reads all 6 upstream artifacts + scrum master inputs, generates Sprint Backlog with epics and stories |
-| scrum-master-plugin | `update-stories` | Merges changes into an existing backlog, preserving unchanged stories |
+| technical-lead-plugin | `approve-lld` | Sets LLD status to Approved |
+| scrum-master-plugin | `create-stories` | Reads all 6 upstream artifacts + scrum master inputs, generates Sprint Backlog (requires all 6 approved) |
+| scrum-master-plugin | `update-stories` | Copies existing backlog, applies incremental edits (Write only for new stories) |
 | scrum-master-plugin | `validate-stories` | Runs validation checks on a backlog (structure, story format, traceability) |
+| scrum-master-plugin | `approve-stories` | Sets Stories status to Approved |
 
 ### Hooks
 
@@ -422,13 +436,49 @@ Fires after every `Write` or `Edit` operation. When Claude writes a file to `out
 4. **Warnings** → passed as non-blocking context
 5. **Pass** → no interruption
 
-### Versioning Convention
+### Versioning & Approval Workflow
 
 All inputs and outputs use **folder-based versioning** (`v1/`, `v2/`, etc.). The latest version folder is the source of truth for that component. Agents auto-discover the latest version via:
 
 ```bash
 ls -d {path}/v* | sort -V | tail -1
 ```
+
+#### Update Versioning (3 Scenarios)
+
+When any `update-*` skill is invoked:
+
+| Scenario | Trigger | Action |
+|----------|---------|--------|
+| **A. Cross-version** | `inputs/{role}/v{N+1}/` exists or user says "new version" | Copy to `v{N+1}/` with today's date, `.bak` old, set version `{N+1}.0` |
+| **B. Same version, new date** | Artifact date ≠ today | Copy with today's date, `.bak` old, bump minor version |
+| **C. Same version, same date** | Artifact date = today (re-run) | Edit in-place, bump minor version |
+
+Updates use the **Edit** tool only (never Write) for incremental changes. One active artifact file per version folder — old files become `.bak`.
+
+#### Status Lifecycle
+
+```
+Draft  →  Updated - Pending Review  →  Approved
+```
+
+Each plugin has an `approve-{artifact}` skill that sets Status to `Approved`.
+
+#### Upstream Approval Gate
+
+Before creating a downstream artifact, ALL required upstream artifacts MUST have `Status: Approved`:
+
+| create-* Skill | Required Approved Upstream |
+|---|---|
+| create-drd | None (first in chain) |
+| create-hld | DRD |
+| create-dms | DRD, HLD |
+| create-stm | DRD, HLD, DMS |
+| create-dqs | DRD, DMS, STM |
+| create-lld | DRD, HLD, DMS, STM, DQS |
+| create-stories | DRD, HLD, DMS, STM, DQS, LLD |
+
+If any upstream artifact is not `Approved`, the create skill stops and informs the user which artifacts need approval. This gate has no override.
 
 ### Input Documents
 

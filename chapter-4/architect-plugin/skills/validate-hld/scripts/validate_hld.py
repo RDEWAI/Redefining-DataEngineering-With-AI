@@ -137,6 +137,9 @@ def check_required_sections(sections: dict[str, str]) -> list[ValidationResult]:
     return results
 
 
+VALID_STATUSES = {"Draft", "Updated - Pending Review", "Approved"}
+
+
 def check_metadata(content: str) -> list[ValidationResult]:
     """Check that version metadata fields are present and non-empty."""
     results: list[ValidationResult] = []
@@ -152,6 +155,22 @@ def check_metadata(content: str) -> list[ValidationResult]:
                     message=f'Metadata field "{field_name}" is missing or empty.',
                     suggestion=(
                         f'Add a "{field_name}" field to the metadata table at the top of the HLD.'
+                    ),
+                )
+            )
+    # Validate Status field value
+    status_pattern = r"\*\*Status\*\*\s*\|\s*(.+)"
+    status_match = re.search(status_pattern, content)
+    if status_match:
+        status_value = status_match.group(1).strip().rstrip("|").strip()
+        if status_value not in VALID_STATUSES:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    section="Metadata",
+                    message=f'Status field has unrecognized value: "{status_value}".',
+                    suggestion=(
+                        "Status must be one of: " + ", ".join(sorted(VALID_STATUSES)) + "."
                     ),
                 )
             )
@@ -544,7 +563,10 @@ def check_placeholders(content: str) -> list[ValidationResult]:
 
 
 def check_diagrams(content: str) -> list[ValidationResult]:
-    """Check that at least 3 Mermaid diagram blocks are present (system context, pipeline, ingestion sequence)."""
+    """Check that at least 3 Mermaid diagram blocks are present.
+
+    Expected diagrams: system context, pipeline, ingestion sequence.
+    """
     results: list[ValidationResult] = []
     mermaid_count = len(re.findall(r"```mermaid", content))
     if mermaid_count == 0:
@@ -564,9 +586,7 @@ def check_diagrams(content: str) -> list[ValidationResult]:
             ValidationResult(
                 level=ValidationLevel.WARNING,
                 section="General",
-                message=(
-                    f"Only {mermaid_count} Mermaid diagram(s) found; at least 3 recommended."
-                ),
+                message=(f"Only {mermaid_count} Mermaid diagram(s) found; at least 3 recommended."),
                 suggestion=(
                     "Expected: system context (§3.3), data domain map (§4.4),"
                     " pipeline architecture (§4.6), and ingestion sequence (§5.3)."
@@ -590,9 +610,7 @@ def check_cost_estimates(sections: dict[str, str]) -> list[ValidationResult]:
                 level=ValidationLevel.INFO,
                 section="5. Pipeline Architecture",
                 message="No cost information found in the Scalability subsection.",
-                suggestion=(
-                    "Add a cost model describing how costs scale with data volume growth."
-                ),
+                suggestion=("Add a cost model describing how costs scale with data volume growth."),
             )
         )
     return results

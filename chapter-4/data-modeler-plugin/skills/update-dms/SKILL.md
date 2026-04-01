@@ -15,7 +15,7 @@ description: >
   - Merge HLD changes into the schema specification
   - Amend naming conventions or type mappings
 argument-hint: "[dms-file-path]"
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
+allowed-tools: Read, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 hooks:
   before:
@@ -288,46 +288,88 @@ structures using read-only queries:
 Always use `duckdb {db_path} -readonly -c "..."`.
 Never run INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, or TRUNCATE.
 
-### Phase 4: Merge Changes
+### Phase 4: Copy-Then-Edit
 
-**Prerequisite: Phase 2 must have confirmed the change summary. Phase 3 must have
-verified source structures if schema sections are affected.**
+**Prerequisite**: Phase 2 must have confirmed the change summary. Phase 3 must have
+verified source structures if schema sections are affected.
 
-#### 4a. Apply changes
+#### 4a. Determine update scenario and prepare working file
 
+Discover current state:
+
+```bash
+LATEST_INPUT_V=$(ls -d inputs/dms/v* 2>/dev/null | sort -V | tail -1 | grep -o 'v[0-9]*')
+LATEST_OUTPUT_DIR=$(ls -d outputs/dms/v* | sort -V | tail -1)
+CURRENT_OUTPUT_V=$(echo "$LATEST_OUTPUT_DIR" | grep -o 'v[0-9]*')
+EXISTING_FILE=$(ls -t "$LATEST_OUTPUT_DIR"/DMS-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
+FILE_DATE=$(echo "$EXISTING_FILE" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}')
+TODAY=$(date +%Y-%m-%d)
+SHORT_NAME=$(echo "$EXISTING_FILE" | sed "s/.*[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}-//" | sed "s/\.md$//")
+```
+
+Run the versioning decision flowchart:
+
+1. **Scenario A — Cross-version** (input version > output version, OR user requested "new version"):
+   ```bash
+   NEW_V="v$((${CURRENT_OUTPUT_V#v} + 1))"
+   mkdir -p "outputs/dms/$NEW_V"
+   cp "$EXISTING_FILE" "outputs/dms/$NEW_V/DMS-${TODAY}-${SHORT_NAME}.md"
+   mv "$EXISTING_FILE" "${EXISTING_FILE}.bak"
+   ```
+   Working file: `outputs/dms/$NEW_V/DMS-${TODAY}-${SHORT_NAME}.md`
+   Set metadata version to `${NEW_V#v}.0`.
+
+2. **Scenario B — Same version, different date** (`$FILE_DATE != $TODAY`):
+   ```bash
+   NEW_FILE="${LATEST_OUTPUT_DIR}/DMS-${TODAY}-${SHORT_NAME}.md"
+   cp "$EXISTING_FILE" "$NEW_FILE"
+   mv "$EXISTING_FILE" "${EXISTING_FILE}.bak"
+   ```
+   Working file: `$NEW_FILE`
+   Bump minor version (e.g., 1.1 → 1.2).
+
+3. **Scenario C — Same version, same date** (`$FILE_DATE == $TODAY`):
+   Working file: `$EXISTING_FILE` (edit in-place)
+   Bump minor version (e.g., 1.1 → 1.2).
+
+**Note**: DMS files can be very large (3,000+ lines). Always include 3-5 surrounding lines for unique Edit matching.
+
+#### 4b. Apply changes using Edit tool ONLY
+
+**CRITICAL: Use the `Edit` tool for every modification. NEVER use `Write` to replace the file.**
+
+**Content rules:**
 - **Preserve all existing YAML blocks** that have not changed
 - **Never remove columns** without explicit user approval
 - For contradictions, use `AskUserQuestion` to present both versions
-- **Re-verify traceability**: Every schema in the updated DMS must still
-  cite an HLD section. If an HLD reference is stale, update or remove it.
-- Mark uncertain items with `[NEEDS VERIFICATION]`
+- **Re-verify traceability**: Every schema must still cite an HLD section
 - **Re-generate YAML schema blocks** for any table affected by the change
 
-#### 4b. Re-generate diagrams
+#### 4c. Re-generate diagrams
 
 When schema changes affect table names, relationships, or layer structure:
-1. Update the **holistic ER diagram** (section 1.4) to reflect added/removed tables, changed PKs/FKs, or new cross-layer relationships
-2. Update the **layer architecture flowchart** (section 1.6) to reflect added/removed tables or layer changes
+1. Update the **holistic ER diagram** (section 1.4)
+2. Update the **layer architecture flowchart** (section 1.6)
 
-#### 4c. Cross-section consistency check
+#### 4d. Cross-section consistency check
 
-After merging, verify:
+After applying all edits, verify:
 1. YAML schema blocks parse as valid YAML
 2. Silver columns reference existing bronze columns in `source:` field
 3. Gold FK references point to existing dimension surrogate keys
 4. SCD strategy section matches gold layer YAML `scd_type:` fields
-5. Naming conventions are applied consistently across all YAML blocks
+5. Naming conventions are applied consistently
 6. Traceability matrix includes all gold tables
-7. Mermaid diagrams (ER + layer architecture) reflect current schemas
+7. Mermaid diagrams reflect current schemas
 
-#### 4d. Update version tracking
+#### 4e. Update version tracking
 
-In the metadata table:
-- Increment the minor version (1.0 → 1.1 → 1.2)
+Use `Edit` to update the metadata table:
+- Set/increment version number per scenario rules (A: `{N+1}.0`, B/C: bump minor)
 - Update **Last Modified** to today's date
-- Set **Status** to "Updated - Pending Review"
+- Set **Status** to `Updated - Pending Review`
 
-In the Version History section, add:
+Add a new row to the Version History table:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
