@@ -213,7 +213,7 @@ llm:
 	@echo "============================================================"
 	@echo ""
 	@echo "Ask about our library books - the LLM has NO access to the data."
-	@echo "Try: Who wrote 'The Quantum Garden'?"
+	@echo "Try: Where is The Quantum Garden located?"
 	@echo ""
 	uv run python -m src.rag.simple_rag --no-rag
 
@@ -223,7 +223,7 @@ llm-rag:
 	@echo "============================================================"
 	@echo ""
 	@echo "Now the LLM has access to our library database via RAG."
-	@echo "Try the same question: Who wrote 'The Quantum Garden'?"
+	@echo "Try the same question: Where is The Quantum Garden located?"
 	@echo ""
 	uv run python -m src.rag.simple_rag --rag
 
