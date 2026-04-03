@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.agentic.library.domain import BookStatus, Category
 from src.agentic.library.repository import BookRepository
 
-from .sales_repository import SalesRepository
+from .lending_repository import LendingRepository
 
 # Initialize FastMCP server
 mcp = FastMCP("LibraryServer")
@@ -36,7 +36,7 @@ DB_PATH = os.getenv(
 )
 # Use read_only=True to allow concurrent access from multiple MCP connections
 repository = BookRepository(DB_PATH, read_only=True)
-sales_repository = SalesRepository(db_path=DB_PATH, read_only=True)
+lending_repository = LendingRepository(db_path=DB_PATH, read_only=True)
 
 
 # ============================================================================
@@ -296,142 +296,142 @@ def get_weak_signal_books(threshold: float = -55.0) -> list[dict[str, Any]] | di
 
 
 # ============================================================================
-# Sales Tools - 5 sales operations
+# Lending Tools - 5 lending operations
 # ============================================================================
 
 
 @mcp.tool()
-def search_sales(
+def search_lending(
     book_id: str | None = None,
-    customer_segment: str | None = None,
+    patron_segment: str | None = None,
     region: str | None = None,
     channel: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, Any]] | dict[str, str]:
-    """Search sales records with optional filters.
+    """Search lending records with optional filters.
 
     Args:
         book_id: Filter by book ID (e.g., 'B001')
-        customer_segment: Filter by segment (Individual, Corporate, Educational, Government)
+        patron_segment: Filter by segment (Individual, Corporate, Educational, Government)
         region: Filter by region (Northeast, Southeast, Midwest, West, International)
         channel: Filter by channel (In-Store, Online, Phone Order, Partner)
         limit: Maximum number of results (1-100, default: 20)
 
     Returns:
-        List of matching sales records
+        List of matching lending records
     """
     try:
         # Validate limit
         if limit < 1 or limit > 100:
             return {"error": "Limit must be between 1 and 100"}
 
-        sales = sales_repository.search_sales(
+        loans = lending_repository.search_lending(
             book_id=book_id,
-            customer_segment=customer_segment,
+            patron_segment=patron_segment,
             region=region,
             channel=channel,
             limit=limit,
         )
 
-        return [sale.to_dict() for sale in sales]
+        return [loan.to_dict() for loan in loans]
 
     except Exception as e:
         return {"error": f"Search failed: {str(e)}"}
 
 
 @mcp.tool()
-def get_book_sales(book_id: str) -> dict[str, Any]:
-    """Get all sales for a specific book with summary statistics.
+def get_book_lending(book_id: str) -> dict[str, Any]:
+    """Get all loans for a specific book with summary statistics.
 
     Args:
         book_id: Book ID (e.g., 'B001')
 
     Returns:
-        Sales records with total units and revenue
+        Lending records with total units and fees
     """
     try:
         book = repository.get_book_by_id(book_id)
         if not book:
             return {"error": f"No book found with ID '{book_id}'"}
 
-        sales = sales_repository.get_sales_for_book(book_id)
-        sales_list = [sale.to_dict() for sale in sales]
+        loans = lending_repository.get_lending_for_book(book_id)
+        loans_list = [loan.to_dict() for loan in loans]
 
-        total_revenue = sum(float(sale.total_amount) for sale in sales)
-        total_units = sum(sale.quantity for sale in sales)
+        total_fees = sum(float(loan.total_fees) for loan in loans)
+        total_units = sum(loan.quantity for loan in loans)
 
         return {
             "book_id": book_id,
             "book_title": book.title,
             "book_author": book.author,
-            "sales_count": len(sales),
+            "loan_count": len(loans),
             "total_units": total_units,
-            "total_revenue": round(total_revenue, 2),
-            "sales": sales_list,
+            "total_fees": round(total_fees, 2),
+            "loans": loans_list,
         }
 
     except Exception as e:
-        return {"error": f"Failed to get book sales: {str(e)}"}
+        return {"error": f"Failed to get book lending: {str(e)}"}
 
 
 @mcp.tool()
-def get_sales_stats() -> dict[str, Any]:
-    """Get aggregate statistics about all sales.
+def get_lending_stats() -> dict[str, Any]:
+    """Get aggregate statistics about all lending.
 
     Returns:
-        Statistics including total sales, revenue, units, and breakdowns
+        Statistics including total loans, fees, units, and breakdowns
     """
     try:
-        stats = sales_repository.get_sales_stats()
+        stats = lending_repository.get_lending_stats()
         return {
-            "total_sales": stats["total_sales"],
-            "total_revenue": round(stats["total_revenue"], 2),
+            "total_loans": stats["total_loans"],
+            "total_fees": round(stats["total_fees"], 2),
             "total_units": stats["total_units"],
-            "avg_order_value": round(stats["avg_order_value"], 2),
-            "unique_customers": stats["unique_customers"],
+            "avg_loan_fees": round(stats["avg_loan_fees"], 2),
+            "unique_patrons": stats["unique_patrons"],
             "by_segment": stats["by_segment"],
             "by_region": stats["by_region"],
             "by_channel": stats["by_channel"],
         }
 
     except Exception as e:
-        return {"error": f"Failed to get sales stats: {str(e)}"}
+        return {"error": f"Failed to get lending stats: {str(e)}"}
 
 
 @mcp.tool()
-def get_top_selling_books(limit: int = 10) -> list[dict[str, Any]] | dict[str, str]:
-    """Get best-selling books ranked by total quantity sold.
+def get_most_lent_books(limit: int = 10) -> list[dict[str, Any]] | dict[str, str]:
+    """Get most lent books ranked by total quantity lent.
 
     Args:
         limit: Maximum number of results (1-50, default: 10)
 
     Returns:
-        List of top-selling books with sales statistics
+        List of most lent books with lending statistics
     """
     try:
         if limit < 1 or limit > 50:
             return {"error": "Limit must be between 1 and 50"}
 
-        top_books = sales_repository.get_top_selling_books(limit=limit)
+        top_books = lending_repository.get_most_lent_books(limit=limit)
         return top_books
 
     except Exception as e:
-        return {"error": f"Failed to get top selling books: {str(e)}"}
+        return {"error": f"Failed to get most lent books: {str(e)}"}
 
 
 @mcp.tool()
-def get_sales_by_month() -> list[dict[str, Any]] | dict[str, str]:
-    """Get sales aggregated by month for trend analysis.
+def get_lending_by_month() -> list[dict[str, Any]] | dict[str, str]:
+    """Get lending aggregated by month for trend analysis.
 
     Returns:
-        List of monthly sales with totals and revenue
+        List of monthly lending with totals and fees
     """
     try:
-        monthly_sales = sales_repository.get_sales_by_month()
-        return monthly_sales
+        monthly_lending = lending_repository.get_lending_by_month()
+        return monthly_lending
 
     except Exception as e:
-        return {"error": f"Failed to get sales by month: {str(e)}"}
+        return {"error": f"Failed to get lending by month: {str(e)}"}
 
 
 # ============================================================================
@@ -510,19 +510,19 @@ def get_location_map() -> str:
         return json.dumps({"error": f"Failed to get location map: {str(e)}"})
 
 
-@mcp.resource("library://sales_stats")
-def get_sales_stats_resource() -> str:
-    """Get aggregate sales statistics.
+@mcp.resource("library://lending_stats")
+def get_lending_stats_resource() -> str:
+    """Get aggregate lending statistics.
 
     Returns:
-        JSON with sales totals and breakdowns by segment, region, channel
+        JSON with lending totals and breakdowns by segment, region, channel
     """
     try:
-        stats = sales_repository.get_sales_stats()
+        stats = lending_repository.get_lending_stats()
         return json.dumps(stats, indent=2, default=float)
 
     except Exception as e:
-        return json.dumps({"error": f"Failed to get sales stats: {str(e)}"})
+        return json.dumps({"error": f"Failed to get lending stats: {str(e)}"})
 
 
 # ============================================================================

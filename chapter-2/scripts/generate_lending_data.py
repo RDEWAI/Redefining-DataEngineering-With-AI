@@ -1,39 +1,39 @@
 #!/usr/bin/env python3
-"""Generate synthetic sales data for library books.
+"""Generate synthetic lending data for library books.
 
-This script generates realistic sales data for the 200 books in the library database.
-It creates ~750 sales records with realistic distributions for:
+This script generates realistic lending data for the 200 books in the library database.
+It creates ~750 lending records with realistic distributions for:
 - Seasonal patterns (higher in Nov-Dec holidays, Aug-Sep back-to-school)
 - Category-based pricing (Programming $35-65, Fiction $15-25, etc.)
-- Customer segment correlations (Corporate = higher bulk purchases)
+- Patron segment correlations (Corporate = higher bulk loans)
 - Channel distribution (Online 60%, In-Store 30%, Others 10%)
 
 Usage:
-    python scripts/generate_sales_data.py
-    python scripts/generate_sales_data.py --num-sales 1000
-    python scripts/generate_sales_data.py --output data/raw/library/sales_data.csv
+    python scripts/generate_lending_data.py
+    python scripts/generate_lending_data.py --num-loans 1000
+    python scripts/generate_lending_data.py --output data/raw/library/lending_data.csv
 """
 
 import argparse
 import csv
 import random
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 # Ensure reproducible results
 random.seed(42)
 
 # Output path
-DEFAULT_OUTPUT = Path(__file__).parent.parent / "data" / "raw" / "library" / "sales_data.csv"
+DEFAULT_OUTPUT = Path(__file__).parent.parent / "data" / "raw" / "library" / "lending_data.csv"
 
-# Sales data constants
-CUSTOMER_SEGMENTS = ["Individual", "Corporate", "Educational", "Government"]
+# Lending data constants
+PATRON_SEGMENTS = ["Individual", "Corporate", "Educational", "Government"]
 REGIONS = ["Northeast", "Southeast", "Midwest", "West", "International"]
 CHANNELS = ["In-Store", "Online", "Phone Order", "Partner"]
 PAYMENT_METHODS = ["Credit Card", "Debit Card", "Cash", "Digital Wallet"]
 
-# Category-based pricing ranges
-CATEGORY_PRICES = {
+# Category-based fee ranges
+CATEGORY_FEES = {
     "Programming": (35.00, 65.00),
     "Science": (30.00, 55.00),
     "History": (20.00, 40.00),
@@ -74,18 +74,18 @@ PAYMENT_WEIGHTS_BY_CHANNEL = {
     "Partner": {"Credit Card": 0.45, "Debit Card": 0.35, "Digital Wallet": 0.15, "Cash": 0.05},
 }
 
-# Monthly sales distribution (seasonal patterns)
+# Monthly lending distribution (seasonal patterns)
 # Higher in Nov-Dec (holidays), Aug-Sep (back-to-school)
 MONTHLY_WEIGHTS = {
-    1: 0.07,   # January
-    2: 0.06,   # February
-    3: 0.07,   # March
-    4: 0.08,   # April
-    5: 0.07,   # May
-    6: 0.06,   # June
-    7: 0.05,   # July (summer lull)
-    8: 0.10,   # August (back-to-school)
-    9: 0.11,   # September (back-to-school)
+    1: 0.07,  # January
+    2: 0.06,  # February
+    3: 0.07,  # March
+    4: 0.08,  # April
+    5: 0.07,  # May
+    6: 0.06,  # June
+    7: 0.05,  # July (summer lull)
+    8: 0.10,  # August (back-to-school)
+    9: 0.11,  # September (back-to-school)
     10: 0.08,  # October
     11: 0.12,  # November (holidays)
     12: 0.13,  # December (holidays)
@@ -99,8 +99,8 @@ QUANTITY_WEIGHTS_BY_SEGMENT = {
     "Government": {1: 0.30, 2: 0.25, 3: 0.20, 5: 0.15, 10: 0.07, 15: 0.03},
 }
 
-# Discount distributions by segment (discount percentages)
-DISCOUNT_WEIGHTS_BY_SEGMENT = {
+# Fee waiver distributions by segment (waiver percentages)
+FEE_WAIVER_WEIGHTS_BY_SEGMENT = {
     "Individual": {0: 0.70, 5: 0.15, 10: 0.10, 15: 0.04, 20: 0.01},
     "Corporate": {0: 0.30, 5: 0.25, 10: 0.25, 15: 0.12, 20: 0.08},
     "Educational": {0: 0.20, 5: 0.20, 10: 0.25, 15: 0.20, 20: 0.15},
@@ -115,8 +115,8 @@ def weighted_choice(weights_dict: dict) -> str:
     return random.choices(items, weights=weights, k=1)[0]
 
 
-def generate_sale_date(year: int = 2024) -> date:
-    """Generate a random sale date with seasonal distribution."""
+def generate_loan_date(year: int = 2024) -> date:
+    """Generate a random loan date with seasonal distribution."""
     # First pick a month based on weights
     month = weighted_choice(MONTHLY_WEIGHTS)
 
@@ -134,52 +134,52 @@ def generate_sale_date(year: int = 2024) -> date:
     return date(year, month, day)
 
 
-def generate_customer_id(segment: str, existing_customers: dict) -> str:
-    """Generate or reuse a customer ID based on segment."""
-    # Corporate and Educational tend to be repeat customers
+def generate_patron_id(segment: str, existing_patrons: dict) -> str:
+    """Generate or reuse a patron ID based on segment."""
+    # Corporate and Educational tend to be repeat patrons
     if segment in ["Corporate", "Educational", "Government"]:
-        # 70% chance of reusing existing customer
-        if segment in existing_customers and random.random() < 0.70:
-            return random.choice(existing_customers[segment])
+        # 70% chance of reusing existing patron
+        if segment in existing_patrons and random.random() < 0.70:
+            return random.choice(existing_patrons[segment])
 
-    # Generate new customer ID
-    if segment not in existing_customers:
-        existing_customers[segment] = []
+    # Generate new patron ID
+    if segment not in existing_patrons:
+        existing_patrons[segment] = []
 
-    customer_num = len(existing_customers[segment]) + 1
+    patron_num = len(existing_patrons[segment]) + 1
     prefix = {"Individual": "IND", "Corporate": "CORP", "Educational": "EDU", "Government": "GOV"}
-    customer_id = f"{prefix[segment]}{customer_num:04d}"
-    existing_customers[segment].append(customer_id)
+    patron_id = f"{prefix[segment]}{patron_num:04d}"
+    existing_patrons[segment].append(patron_id)
 
-    return customer_id
+    return patron_id
 
 
-def generate_sales_data(
+def generate_lending_data(
     book_ids: list[str],
     book_categories: dict[str, str],
-    num_sales: int = 750,
+    num_loans: int = 750,
 ) -> list[dict]:
-    """Generate synthetic sales records.
+    """Generate synthetic lending records.
 
     Args:
         book_ids: List of book IDs (B001-B200)
         book_categories: Mapping of book_id to category
-        num_sales: Number of sales records to generate
+        num_loans: Number of lending records to generate
 
     Returns:
-        List of sale dictionaries
+        List of loan dictionaries
     """
-    sales = []
-    existing_customers: dict[str, list[str]] = {}
+    loans = []
+    existing_patrons: dict[str, list[str]] = {}
 
-    for i in range(num_sales):
-        sale_id = f"S{i + 1:04d}"
+    for i in range(num_loans):
+        loan_id = f"L{i + 1:04d}"
 
         # Select book (weight popular categories slightly higher)
         book_id = random.choice(book_ids)
         category = book_categories.get(book_id, "Fiction")
 
-        # Generate sale attributes
+        # Generate loan attributes
         segment = weighted_choice(SEGMENT_WEIGHTS)
         region = weighted_choice(REGION_WEIGHTS)
         channel = weighted_choice(CHANNEL_WEIGHTS)
@@ -193,41 +193,43 @@ def generate_sales_data(
         # Quantity depends on segment
         quantity = weighted_choice(QUANTITY_WEIGHTS_BY_SEGMENT[segment])
 
-        # Price based on category with some variance
-        price_range = CATEGORY_PRICES.get(category, (20.00, 40.00))
-        unit_price = round(random.uniform(*price_range), 2)
+        # Lending fee based on category with some variance
+        fee_range = CATEGORY_FEES.get(category, (20.00, 40.00))
+        lending_fee = round(random.uniform(*fee_range), 2)
 
-        # Discount depends on segment
-        discount = weighted_choice(DISCOUNT_WEIGHTS_BY_SEGMENT[segment])
+        # Fee waiver depends on segment
+        fee_waiver = weighted_choice(FEE_WAIVER_WEIGHTS_BY_SEGMENT[segment])
 
         # Calculate total
-        subtotal = quantity * unit_price
-        discount_amount = subtotal * (discount / 100)
-        total_amount = round(subtotal - discount_amount, 2)
+        subtotal = quantity * lending_fee
+        waiver_amount = subtotal * (fee_waiver / 100)
+        total_fees = round(subtotal - waiver_amount, 2)
 
-        # Generate date and customer
-        sale_date = generate_sale_date(2024)
-        customer_id = generate_customer_id(segment, existing_customers)
+        # Generate date and patron
+        loan_date = generate_loan_date(2024)
+        patron_id = generate_patron_id(segment, existing_patrons)
 
-        sales.append({
-            "sale_id": sale_id,
-            "book_id": book_id,
-            "sale_date": sale_date.isoformat(),
-            "quantity": quantity,
-            "unit_price": unit_price,
-            "total_amount": total_amount,
-            "discount": discount,
-            "payment_method": payment_method,
-            "customer_id": customer_id,
-            "customer_segment": segment,
-            "region": region,
-            "channel": channel,
-        })
+        loans.append(
+            {
+                "loan_id": loan_id,
+                "book_id": book_id,
+                "loan_date": loan_date.isoformat(),
+                "quantity": quantity,
+                "lending_fee": lending_fee,
+                "total_fees": total_fees,
+                "fee_waiver": fee_waiver,
+                "payment_method": payment_method,
+                "patron_id": patron_id,
+                "patron_segment": segment,
+                "region": region,
+                "channel": channel,
+            }
+        )
 
     # Sort by date for realistic data appearance
-    sales.sort(key=lambda x: x["sale_date"])
+    loans.sort(key=lambda x: x["loan_date"])
 
-    return sales
+    return loans
 
 
 def load_book_data(db_path: str | None = None) -> tuple[list[str], dict[str, str]]:
@@ -259,84 +261,93 @@ def load_book_data(db_path: str | None = None) -> tuple[list[str], dict[str, str
     return book_ids, book_categories
 
 
-def write_csv(sales: list[dict], output_path: Path) -> None:
-    """Write sales data to CSV file."""
+def write_csv(loans: list[dict], output_path: Path) -> None:
+    """Write lending data to CSV file."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     fieldnames = [
-        "sale_id", "book_id", "sale_date", "quantity", "unit_price",
-        "total_amount", "discount", "payment_method", "customer_id",
-        "customer_segment", "region", "channel"
+        "loan_id",
+        "book_id",
+        "loan_date",
+        "quantity",
+        "lending_fee",
+        "total_fees",
+        "fee_waiver",
+        "payment_method",
+        "patron_id",
+        "patron_segment",
+        "region",
+        "channel",
     ]
 
     with open(output_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(sales)
+        writer.writerows(loans)
 
-    print(f"Wrote {len(sales)} sales records to {output_path}")
+    print(f"Wrote {len(loans)} lending records to {output_path}")
 
 
-def print_summary(sales: list[dict]) -> None:
+def print_summary(loans: list[dict]) -> None:
     """Print summary statistics of generated data."""
     print("\n" + "=" * 60)
-    print("Sales Data Summary")
+    print("Lending Data Summary")
     print("=" * 60)
 
-    print(f"\nTotal records: {len(sales)}")
+    print(f"\nTotal records: {len(loans)}")
 
     # By segment
     segments = {}
-    for sale in sales:
-        seg = sale["customer_segment"]
+    for loan in loans:
+        seg = loan["patron_segment"]
         segments[seg] = segments.get(seg, 0) + 1
-    print("\nBy Customer Segment:")
+    print("\nBy Patron Segment:")
     for seg, count in sorted(segments.items()):
-        print(f"  {seg}: {count} ({100*count/len(sales):.1f}%)")
+        print(f"  {seg}: {count} ({100*count/len(loans):.1f}%)")
 
     # By region
     regions = {}
-    for sale in sales:
-        reg = sale["region"]
+    for loan in loans:
+        reg = loan["region"]
         regions[reg] = regions.get(reg, 0) + 1
     print("\nBy Region:")
     for reg, count in sorted(regions.items()):
-        print(f"  {reg}: {count} ({100*count/len(sales):.1f}%)")
+        print(f"  {reg}: {count} ({100*count/len(loans):.1f}%)")
 
     # By channel
     channels = {}
-    for sale in sales:
-        ch = sale["channel"]
+    for loan in loans:
+        ch = loan["channel"]
         channels[ch] = channels.get(ch, 0) + 1
     print("\nBy Channel:")
     for ch, count in sorted(channels.items()):
-        print(f"  {ch}: {count} ({100*count/len(sales):.1f}%)")
+        print(f"  {ch}: {count} ({100*count/len(loans):.1f}%)")
 
-    # Revenue stats
-    total_revenue = sum(sale["total_amount"] for sale in sales)
-    total_quantity = sum(sale["quantity"] for sale in sales)
-    avg_order = total_revenue / len(sales)
+    # Fee stats
+    total_fees = sum(loan["total_fees"] for loan in loans)
+    total_quantity = sum(loan["quantity"] for loan in loans)
+    avg_loan_fees = total_fees / len(loans)
 
-    print(f"\nRevenue Statistics:")
-    print(f"  Total Revenue: ${total_revenue:,.2f}")
-    print(f"  Total Units Sold: {total_quantity:,}")
-    print(f"  Average Order Value: ${avg_order:.2f}")
+    print("\nFee Statistics:")
+    print(f"  Total Fees: ${total_fees:,.2f}")
+    print(f"  Total Copies Lent: {total_quantity:,}")
+    print(f"  Average Loan Fees: ${avg_loan_fees:.2f}")
 
-    # Unique customers
-    unique_customers = len(set(sale["customer_id"] for sale in sales))
-    print(f"  Unique Customers: {unique_customers}")
+    # Unique patrons
+    unique_patrons = len(set(loan["patron_id"] for loan in loans))
+    print(f"  Unique Patrons: {unique_patrons}")
 
     print("=" * 60)
 
 
 def main() -> None:
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="Generate synthetic sales data")
+    parser = argparse.ArgumentParser(description="Generate synthetic lending data")
     parser.add_argument(
-        "--num-sales",
+        "--num-loans",
         type=int,
         default=750,
-        help="Number of sales records to generate (default: 750)",
+        help="Number of lending records to generate (default: 750)",
     )
     parser.add_argument(
         "--output",
@@ -353,19 +364,19 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    print("Generating sales data...")
+    print("Generating lending data...")
 
     # Load book data
     book_ids, book_categories = load_book_data(args.db_path)
 
-    # Generate sales
-    sales = generate_sales_data(book_ids, book_categories, args.num_sales)
+    # Generate loans
+    loans = generate_lending_data(book_ids, book_categories, args.num_loans)
 
     # Write to CSV
-    write_csv(sales, args.output)
+    write_csv(loans, args.output)
 
     # Print summary
-    print_summary(sales)
+    print_summary(loans)
 
 
 if __name__ == "__main__":

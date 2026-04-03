@@ -22,11 +22,14 @@ Usage:
     python -m src.mcp.client -i --code-execution
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
 
 # Add chapter-2 to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -47,9 +50,9 @@ class MCPClientConfig:
 
     Attributes:
         enable_code_execution: Enable code execution mode (default False)
-        enable_rag: Enable RAG functionality (semantic search + sales data tools).
-                   When enabled: semantic_search, search_sales, get_book_sales,
-                   get_sales_stats, get_top_selling_books, search_sales_semantic.
+        enable_rag: Enable RAG functionality (semantic search + lending data tools).
+                   When enabled: semantic_search, search_lending, get_book_lending,
+                   get_lending_stats, get_most_lent_books, search_lending_semantic.
                    When disabled: only basic library tools are available.
         enable_dummy_tools: Enable 100 enterprise dummy tools for scale testing
         show_tool_calls: Display tool calls/generated code during execution
@@ -72,7 +75,7 @@ class MCPClientConfig:
         CONFIG_FILE.write_text(json.dumps(asdict(self), indent=2))
 
     @classmethod
-    def load(cls) -> "MCPClientConfig":
+    def load(cls) -> MCPClientConfig:
         """Load configuration from disk, or return defaults if not found."""
         if CONFIG_FILE.exists():
             try:
@@ -99,7 +102,7 @@ class MCPClient:
         >>> client.run()
     """
 
-    # Available MCP tools (book tools + sales tools)
+    # Available MCP tools (book tools + lending tools)
     MCP_TOOLS = [
         # Book tools
         ("search_books", "Search books by title, author, or keyword"),
@@ -110,12 +113,12 @@ class MCPClient:
         ("locate_book", "Get physical location of a book"),
         ("find_books_in_cabinet", "List books in a specific cabinet"),
         ("get_weak_signal_books", "Get books with weak RFID signals"),
-        # Sales tools
-        ("search_sales", "Search sales with filters (book, segment, region, channel)"),
-        ("get_book_sales", "Get all sales for a specific book"),
-        ("get_sales_stats", "Get aggregate sales statistics"),
-        ("get_top_selling_books", "Get best-selling books by quantity"),
-        ("get_sales_by_month", "Get monthly sales for trend analysis"),
+        # Lending tools
+        ("search_lending", "Search lending with filters (book, segment, region, channel)"),
+        ("get_book_lending", "Get all loans for a specific book"),
+        ("get_lending_stats", "Get aggregate lending statistics"),
+        ("get_most_lent_books", "Get most lent books by quantity"),
+        ("get_lending_by_month", "Get monthly lending for trend analysis"),
     ]
 
     # Available MCP resources (from library_server.py)
@@ -123,7 +126,7 @@ class MCPClient:
         ("library://stats", "Aggregate library statistics"),
         ("library://missing_books", "List of all missing books"),
         ("library://location_map", "Location map with book counts"),
-        ("library://sales_stats", "Aggregate sales statistics"),
+        ("library://lending_stats", "Aggregate lending statistics"),
     ]
 
     def __init__(self, config: MCPClientConfig | None = None):
@@ -133,7 +136,7 @@ class MCPClient:
             config: Configuration settings. Uses defaults if not provided.
         """
         self.config = config or MCPClientConfig()
-        self._assistant = None
+        self._assistant: Any = None
 
     def show_settings_menu(self) -> bool:
         """Display interactive settings menu.
@@ -155,7 +158,7 @@ class MCPClient:
             print("=" * 50)
             print()
             print(f"  [1] Code Execution: {code_exec_status}")
-            print(f"  [2] RAG (Semantic Search + Sales): {rag_status}")
+            print(f"  [2] RAG (Semantic Search + Lending): {rag_status}")
             print(f"  [3] Dummy Tools (100 enterprise): {dummy_status}")
             print(f"  [4] Show Tool Calls: {tools_status}")
             print()
@@ -274,6 +277,7 @@ class MCPClient:
             # Process as a query to the assistant
             try:
                 print("\nProcessing query...")
+                assert self._assistant is not None
                 response = self._assistant.query(user_input)
                 print(f"\nAssistant: {response}")
             except Exception as e:
@@ -304,7 +308,7 @@ class MCPClient:
         print("  /resources  - List available MCP resources")
         print("  /settings   - Show current configuration")
         print("  /code       - Toggle code execution ON/OFF")
-        print("  /rag        - Toggle RAG (semantic search + sales)")
+        print("  /rag        - Toggle RAG (semantic search + lending)")
         print("  /dummy      - Toggle 100 dummy tools")
         print("  /clear      - Clear conversation history")
         print()
@@ -326,7 +330,7 @@ class MCPClient:
         )
         print("=" * 60)
 
-    def _create_assistant(self):
+    def _create_assistant(self) -> None:
         """Create the EnhancedLibraryAssistant with current config."""
         from src.agentic.agents.library_assistant_enhanced import EnhancedLibraryAssistant
         from src.agentic.llm.unified_client import UnifiedLLMClient
@@ -365,7 +369,7 @@ class MCPClient:
         print("Configuration:")
         print("-" * 40)
         print(f"  /code       - Toggle code execution ({code_status})")
-        print(f"  /rag        - Toggle RAG: semantic search + sales ({rag_status})")
+        print(f"  /rag        - Toggle RAG: semantic search + lending ({rag_status})")
         print(f"  /dummy      - Toggle 100 dummy tools ({dummy_status})")
         print("  /settings   - Show current settings")
         print()
@@ -396,7 +400,7 @@ class MCPClient:
         for name, description in self.MCP_TOOLS:
             print(f"  {name:25} - {description}")
         print("-" * 50)
-        print(f"  Total: {len(self.MCP_TOOLS)} tools (8 book + 5 sales)")
+        print(f"  Total: {len(self.MCP_TOOLS)} tools (8 book + 5 lending)")
 
         if self.config.enable_dummy_tools:
             print()
@@ -446,14 +450,14 @@ class MCPClient:
         print("Current Settings:")
         print("-" * 40)
         print(f"  Code Execution: {code_exec_status}")
-        print(f"  RAG (Search + Sales): {rag_status}")
+        print(f"  RAG (Search + Lending): {rag_status}")
         print(f"  Dummy Tools:    {dummy_status}")
         print(f"  Tool Display:   {tools_status}")
         print("-" * 40)
         if self.config.enable_rag:
-            print("  RAG includes: semantic_search, sales tools")
+            print("  RAG includes: semantic_search, lending tools")
         else:
-            print("  RAG disabled: no semantic search or sales tools")
+            print("  RAG disabled: no semantic search or lending tools")
 
     def _clear_conversation(self) -> None:
         """Clear conversation history and reset token counters."""
@@ -479,12 +483,12 @@ class MCPClient:
             print("  Conversation reset for new mode.")
 
     def _toggle_rag(self) -> None:
-        """Toggle RAG (semantic search + sales data)."""
+        """Toggle RAG (semantic search + lending data)."""
         self.config.enable_rag = not self.config.enable_rag
         self.config.save()
 
         status = "ON" if self.config.enable_rag else "OFF"
-        print(f"\nRAG (Semantic Search + Sales): {status}")
+        print(f"\nRAG (Semantic Search + Lending): {status}")
 
         # Update assistant
         if self._assistant is not None:
@@ -494,13 +498,13 @@ class MCPClient:
             print("  Now available:")
             print("    - semantic_search: Natural language book search")
             print(
-                "    - Sales tools: search_sales, get_book_sales, get_sales_stats, get_top_selling_books"
+                "    - Lending tools: search_lending, get_book_lending, get_lending_stats, get_most_lent_books"
             )
-            print("    - search_sales_semantic: Natural language sales search")
+            print("    - search_lending_semantic: Natural language lending search")
             print()
-            print("  Try: 'Find books about time travel' or 'What are the top selling books?'")
+            print("  Try: 'Find books about time travel' or 'What are the most lent books?'")
         else:
-            print("  Disabled: semantic_search, all sales tools")
+            print("  Disabled: semantic_search, all lending tools")
             print("  Only basic library tools are available.")
 
     def _toggle_dummy_tools(self) -> None:
@@ -537,7 +541,7 @@ class MCPClient:
         print("MCP Library Assistant")
         print("=" * 60)
         print(f"  Code Execution: {code_exec_status}")
-        print(f"  RAG (Search + Sales): {rag_status}")
+        print(f"  RAG (Search + Lending): {rag_status}")
         print(f"  Dummy Tools: {dummy_status}")
         print("-" * 60)
         print()
@@ -596,6 +600,7 @@ class MCPClient:
 
             # Process query
             try:
+                assert self._assistant is not None
                 response = self._assistant.query(user_input)
                 if response:
                     print(f"\nAssistant: {response}")

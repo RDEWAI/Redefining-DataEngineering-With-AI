@@ -59,9 +59,9 @@ class TestLibraryAssistantWithDummyTools:
         expected_count = base_tools + get_total_tool_count()
         actual_count = assistant.get_tool_count()
 
-        assert actual_count == expected_count, (
-            f"Expected {expected_count} tools (10 base + 100 dummy), got {actual_count}"
-        )
+        assert (
+            actual_count == expected_count
+        ), f"Expected {expected_count} tools (10 base + 100 dummy), got {actual_count}"
 
     @SKIP_IF_NO_DB
     def test_assistant_toggle_dummy_tools(self):
@@ -90,9 +90,9 @@ class TestLibraryAssistantWithDummyTools:
 
         # Tool count should increase by 100
         new_count = assistant.get_tool_count()
-        assert new_count == base_count + 100, (
-            f"Expected {base_count + 100} tools after enabling dummy tools, got {new_count}"
-        )
+        assert (
+            new_count == base_count + 100
+        ), f"Expected {base_count + 100} tools after enabling dummy tools, got {new_count}"
 
         # Disable dummy tools
         assistant.set_dummy_tools_enabled(False)
@@ -115,13 +115,13 @@ class TestLibraryAssistantWithDummyTools:
             enable_dummy_tools=True,
         )
 
-        # 10 base + 6 RAG/sales tools + 100 dummy = 116
+        # 10 base + 6 RAG/lending tools + 100 dummy = 116
         expected_count = 10 + 6 + 100
         actual_count = assistant.get_tool_count()
 
-        assert actual_count == expected_count, (
-            f"Expected {expected_count} tools (10 base + 6 RAG/sales + 100 dummy), got {actual_count}"
-        )
+        assert (
+            actual_count == expected_count
+        ), f"Expected {expected_count} tools (10 base + 6 RAG/lending + 100 dummy), got {actual_count}"
 
 
 class TestEnhancedLibraryAssistantWithDummyTools:
@@ -152,9 +152,9 @@ class TestEnhancedLibraryAssistantWithDummyTools:
 
         # 10 base + 0 RAG + 100 dummy = 110 (traditional uses 10 base tools)
         expected_traditional = 10 + 100
-        assert traditional_count == expected_traditional, (
-            f"Expected {expected_traditional} tools in traditional mode, got {traditional_count}"
-        )
+        assert (
+            traditional_count == expected_traditional
+        ), f"Expected {expected_traditional} tools in traditional mode, got {traditional_count}"
 
     @SKIP_IF_NO_DB
     def test_enhanced_assistant_code_execution_mode_with_dummy_tools(self):
@@ -180,9 +180,9 @@ class TestEnhancedLibraryAssistantWithDummyTools:
         expected_code = (
             10 + 100
         )  # 10 library API tools + dummy (includes get_library_stats and get_popular_books)
-        assert code_count == expected_code, (
-            f"Expected {expected_code} tools in code mode, got {code_count}"
-        )
+        assert (
+            code_count == expected_code
+        ), f"Expected {expected_code} tools in code mode, got {code_count}"
 
     @SKIP_IF_NO_DB
     def test_enhanced_assistant_mode_switching_with_dummy_tools(self):
@@ -300,12 +300,12 @@ class TestTokenUsageWithDummyTools:
         tools_with_dummy = get_tools_for_llm(include_rag=False, include_dummy_tools=True)
 
         # Verify counts
-        assert len(tools_without_dummy) == 10, (
-            f"Expected 10 base tools, got {len(tools_without_dummy)}"
-        )
-        assert len(tools_with_dummy) == 110, (
-            f"Expected 110 tools (10 + 100), got {len(tools_with_dummy)}"
-        )
+        assert (
+            len(tools_without_dummy) == 10
+        ), f"Expected 10 base tools, got {len(tools_without_dummy)}"
+        assert (
+            len(tools_with_dummy) == 110
+        ), f"Expected 110 tools (10 + 100), got {len(tools_with_dummy)}"
 
         # Verify difference is exactly 100
         diff = len(tools_with_dummy) - len(tools_without_dummy)
@@ -343,9 +343,9 @@ class TestTokenUsageWithDummyTools:
 
         # Verify significant increase
         # Enterprise dummy tools should add substantial token overhead
-        assert token_increase_est > 10000, (
-            f"Expected >10,000 token increase from dummy tools, got ~{token_increase_est}"
-        )
+        assert (
+            token_increase_est > 10000
+        ), f"Expected >10,000 token increase from dummy tools, got ~{token_increase_est}"
 
     def test_tool_api_generator_dummy_stubs_size(self):
         """Verify code execution mode API stubs are much smaller."""
@@ -374,9 +374,9 @@ class TestTokenUsageWithDummyTools:
         # API stubs should be much smaller than JSON tool definitions
         # This is the key token efficiency advantage
         # The API stubs include 100 dummy tools but should still be reasonable
-        assert api_tokens_est < 20000, (
-            f"API stubs too large: ~{api_tokens_est} tokens. Expected efficient representation."
-        )
+        assert (
+            api_tokens_est < 20000
+        ), f"API stubs too large: ~{api_tokens_est} tokens. Expected efficient representation."
 
 
 class TestToolAPIGeneratorWithDummyTools:

@@ -10,7 +10,7 @@
     {
       "name": "library-assistant-plugin",
       "source": "./library-assistant-plugin",
-      "description": "Library Assistant Agent for querying books, checking availability, locating physical copies, and analyzing sales data against the chapter-2 DuckDB library database"
+      "description": "Library Assistant Agent for querying books, checking availability, locating physical copies, and analyzing lending data against the chapter-2 DuckDB library database"
     }
   ]
 }

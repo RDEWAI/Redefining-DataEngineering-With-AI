@@ -300,8 +300,8 @@ From the repo root:
 
 - **query-library**: Search books, check availability, locate by cabinet/rack/row,
   list by category or status, identify weak RFID signal books, get library stats.
-- **analyze-library**: Analyze sales data — top sellers, revenue by segment/region/channel,
-  monthly trends, per-book sales breakdown.
+- **analyze-library**: Analyze lending data — most lent books, fees by segment/region/channel,
+  monthly trends, per-book lending breakdown.
 
 ### Hooks
 

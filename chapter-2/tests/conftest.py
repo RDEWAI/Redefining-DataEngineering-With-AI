@@ -14,6 +14,5 @@ load_dotenv(env_path)
 
 # Pre-import the external mcp package before any test imports
 # This prevents our src/mcp directory from shadowing the external mcp package
-import mcp.types  # noqa: F401, E402
-
 import mcp  # noqa: F401, E402
+import mcp.types  # noqa: F401, E402

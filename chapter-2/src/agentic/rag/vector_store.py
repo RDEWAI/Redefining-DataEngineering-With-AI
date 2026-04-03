@@ -243,10 +243,10 @@ class DuckDBVectorStore:
         return np.array(result[0], dtype=np.float32)
 
 
-class SalesVectorStore:
-    """Vector store for sales embeddings using DuckDB.
+class LendingVectorStore:
+    """Vector store for lending embeddings using DuckDB.
 
-    Stores sales embeddings and provides semantic search using cosine similarity.
+    Stores lending embeddings and provides semantic search using cosine similarity.
     Uses DuckDB's VSS extension for efficient vector operations.
 
     Args:
@@ -258,8 +258,8 @@ class SalesVectorStore:
         embedding_dim: Dimension of stored embeddings
 
     Example:
-        >>> store = SalesVectorStore("data/duckdb/chapter2.db")
-        >>> store.store_embeddings(["S0001", "S0002"], embeddings_array)
+        >>> store = LendingVectorStore("data/duckdb/chapter2.db")
+        >>> store.store_embeddings(["L0001", "L0002"], embeddings_array)
         >>> results = store.semantic_search(query_vector, top_k=10)
     """
 
@@ -272,7 +272,7 @@ class SalesVectorStore:
     ) -> None:
         """Initialize vector store with DuckDB connection.
 
-        Creates the sales_embeddings table if it doesn't exist.
+        Creates the lending_embeddings table if it doesn't exist.
 
         Args:
             db_path: Path to DuckDB database. If None, uses default path.
@@ -299,14 +299,14 @@ class SalesVectorStore:
             self._setup_table()
 
     def _setup_table(self) -> None:
-        """Create the sales_embeddings table if it doesn't exist."""
+        """Create the lending_embeddings table if it doesn't exist."""
         # Ensure library schema exists
         self.conn.execute("CREATE SCHEMA IF NOT EXISTS library")
 
         # Create embeddings table with FLOAT array for vector storage
         self.conn.execute(f"""
-            CREATE TABLE IF NOT EXISTS library.sales_embeddings (
-                sale_id VARCHAR PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS library.lending_embeddings (
+                loan_id VARCHAR PRIMARY KEY,
                 embedding FLOAT[{self.embedding_dim}] NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -320,35 +320,35 @@ class SalesVectorStore:
 
     def store_embeddings(
         self,
-        sale_ids: list[str],
+        loan_ids: list[str],
         embeddings: np.ndarray,
     ) -> None:
-        """Store sales embeddings in the vector store.
+        """Store lending embeddings in the vector store.
 
-        If a sale_id already exists, its embedding is updated.
+        If a loan_id already exists, its embedding is updated.
 
         Args:
-            sale_ids: List of sale IDs
-            embeddings: Numpy array of shape (n_sales, embedding_dim)
+            loan_ids: List of loan IDs
+            embeddings: Numpy array of shape (n_loans, embedding_dim)
 
         Raises:
-            ValueError: If sale_ids and embeddings lengths don't match
+            ValueError: If loan_ids and embeddings lengths don't match
         """
-        if len(sale_ids) != len(embeddings):
+        if len(loan_ids) != len(embeddings):
             raise ValueError(
-                f"sale_ids length ({len(sale_ids)}) must match "
+                f"loan_ids length ({len(loan_ids)}) must match "
                 f"embeddings length ({len(embeddings)})"
             )
 
         # Use INSERT OR REPLACE for upsert behavior
-        for sale_id, embedding in zip(sale_ids, embeddings):
+        for loan_id, embedding in zip(loan_ids, embeddings):
             embedding_list = embedding.tolist()
             self.conn.execute(
                 """
-                INSERT OR REPLACE INTO library.sales_embeddings (sale_id, embedding)
+                INSERT OR REPLACE INTO library.lending_embeddings (loan_id, embedding)
                 VALUES (?, ?)
                 """,
-                (sale_id, embedding_list),
+                (loan_id, embedding_list),
             )
 
     def semantic_search(
@@ -356,18 +356,18 @@ class SalesVectorStore:
         query_embedding: np.ndarray,
         top_k: int = 10,
     ) -> list[dict[str, Any]]:
-        """Search for similar sales using cosine similarity.
+        """Search for similar loans using cosine similarity.
 
         Args:
             query_embedding: Query vector of shape (embedding_dim,)
             top_k: Number of results to return
 
         Returns:
-            List of dicts with 'sale_id' and 'similarity' keys,
+            List of dicts with 'loan_id' and 'similarity' keys,
             sorted by similarity (highest first)
         """
         # Check if table is empty
-        count_row = self.conn.execute("SELECT COUNT(*) FROM library.sales_embeddings").fetchone()
+        count_row = self.conn.execute("SELECT COUNT(*) FROM library.lending_embeddings").fetchone()
         count = count_row[0] if count_row else 0
 
         if count == 0:
@@ -380,24 +380,24 @@ class SalesVectorStore:
         results = self.conn.execute(
             f"""
             SELECT
-                sale_id,
+                loan_id,
                 array_cosine_similarity(embedding, ?::FLOAT[{self.embedding_dim}]) as similarity
-            FROM library.sales_embeddings
+            FROM library.lending_embeddings
             ORDER BY similarity DESC
             LIMIT ?
             """,
             (query_list, top_k),
         ).fetchall()
 
-        return [{"sale_id": row[0], "similarity": row[1]} for row in results]
+        return [{"loan_id": row[0], "similarity": row[1]} for row in results]
 
     def get_embedding_count(self) -> int:
-        """Get total number of stored sales embeddings.
+        """Get total number of stored lending embeddings.
 
         Returns:
             Count of embeddings in the store
         """
-        result = self.conn.execute("SELECT COUNT(*) FROM library.sales_embeddings").fetchone()
+        result = self.conn.execute("SELECT COUNT(*) FROM library.lending_embeddings").fetchone()
         return result[0] if result else 0
 
     def create_hnsw_index(self) -> None:
@@ -407,8 +407,8 @@ class SalesVectorStore:
         query performance on large datasets.
         """
         self.conn.execute("""
-            CREATE INDEX IF NOT EXISTS sales_embeddings_hnsw_idx
-            ON library.sales_embeddings
+            CREATE INDEX IF NOT EXISTS lending_embeddings_hnsw_idx
+            ON library.lending_embeddings
             USING HNSW (embedding)
             WITH (metric = 'cosine')
         """)
