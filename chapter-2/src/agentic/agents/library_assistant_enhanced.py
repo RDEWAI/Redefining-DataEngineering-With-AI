@@ -125,6 +125,21 @@ CODE_EXECUTION_RAG_ADDITIONS = """
 - get_most_lent_books(limit) - Most lent books by quantity
 - search_lending_semantic(query, top_k) - Natural language lending search
 
+**library.replenish:** (ONLY AVAILABLE WITH RAG MODE)
+- Columns: replenish_id, book_id, replenish_date, quantity, unit_cost, total_cost, discount_pct, supplier, replenish_type, condition, funding_source, priority
+- Suppliers: "Ingram", "Baker & Taylor", "Brodart", "Direct Publisher", "Amazon Business"
+- Types: "New Acquisition", "Replacement", "Restock", "Donation", "Return Processing"
+- Conditions: "New", "Refurbished", "Used - Good", "Used - Fair"
+- Funding: "Operating Budget", "Grant", "Donation Fund", "Special Collection", "Emergency Fund"
+- Priority: "Urgent", "High", "Normal", "Low"
+
+**Replenish API Functions:** (ONLY AVAILABLE WITH RAG MODE)
+- search_replenish(book_id, supplier, replenish_type, condition, funding_source, priority, limit) - Filter replenish records
+- get_book_replenish(book_id) - Get all replenishments for a book
+- get_replenish_stats() - Aggregate replenishment statistics
+- get_most_replenished_books(limit) - Most replenished books by quantity
+- search_replenish_semantic(query, top_k) - Natural language replenish search
+
 **RAG/Semantic Search - WHEN TO USE:**
 - `semantic_search(query, top_k=5)` - Find books by meaning, not just keywords
 - `search_lending_semantic(query, top_k=10)` - Find loans by natural language
@@ -153,6 +168,15 @@ print(f"Found {len(results)} matching loans:\\n")
 for loan in results:
     print(f"  {loan['book_title']} - {loan['quantity']} copies to {loan['patron_segment']}")
     print(f"      Region: {loan['region']} | Channel: {loan['channel']} | Similarity: {loan['similarity']:.3f}")
+```
+
+**Example - Cross-dataset supply gap analysis (Lending vs Replenish):**
+```python
+# Compare lending demand vs replenishment supply by category
+lending_stats = get_lending_stats()
+replenish_stats = get_replenish_stats()
+print(f"Lending: {lending_stats['stats']['total_units']} copies lent")
+print(f"Replenish: {replenish_stats['stats']['total_units']} copies added")
 ```
 """
 
@@ -352,7 +376,7 @@ class EnhancedLibraryAssistant:
             # Code execution mode: base tools + RAG tools + dummy tools
             count = 10  # Base library tools (including get_library_stats and get_popular_books)
             if self._enable_rag:
-                count += 6  # semantic_search + 5 lending tools
+                count += 12  # semantic_search + 5 lending tools + 5 replenish tools + replenish_semantic
             if self._enable_dummy_tools:
                 count += get_total_tool_count()
             return count

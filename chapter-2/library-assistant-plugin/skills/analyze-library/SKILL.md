@@ -2,12 +2,14 @@
 name: analyze-library
 description: >
   Library data analysis skill for lending trends, fees, most lent books,
-  segment and regional breakdowns, and cross-referencing books with lending data.
-  Queries both library.books and library.lending tables in the chapter-2 DuckDB database.
-  Also known as: library analytics, lending analysis, book fees, most lent,
+  replenish analysis, supply chain, segment and regional breakdowns,
+  and cross-referencing books with lending and replenish data.
+  Queries library.books, library.lending, and library.replenish tables in the chapter-2 DuckDB database.
+  Also known as: library analytics, lending analysis, replenish analysis,
+  supply chain, restocking report, book fees, most lent, most replenished,
   lending report, library data analysis.
   Database: data/duckdb/chapter2.db, schema: library,
-  tables: library.books, library.lending
+  tables: library.books, library.lending, library.replenish
   Use when the user asks to:
   - Show most lent books or top loans
   - Analyze lending by patron segment, region, or channel
@@ -15,6 +17,9 @@ description: >
   - Find loans for a specific book
   - Show lending statistics or aggregate reports
   - Cross-reference book availability with lending performance
+  - Analyze replenishment data by supplier, type, condition, or funding
+  - Show supply gap analysis (lending vs replenishment)
+  - Find most replenished books or restocking trends
 argument-hint: "[analysis question]"
 allowed-tools: Read, Bash, AskUserQuestion
 context: fork
@@ -36,7 +41,7 @@ about book performance across patron segments, regions, and channels.
 
 - **Path**: `data/duckdb/chapter2.db` (relative to the chapter-2 directory)
 - **Schema**: `library`
-- **Tables**: `library.books`, `library.lending`
+- **Tables**: `library.books`, `library.lending`, `library.replenish`
 
 ### Schema: library.books
 
@@ -66,6 +71,23 @@ about book performance across patron segments, regions, and channels.
 | patron_segment | VARCHAR   | Individual / Corporate / Educational / Government            |
 | region         | VARCHAR   | Northeast / Southeast / Midwest / West / International       |
 | channel        | VARCHAR   | In-Store / Online / Phone Order / Partner                    |
+
+### Schema: library.replenish
+
+| Column         | Type      | Description                                                          |
+|----------------|-----------|----------------------------------------------------------------------|
+| replenish_id   | VARCHAR   | Unique replenish ID                                                  |
+| book_id        | VARCHAR   | FK to library.books                                                  |
+| quantity       | INTEGER   | Copies added                                                         |
+| unit_cost      | DOUBLE    | Cost per copy                                                        |
+| total_cost     | DOUBLE    | Total cost after discount                                            |
+| replenish_date | DATE      | Date of replenishment                                                |
+| discount_pct   | DOUBLE    | Bulk discount (0.0-100.0)                                            |
+| supplier       | VARCHAR   | Ingram / Baker & Taylor / Brodart / Direct Publisher / Amazon Business |
+| replenish_type | VARCHAR   | New Acquisition / Replacement / Restock / Donation / Return Processing |
+| condition      | VARCHAR   | New / Refurbished / Used - Good / Used - Fair                        |
+| funding_source | VARCHAR   | Operating Budget / Grant / Donation Fund / Special Collection / Emergency Fund |
+| priority       | VARCHAR   | Urgent / High / Normal / Low                                         |
 
 All queries MUST use the `-readonly` flag:
 ```bash
@@ -172,6 +194,45 @@ GROUP BY month
 ORDER BY month;"
 ```
 
+### Replenishment by supplier
+```bash
+duckdb data/duckdb/chapter2.db -readonly -c "
+SELECT supplier,
+       COUNT(*) AS records,
+       SUM(quantity) AS units_added,
+       ROUND(SUM(total_cost), 2) AS cost
+FROM library.replenish
+GROUP BY supplier
+ORDER BY cost DESC;"
+```
+
+### Most replenished books
+```bash
+duckdb data/duckdb/chapter2.db -readonly -c "
+SELECT b.book_id, b.title, b.author, b.category,
+       SUM(r.quantity) AS total_units,
+       ROUND(SUM(r.total_cost), 2) AS total_cost
+FROM library.replenish r
+JOIN library.books b ON r.book_id = b.book_id
+GROUP BY b.book_id, b.title, b.author, b.category
+ORDER BY total_units DESC
+LIMIT 10;"
+```
+
+### Supply gap analysis (lending vs replenish by category)
+```bash
+duckdb data/duckdb/chapter2.db -readonly -c "
+SELECT b.category,
+       COALESCE(SUM(l.quantity), 0) AS total_lent,
+       COALESCE(SUM(r.quantity), 0) AS total_replenished,
+       COALESCE(SUM(r.quantity), 0) - COALESCE(SUM(l.quantity), 0) AS net_supply
+FROM library.books b
+LEFT JOIN library.lending l ON b.book_id = l.book_id
+LEFT JOIN library.replenish r ON b.book_id = r.book_id
+GROUP BY b.category
+ORDER BY net_supply;"
+```
+
 ### Check if lending table exists before querying
 ```bash
 duckdb data/duckdb/chapter2.db -readonly -c "
@@ -185,8 +246,8 @@ ORDER BY table_name;"
 ## Workflow
 
 1. **Verify table availability**: Run the table-check query first if unsure whether
-   lending data has been loaded. If `library.lending` is missing, tell the user to run
-   `make load-data` from the chapter-2 directory.
+   lending or replenish data has been loaded. If `library.lending` or `library.replenish`
+   is missing, tell the user to run `make load-data` from the chapter-2 directory.
 
 2. **Understand the question**: Determine whether the user wants aggregates, trends,
    per-book breakdowns, or cross-referenced book/lending data.

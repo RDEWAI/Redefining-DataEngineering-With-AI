@@ -61,7 +61,7 @@ This requires database setup:
 RAG LLM, MCP and Agentic sections require the library database so if you set this now you don't need to repeat again:
 
 ```bash
-# Load 200 books into DuckDB
+# Load 200 books + 750 loans + 500 replenishments into DuckDB
 make load-data
 make verify-data    # Expected: ✓ Found 200 books
 ```

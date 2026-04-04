@@ -333,6 +333,131 @@ LENDING_TOOL_DEFINITIONS: list[ToolDefinition] = [
     ),
 ]
 
+# Replenish tool definitions (only available when RAG is enabled)
+REPLENISH_TOOL_DEFINITIONS: list[ToolDefinition] = [
+    ToolDefinition(
+        name="search_replenish",
+        description="Search replenishment records with optional filters for book, supplier, type, condition, funding source, or priority. Use this for queries about restocking, acquisitions, or supply chain data.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "book_id": {
+                    "type": "string",
+                    "description": "Filter by book ID (e.g., 'B001')",
+                },
+                "supplier": {
+                    "type": "string",
+                    "enum": [
+                        "Ingram",
+                        "Baker & Taylor",
+                        "Brodart",
+                        "Direct Publisher",
+                        "Amazon Business",
+                    ],
+                    "description": "Filter by supplier",
+                },
+                "replenish_type": {
+                    "type": "string",
+                    "enum": [
+                        "New Acquisition",
+                        "Replacement",
+                        "Restock",
+                        "Donation",
+                        "Return Processing",
+                    ],
+                    "description": "Filter by replenishment type",
+                },
+                "condition": {
+                    "type": "string",
+                    "enum": ["New", "Refurbished", "Used - Good", "Used - Fair"],
+                    "description": "Filter by book condition",
+                },
+                "funding_source": {
+                    "type": "string",
+                    "enum": [
+                        "Operating Budget",
+                        "Grant",
+                        "Donation Fund",
+                        "Special Collection",
+                        "Emergency Fund",
+                    ],
+                    "description": "Filter by funding source",
+                },
+                "priority": {
+                    "type": "string",
+                    "enum": ["Urgent", "High", "Normal", "Low"],
+                    "description": "Filter by priority level",
+                },
+                "limit": {
+                    "type": "integer",
+                    "default": 20,
+                    "description": "Maximum number of results",
+                },
+            },
+            "required": [],
+        },
+    ),
+    ToolDefinition(
+        name="get_book_replenish",
+        description="Get all replenishment records for a specific book, including total cost and units added.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "book_id": {
+                    "type": "string",
+                    "description": "Book ID (e.g., 'B001')",
+                },
+            },
+            "required": ["book_id"],
+        },
+    ),
+    ToolDefinition(
+        name="get_replenish_stats",
+        description="Get aggregate statistics about replenishments: total cost, units added, counts by supplier/type/funding/condition.",
+        parameters={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    ToolDefinition(
+        name="get_most_replenished_books",
+        description="Get the most replenished books ranked by total quantity added.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "default": 10,
+                    "description": "Maximum number of results (default 10)",
+                },
+            },
+            "required": [],
+        },
+    ),
+]
+
+# Replenish semantic search tool (RAG-enabled)
+REPLENISH_SEMANTIC_SEARCH_TOOL = ToolDefinition(
+    name="search_replenish_semantic",
+    description="Search replenishment data using natural language semantic similarity. Use for queries like 'urgent programming book restocks', 'donated fiction books', 'bulk orders from Ingram'. Returns replenishments with similarity scores.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Natural language query describing replenishment patterns (e.g., 'bulk restocks of programming books')",
+            },
+            "top_k": {
+                "type": "integer",
+                "default": 10,
+                "description": "Maximum number of results (default 10)",
+            },
+        },
+        "required": ["query"],
+    },
+)
+
 # Lending semantic search tool (RAG-enabled)
 LENDING_SEMANTIC_SEARCH_TOOL = ToolDefinition(
     name="search_lending_semantic",
@@ -375,6 +500,12 @@ TOOL_FUNCTION_MAP: dict[str, Callable[..., dict[str, Any]]] = {
     "get_lending_stats": library_tools.get_lending_stats,
     "get_most_lent_books": library_tools.get_most_lent_books,
     "search_lending_semantic": library_tools.search_lending_semantic,
+    # Replenish tools (only used when RAG is enabled)
+    "search_replenish": library_tools.search_replenish,
+    "get_book_replenish": library_tools.get_book_replenish,
+    "get_replenish_stats": library_tools.get_replenish_stats,
+    "get_most_replenished_books": library_tools.get_most_replenished_books,
+    "search_replenish_semantic": library_tools.search_replenish_semantic,
 }
 
 
@@ -398,6 +529,9 @@ def get_tools_for_llm(
         # Add lending tools (only available with RAG)
         tools.extend([tool.to_openai_format() for tool in LENDING_TOOL_DEFINITIONS])
         tools.append(LENDING_SEMANTIC_SEARCH_TOOL.to_openai_format())
+        # Add replenish tools (only available with RAG)
+        tools.extend([tool.to_openai_format() for tool in REPLENISH_TOOL_DEFINITIONS])
+        tools.append(REPLENISH_SEMANTIC_SEARCH_TOOL.to_openai_format())
     if include_dummy_tools:
         dummy_defs = generate_dummy_tool_definitions()
         tools.extend([t.to_openai_format() for t in dummy_defs])
@@ -533,6 +667,9 @@ class LibraryAssistant:
             # Add lending tools (only available with RAG)
             tools.extend(LENDING_TOOL_DEFINITIONS)
             tools.append(LENDING_SEMANTIC_SEARCH_TOOL)
+            # Add replenish tools (only available with RAG)
+            tools.extend(REPLENISH_TOOL_DEFINITIONS)
+            tools.append(REPLENISH_SEMANTIC_SEARCH_TOOL)
         if self._enable_dummy_tools:
             tools.extend(generate_dummy_tool_definitions())
         return tools

@@ -119,6 +119,12 @@ class MCPClient:
         ("get_lending_stats", "Get aggregate lending statistics"),
         ("get_most_lent_books", "Get most lent books by quantity"),
         ("get_lending_by_month", "Get monthly lending for trend analysis"),
+        # Replenish tools
+        ("search_replenish", "Search replenish with filters (supplier, type, condition)"),
+        ("get_book_replenish", "Get all replenishments for a specific book"),
+        ("get_replenish_stats", "Get aggregate replenishment statistics"),
+        ("get_most_replenished_books", "Get most replenished books by quantity"),
+        ("get_replenish_by_month", "Get monthly replenishments for trend analysis"),
     ]
 
     # Available MCP resources (from library_server.py)
@@ -127,6 +133,7 @@ class MCPClient:
         ("library://missing_books", "List of all missing books"),
         ("library://location_map", "Location map with book counts"),
         ("library://lending_stats", "Aggregate lending statistics"),
+        ("library://replenish_stats", "Aggregate replenishment statistics"),
     ]
 
     def __init__(self, config: MCPClientConfig | None = None):
@@ -400,7 +407,7 @@ class MCPClient:
         for name, description in self.MCP_TOOLS:
             print(f"  {name:25} - {description}")
         print("-" * 50)
-        print(f"  Total: {len(self.MCP_TOOLS)} tools (8 book + 5 lending)")
+        print(f"  Total: {len(self.MCP_TOOLS)} tools (8 book + 5 lending + 5 replenish)")
 
         if self.config.enable_dummy_tools:
             print()
@@ -501,10 +508,14 @@ class MCPClient:
                 "    - Lending tools: search_lending, get_book_lending, get_lending_stats, get_most_lent_books"
             )
             print("    - search_lending_semantic: Natural language lending search")
+            print(
+                "    - Replenish tools: search_replenish, get_book_replenish, get_replenish_stats, get_most_replenished_books"
+            )
+            print("    - search_replenish_semantic: Natural language replenish search")
             print()
-            print("  Try: 'Find books about time travel' or 'What are the most lent books?'")
+            print("  Try: 'Find books about time travel' or 'Which categories have a supply gap?'")
         else:
-            print("  Disabled: semantic_search, all lending tools")
+            print("  Disabled: semantic_search, all lending and replenish tools")
             print("  Only basic library tools are available.")
 
     def _toggle_dummy_tools(self) -> None:
