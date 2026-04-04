@@ -115,13 +115,13 @@ class TestLibraryAssistantWithDummyTools:
             enable_dummy_tools=True,
         )
 
-        # 10 base + 6 RAG/lending tools + 100 dummy = 116
-        expected_count = 10 + 6 + 100
+        # 10 base + 12 RAG/lending/replenish tools + 100 dummy = 122
+        expected_count = 10 + 12 + 100
         actual_count = assistant.get_tool_count()
 
         assert (
             actual_count == expected_count
-        ), f"Expected {expected_count} tools (10 base + 6 RAG/lending + 100 dummy), got {actual_count}"
+        ), f"Expected {expected_count} tools (10 base + 12 RAG/lending/replenish + 100 dummy), got {actual_count}"
 
 
 class TestEnhancedLibraryAssistantWithDummyTools:

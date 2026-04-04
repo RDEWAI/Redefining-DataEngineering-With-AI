@@ -44,6 +44,36 @@ make test           # Run all tests
 - **Dependencies**: jinja2, pyyaml, openpyxl (for STM Excel workbook generation)
 - **Tests**: `cd chapter-4 && uv run pytest tests/ -v`
 
+## Interactive Testing with TMUX
+
+When testing interactive commands (assistants, REPLs, semantic search, etc.), use the tmux MCP tools
+instead of running commands directly. This allows Claude Code to start, interact with, and verify
+interactive applications.
+
+**Workflow:**
+1. Create a tmux session: `mcp__tmux__create-session` with a descriptive name (e.g., `ch2-test`)
+2. Print the attach command so the user can watch in another terminal:
+   ```
+   tmux attach-session -t <session-name>
+   ```
+3. Use `mcp__tmux__execute-command` with `rawMode=true` to run interactive commands
+4. Use `mcp__tmux__capture-pane` to read output and verify startup/results
+5. Send quit/exit commands via `execute-command` with `rawMode=true`
+6. Kill the session when done: `mcp__tmux__kill-session`
+
+**Example — testing `make assistant`:**
+```
+# Create session
+mcp__tmux__create-session name="ch2-test"
+# Tell user: "Run `tmux attach-session -t ch2-test` in another terminal to watch"
+# Launch interactive command
+mcp__tmux__execute-command paneId="..." command="make assistant" rawMode=true
+# Wait, then capture output
+mcp__tmux__capture-pane paneId="..." lines=20
+# Quit
+mcp__tmux__execute-command paneId="..." command="/quit" rawMode=true
+```
+
 ## Pre-commit Hooks
 
 When adding a new chapter directory (e.g., `chapter-4/`), update `.pre-commit-config.yaml`:

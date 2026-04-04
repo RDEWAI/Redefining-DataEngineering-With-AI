@@ -1398,7 +1398,9 @@ def search_replenish_semantic(
                     rec_dict["book_author"] = book.author
                 enriched_results.append(rec_dict)
 
-        message = f"Found {len(enriched_results)} replenishment(s) semantically similar to '{query}'"
+        message = (
+            f"Found {len(enriched_results)} replenishment(s) semantically similar to '{query}'"
+        )
 
         return {
             "success": True,

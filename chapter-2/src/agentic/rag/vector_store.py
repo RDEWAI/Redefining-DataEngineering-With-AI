@@ -534,9 +534,7 @@ class ReplenishVectorStore:
 
     def get_embedding_count(self) -> int:
         """Get total number of stored replenish embeddings."""
-        result = self.conn.execute(
-            "SELECT COUNT(*) FROM library.replenish_embeddings"
-        ).fetchone()
+        result = self.conn.execute("SELECT COUNT(*) FROM library.replenish_embeddings").fetchone()
         return result[0] if result else 0
 
     def create_hnsw_index(self) -> None:

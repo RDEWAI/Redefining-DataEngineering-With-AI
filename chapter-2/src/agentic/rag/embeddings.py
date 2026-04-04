@@ -576,9 +576,7 @@ def generate_replenish_embeddings() -> None:
 
     if not records:
         conn.close()
-        raise RuntimeError(
-            "No replenishments found in database. Run 'make load-data' first."
-        )
+        raise RuntimeError("No replenishments found in database. Run 'make load-data' first.")
 
     print(f"Found {len(records)} replenishments")
 

@@ -376,7 +376,9 @@ class EnhancedLibraryAssistant:
             # Code execution mode: base tools + RAG tools + dummy tools
             count = 10  # Base library tools (including get_library_stats and get_popular_books)
             if self._enable_rag:
-                count += 12  # semantic_search + 5 lending tools + 5 replenish tools + replenish_semantic
+                count += (
+                    12  # semantic_search + 5 lending tools + 5 replenish tools + replenish_semantic
+                )
             if self._enable_dummy_tools:
                 count += get_total_tool_count()
             return count

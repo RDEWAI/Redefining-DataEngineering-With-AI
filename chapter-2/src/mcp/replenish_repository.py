@@ -157,7 +157,9 @@ class ReplenishRepository:
 
         if funding_source is not None:
             fund_val = (
-                funding_source.value if isinstance(funding_source, FundingSource) else funding_source
+                funding_source.value
+                if isinstance(funding_source, FundingSource)
+                else funding_source
             )
             sql += " AND funding_source = ?"
             params.append(fund_val)
@@ -201,7 +203,10 @@ class ReplenishRepository:
             FROM library.replenish
             GROUP BY supplier
         """)
-        by_supplier = {row[0]: {"cost": float(row[1]) if row[1] is not None else 0.0, "count": row[2]} for row in supplier_result}
+        by_supplier = {
+            row[0]: {"cost": float(row[1]) if row[1] is not None else 0.0, "count": row[2]}  # type: ignore[arg-type]
+            for row in supplier_result
+        }
 
         # By type
         type_result = self._execute_query("""
@@ -209,7 +214,10 @@ class ReplenishRepository:
             FROM library.replenish
             GROUP BY replenish_type
         """)
-        by_type = {row[0]: {"cost": float(row[1]) if row[1] is not None else 0.0, "count": row[2]} for row in type_result}
+        by_type = {
+            row[0]: {"cost": float(row[1]) if row[1] is not None else 0.0, "count": row[2]}  # type: ignore[arg-type]
+            for row in type_result
+        }
 
         # By funding source
         funding_result = self._execute_query("""
@@ -217,7 +225,10 @@ class ReplenishRepository:
             FROM library.replenish
             GROUP BY funding_source
         """)
-        by_funding = {row[0]: {"cost": float(row[1]) if row[1] is not None else 0.0, "count": row[2]} for row in funding_result}
+        by_funding = {
+            row[0]: {"cost": float(row[1]) if row[1] is not None else 0.0, "count": row[2]}  # type: ignore[arg-type]
+            for row in funding_result
+        }
 
         # By condition
         condition_result = self._execute_query("""
@@ -225,7 +236,10 @@ class ReplenishRepository:
             FROM library.replenish
             GROUP BY condition
         """)
-        by_condition = {row[0]: {"cost": float(row[1]) if row[1] is not None else 0.0, "count": row[2]} for row in condition_result}
+        by_condition = {
+            row[0]: {"cost": float(row[1]) if row[1] is not None else 0.0, "count": row[2]}  # type: ignore[arg-type]
+            for row in condition_result
+        }
 
         return {
             "total_records": totals[0],
