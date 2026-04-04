@@ -244,12 +244,12 @@ class LendingRepository:
         """Get lending aggregated by month."""
         sql = """
             SELECT
-                strftime('%Y-%m', loan_date) as month,
+                strftime(loan_date, '%Y-%m') as month,
                 COUNT(*) as total_loans,
                 SUM(total_fees) as total_fees,
                 SUM(quantity) as total_units
             FROM library.lending
-            GROUP BY strftime('%Y-%m', loan_date)
+            GROUP BY strftime(loan_date, '%Y-%m')
             ORDER BY month
         """
         rows = self._execute_query(sql)

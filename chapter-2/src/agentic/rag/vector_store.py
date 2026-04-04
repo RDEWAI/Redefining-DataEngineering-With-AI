@@ -414,6 +414,141 @@ class LendingVectorStore:
         """)
 
 
+class ReplenishVectorStore:
+    """Vector store for replenishment embeddings using DuckDB.
+
+    Stores replenishment embeddings and provides semantic search using cosine similarity.
+    Uses DuckDB's VSS extension for efficient vector operations.
+
+    Args:
+        db_path: Path to DuckDB database file
+        embedding_dim: Dimension of embedding vectors (default 384)
+
+    Example:
+        >>> store = ReplenishVectorStore("data/duckdb/chapter2.db")
+        >>> store.store_embeddings(["R0001", "R0002"], embeddings_array)
+        >>> results = store.semantic_search(query_vector, top_k=10)
+    """
+
+    def __init__(
+        self,
+        db_path: str | None = None,
+        embedding_dim: int = DEFAULT_EMBEDDING_DIM,
+        read_only: bool = False,
+        connection: duckdb.DuckDBPyConnection | None = None,
+    ) -> None:
+        """Initialize vector store with DuckDB connection."""
+        self.embedding_dim = embedding_dim
+        self.read_only = read_only
+        self._owns_connection = connection is None
+
+        if connection is not None:
+            self.conn = connection
+            self.db_path = None
+        else:
+            if db_path is None:
+                db_path = str(
+                    Path(__file__).parent.parent.parent.parent / "data" / "duckdb" / "chapter2.db"
+                )
+            self.db_path = db_path
+            self.conn = duckdb.connect(db_path, read_only=read_only)
+
+        if not read_only:
+            self._setup_table()
+
+    def _setup_table(self) -> None:
+        """Create the replenish_embeddings table if it doesn't exist."""
+        self.conn.execute("CREATE SCHEMA IF NOT EXISTS library")
+
+        self.conn.execute(f"""
+            CREATE TABLE IF NOT EXISTS library.replenish_embeddings (
+                replenish_id VARCHAR PRIMARY KEY,
+                embedding FLOAT[{self.embedding_dim}] NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+    def close(self) -> None:
+        """Close the database connection if owned by this store."""
+        if self._owns_connection and self.conn is not None:
+            self.conn.close()
+            self.conn = None  # type: ignore[assignment]
+
+    def store_embeddings(
+        self,
+        replenish_ids: list[str],
+        embeddings: np.ndarray,
+    ) -> None:
+        """Store replenishment embeddings in the vector store."""
+        if len(replenish_ids) != len(embeddings):
+            raise ValueError(
+                f"replenish_ids length ({len(replenish_ids)}) must match "
+                f"embeddings length ({len(embeddings)})"
+            )
+
+        self.conn.execute("BEGIN TRANSACTION")
+        try:
+            for replenish_id, embedding in zip(replenish_ids, embeddings):
+                embedding_list = embedding.tolist()
+                self.conn.execute(
+                    """
+                    INSERT OR REPLACE INTO library.replenish_embeddings (replenish_id, embedding)
+                    VALUES (?, ?)
+                    """,
+                    (replenish_id, embedding_list),
+                )
+            self.conn.execute("COMMIT")
+        except Exception:
+            self.conn.execute("ROLLBACK")
+            raise
+
+    def semantic_search(
+        self,
+        query_embedding: np.ndarray,
+        top_k: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Search for similar replenishments using cosine similarity."""
+        count_row = self.conn.execute(
+            "SELECT COUNT(*) FROM library.replenish_embeddings"
+        ).fetchone()
+        count = count_row[0] if count_row else 0
+
+        if count == 0:
+            return []
+
+        query_list = query_embedding.tolist()
+
+        results = self.conn.execute(
+            f"""
+            SELECT
+                replenish_id,
+                array_cosine_similarity(embedding, ?::FLOAT[{self.embedding_dim}]) as similarity
+            FROM library.replenish_embeddings
+            ORDER BY similarity DESC
+            LIMIT ?
+            """,
+            (query_list, top_k),
+        ).fetchall()
+
+        return [{"replenish_id": row[0], "similarity": row[1]} for row in results]
+
+    def get_embedding_count(self) -> int:
+        """Get total number of stored replenish embeddings."""
+        result = self.conn.execute(
+            "SELECT COUNT(*) FROM library.replenish_embeddings"
+        ).fetchone()
+        return result[0] if result else 0
+
+    def create_hnsw_index(self) -> None:
+        """Create HNSW index for faster approximate search."""
+        self.conn.execute("""
+            CREATE INDEX IF NOT EXISTS replenish_embeddings_hnsw_idx
+            ON library.replenish_embeddings
+            USING HNSW (embedding)
+            WITH (metric = 'cosine')
+        """)
+
+
 def semantic_search_cli() -> None:
     """Interactive CLI for semantic search.
 

@@ -26,6 +26,7 @@ from src.agentic.library.domain import BookStatus, Category
 from src.agentic.library.repository import BookRepository
 
 from .lending_repository import LendingRepository
+from .replenish_repository import ReplenishRepository
 
 # Initialize FastMCP server
 mcp = FastMCP("LibraryServer")
@@ -37,6 +38,7 @@ DB_PATH = os.getenv(
 # Use read_only=True to allow concurrent access from multiple MCP connections
 repository = BookRepository(DB_PATH, read_only=True)
 lending_repository = LendingRepository(db_path=DB_PATH, read_only=True)
+replenish_repository = ReplenishRepository(db_path=DB_PATH, read_only=True)
 
 
 # ============================================================================
@@ -435,6 +437,151 @@ def get_lending_by_month() -> list[dict[str, Any]] | dict[str, str]:
 
 
 # ============================================================================
+# Replenish Tools - 5 replenish operations
+# ============================================================================
+
+
+@mcp.tool()
+def search_replenish(
+    book_id: str | None = None,
+    supplier: str | None = None,
+    replenish_type: str | None = None,
+    condition: str | None = None,
+    funding_source: str | None = None,
+    priority: str | None = None,
+    limit: int = 20,
+) -> list[dict[str, Any]] | dict[str, str]:
+    """Search replenishment records with optional filters.
+
+    Args:
+        book_id: Filter by book ID (e.g., 'B001')
+        supplier: Filter by supplier (Ingram, Baker & Taylor, Brodart, Direct Publisher, Amazon Business)
+        replenish_type: Filter by type (New Acquisition, Replacement, Restock, Donation, Return Processing)
+        condition: Filter by condition (New, Refurbished, Used - Good, Used - Fair)
+        funding_source: Filter by funding (Operating Budget, Grant, Donation Fund, Special Collection, Emergency Fund)
+        priority: Filter by priority (Urgent, High, Normal, Low)
+        limit: Maximum number of results (1-100, default: 20)
+
+    Returns:
+        List of matching replenishment records
+    """
+    try:
+        if limit < 1 or limit > 100:
+            return {"error": "Limit must be between 1 and 100"}
+
+        records = replenish_repository.search_replenish(
+            book_id=book_id,
+            supplier=supplier,
+            replenish_type=replenish_type,
+            condition=condition,
+            funding_source=funding_source,
+            priority=priority,
+            limit=limit,
+        )
+
+        return [rec.to_dict() for rec in records]
+
+    except Exception as e:
+        return {"error": f"Search failed: {str(e)}"}
+
+
+@mcp.tool()
+def get_book_replenish(book_id: str) -> dict[str, Any]:
+    """Get all replenishments for a specific book with summary statistics.
+
+    Args:
+        book_id: Book ID (e.g., 'B001')
+
+    Returns:
+        Replenishment records with total units and cost
+    """
+    try:
+        book = repository.get_book_by_id(book_id)
+        if not book:
+            return {"error": f"No book found with ID '{book_id}'"}
+
+        records = replenish_repository.get_replenish_for_book(book_id)
+        records_list = [rec.to_dict() for rec in records]
+
+        total_cost = sum(float(rec.total_cost) for rec in records)
+        total_units = sum(rec.quantity for rec in records)
+
+        return {
+            "book_id": book_id,
+            "book_title": book.title,
+            "book_author": book.author,
+            "replenish_count": len(records),
+            "total_units": total_units,
+            "total_cost": round(total_cost, 2),
+            "replenishments": records_list,
+        }
+
+    except Exception as e:
+        return {"error": f"Failed to get book replenishments: {str(e)}"}
+
+
+@mcp.tool()
+def get_replenish_stats() -> dict[str, Any]:
+    """Get aggregate statistics about all replenishments.
+
+    Returns:
+        Statistics including total records, cost, units, and breakdowns
+    """
+    try:
+        stats = replenish_repository.get_replenish_stats()
+        return {
+            "total_records": stats["total_records"],
+            "total_cost": round(stats["total_cost"], 2),
+            "total_units": stats["total_units"],
+            "avg_cost": round(stats["avg_cost"], 2),
+            "unique_books": stats["unique_books"],
+            "by_supplier": stats["by_supplier"],
+            "by_type": stats["by_type"],
+            "by_funding": stats["by_funding"],
+            "by_condition": stats["by_condition"],
+        }
+
+    except Exception as e:
+        return {"error": f"Failed to get replenish stats: {str(e)}"}
+
+
+@mcp.tool()
+def get_most_replenished_books(limit: int = 10) -> list[dict[str, Any]] | dict[str, str]:
+    """Get most replenished books ranked by total quantity added.
+
+    Args:
+        limit: Maximum number of results (1-50, default: 10)
+
+    Returns:
+        List of most replenished books with statistics
+    """
+    try:
+        if limit < 1 or limit > 50:
+            return {"error": "Limit must be between 1 and 50"}
+
+        top_books = replenish_repository.get_most_replenished_books(limit=limit)
+        return top_books
+
+    except Exception as e:
+        return {"error": f"Failed to get most replenished books: {str(e)}"}
+
+
+@mcp.tool()
+def get_replenish_by_month() -> list[dict[str, Any]] | dict[str, str]:
+    """Get replenishments aggregated by month for trend analysis.
+
+    Returns:
+        List of monthly replenishments with totals and costs
+    """
+    try:
+        monthly = replenish_repository.get_replenish_by_month()
+        return monthly
+
+    except Exception as e:
+        return {"error": f"Failed to get replenish by month: {str(e)}"}
+
+
+# ============================================================================
 # Resources - 4 library data resources
 # ============================================================================
 
@@ -523,6 +670,21 @@ def get_lending_stats_resource() -> str:
 
     except Exception as e:
         return json.dumps({"error": f"Failed to get lending stats: {str(e)}"})
+
+
+@mcp.resource("library://replenish_stats")
+def get_replenish_stats_resource() -> str:
+    """Get aggregate replenishment statistics.
+
+    Returns:
+        JSON with replenish totals and breakdowns by supplier, type, funding, condition
+    """
+    try:
+        stats = replenish_repository.get_replenish_stats()
+        return json.dumps(stats, indent=2, default=float)
+
+    except Exception as e:
+        return json.dumps({"error": f"Failed to get replenish stats: {str(e)}"})
 
 
 # ============================================================================

@@ -21,9 +21,11 @@ if TYPE_CHECKING:
     try:
         from library.domain import Book
         from library.lending_domain import Loan
+        from library.replenish_domain import Replenishment
     except ImportError:
         from src.agentic.library.domain import Book
         from src.agentic.library.lending_domain import Loan
+        from src.agentic.library.replenish_domain import Replenishment
 
 # Default model: all-MiniLM-L6-v2
 # - 384 dimensions
@@ -130,6 +132,67 @@ def create_lending_text_for_embedding(
 
     # Temporal context
     month_name = loan.loan_date.strftime("%B %Y")
+    parts.append(f"Date: {month_name}")
+
+    return " | ".join(parts)
+
+
+def create_replenish_text_for_embedding(
+    replenishment: "Replenishment",
+    book_title: str,
+    book_author: str,
+    book_category: str,
+) -> str:
+    """Create text content for replenishment embedding.
+
+    Combines replenishment transaction data with book metadata into a single text string
+    optimized for semantic embedding. This enables queries like "urgent programming
+    restocks", "donated fiction books", "bulk orders from Ingram".
+
+    Args:
+        replenishment: Replenishment instance
+        book_title: Title of the book replenished
+        book_author: Author of the book replenished
+        book_category: Category of the book replenished
+
+    Returns:
+        Combined text string for embedding
+    """
+    parts = []
+
+    # Book context
+    parts.append(f"Replenishment of '{book_title}' by {book_author}")
+    parts.append(f"Book category: {book_category}")
+
+    # Quantity context
+    if replenishment.quantity > 1:
+        parts.append(f"Bulk order: {replenishment.quantity} copies")
+    else:
+        parts.append("Single copy order")
+
+    # Supplier context
+    parts.append(f"Supplier: {replenishment.supplier.value}")
+
+    # Type context
+    parts.append(f"Type: {replenishment.replenish_type.value}")
+
+    # Condition context
+    parts.append(f"Condition: {replenishment.condition.value}")
+
+    # Funding context
+    parts.append(f"Funding: {replenishment.funding_source.value}")
+
+    # Priority context
+    parts.append(f"Priority: {replenishment.priority.value}")
+
+    # Cost context
+    if replenishment.has_discount:
+        parts.append(f"Discounted order: {replenishment.discount_pct}% off")
+    else:
+        parts.append("No discount")
+
+    # Temporal context
+    month_name = replenishment.replenish_date.strftime("%B %Y")
     parts.append(f"Date: {month_name}")
 
     return " | ".join(parts)
@@ -306,6 +369,55 @@ class EmbeddingGenerator:
         ]
         return self.embed_texts(texts)
 
+    def embed_replenishment(
+        self,
+        replenishment: "Replenishment",
+        book_title: str,
+        book_author: str,
+        book_category: str,
+    ) -> np.ndarray:
+        """Generate embedding for a single replenishment.
+
+        Args:
+            replenishment: Replenishment instance to embed
+            book_title: Title of the book replenished
+            book_author: Author of the book replenished
+            book_category: Category of the book replenished
+
+        Returns:
+            Numpy array of shape (dimension,) with normalized embedding
+        """
+        text = create_replenish_text_for_embedding(
+            replenishment=replenishment,
+            book_title=book_title,
+            book_author=book_author,
+            book_category=book_category,
+        )
+        return self.embed_text(text)
+
+    def embed_replenishments(
+        self,
+        replenishments_with_book_info: list[tuple["Replenishment", str, str, str]],
+    ) -> np.ndarray:
+        """Generate embeddings for multiple replenishments in batch.
+
+        Args:
+            replenishments_with_book_info: List of tuples (Replenishment, book_title, book_author, book_category)
+
+        Returns:
+            Numpy array of shape (len(replenishments), dimension) with normalized embeddings
+        """
+        texts = [
+            create_replenish_text_for_embedding(
+                replenishment=rec,
+                book_title=title,
+                book_author=author,
+                book_category=category,
+            )
+            for rec, title, author, category in replenishments_with_book_info
+        ]
+        return self.embed_texts(texts)
+
 
 def generate_all_embeddings() -> None:
     """Generate embeddings for all books in the library database.
@@ -427,3 +539,73 @@ def generate_lending_embeddings() -> None:
     conn.close()
 
     print(f"Successfully generated and stored {len(loans_with_book_info)} lending embeddings")
+
+
+def generate_replenish_embeddings() -> None:
+    """Generate embeddings for all replenishments in the library database.
+
+    This is a CLI utility function called by `make generate-replenish-embeddings`.
+    It loads all replenishments with their book info from the database, generates embeddings,
+    and stores them in the replenish vector store.
+
+    Raises:
+        RuntimeError: If database is not accessible or no replenishments found
+    """
+    from pathlib import Path
+
+    from src.agentic.library.replenish_repository import ReplenishRepository
+    from src.agentic.library.repository import BookRepository
+    from src.agentic.rag.vector_store import ReplenishVectorStore
+
+    # Paths relative to chapter-2/
+    db_path = Path(__file__).parent.parent.parent.parent / "data" / "duckdb" / "chapter2.db"
+
+    if not db_path.exists():
+        raise RuntimeError(f"Database not found at {db_path}. Run 'make load-data' first.")
+
+    import duckdb
+
+    # Use a single write connection for both reading and writing
+    print("Loading replenishments from database...")
+    conn = duckdb.connect(str(db_path), read_only=False)
+    book_repo = BookRepository(connection=conn)
+    replenish_repo = ReplenishRepository(connection=conn)
+
+    # Get all replenishments
+    records = replenish_repo.search_replenish(limit=10000)
+
+    if not records:
+        conn.close()
+        raise RuntimeError(
+            "No replenishments found in database. Run 'make load-data' first."
+        )
+
+    print(f"Found {len(records)} replenishments")
+
+    # Build book info lookup
+    print("Loading book information...")
+    books = book_repo.search_books("", limit=1000)
+    book_info = {book.book_id: (book.title, book.author, book.category.value) for book in books}
+
+    # Prepare replenishments with book info
+    recs_with_book_info = []
+    for rec in records:
+        if rec.book_id in book_info:
+            title, author, category = book_info[rec.book_id]
+            recs_with_book_info.append((rec, title, author, category))
+
+    print(f"Matched {len(recs_with_book_info)} replenishments with book information")
+
+    print("Initializing embedding generator...")
+    generator = EmbeddingGenerator()
+
+    print("Generating replenish embeddings (this may take a moment)...")
+    embeddings = generator.embed_replenishments(recs_with_book_info)
+
+    print("Storing replenish embeddings in vector store...")
+    store = ReplenishVectorStore(connection=conn)
+    replenish_ids = [rec.replenish_id for rec, _, _, _ in recs_with_book_info]
+    store.store_embeddings(replenish_ids, embeddings)
+    conn.close()
+
+    print(f"Successfully generated and stored {len(recs_with_book_info)} replenish embeddings")

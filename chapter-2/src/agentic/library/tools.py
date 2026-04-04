@@ -12,11 +12,13 @@ from typing import Any
 
 from .domain import BookStatus, Category
 from .lending_repository import LendingRepository, get_lending_repository
+from .replenish_repository import ReplenishRepository, get_replenish_repository
 from .repository import BookRepository, get_repository
 
 # Module-level repository instances (lazy initialization)
 _repository: BookRepository | None = None
 _lending_repository: LendingRepository | None = None
+_replenish_repository: ReplenishRepository | None = None
 
 
 def _get_repo() -> BookRepository:
@@ -55,16 +57,36 @@ def set_lending_repository(repo: LendingRepository) -> None:
     _lending_repository = repo
 
 
+def _get_replenish_repo() -> ReplenishRepository:
+    """Get or create the module-level replenish repository instance."""
+    global _replenish_repository
+    if _replenish_repository is None:
+        _replenish_repository = get_replenish_repository()
+    return _replenish_repository
+
+
+def set_replenish_repository(repo: ReplenishRepository) -> None:
+    """Set the replenish repository instance for testing.
+
+    Args:
+        repo: ReplenishRepository instance to use
+    """
+    global _replenish_repository
+    _replenish_repository = repo
+
+
 def close_repository() -> None:
     """Close the module-level repository connections.
 
     This releases file locks to allow subprocess access to the database.
     """
-    global _repository, _lending_repository
+    global _repository, _lending_repository, _replenish_repository
     if _repository is not None:
         _repository.close()
     if _lending_repository is not None:
         _lending_repository.close()
+    if _replenish_repository is not None:
+        _replenish_repository.close()
 
 
 def reopen_repository(db_path: str | None = None, read_only: bool = True) -> None:
@@ -74,7 +96,7 @@ def reopen_repository(db_path: str | None = None, read_only: bool = True) -> Non
         db_path: Optional database path (uses default if not provided)
         read_only: If True, open database in read-only mode
     """
-    global _repository, _lending_repository
+    global _repository, _lending_repository, _replenish_repository
     import os
 
     path: str = (
@@ -84,6 +106,8 @@ def reopen_repository(db_path: str | None = None, read_only: bool = True) -> Non
         _repository.reopen(path, read_only=read_only)
     if _lending_repository is not None and not _lending_repository.is_open():
         _lending_repository.reopen(path, read_only=read_only)
+    if _replenish_repository is not None and not _replenish_repository.is_open():
+        _replenish_repository.reopen(path, read_only=read_only)
 
 
 def search_books(
@@ -957,6 +981,36 @@ def get_most_lent_books(limit: int = 10) -> dict[str, Any]:
         }
 
 
+def get_lending_by_month() -> dict[str, Any]:
+    """Get lending aggregated by month for trend analysis.
+
+    Returns:
+        Dictionary with success, count, months, and message
+    """
+    try:
+        repo = _get_lending_repo()
+        monthly = repo.get_lending_by_month()
+
+        if monthly:
+            message = f"Lending data for {len(monthly)} months"
+        else:
+            message = "No lending data found"
+
+        return {
+            "success": True,
+            "count": len(monthly),
+            "months": monthly,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "count": 0,
+            "months": [],
+            "message": f"Error getting lending by month: {str(e)}",
+        }
+
+
 def search_lending_semantic(
     query: str,
     top_k: int = 10,
@@ -1037,6 +1091,330 @@ def search_lending_semantic(
         }
 
 
+# =============================================================================
+# Replenish tools
+# =============================================================================
+
+# Replenish RAG components (lazy initialization)
+_replenish_embedding_generator = None
+_replenish_vector_store = None
+
+
+def _get_replenish_rag_components() -> tuple:
+    """Get or create replenish RAG components (embedding generator and vector store)."""
+    global _replenish_embedding_generator, _replenish_vector_store
+
+    if _replenish_embedding_generator is None:
+        try:
+            from rag.embeddings import EmbeddingGenerator
+        except ImportError:
+            from src.agentic.rag.embeddings import EmbeddingGenerator
+
+        _replenish_embedding_generator = EmbeddingGenerator()
+
+    if _replenish_vector_store is None:
+        from pathlib import Path
+
+        try:
+            from rag.vector_store import ReplenishVectorStore
+        except ImportError:
+            from src.agentic.rag.vector_store import ReplenishVectorStore
+
+        db_path = Path(__file__).parent.parent.parent.parent / "data" / "duckdb" / "chapter2.db"
+        _replenish_vector_store = ReplenishVectorStore(db_path=str(db_path), read_only=True)
+
+    return _replenish_embedding_generator, _replenish_vector_store
+
+
+def search_replenish(
+    book_id: str | None = None,
+    supplier: str | None = None,
+    replenish_type: str | None = None,
+    condition: str | None = None,
+    funding_source: str | None = None,
+    priority: str | None = None,
+    limit: int = 20,
+) -> dict[str, Any]:
+    """Search replenishment records with optional filters.
+
+    Args:
+        book_id: Filter by book ID
+        supplier: Filter by supplier (Ingram, Baker & Taylor, Brodart, Direct Publisher, Amazon Business)
+        replenish_type: Filter by type (New Acquisition, Replacement, Restock, Donation, Return Processing)
+        condition: Filter by condition (New, Refurbished, Used - Good, Used - Fair)
+        funding_source: Filter by funding source
+        priority: Filter by priority (Urgent, High, Normal, Low)
+        limit: Maximum number of results (default 20)
+
+    Returns:
+        Dictionary with success, count, replenishments, and message
+    """
+    try:
+        limit = max(1, min(limit, 100))
+        repo = _get_replenish_repo()
+        records = repo.search_replenish(
+            book_id=book_id,
+            supplier=supplier,
+            replenish_type=replenish_type,
+            condition=condition,
+            funding_source=funding_source,
+            priority=priority,
+            limit=limit,
+        )
+
+        records_list = [rec.to_dict() for rec in records]
+
+        filters = []
+        if book_id:
+            filters.append(f"book '{book_id}'")
+        if supplier:
+            filters.append(f"supplier '{supplier}'")
+        if replenish_type:
+            filters.append(f"type '{replenish_type}'")
+        if condition:
+            filters.append(f"condition '{condition}'")
+        if funding_source:
+            filters.append(f"funding '{funding_source}'")
+        if priority:
+            filters.append(f"priority '{priority}'")
+
+        filter_msg = f" for {', '.join(filters)}" if filters else ""
+        message = f"Found {len(records)} replenishment(s){filter_msg}"
+
+        return {
+            "success": True,
+            "count": len(records_list),
+            "replenishments": records_list,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "count": 0,
+            "replenishments": [],
+            "message": f"Error searching replenishments: {str(e)}",
+        }
+
+
+def get_book_replenish(book_id: str) -> dict[str, Any]:
+    """Get all replenishments for a specific book.
+
+    Args:
+        book_id: Book ID (e.g., "B001")
+
+    Returns:
+        Dictionary with success, count, replenishments, book_info, and message
+    """
+    try:
+        replenish_repo = _get_replenish_repo()
+        book_repo = _get_repo()
+
+        book = book_repo.get_book_by_id(book_id)
+        if not book:
+            return {
+                "success": False,
+                "count": 0,
+                "replenishments": [],
+                "book_info": None,
+                "message": f"No book found with ID '{book_id}'",
+            }
+
+        records = replenish_repo.get_replenish_for_book(book_id)
+        records_list = [rec.to_dict() for rec in records]
+
+        total_cost = sum(float(rec.total_cost) for rec in records)
+        total_units = sum(rec.quantity for rec in records)
+
+        message = f"'{book.title}' has {len(records)} replenishment(s): {total_units} copies added, ${total_cost:.2f} total cost"
+
+        return {
+            "success": True,
+            "count": len(records_list),
+            "replenishments": records_list,
+            "book_info": {"title": book.title, "author": book.author},
+            "total_units": total_units,
+            "total_cost": total_cost,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "count": 0,
+            "replenishments": [],
+            "book_info": None,
+            "message": f"Error getting book replenishments: {str(e)}",
+        }
+
+
+def get_replenish_stats() -> dict[str, Any]:
+    """Get aggregate statistics about replenishments.
+
+    Returns:
+        Dictionary with success, stats, and message
+    """
+    try:
+        repo = _get_replenish_repo()
+        stats = repo.get_replenish_stats()
+
+        message = (
+            f"Total: {stats['total_records']} replenishments, ${stats['total_cost']:,.2f} cost, "
+            f"{stats['total_units']} copies added, {stats['unique_books']} unique books"
+        )
+
+        return {
+            "success": True,
+            "stats": stats,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "stats": None,
+            "message": f"Error retrieving replenish statistics: {str(e)}",
+        }
+
+
+def get_most_replenished_books(limit: int = 10) -> dict[str, Any]:
+    """Get most replenished books ranked by total quantity added.
+
+    Args:
+        limit: Maximum number of results (default 10)
+
+    Returns:
+        Dictionary with success, count, books, and message
+    """
+    try:
+        limit = max(1, min(limit, 50))
+        repo = _get_replenish_repo()
+        top_books = repo.get_most_replenished_books(limit=limit)
+
+        if top_books:
+            top_book = top_books[0]
+            message = f"Top {len(top_books)} most replenished books. #1: '{top_book['title']}' with {top_book['total_quantity']} copies added (${top_book['total_cost']:.2f})"
+        else:
+            message = "No replenishment data found"
+
+        return {
+            "success": True,
+            "count": len(top_books),
+            "books": top_books,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "count": 0,
+            "books": [],
+            "message": f"Error getting most replenished books: {str(e)}",
+        }
+
+
+def get_replenish_by_month() -> dict[str, Any]:
+    """Get replenishments aggregated by month for trend analysis.
+
+    Returns:
+        Dictionary with success, count, months, and message
+    """
+    try:
+        repo = _get_replenish_repo()
+        monthly = repo.get_replenish_by_month()
+
+        if monthly:
+            message = f"Replenish data for {len(monthly)} months"
+        else:
+            message = "No replenish data found"
+
+        return {
+            "success": True,
+            "count": len(monthly),
+            "months": monthly,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "count": 0,
+            "months": [],
+            "message": f"Error getting replenish by month: {str(e)}",
+        }
+
+
+def search_replenish_semantic(
+    query: str,
+    top_k: int = 10,
+) -> dict[str, Any]:
+    """Search replenishments using natural language semantic similarity.
+
+    Uses RAG with vector embeddings to find replenishments semantically similar
+    to the query. Useful for queries like "urgent programming book restocks",
+    "donated fiction books", "bulk orders from Ingram".
+
+    Args:
+        query: Natural language search query
+        top_k: Maximum number of results (default 10)
+
+    Returns:
+        Dictionary with success, count, replenishments, and message
+    """
+    try:
+        generator, store = _get_replenish_rag_components()
+
+        # Check if embeddings exist
+        if store.get_embedding_count() == 0:
+            return {
+                "success": False,
+                "count": 0,
+                "replenishments": [],
+                "message": "Replenish semantic search not available. Run 'make generate-replenish-embeddings' first.",
+            }
+
+        # Generate query embedding
+        query_embedding = generator.embed_text(query)
+
+        # Search for similar replenishments
+        results = store.semantic_search(query_embedding, top_k=top_k)
+
+        if not results:
+            return {
+                "success": True,
+                "count": 0,
+                "replenishments": [],
+                "message": f"No replenishments found semantically similar to '{query}'",
+            }
+
+        # Enrich results with replenishment and book details
+        replenish_repo = _get_replenish_repo()
+        book_repo = _get_repo()
+        enriched_results = []
+        for result in results:
+            rec = replenish_repo.get_by_id(result["replenish_id"])
+            if rec:
+                rec_dict = rec.to_dict()
+                rec_dict["similarity"] = round(result["similarity"], 3)
+                # Add book info
+                book = book_repo.get_book_by_id(rec.book_id)
+                if book:
+                    rec_dict["book_title"] = book.title
+                    rec_dict["book_author"] = book.author
+                enriched_results.append(rec_dict)
+
+        message = f"Found {len(enriched_results)} replenishment(s) semantically similar to '{query}'"
+
+        return {
+            "success": True,
+            "count": len(enriched_results),
+            "replenishments": enriched_results,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "count": 0,
+            "replenishments": [],
+            "message": f"Error in replenish semantic search: {str(e)}",
+        }
+
+
 # Export all tool functions
 __all__ = [
     # Book tools (always available)
@@ -1057,10 +1435,19 @@ __all__ = [
     "get_book_lending",
     "get_lending_stats",
     "get_most_lent_books",
+    "get_lending_by_month",
     "search_lending_semantic",
+    # Replenish tools (requires RAG mode)
+    "search_replenish",
+    "get_book_replenish",
+    "get_replenish_stats",
+    "get_most_replenished_books",
+    "get_replenish_by_month",
+    "search_replenish_semantic",
     # Repository management
     "set_repository",
     "set_lending_repository",
+    "set_replenish_repository",
     "close_repository",
     "reopen_repository",
 ]

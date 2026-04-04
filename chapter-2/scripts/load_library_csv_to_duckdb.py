@@ -26,6 +26,7 @@ SCRIPT_DIR = Path(__file__).parent
 CHAPTER_DIR = SCRIPT_DIR.parent
 DEFAULT_CSV_PATH = CHAPTER_DIR / "data" / "raw" / "library" / "library_dataset_random.csv"
 DEFAULT_LENDING_CSV_PATH = CHAPTER_DIR / "data" / "raw" / "library" / "lending_data.csv"
+DEFAULT_REPLENISH_CSV_PATH = CHAPTER_DIR / "data" / "raw" / "library" / "replenish_data.csv"
 DEFAULT_DB_PATH = CHAPTER_DIR / "data" / "duckdb" / "chapter2.db"
 
 
@@ -39,6 +40,8 @@ def create_table(conn: duckdb.DuckDBPyConnection) -> None:
     """Create the library.books table with all constraints."""
     # Drop existing tables if they exist (for fresh load)
     # Must drop dependent tables first due to foreign key constraints on books
+    conn.execute("DROP TABLE IF EXISTS library.replenish_embeddings")
+    conn.execute("DROP TABLE IF EXISTS library.replenish")
     conn.execute("DROP TABLE IF EXISTS library.lending_embeddings")
     conn.execute("DROP TABLE IF EXISTS library.lending")
     conn.execute("DROP TABLE IF EXISTS library.book_embeddings")
@@ -95,8 +98,10 @@ def load_csv(conn: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
     if not csv_path.exists():
         raise FileNotFoundError(f"CSV file not found: {csv_path}")
 
-    # Load CSV with column mapping
-    conn.execute(f"""
+    # Load CSV with column mapping (use resolved path to prevent injection)
+    safe_path = str(csv_path.resolve())
+    conn.execute(
+        """
         INSERT INTO library.books
         SELECT
             Book_ID as book_id,
@@ -110,8 +115,10 @@ def load_csv(conn: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
             Signal_Strength as signal_strength,
             Timestamp as timestamp,
             Status as status
-        FROM read_csv('{csv_path}', header=true, auto_detect=true)
-    """)
+        FROM read_csv($1, header=true, auto_detect=true)
+        """,
+        [safe_path],
+    )
 
     # Get record count
     result = conn.execute("SELECT COUNT(*) FROM library.books").fetchone()
@@ -285,8 +292,10 @@ def load_lending_csv(conn: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
     if not csv_path.exists():
         raise FileNotFoundError(f"Lending CSV file not found: {csv_path}")
 
-    # Load CSV - column names match directly
-    conn.execute(f"""
+    # Load CSV - column names match directly (use resolved path to prevent injection)
+    safe_path = str(csv_path.resolve())
+    conn.execute(
+        """
         INSERT INTO library.lending
         SELECT
             loan_id,
@@ -301,8 +310,10 @@ def load_lending_csv(conn: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
             patron_segment,
             region,
             channel
-        FROM read_csv('{csv_path}', header=true, auto_detect=true)
-    """)
+        FROM read_csv($1, header=true, auto_detect=true)
+        """,
+        [safe_path],
+    )
 
     # Get record count
     result = conn.execute("SELECT COUNT(*) FROM library.lending").fetchone()
@@ -431,6 +442,208 @@ def print_lending_summary(conn: duckdb.DuckDBPyConnection) -> None:
         print(f"    - {channel}: {count}")
 
 
+# =============================================================================
+# Replenish data functions
+# =============================================================================
+
+
+def create_replenish_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Create the library.replenish table with all constraints."""
+    conn.execute("DROP TABLE IF EXISTS library.replenish")
+
+    conn.execute("""
+        CREATE TABLE library.replenish (
+            replenish_id VARCHAR PRIMARY KEY,
+            book_id VARCHAR NOT NULL REFERENCES library.books(book_id),
+            replenish_date DATE NOT NULL,
+            quantity INTEGER NOT NULL CHECK (quantity >= 1),
+            unit_cost DECIMAL(10,2) NOT NULL CHECK (unit_cost >= 0),
+            total_cost DECIMAL(10,2) NOT NULL CHECK (total_cost >= 0),
+            discount_pct DECIMAL(5,2) NOT NULL DEFAULT 0 CHECK (discount_pct >= 0 AND discount_pct <= 100),
+            supplier VARCHAR NOT NULL CHECK (supplier IN ('Ingram', 'Baker & Taylor', 'Brodart', 'Direct Publisher', 'Amazon Business')),
+            replenish_type VARCHAR NOT NULL CHECK (replenish_type IN ('New Acquisition', 'Replacement', 'Restock', 'Donation', 'Return Processing')),
+            condition VARCHAR NOT NULL CHECK (condition IN ('New', 'Refurbished', 'Used - Good', 'Used - Fair')),
+            funding_source VARCHAR NOT NULL CHECK (funding_source IN ('Operating Budget', 'Grant', 'Donation Fund', 'Special Collection', 'Emergency Fund')),
+            priority VARCHAR NOT NULL CHECK (priority IN ('Urgent', 'High', 'Normal', 'Low'))
+        )
+    """)
+    print("✓ Created table 'library.replenish'")
+
+
+def create_replenish_indexes(conn: duckdb.DuckDBPyConnection) -> None:
+    """Create indexes for common replenish query patterns."""
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_replenish_book_id ON library.replenish(book_id)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_replenish_date ON library.replenish(replenish_date)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_replenish_supplier ON library.replenish(supplier)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_replenish_type ON library.replenish(replenish_type)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_replenish_priority ON library.replenish(priority)"
+    )
+    print("✓ Created replenish indexes")
+
+
+def load_replenish_csv(conn: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
+    """Load replenish CSV data into the library.replenish table.
+
+    Args:
+        conn: DuckDB connection
+        csv_path: Path to the replenish CSV file
+
+    Returns:
+        Number of records loaded
+
+    Raises:
+        FileNotFoundError: If CSV file doesn't exist
+    """
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Replenish CSV file not found: {csv_path}")
+
+    # Use resolved path to prevent injection
+    safe_path = str(csv_path.resolve())
+    conn.execute(
+        """
+        INSERT INTO library.replenish
+        SELECT
+            replenish_id,
+            book_id,
+            replenish_date,
+            quantity,
+            unit_cost,
+            total_cost,
+            discount_pct,
+            supplier,
+            replenish_type,
+            condition,
+            funding_source,
+            priority
+        FROM read_csv($1, header=true, auto_detect=true)
+        """,
+        [safe_path],
+    )
+
+    result = conn.execute("SELECT COUNT(*) FROM library.replenish").fetchone()
+    count = result[0] if result else 0
+
+    print(f"✓ Loaded {count} replenish records from CSV")
+    return count
+
+
+def validate_replenish_data(conn: duckdb.DuckDBPyConnection) -> bool:
+    """Validate loaded replenish data meets expected constraints.
+
+    Returns:
+        True if validation passes, False otherwise
+    """
+    errors = []
+
+    # Check record count (should be > 0)
+    result = conn.execute("SELECT COUNT(*) FROM library.replenish").fetchone()
+    count = result[0] if result else 0
+    if count == 0:
+        errors.append("No replenish records found")
+
+    # Check for duplicate replenish IDs
+    result = conn.execute("""
+        SELECT COUNT(*) - COUNT(DISTINCT replenish_id) as duplicates
+        FROM library.replenish
+    """).fetchone()
+    if result and result[0] > 0:
+        errors.append(f"Found {result[0]} duplicate replenish IDs")
+
+    # Check foreign key integrity (all book_ids exist)
+    result = conn.execute("""
+        SELECT COUNT(*) FROM library.replenish r
+        WHERE NOT EXISTS (SELECT 1 FROM library.books b WHERE b.book_id = r.book_id)
+    """).fetchone()
+    if result and result[0] > 0:
+        errors.append(f"Found {result[0]} replenish records with invalid book_id references")
+
+    # Check suppliers
+    result = conn.execute("""
+        SELECT DISTINCT supplier FROM library.replenish
+        WHERE supplier NOT IN ('Ingram', 'Baker & Taylor', 'Brodart', 'Direct Publisher', 'Amazon Business')
+    """).fetchall()
+    if result:
+        invalid = [row[0] for row in result]
+        errors.append(f"Invalid suppliers: {invalid}")
+
+    # Check replenish types
+    result = conn.execute("""
+        SELECT DISTINCT replenish_type FROM library.replenish
+        WHERE replenish_type NOT IN ('New Acquisition', 'Replacement', 'Restock', 'Donation', 'Return Processing')
+    """).fetchall()
+    if result:
+        invalid = [row[0] for row in result]
+        errors.append(f"Invalid replenish types: {invalid}")
+
+    # Check conditions
+    result = conn.execute("""
+        SELECT DISTINCT condition FROM library.replenish
+        WHERE condition NOT IN ('New', 'Refurbished', 'Used - Good', 'Used - Fair')
+    """).fetchall()
+    if result:
+        invalid = [row[0] for row in result]
+        errors.append(f"Invalid conditions: {invalid}")
+
+    if errors:
+        print("✗ Replenish validation failed:")
+        for error in errors:
+            print(f"  - {error}")
+        return False
+
+    print("✓ Replenish data validation passed")
+    return True
+
+
+def print_replenish_summary(conn: duckdb.DuckDBPyConnection) -> None:
+    """Print summary statistics about the loaded replenish data."""
+    print("\n📊 Replenish Data Summary:")
+
+    result = conn.execute("""
+        SELECT
+            COUNT(*) as total_records,
+            SUM(total_cost) as total_cost,
+            SUM(quantity) as total_units,
+            COUNT(DISTINCT book_id) as unique_books
+        FROM library.replenish
+    """).fetchone()
+    if result is None:
+        print("  No replenish data found")
+        return
+    print(f"  Total records: {result[0]}")
+    print(f"  Total cost: ${result[1]:,.2f}")
+    print(f"  Total copies added: {result[2]}")
+    print(f"  Unique books replenished: {result[3]}")
+
+    # By supplier
+    result = conn.execute("""
+        SELECT supplier, COUNT(*) as count, SUM(total_cost) as cost
+        FROM library.replenish
+        GROUP BY supplier
+        ORDER BY cost DESC
+    """).fetchall()
+    print("  By supplier:")
+    for supplier, count, cost in result:
+        print(f"    - {supplier}: {count} records (${cost:,.2f})")
+
+    # By type
+    result = conn.execute("""
+        SELECT replenish_type, COUNT(*) as count
+        FROM library.replenish
+        GROUP BY replenish_type
+        ORDER BY count DESC
+    """).fetchall()
+    print("  By type:")
+    for rtype, count in result:
+        print(f"    - {rtype}: {count}")
+
+
 def main() -> int:
     """Main entry point for the script.
 
@@ -461,12 +674,25 @@ def main() -> int:
         action="store_true",
         help="Also load lending data into the database",
     )
+    parser.add_argument(
+        "--replenish-csv-path",
+        type=Path,
+        default=DEFAULT_REPLENISH_CSV_PATH,
+        help=f"Path to replenish CSV file (default: {DEFAULT_REPLENISH_CSV_PATH})",
+    )
+    parser.add_argument(
+        "--include-replenish",
+        action="store_true",
+        help="Also load replenish data into the database",
+    )
     args = parser.parse_args()
 
     print(f"Loading library data from: {args.csv_path}")
     print(f"Into database: {args.db_path}")
     if args.include_lending:
         print(f"Also loading lending from: {args.lending_csv_path}")
+    if args.include_replenish:
+        print(f"Also loading replenish from: {args.replenish_csv_path}")
     print()
 
     try:
@@ -520,6 +746,31 @@ def main() -> int:
             # Print lending summary
             print_lending_summary(conn)
 
+        # Load replenish data if requested
+        replenish_count = 0
+        if args.include_replenish:
+            print("\n" + "=" * 50)
+            print("Loading replenish data...")
+            print("=" * 50)
+
+            # Create replenish table (after books so FK works)
+            create_replenish_table(conn)
+
+            # Load replenish CSV
+            replenish_count = load_replenish_csv(conn, args.replenish_csv_path)
+
+            # Create replenish indexes
+            create_replenish_indexes(conn)
+
+            # Validate replenish data
+            if not validate_replenish_data(conn):
+                print("\n⚠️  Replenish data loaded but validation failed.")
+                conn.close()
+                return 1
+
+            # Print replenish summary
+            print_replenish_summary(conn)
+
         # Close connection
         conn.close()
 
@@ -528,6 +779,8 @@ def main() -> int:
         print(f"   Book records: {record_count}")
         if args.include_lending:
             print(f"   Lending records: {lending_count}")
+        if args.include_replenish:
+            print(f"   Replenish records: {replenish_count}")
 
         return 0
 

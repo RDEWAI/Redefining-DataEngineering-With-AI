@@ -4,6 +4,152 @@ This chapter demonstrates modern AI engineering patterns using a Library Managem
 
 ---
 
+## Architecture Overview
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#4A90D9', 'primaryTextColor': '#fff', 'lineColor': '#5C6BC0', 'secondaryColor': '#E8EAF6', 'tertiaryColor': '#F5F5F5'}}}%%
+
+flowchart TB
+    subgraph DATA["<b>Data Layer</b>"]
+        direction LR
+        CSV_B["library_dataset_random.csv<br/><i>200 books</i>"]
+        CSV_L["lending_data.csv<br/><i>750 loans</i>"]
+        CSV_R["replenish_data.csv<br/><i>500 replenishments</i>"]
+    end
+
+    subgraph SCRIPTS["<b>Scripts</b>"]
+        GEN_L["generate_lending_data.py"]
+        GEN_R["generate_replenish_data.py"]
+        LOADER["load_library_csv_to_duckdb.py"]
+    end
+
+    subgraph DB["<b>DuckDB — chapter2.db</b>"]
+        direction LR
+        T_BOOKS["library.books"]
+        T_LENDING["library.lending"]
+        T_REPLENISH["library.replenish"]
+        T_EMB_B["library.book_embeddings"]
+        T_EMB_L["library.lending_embeddings"]
+        T_EMB_R["library.replenish_embeddings"]
+    end
+
+    subgraph DOMAIN["<b>Domain &amp; Repository Layer</b>"]
+        direction LR
+        D_BOOK["Book<br/>BookStatus, Category, Location"]
+        D_LOAN["Loan<br/>PatronSegment, Region, Channel"]
+        D_REPL["Replenishment<br/>Supplier, ReplenishType, Priority"]
+        R_BOOK["BookRepository"]
+        R_LEND["LendingRepository"]
+        R_REPL["ReplenishRepository"]
+    end
+
+    subgraph TOOLS["<b>Tool Layer — src/agentic/library/tools.py</b>"]
+        direction LR
+        T1["search_books<br/>get_book_details<br/>check_availability<br/>locate_book"]
+        T2["search_lending<br/>get_most_lent_books<br/>get_lending_stats"]
+        T3["search_replenish<br/>get_most_replenished_books<br/>get_replenish_stats"]
+    end
+
+    subgraph RAG["<b>Section 1 — RAG</b>"]
+        direction TB
+        EMB["EmbeddingGenerator<br/><i>all-MiniLM-L6-v2 (384-dim)</i>"]
+        VS["Vector Store<br/><i>BookVectorStore</i><br/><i>LendingVectorStore</i><br/><i>ReplenishVectorStore</i>"]
+        SEM["Semantic Search<br/><i>Cosine Similarity</i>"]
+        EMB --> VS --> SEM
+    end
+
+    subgraph MCP["<b>Section 2 — MCP</b>"]
+        direction TB
+        SRV["FastMCP Server<br/><i>18 tools, 5 resources</i><br/><i>2 prompt templates</i>"]
+        CLI["MCP Client<br/><i>Settings Menu</i><br/><i>Code Execution toggle</i>"]
+        CE["Code Execution Mode<br/><i>~48% token reduction (8 tools)</i><br/><i>~80% token reduction (100 tools)</i>"]
+        SRV --- CLI
+        CLI --- CE
+    end
+
+    subgraph AGENTS["<b>Section 3 — Agentic AI</b>"]
+        direction TB
+        AST["Library Assistant<br/><i>Traditional JSON tool calling</i>"]
+        ORCH["Orchestrator Agent<br/><i>LLM-based planning</i>"]
+        subgraph WORKERS["Specialist Agents"]
+            direction LR
+            SA["SearchAgent"]
+            AA["AnalyticsAgent"]
+            RA["RecommendationAgent"]
+        end
+        ORCH --> WORKERS
+    end
+
+    subgraph PLUGIN["<b>Section 4 — Claude Code Plugin</b>"]
+        direction TB
+        SK1["query-library<br/><i>Book search &amp; location</i>"]
+        SK2["analyze-library<br/><i>Lending &amp; replenish analytics</i>"]
+        HOOK["PreToolUse Hook<br/><i>enforce-readonly-queries.py</i>"]
+        SK1 --- HOOK
+        SK2 --- HOOK
+    end
+
+    subgraph USER["<b>User Entry Points</b>"]
+        direction LR
+        M1["make llm / make llm-rag"]
+        M2["make mcp-assistant"]
+        M3["make assistant / make multi-agent"]
+        M4["/query-library / /analyze-library"]
+    end
+
+    %% Data flow
+    GEN_L --> CSV_L
+    GEN_R --> CSV_R
+    CSV_B & CSV_L & CSV_R --> LOADER
+    LOADER --> T_BOOKS & T_LENDING & T_REPLENISH
+
+    T_BOOKS --> R_BOOK
+    T_LENDING --> R_LEND
+    T_REPLENISH --> R_REPL
+    R_BOOK -.- D_BOOK
+    R_LEND -.- D_LOAN
+    R_REPL -.- D_REPL
+
+    R_BOOK & R_LEND & R_REPL --> TOOLS
+
+    %% Tools fan out to consumers
+    TOOLS --> RAG
+    TOOLS --> MCP
+    TOOLS --> AGENTS
+    TOOLS --> PLUGIN
+
+    %% Embeddings flow
+    T_BOOKS & T_LENDING & T_REPLENISH --> EMB
+    EMB --> T_EMB_B & T_EMB_L & T_EMB_R
+
+    %% RAG feeds into agents and MCP
+    SEM -.->|"enable_rag=True"| CLI
+    SEM -.->|"semantic search"| SA
+
+    %% User entry points
+    M1 --> RAG
+    M2 --> MCP
+    M3 --> AGENTS
+    M4 --> PLUGIN
+
+    %% Styling
+    style DATA fill:#E3F2FD,stroke:#1565C0,color:#000
+    style DB fill:#E8F5E9,stroke:#2E7D32,color:#000
+    style DOMAIN fill:#FFF3E0,stroke:#E65100,color:#000
+    style TOOLS fill:#F3E5F5,stroke:#6A1B9A,color:#000
+    style RAG fill:#E0F7FA,stroke:#00695C,color:#000
+    style MCP fill:#FCE4EC,stroke:#AD1457,color:#000
+    style AGENTS fill:#FFF8E1,stroke:#F57F17,color:#000
+    style PLUGIN fill:#F1F8E9,stroke:#558B2F,color:#000
+    style USER fill:#ECEFF1,stroke:#37474F,color:#000
+    style SCRIPTS fill:#E8EAF6,stroke:#283593,color:#000
+    style WORKERS fill:#FFF8E1,stroke:#F57F17,color:#000
+```
+
+**Data Lifecycle:** Replenish (books IN) → Books (inventory) → Lending (books OUT)
+
+---
+
 ## Section 1: RAG (Retrieval-Augmented Generation)
 
 RAG enables LLMs to answer questions about private data they've never seen during training. This section demonstrates the core RAG pattern: **Retrieve** → **Augment** → **Generate**.
@@ -61,7 +207,7 @@ This requires database setup:
 RAG LLM, MCP and Agentic sections require the library database so if you set this now you don't need to repeat again:
 
 ```bash
-# Load 200 books into DuckDB
+# Load 200 books + 750 loans + 500 replenishments into DuckDB
 make load-data
 make verify-data    # Expected: ✓ Found 200 books
 ```

@@ -15,6 +15,9 @@ from src.agentic.library.repository import BookRepository
 LIBRARY_CSV_PATH = (
     Path(__file__).parent.parent.parent / "data" / "raw" / "library" / "library_dataset_random.csv"
 )
+REPLENISH_CSV_PATH = (
+    Path(__file__).parent.parent.parent / "data" / "raw" / "library" / "replenish_data.csv"
+)
 
 
 @pytest.fixture(scope="module")
@@ -62,6 +65,32 @@ def loaded_db(tmp_path_factory) -> duckdb.DuckDBPyConnection:
             Status as status
         FROM read_csv('{LIBRARY_CSV_PATH}', header=true)
     """)
+
+    # Load replenish data if CSV exists
+    if REPLENISH_CSV_PATH.exists():
+        conn.execute("""
+            CREATE TABLE library.replenish (
+                replenish_id VARCHAR PRIMARY KEY,
+                book_id VARCHAR NOT NULL REFERENCES library.books(book_id),
+                replenish_date DATE NOT NULL,
+                quantity INTEGER NOT NULL CHECK (quantity >= 1),
+                unit_cost DECIMAL(10,2) NOT NULL CHECK (unit_cost >= 0),
+                total_cost DECIMAL(10,2) NOT NULL CHECK (total_cost >= 0),
+                discount_pct DECIMAL(5,2) NOT NULL DEFAULT 0 CHECK (discount_pct >= 0 AND discount_pct <= 100),
+                supplier VARCHAR NOT NULL,
+                replenish_type VARCHAR NOT NULL,
+                condition VARCHAR NOT NULL,
+                funding_source VARCHAR NOT NULL,
+                priority VARCHAR NOT NULL
+            )
+        """)
+        conn.execute(f"""
+            INSERT INTO library.replenish
+            SELECT
+                replenish_id, book_id, replenish_date, quantity, unit_cost, total_cost,
+                discount_pct, supplier, replenish_type, condition, funding_source, priority
+            FROM read_csv('{REPLENISH_CSV_PATH}', header=true, auto_detect=true)
+        """)
 
     return conn
 
@@ -195,6 +224,87 @@ class TestRepositoryWithRealData:
         results = repository.find_books_in_cabinet(cabinet=1)
         for book in results:
             assert book.location.cabinet == 1
+
+
+class TestReplenishDataLoadVerification:
+    """Tests to verify replenish CSV data loaded correctly."""
+
+    @pytest.fixture(autouse=True)
+    def _check_replenish_csv(self) -> None:
+        if not REPLENISH_CSV_PATH.exists():
+            pytest.skip(f"Replenish CSV not found at {REPLENISH_CSV_PATH}")
+
+    def test_record_count(self, loaded_db: duckdb.DuckDBPyConnection) -> None:
+        """Verify replenish records loaded from CSV."""
+        result = loaded_db.execute("SELECT COUNT(*) FROM library.replenish").fetchone()
+        assert result is not None
+        assert result[0] > 0, "Expected replenish records to be loaded"
+
+    def test_replenish_ids_unique(self, loaded_db: duckdb.DuckDBPyConnection) -> None:
+        """Verify all replenish IDs are unique."""
+        result = loaded_db.execute("""
+            SELECT COUNT(*) as total, COUNT(DISTINCT replenish_id) as unique_count
+            FROM library.replenish
+        """).fetchone()
+        assert result is not None
+        assert result[0] == result[1], "Replenish IDs are not unique"
+
+    def test_foreign_key_integrity(self, loaded_db: duckdb.DuckDBPyConnection) -> None:
+        """Verify all replenish book_ids reference valid books."""
+        result = loaded_db.execute("""
+            SELECT COUNT(*) FROM library.replenish r
+            WHERE NOT EXISTS (SELECT 1 FROM library.books b WHERE b.book_id = r.book_id)
+        """).fetchone()
+        assert result is not None
+        assert result[0] == 0, "Found replenish records with invalid book_id references"
+
+    def test_valid_suppliers(self, loaded_db: duckdb.DuckDBPyConnection) -> None:
+        """Verify all suppliers are valid enum values."""
+        result = loaded_db.execute("""
+            SELECT DISTINCT supplier FROM library.replenish
+            WHERE supplier NOT IN ('Ingram', 'Baker & Taylor', 'Brodart', 'Direct Publisher', 'Amazon Business')
+        """).fetchall()
+        assert len(result) == 0, f"Found invalid suppliers: {[r[0] for r in result]}"
+
+    def test_valid_replenish_types(self, loaded_db: duckdb.DuckDBPyConnection) -> None:
+        """Verify all replenish types are valid."""
+        result = loaded_db.execute("""
+            SELECT DISTINCT replenish_type FROM library.replenish
+            WHERE replenish_type NOT IN ('New Acquisition', 'Replacement', 'Restock', 'Donation', 'Return Processing')
+        """).fetchall()
+        assert len(result) == 0, f"Found invalid replenish types: {[r[0] for r in result]}"
+
+    def test_valid_conditions(self, loaded_db: duckdb.DuckDBPyConnection) -> None:
+        """Verify all conditions are valid."""
+        result = loaded_db.execute("""
+            SELECT DISTINCT condition FROM library.replenish
+            WHERE condition NOT IN ('New', 'Refurbished', 'Used - Good', 'Used - Fair')
+        """).fetchall()
+        assert len(result) == 0, f"Found invalid conditions: {[r[0] for r in result]}"
+
+    def test_valid_priorities(self, loaded_db: duckdb.DuckDBPyConnection) -> None:
+        """Verify all priorities are valid enum values."""
+        result = loaded_db.execute("""
+            SELECT DISTINCT priority FROM library.replenish
+            WHERE priority NOT IN ('Urgent', 'High', 'Normal', 'Low')
+        """).fetchall()
+        assert len(result) == 0, f"Found invalid priorities: {[r[0] for r in result]}"
+
+    def test_numeric_constraints(self, loaded_db: duckdb.DuckDBPyConnection) -> None:
+        """Verify numeric fields meet constraints."""
+        result = loaded_db.execute("""
+            SELECT COUNT(*) FROM library.replenish
+            WHERE quantity < 1 OR unit_cost < 0 OR total_cost < 0
+                OR discount_pct < 0 OR discount_pct > 100
+        """).fetchone()
+        assert result is not None
+        assert result[0] == 0, "Found records violating numeric constraints"
+
+    def test_record_count_exact(self, loaded_db: duckdb.DuckDBPyConnection) -> None:
+        """Verify expected number of replenish records."""
+        result = loaded_db.execute("SELECT COUNT(*) FROM library.replenish").fetchone()
+        assert result is not None
+        assert result[0] == 500, f"Expected 500 replenish records, found {result[0]}"
 
 
 class TestDataIntegrity:

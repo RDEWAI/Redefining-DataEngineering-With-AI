@@ -11,7 +11,7 @@ ifeq ($(UNAME_S),Darwin)
     endif
 endif
 
-.PHONY: help dev-setup load-data verify-data generate-lending-data mcp-server mcp-dev mcp-client mcp-assistant mcp-compare-modes mcp-benchmark mcp-compare-modes-enterprise mcp-compare-modes-enterprise-all assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew llm llm-rag
+.PHONY: help dev-setup load-data verify-data generate-lending-data generate-replenish-data mcp-server mcp-dev mcp-client mcp-assistant mcp-compare-modes mcp-benchmark mcp-compare-modes-enterprise mcp-compare-modes-enterprise-all assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew llm llm-rag
 
 
 help:
@@ -31,7 +31,7 @@ help:
 	@echo "  assistant-rag              - Library Assistant with RAG enabled"
 	@echo ""
 	@echo "=== Section 2: MCP (requires load-data first) ==="
-	@echo "  load-data                  - Load 200 books + 750 loans into DuckDB"
+	@echo "  load-data                  - Load 200 books + 750 loans + 500 replenishments into DuckDB"
 	@echo "  verify-data                - Verify data loaded correctly"
 	@echo "  mcp-client                 - Settings menu to configure MCP options"
 	@echo "  mcp-assistant              - AI Chat (code execution ON by default)"
@@ -89,13 +89,17 @@ dev-setup: install-brew install-uv
 	@echo "  1. Copy .env.example to .env and add your OPENROUTER_API_KEY"
 	@echo "  2. Run 'make load-data' to load CSV into DuckDB"
 
-load-data: generate-lending-data
-	@echo "Loading CSV data (books + lending) into DuckDB..."
-	uv run python scripts/load_library_csv_to_duckdb.py --include-lending
+load-data: generate-lending-data generate-replenish-data
+	@echo "Loading CSV data (books + lending + replenish) into DuckDB..."
+	uv run python scripts/load_library_csv_to_duckdb.py --include-lending --include-replenish
 
 generate-lending-data:
 	@echo "Generating synthetic lending data..."
 	uv run python scripts/generate_lending_data.py
+
+generate-replenish-data:
+	@echo "Generating synthetic replenish data..."
+	uv run python scripts/generate_replenish_data.py
 
 verify-data:
 	@echo "Verifying data load..."
@@ -202,6 +206,9 @@ generate-embeddings:
 	@echo ""
 	@echo "Generating lending embeddings..."
 	uv run python -c "from src.agentic.rag.embeddings import generate_lending_embeddings; generate_lending_embeddings()"
+	@echo ""
+	@echo "Generating replenish embeddings..."
+	uv run python -c "from src.agentic.rag.embeddings import generate_replenish_embeddings; generate_replenish_embeddings()"
 
 semantic-search:
 	@echo "Starting semantic search CLI..."
