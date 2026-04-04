@@ -98,8 +98,10 @@ def load_csv(conn: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
     if not csv_path.exists():
         raise FileNotFoundError(f"CSV file not found: {csv_path}")
 
-    # Load CSV with column mapping
-    conn.execute(f"""
+    # Load CSV with column mapping (use resolved path to prevent injection)
+    safe_path = str(csv_path.resolve())
+    conn.execute(
+        """
         INSERT INTO library.books
         SELECT
             Book_ID as book_id,
@@ -113,8 +115,10 @@ def load_csv(conn: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
             Signal_Strength as signal_strength,
             Timestamp as timestamp,
             Status as status
-        FROM read_csv('{csv_path}', header=true, auto_detect=true)
-    """)
+        FROM read_csv($1, header=true, auto_detect=true)
+        """,
+        [safe_path],
+    )
 
     # Get record count
     result = conn.execute("SELECT COUNT(*) FROM library.books").fetchone()
@@ -288,8 +292,10 @@ def load_lending_csv(conn: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
     if not csv_path.exists():
         raise FileNotFoundError(f"Lending CSV file not found: {csv_path}")
 
-    # Load CSV - column names match directly
-    conn.execute(f"""
+    # Load CSV - column names match directly (use resolved path to prevent injection)
+    safe_path = str(csv_path.resolve())
+    conn.execute(
+        """
         INSERT INTO library.lending
         SELECT
             loan_id,
@@ -304,8 +310,10 @@ def load_lending_csv(conn: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
             patron_segment,
             region,
             channel
-        FROM read_csv('{csv_path}', header=true, auto_detect=true)
-    """)
+        FROM read_csv($1, header=true, auto_detect=true)
+        """,
+        [safe_path],
+    )
 
     # Get record count
     result = conn.execute("SELECT COUNT(*) FROM library.lending").fetchone()
@@ -496,7 +504,10 @@ def load_replenish_csv(conn: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
     if not csv_path.exists():
         raise FileNotFoundError(f"Replenish CSV file not found: {csv_path}")
 
-    conn.execute(f"""
+    # Use resolved path to prevent injection
+    safe_path = str(csv_path.resolve())
+    conn.execute(
+        """
         INSERT INTO library.replenish
         SELECT
             replenish_id,
@@ -511,8 +522,10 @@ def load_replenish_csv(conn: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
             condition,
             funding_source,
             priority
-        FROM read_csv('{csv_path}', header=true, auto_detect=true)
-    """)
+        FROM read_csv($1, header=true, auto_detect=true)
+        """,
+        [safe_path],
+    )
 
     result = conn.execute("SELECT COUNT(*) FROM library.replenish").fetchone()
     count = result[0] if result else 0
@@ -600,6 +613,9 @@ def print_replenish_summary(conn: duckdb.DuckDBPyConnection) -> None:
             COUNT(DISTINCT book_id) as unique_books
         FROM library.replenish
     """).fetchone()
+    if result is None:
+        print("  No replenish data found")
+        return
     print(f"  Total records: {result[0]}")
     print(f"  Total cost: ${result[1]:,.2f}")
     print(f"  Total copies added: {result[2]}")

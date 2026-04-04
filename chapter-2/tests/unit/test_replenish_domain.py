@@ -3,8 +3,10 @@
 Tests enums, dataclass creation, properties, and serialization methods.
 """
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
+
+import pytest
 
 from src.mcp.replenish_domain import (
     BookCondition,
@@ -189,18 +191,43 @@ class TestReplenishment:
     def test_frozen(self) -> None:
         """Test that Replenishment is immutable."""
         rec = self._make_replenishment()
-        try:
+        with pytest.raises(AttributeError):
             rec.quantity = 10  # type: ignore[misc]
-            assert False, "Should not be able to modify frozen dataclass"
-        except AttributeError:
-            pass
 
     def test_roundtrip_dict(self) -> None:
-        """Test to_dict -> from_dict roundtrip."""
+        """Test to_dict -> from_dict roundtrip preserves all fields."""
         original = self._make_replenishment()
         d = original.to_dict()
         restored = Replenishment.from_dict(d)
         assert original.replenish_id == restored.replenish_id
         assert original.book_id == restored.book_id
+        assert original.replenish_date == restored.replenish_date
         assert original.quantity == restored.quantity
+        assert original.unit_cost == restored.unit_cost
+        assert original.total_cost == restored.total_cost
+        assert original.discount_pct == restored.discount_pct
         assert original.supplier == restored.supplier
+        assert original.replenish_type == restored.replenish_type
+        assert original.condition == restored.condition
+        assert original.funding_source == restored.funding_source
+        assert original.priority == restored.priority
+
+    def test_from_row_datetime_coercion(self) -> None:
+        """Test that datetime values are coerced to date in from_row."""
+        row = (
+            "R0099",
+            "B001",
+            datetime(2024, 3, 15, 10, 30, 0),  # datetime, not date
+            5,
+            Decimal("45.00"),
+            Decimal("213.75"),
+            Decimal("5.00"),
+            "Ingram",
+            "Restock",
+            "New",
+            "Operating Budget",
+            "Normal",
+        )
+        rec = Replenishment.from_row(row)
+        assert rec.replenish_date == date(2024, 3, 15)
+        assert isinstance(rec.replenish_date, date)

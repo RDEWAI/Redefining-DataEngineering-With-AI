@@ -486,15 +486,21 @@ class ReplenishVectorStore:
                 f"embeddings length ({len(embeddings)})"
             )
 
-        for replenish_id, embedding in zip(replenish_ids, embeddings):
-            embedding_list = embedding.tolist()
-            self.conn.execute(
-                """
-                INSERT OR REPLACE INTO library.replenish_embeddings (replenish_id, embedding)
-                VALUES (?, ?)
-                """,
-                (replenish_id, embedding_list),
-            )
+        self.conn.execute("BEGIN TRANSACTION")
+        try:
+            for replenish_id, embedding in zip(replenish_ids, embeddings):
+                embedding_list = embedding.tolist()
+                self.conn.execute(
+                    """
+                    INSERT OR REPLACE INTO library.replenish_embeddings (replenish_id, embedding)
+                    VALUES (?, ?)
+                    """,
+                    (replenish_id, embedding_list),
+                )
+            self.conn.execute("COMMIT")
+        except Exception:
+            self.conn.execute("ROLLBACK")
+            raise
 
     def semantic_search(
         self,

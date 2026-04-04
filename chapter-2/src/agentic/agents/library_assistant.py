@@ -435,6 +435,15 @@ REPLENISH_TOOL_DEFINITIONS: list[ToolDefinition] = [
             "required": [],
         },
     ),
+    ToolDefinition(
+        name="get_replenish_by_month",
+        description="Get replenishments aggregated by month for trend analysis. Returns monthly totals, costs, and units.",
+        parameters={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
 ]
 
 # Replenish semantic search tool (RAG-enabled)
@@ -499,12 +508,14 @@ TOOL_FUNCTION_MAP: dict[str, Callable[..., dict[str, Any]]] = {
     "get_book_lending": library_tools.get_book_lending,
     "get_lending_stats": library_tools.get_lending_stats,
     "get_most_lent_books": library_tools.get_most_lent_books,
+    "get_lending_by_month": library_tools.get_lending_by_month,
     "search_lending_semantic": library_tools.search_lending_semantic,
     # Replenish tools (only used when RAG is enabled)
     "search_replenish": library_tools.search_replenish,
     "get_book_replenish": library_tools.get_book_replenish,
     "get_replenish_stats": library_tools.get_replenish_stats,
     "get_most_replenished_books": library_tools.get_most_replenished_books,
+    "get_replenish_by_month": library_tools.get_replenish_by_month,
     "search_replenish_semantic": library_tools.search_replenish_semantic,
 }
 

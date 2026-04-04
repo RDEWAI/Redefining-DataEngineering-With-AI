@@ -201,7 +201,7 @@ class ReplenishRepository:
             FROM library.replenish
             GROUP BY supplier
         """)
-        by_supplier = {row[0]: {"cost": float(row[1]), "count": row[2]} for row in supplier_result}  # type: ignore[arg-type]
+        by_supplier = {row[0]: {"cost": float(row[1]) if row[1] is not None else 0.0, "count": row[2]} for row in supplier_result}
 
         # By type
         type_result = self._execute_query("""
@@ -209,7 +209,7 @@ class ReplenishRepository:
             FROM library.replenish
             GROUP BY replenish_type
         """)
-        by_type = {row[0]: {"cost": float(row[1]), "count": row[2]} for row in type_result}  # type: ignore[arg-type]
+        by_type = {row[0]: {"cost": float(row[1]) if row[1] is not None else 0.0, "count": row[2]} for row in type_result}
 
         # By funding source
         funding_result = self._execute_query("""
@@ -217,7 +217,7 @@ class ReplenishRepository:
             FROM library.replenish
             GROUP BY funding_source
         """)
-        by_funding = {row[0]: {"cost": float(row[1]), "count": row[2]} for row in funding_result}  # type: ignore[arg-type]
+        by_funding = {row[0]: {"cost": float(row[1]) if row[1] is not None else 0.0, "count": row[2]} for row in funding_result}
 
         # By condition
         condition_result = self._execute_query("""
@@ -225,7 +225,7 @@ class ReplenishRepository:
             FROM library.replenish
             GROUP BY condition
         """)
-        by_condition = {row[0]: {"cost": float(row[1]), "count": row[2]} for row in condition_result}  # type: ignore[arg-type]
+        by_condition = {row[0]: {"cost": float(row[1]) if row[1] is not None else 0.0, "count": row[2]} for row in condition_result}
 
         return {
             "total_records": totals[0],
@@ -274,12 +274,12 @@ class ReplenishRepository:
         """Get replenishments aggregated by month."""
         sql = """
             SELECT
-                strftime('%Y-%m', replenish_date) as month,
+                strftime(replenish_date, '%Y-%m') as month,
                 COUNT(*) as total_records,
                 SUM(total_cost) as total_cost,
                 SUM(quantity) as total_units
             FROM library.replenish
-            GROUP BY strftime('%Y-%m', replenish_date)
+            GROUP BY strftime(replenish_date, '%Y-%m')
             ORDER BY month
         """
         rows = self._execute_query(sql)

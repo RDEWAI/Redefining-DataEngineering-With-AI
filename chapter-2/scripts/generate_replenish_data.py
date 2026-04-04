@@ -256,7 +256,7 @@ def load_book_data(db_path: str | None = None) -> tuple[list[str], dict[str, str
             book_categories = {row[0]: row[1] for row in result}
             print(f"Loaded {len(book_ids)} books from database")
             return book_ids, book_categories
-    except Exception as e:
+    except (ImportError, FileNotFoundError, OSError) as e:
         print(f"Could not load from database: {e}")
 
     # Fallback: generate default book IDs

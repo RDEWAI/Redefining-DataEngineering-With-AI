@@ -282,6 +282,30 @@ class TestReplenishDataLoadVerification:
         """).fetchall()
         assert len(result) == 0, f"Found invalid conditions: {[r[0] for r in result]}"
 
+    def test_valid_priorities(self, loaded_db: duckdb.DuckDBPyConnection) -> None:
+        """Verify all priorities are valid enum values."""
+        result = loaded_db.execute("""
+            SELECT DISTINCT priority FROM library.replenish
+            WHERE priority NOT IN ('Urgent', 'High', 'Normal', 'Low')
+        """).fetchall()
+        assert len(result) == 0, f"Found invalid priorities: {[r[0] for r in result]}"
+
+    def test_numeric_constraints(self, loaded_db: duckdb.DuckDBPyConnection) -> None:
+        """Verify numeric fields meet constraints."""
+        result = loaded_db.execute("""
+            SELECT COUNT(*) FROM library.replenish
+            WHERE quantity < 1 OR unit_cost < 0 OR total_cost < 0
+                OR discount_pct < 0 OR discount_pct > 100
+        """).fetchone()
+        assert result is not None
+        assert result[0] == 0, "Found records violating numeric constraints"
+
+    def test_record_count_exact(self, loaded_db: duckdb.DuckDBPyConnection) -> None:
+        """Verify expected number of replenish records."""
+        result = loaded_db.execute("SELECT COUNT(*) FROM library.replenish").fetchone()
+        assert result is not None
+        assert result[0] == 500, f"Expected 500 replenish records, found {result[0]}"
+
 
 class TestDataIntegrity:
     """Tests for data integrity and constraints."""

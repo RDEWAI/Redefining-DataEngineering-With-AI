@@ -12,7 +12,7 @@ All domain objects are immutable and support JSON serialization.
 """
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Any
@@ -188,7 +188,9 @@ class Replenishment:
         ) = row
 
         # Convert date if needed
-        if isinstance(replenish_date_val, str):
+        if isinstance(replenish_date_val, datetime):
+            replenish_date_val = replenish_date_val.date()
+        elif isinstance(replenish_date_val, str):
             replenish_date_val = date.fromisoformat(replenish_date_val)
 
         return cls(
@@ -232,7 +234,9 @@ class Replenishment:
 
         # Handle date
         replenish_date = data["replenish_date"]
-        if isinstance(replenish_date, str):
+        if isinstance(replenish_date, datetime):
+            replenish_date = replenish_date.date()
+        elif isinstance(replenish_date, str):
             replenish_date = date.fromisoformat(replenish_date)
 
         return cls(

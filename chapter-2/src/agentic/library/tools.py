@@ -981,6 +981,36 @@ def get_most_lent_books(limit: int = 10) -> dict[str, Any]:
         }
 
 
+def get_lending_by_month() -> dict[str, Any]:
+    """Get lending aggregated by month for trend analysis.
+
+    Returns:
+        Dictionary with success, count, months, and message
+    """
+    try:
+        repo = _get_lending_repo()
+        monthly = repo.get_lending_by_month()
+
+        if monthly:
+            message = f"Lending data for {len(monthly)} months"
+        else:
+            message = "No lending data found"
+
+        return {
+            "success": True,
+            "count": len(monthly),
+            "months": monthly,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "count": 0,
+            "months": [],
+            "message": f"Error getting lending by month: {str(e)}",
+        }
+
+
 def search_lending_semantic(
     query: str,
     top_k: int = 10,
@@ -1120,6 +1150,7 @@ def search_replenish(
         Dictionary with success, count, replenishments, and message
     """
     try:
+        limit = max(1, min(limit, 100))
         repo = _get_replenish_repo()
         records = repo.search_replenish(
             book_id=book_id,
@@ -1253,6 +1284,7 @@ def get_most_replenished_books(limit: int = 10) -> dict[str, Any]:
         Dictionary with success, count, books, and message
     """
     try:
+        limit = max(1, min(limit, 50))
         repo = _get_replenish_repo()
         top_books = repo.get_most_replenished_books(limit=limit)
 
@@ -1274,6 +1306,36 @@ def get_most_replenished_books(limit: int = 10) -> dict[str, Any]:
             "count": 0,
             "books": [],
             "message": f"Error getting most replenished books: {str(e)}",
+        }
+
+
+def get_replenish_by_month() -> dict[str, Any]:
+    """Get replenishments aggregated by month for trend analysis.
+
+    Returns:
+        Dictionary with success, count, months, and message
+    """
+    try:
+        repo = _get_replenish_repo()
+        monthly = repo.get_replenish_by_month()
+
+        if monthly:
+            message = f"Replenish data for {len(monthly)} months"
+        else:
+            message = "No replenish data found"
+
+        return {
+            "success": True,
+            "count": len(monthly),
+            "months": monthly,
+            "message": message,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "count": 0,
+            "months": [],
+            "message": f"Error getting replenish by month: {str(e)}",
         }
 
 
@@ -1373,12 +1435,14 @@ __all__ = [
     "get_book_lending",
     "get_lending_stats",
     "get_most_lent_books",
+    "get_lending_by_month",
     "search_lending_semantic",
     # Replenish tools (requires RAG mode)
     "search_replenish",
     "get_book_replenish",
     "get_replenish_stats",
     "get_most_replenished_books",
+    "get_replenish_by_month",
     "search_replenish_semantic",
     # Repository management
     "set_repository",
