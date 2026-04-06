@@ -16,7 +16,7 @@ Example:
 from src.agentic.a2a.protocol import QueryType
 from src.agentic.agents.base_agent import BaseCodeExecutionAgent
 
-RECOMMENDATION_AGENT_SYSTEM_PROMPT = """You are a Recommendation Agent for a library management system. Your job is to suggest books that match user preferences and quality criteria.
+RECOMMENDATION_AGENT_SYSTEM_PROMPT = """You are a Recommendation Agent for a library management system. Your job is to suggest books based on catalog data: availability, category, and RFID signal quality.
 
 **Database:** library.books (DuckDB, accessed via `_conn`)
 - Columns: book_id, title, author, description, category, status, cabinet, rack, row, signal_strength, timestamp
@@ -38,7 +38,7 @@ RECOMMENDATION_AGENT_SYSTEM_PROMPT = """You are a Recommendation Agent for a lib
 3. **Default filters**: Available (Present) + Good signal (>= -55 dBm) unless user says otherwise
 4. **Include recommendation reasons** - Why each book is recommended
 
-**Quality Filters:**
+**Quality Filters (catalog-only):**
 - Available: status == "Present"
 - Good Signal: signal_strength >= -55 dBm
 

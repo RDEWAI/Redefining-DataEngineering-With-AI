@@ -11,7 +11,7 @@ ifeq ($(UNAME_S),Darwin)
     endif
 endif
 
-.PHONY: help dev-setup load-data verify-data generate-lending-data generate-replenish-data mcp-server mcp-dev mcp-client mcp-assistant mcp-compare-modes mcp-benchmark mcp-compare-modes-enterprise mcp-compare-modes-enterprise-all assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew llm llm-rag
+.PHONY: help dev-setup load-data verify-data generate-lending-data generate-replenish-data mcp-server mcp-dev mcp-client mcp-assistant mcp-compare-modes mcp-benchmark mcp-compare-modes-enterprise mcp-compare-modes-enterprise-all patron-agent coordination-agent assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew llm llm-rag
 
 
 help:
@@ -47,7 +47,9 @@ help:
 	@echo "  mcp-dev                    - Start MCP Inspector for debugging"
 	@echo ""
 	@echo "=== Section 3: Agentic AI ==="
-	@echo "  assistant                  - Traditional tool-calling assistant"
+	@echo "  patron-agent               - Library patron assistant (11 tools, RAG on)"
+	@echo "  coordination-agent         - Library operations assistant (11 tools, RAG on)"
+	@echo "  assistant                  - Traditional monolithic tool-calling assistant (22 tools)"
 	@echo "  data-analysis              - Start data analysis agent"
 	@echo "  multi-agent                - Start multi-agent orchestrator"
 	@echo ""
@@ -154,6 +156,14 @@ mcp-compare-modes-enterprise-all:
 	@echo "Running ALL queries with 100 dummy tools..."
 	@echo ""
 	uv run python scripts/compare_modes.py --enable-dummy-tools --all --no-rag
+
+patron-agent:
+	@echo "Starting Patron Agent (11 tools, RAG enabled)..."
+	@uv run python -W ignore::RuntimeWarning -m src.agentic.agents.patron_agent --rag
+
+coordination-agent:
+	@echo "Starting Coordination Agent (11 tools, RAG enabled)..."
+	@uv run python -W ignore::RuntimeWarning -m src.agentic.agents.coordination_agent --rag
 
 assistant:
 	@echo "Starting Library Assistant (Traditional Mode)..."

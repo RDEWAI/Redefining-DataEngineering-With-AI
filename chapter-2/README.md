@@ -69,32 +69,47 @@ flowchart TB
 
     subgraph AGENTS["<b>Section 3 — Agentic AI</b>"]
         direction TB
-        AST["Library Assistant<br/><i>Traditional JSON tool calling</i>"]
-        ORCH["Orchestrator Agent<br/><i>LLM-based planning</i>"]
-        subgraph WORKERS["Specialist Agents"]
+        subgraph SINGLE["Single Agents"]
             direction LR
-            SA["SearchAgent"]
-            AA["AnalyticsAgent"]
-            RA["RecommendationAgent"]
+            PA["PatronAgent<br/><i>8 tools — inventory &amp; shelf</i>"]
+            CA["CoordinationAgent<br/><i>14 tools — revenue &amp; replenishment</i>"]
+        end
+        ORCH["Orchestrator Agent<br/><i>LLM-based planning</i>"]
+        subgraph WORKERS["Multi-Agent Workers"]
+            direction LR
+            SA["SearchAgent<br/><i>6 tools</i>"]
+            AA["AnalyticsAgent<br/><i>catalog + lending + replenish</i>"]
+            RA["RecommendationAgent<br/><i>5 tools</i>"]
         end
         ORCH --> WORKERS
     end
 
-    subgraph PLUGIN["<b>Section 4 — Claude Code Plugin</b>"]
-        direction TB
-        SK1["query-library<br/><i>Book search &amp; location</i>"]
-        SK2["analyze-library<br/><i>Lending &amp; replenish analytics</i>"]
-        HOOK["PreToolUse Hook<br/><i>enforce-readonly-queries.py</i>"]
-        SK1 --- HOOK
-        SK2 --- HOOK
+    subgraph PLUGIN["<b>Section 4 — Two Claude Code Plugins</b>"]
+        direction LR
+        subgraph PP["patron-plugin"]
+            direction TB
+            SK1["patron-agent<br/><i>library.books only</i>"]
+            SK3["query-library<br/><i>library.books only</i>"]
+            HOOK1["enforce-patron-readonly.py<br/><i>blocks lending/replenish access</i>"]
+            SK1 --- HOOK1
+            SK3 --- HOOK1
+        end
+        subgraph CP["coordinator-plugin"]
+            direction TB
+            SK2["coordination-agent<br/><i>all 3 tables</i>"]
+            SK4["analyze-library<br/><i>all 3 tables</i>"]
+            HOOK2["enforce-readonly-queries.py<br/><i>write-only block</i>"]
+            SK2 --- HOOK2
+            SK4 --- HOOK2
+        end
     end
 
     subgraph USER["<b>User Entry Points</b>"]
         direction LR
         M1["make llm / make llm-rag"]
         M2["make mcp-assistant"]
-        M3["make assistant / make multi-agent"]
-        M4["/query-library / /analyze-library"]
+        M3["make patron-agent / make coordination-agent<br/>make multi-agent"]
+        M4["/patron-agent /query-library<br/>/coordination-agent /analyze-library"]
     end
 
     %% Data flow
@@ -322,6 +337,29 @@ make mcp-compare-modes-enterprise
 make mcp-compare-modes-enterprise-all
 ```
 
+When you run `make mcp-compare-modes-enterprise`, the LLM first discovers all available tools across connected MCP servers and renders a file tree before running any query:
+
+```
+MCP TOOL DISCOVERY
+==================
+Connecting to MCP servers and discovering available tools...
+Connected servers: 12   Total tools: 122
+
+├── library-catalog-server   [10 tools]
+│    ├── search_books
+│    └── ...
+├── library-rag-server       [12 tools]
+│    ├── semantic_search
+│    └── ...
+├── engineering-server       [10 tools]
+│    └── engineering_run_build, ...
+...
+└── ml_platform-server       [10 tools]
+     └── ml_train_model, ...
+```
+
+This makes the token overhead visible: the traditional mode must serialize all 122 tool schemas as JSON on every request, while code execution only injects compact Python stubs.
+
 **Enterprise Results (100 dummy tools):**
 - Traditional: ~131,000 tokens
 - Code Execution: ~25,000 tokens
@@ -350,9 +388,31 @@ This demonstrates insights from Anthropic's "Advanced Tool Use" paper.
 
 This section covers multi-agent orchestration and traditional tool-calling patterns.
 
-### 3.1 Traditional Tool Use
+### 3.1 Role-Separated Single Agents
 
-The Library Assistant uses JSON schema-based tool calling:
+Two specialized agents with strictly separated tool access — mimicking real-world access control:
+
+```bash
+make patron-agent       # Library patron: inventory & shelf location only
+make coordination-agent # Operations staff: revenue, replenishment & analytics
+```
+
+**PatronAgent** (8 tools — `library.books` only):
+- Search books by title, author, keyword
+- Check availability, locate by cabinet/rack/row
+- List by category or status, RFID signal health
+
+**CoordinationAgent** (14 tools — `library.lending` + `library.replenish` + operational stats):
+- Lending revenue: fees, units lent, segment/region/channel breakdown
+- Most lent books, monthly trends, fee waivers
+- Replenishment: supplier, type, priority, funding source
+- Supply gap analysis (lending vs replenishment)
+
+**Tool separation enforced at the API injection level** — each agent's code sandbox only receives the function definitions for its allowed tools. Patron agent never sees lending or replenishment data, even if it tries raw SQL.
+
+### 3.2 Traditional Tool Use
+
+The Library Assistant uses JSON schema-based tool calling with all 22 tools:
 
 ```bash
 make assistant
@@ -369,33 +429,36 @@ make assistant
 - "Show me books by John Smith"
 - "Which books are missing?"
 
-### 3.2 Multi-Agent System
+### 3.3 Multi-Agent System
 
-Orchestrated specialist agents handle complex queries:
+LLM-planned orchestration across three specialist agents. All 22 tools distributed — each agent gets only what it needs:
 
 ```bash
 make multi-agent
 ```
 
-**Specialist Agents:**
-- **SearchAgent** - Book discovery and semantic search
-- **AnalyticsAgent** - Statistics and reporting
-- **RecommendationAgent** - Suggestions with quality filters
+**Specialist Agents and their tool scope:**
+- **SearchAgent** (6 tools) — Book discovery, location, availability, semantic search
+- **AnalyticsAgent** (16 tools) — Catalog stats + lending revenue + replenishment reporting
+- **RecommendationAgent** (5 tools) — Suggestions filtered by availability and signal quality
 
 **Example Multi-Agent Queries:**
 - "Find available programming books and recommend one with good signal"
 - "How many books are missing? Show breakdown by category"
-- "Search for fiction books and analyze their availability patterns"
+- "What's the total lending revenue by region?"
+- "Which books have the highest replenishment cost vs lending fees?"
 
 ### Agentic Make Commands
 
 | Command | Description |
 |---------|-------------|
-| `make assistant` | Traditional tool-calling assistant |
+| `make patron-agent` | Patron-facing agent — inventory & shelf (8 tools, RAG on) |
+| `make coordination-agent` | Operations agent — revenue & replenishment (14 tools, RAG on) |
+| `make assistant` | Traditional tool-calling assistant (all 22 tools) |
 | `make data-analysis` | Start data analysis agent |
-| `make multi-agent` | Start multi-agent orchestrator |
+| `make multi-agent` | Multi-agent orchestrator (LLM-planned, 3 specialist agents) |
 
-### 3.3 IDE Integrations
+### 3.4 IDE Integrations
 
 **Claude Desktop Configuration:**
 
@@ -415,44 +478,199 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ---
 
-## Section 4: Plugins (Library Assistant)
+## Section 4: Plugins
 
-This section packages the Library Assistant as a Claude Code plugin, demonstrating how to
-extend Claude Code with domain-specific skills, read-only enforcement hooks, and agent knowledge.
+Two separate Claude Code plugins mirror the agent role separation from Section 3.
+Each plugin has its own skills, hooks, and hook scripts scoped to its access level.
+
+### How to Use the Plugins
+
+#### Option A — Local development (no marketplace needed)
+
+Pass `--plugin-dir` when launching Claude Code. Each plugin must be launched separately:
+
+```bash
+# Patron plugin
+claude --plugin-dir ./chapter-2/patron-plugin
+
+# Coordinator plugin
+claude --plugin-dir ./chapter-2/coordinator-plugin
+```
+
+Skills are namespaced by plugin name:
+
+```
+/patron-plugin:patron-agent find me available Python books
+/patron-plugin:patron-agent where is book B042?
+/patron-plugin:query-library list all missing fiction books
+
+/coordinator-plugin:coordination-agent show total lending revenue by region
+/coordinator-plugin:coordination-agent supply gap analysis by category
+/coordinator-plugin:analyze-library which books are most replenished?
+```
+
+#### Option B — Marketplace install (persistent)
+
+1. Register a marketplace (one-time setup):
+   ```
+   /plugin marketplace add ./chapter-2
+   ```
+
+2. Install the plugins:
+   ```
+   /plugin install patron-plugin@rdewai-plugins
+   /plugin install coordinator-plugin@rdewai-plugins
+   ```
+
+3. Invoke skills using the namespaced format:
+   ```
+   /patron-plugin:patron-agent find Python books
+   /coordinator-plugin:coordination-agent show lending revenue
+   ```
+
+**What happens when you invoke a skill:**
+1. Claude Code loads the skill's `SKILL.md` as the system prompt
+2. The plugin's `.mcp.json` starts the `library` MCP server automatically
+3. The skill calls `mcp__library__*` tools to answer your question
+4. The `PreToolUse` hook intercepts any raw Bash commands and blocks writes (the patron hook also blocks access to lending/replenishment tables)
+
+**Scope enforcement — what each plugin can and cannot answer:**
+
+| Question | Use | Plugin |
+|----------|-----|--------|
+| "Where is book B001?" | `:patron-agent` | patron-plugin |
+| "Is 'Clean Code' available?" | `:patron-agent` | patron-plugin |
+| "List all Programming books present" | `:patron-agent` | patron-plugin |
+| "Which books have weak RFID signal?" | `:patron-agent` | patron-plugin |
+| "What's our total lending revenue?" | `:coordination-agent` | coordinator-plugin |
+| "Which books are most borrowed?" | `:coordination-agent` | coordinator-plugin |
+| "Show replenishment by supplier" | `:coordination-agent` | coordinator-plugin |
+| "Supply gap analysis by category" | `:coordination-agent` | coordinator-plugin |
+
+If you ask the patron plugin about revenue or replenishment, it will redirect you:
+> *"That's handled by the Coordinator Plugin (`:coordination-agent`). I only have access to book inventory and shelf locations."*
+
+---
 
 ### Plugin Structure
 
-The plugin lives in `library-assistant-plugin/` and is defined by
-`library-assistant-plugin/.claude-plugin/plugin.json`.
-The marketplace manifest is at `.claude-plugin/marketplace.json`.
+Both plugins connect to the same **library MCP server** (`src/mcp/library_server.py`) which exposes 18 tools, 5 resources, and 2 prompts. The MCP server is declared in each plugin's `.mcp.json` (auto-discovered by Claude Code — no reference needed in `plugin.json`):
 
-| Path | Purpose |
-|------|---------|
-| `library-assistant-plugin/skills/` | Skill definitions (`query-library`, `analyze-library`) |
-| `library-assistant-plugin/hooks/` | PreToolUse hook for read-only query enforcement |
-| `library-assistant-plugin/scripts/` | Hook scripts (`enforce-readonly-queries.py`) |
-| `library-assistant-plugin/agents/` | Agent reference docs (domain knowledge) |
-
-### Installing the Plugin
-
-From the repo root:
-
-```bash
-/plugin marketplace add ./chapter-2
-/plugin install library-assistant-plugin@rdewai-plugins
+```json
+// patron-plugin/.mcp.json  (and coordinator-plugin/.mcp.json)
+{
+  "mcpServers": {
+    "library": {
+      "command": "uv",
+      "args": ["run", "fastmcp", "run", "src/mcp/library_server.py"],
+      "cwd": ".."
+    }
+  }
+}
 ```
 
-### Skills
+Skills call `mcp__library__<tool_name>` directly — no raw DuckDB CLI commands needed. The hooks serve as a safety net blocking any direct write attempts if they occur.
 
-- **query-library**: Search books, check availability, locate by cabinet/rack/row,
-  list by category or status, identify weak RFID signal books, get library stats.
-- **analyze-library**: Analyze lending data — most lent books, fees by segment/region/channel,
-  monthly trends, per-book lending breakdown.
+---
 
-### Hooks
+### patron-plugin
 
-The plugin includes a **PreToolUse** hook that blocks any write operations against
-the DuckDB database before execution. Only read-only `SELECT` queries are permitted.
+Patron-facing plugin. Catalog MCP tools only — 8 tools scoped to `library.books`.
+
+```
+patron-plugin/
+├── .claude-plugin/plugin.json         ← name, version, keywords
+├── .mcp.json                          ← library MCP server config (auto-discovered)
+├── skills/
+│   ├── patron-agent/SKILL.md          ← primary skill (8 MCP tools)
+│   └── query-library/SKILL.md         ← legacy equivalent
+├── hooks/hooks.json
+└── scripts/enforce-patron-readonly.py ← blocks lending/replenish access + writes
+```
+
+**MCP tools available** (catalog only):
+`search_books`, `get_book_details`, `check_availability`, `list_by_category`,
+`list_by_status`, `locate_book`, `find_books_in_cabinet`, `get_weak_signal_books`
+
+**MCP resources**: `library://stats`, `library://missing_books`, `library://location_map`
+
+**Hook**: `enforce-patron-readonly.py` blocks writes AND any access to `library.lending` or `library.replenish` at the Bash level.
+
+**Installing:**
+```bash
+/plugin install patron-plugin@rdewai-plugins
+```
+
+**Skills:**
+- `/patron-agent` — Primary: search, availability, shelf location, RFID signal
+- `/query-library` — Legacy equivalent (same tools, same hook)
+
+**Example queries:**
+```
+/patron-plugin:patron-agent find Python books that are available
+/patron-plugin:patron-agent is book B001 available and where is it?
+/patron-plugin:patron-agent show all books in Cabinet 3 Rack 2
+/patron-plugin:patron-agent which books have weak RFID signal?
+/patron-plugin:patron-agent list all missing fiction books
+```
+
+---
+
+### coordinator-plugin
+
+Operations staff plugin. All 18 MCP tools across catalog, lending, and replenishment.
+
+```
+coordinator-plugin/
+├── .claude-plugin/plugin.json          ← name, version, keywords
+├── .mcp.json                           ← library MCP server config (auto-discovered)
+├── skills/
+│   ├── coordination-agent/SKILL.md     ← primary skill (15 MCP tools)
+│   └── analyze-library/SKILL.md        ← legacy equivalent
+├── hooks/hooks.json
+└── scripts/enforce-readonly-queries.py ← blocks writes only
+```
+
+**MCP tools available** (all 18):
+- Catalog (5): `list_by_category`, `list_by_status`, `get_weak_signal_books`, `search_books`, `get_book_details`
+- Lending (5): `get_lending_stats`, `get_most_lent_books`, `search_lending`, `get_book_lending`, `get_lending_by_month`
+- Replenishment (5): `get_replenish_stats`, `get_most_replenished_books`, `search_replenish`, `get_book_replenish`, `get_replenish_by_month`
+
+**MCP resources**: `library://stats`, `library://lending_stats`, `library://replenish_stats`
+
+**Hook**: `enforce-readonly-queries.py` blocks writes. All tables are readable.
+
+**Installing:**
+```bash
+/plugin install coordinator-plugin@rdewai-plugins
+```
+
+**Skills:**
+- `/coordination-agent` — Primary: lending revenue, replenishment, supply gap, monthly trends
+- `/analyze-library` — Legacy equivalent (same tools, same hook)
+
+**Example queries:**
+```
+/coordinator-plugin:coordination-agent what is the total lending revenue by patron segment?
+/coordinator-plugin:coordination-agent which books are most borrowed?
+/coordinator-plugin:coordination-agent show replenishment trends by supplier
+/coordinator-plugin:coordination-agent supply gap analysis — which categories are understocked?
+/coordinator-plugin:coordination-agent show monthly lending and replenishment trends
+/coordinator-plugin:coordination-agent which books have the highest fee waivers?
+```
+
+---
+
+### Skill Summary
+
+| Invocation | Plugin | MCP Tools | Data Access |
+|------------|--------|-----------|-------------|
+| `/patron-plugin:patron-agent` | `patron-plugin` | 8 catalog tools | `library.books` only |
+| `/patron-plugin:query-library` | `patron-plugin` | 8 catalog tools | `library.books` only |
+| `/coordinator-plugin:coordination-agent` | `coordinator-plugin` | 15 tools (catalog + lending + replenish) | All three tables |
+| `/coordinator-plugin:analyze-library` | `coordinator-plugin` | 15 tools (catalog + lending + replenish) | All three tables |
+
+> **Note**: The MCP server starts automatically via `.mcp.json` when a skill is invoked — you do not need to run `make mcp-server` separately when using the plugins.
 
 ---
 

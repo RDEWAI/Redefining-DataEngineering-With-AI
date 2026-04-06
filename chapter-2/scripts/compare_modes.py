@@ -31,7 +31,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.agentic.agents.library_assistant_enhanced import EnhancedLibraryAssistant
 from src.agentic.llm.unified_client import UnifiedLLMClient
-from src.agentic.tools.dummy_tools import get_domain_tool_count, get_total_tool_count
+from src.agentic.tools.dummy_tools import (
+    EnterpriseDomain,
+    generate_dummy_tools,
+    get_domain_tool_count,
+    get_total_tool_count,
+)
 
 # Sample queries to test
 # Format: (query, requires_rag)
@@ -47,6 +52,100 @@ SAMPLE_QUERIES = [
         True,
     ),  # RAG + API
 ]
+
+
+def print_mcp_tool_tree(enable_dummy_tools: bool = True) -> None:
+    """Print a file-tree view of all tools discovered from connected MCP servers.
+
+    This simulates what the LLM sees when it first connects to MCP servers and
+    discovers available tools — before any query is run.
+
+    Args:
+        enable_dummy_tools: Whether enterprise domain servers are included
+    """
+    import time
+
+    # ── MCP "servers" we expose ────────────────────────────────────────────────
+    # Library catalog tools (always present)
+    library_catalog_tools = [
+        "search_books",
+        "get_book_details",
+        "check_availability",
+        "list_by_category",
+        "list_by_status",
+        "locate_book",
+        "find_books_in_cabinet",
+        "get_weak_signal_books",
+        "get_library_stats",
+        "get_popular_books",
+    ]
+    # RAG / semantic tools
+    library_rag_tools = [
+        "semantic_search",
+        "get_lending_stats",
+        "search_lending",
+        "get_book_lending",
+        "get_most_lent_books",
+        "search_lending_semantic",
+        "search_replenish",
+        "get_book_replenish",
+        "get_replenish_stats",
+        "get_most_replenished_books",
+        "get_replenish_by_month",
+        "search_replenish_semantic",
+    ]
+
+    # Build per-domain tool lists from dummy tools
+    domain_tools: dict[str, list[str]] = {}
+    if enable_dummy_tools:
+        for domain in EnterpriseDomain:
+            tools = generate_dummy_tools(domains=[domain])
+            domain_tools[domain.value] = [t.name for t in tools]
+
+    # Total server count and tool count
+    server_count = 2 + len(domain_tools)  # catalog + rag + enterprise domains
+    total_tools = len(library_catalog_tools) + len(library_rag_tools) + sum(
+        len(v) for v in domain_tools.values()
+    )
+
+    print()
+    print("=" * 70)
+    print("  MCP TOOL DISCOVERY")
+    print("=" * 70)
+    print()
+    print("  Connecting to MCP servers and discovering available tools...")
+    time.sleep(0.3)
+    print()
+    print(f"  Connected servers: {server_count}   Total tools: {total_tools}")
+    print()
+
+    def _tree_lines(tools: list[str], indent: str = "  ") -> list[str]:
+        """Render a list of tool names as tree branches."""
+        lines = []
+        for i, name in enumerate(tools):
+            connector = "└──" if i == len(tools) - 1 else "├──"
+            lines.append(f"{indent}  {connector} {name}")
+        return lines
+
+    # ── library-catalog-server ─────────────────────────────────────────────────
+    all_servers = [
+        ("library-catalog-server", library_catalog_tools),
+        ("library-rag-server    ", library_rag_tools),
+    ] + [(f"{d}-server".ljust(22), tools) for d, tools in domain_tools.items()]
+
+    for idx, (server_name, tools) in enumerate(all_servers):
+        is_last = idx == len(all_servers) - 1
+        top_connector = "└──" if is_last else "├──"
+        continuation = "   " if is_last else "│  "
+
+        print(f"  {top_connector} {server_name}   [{len(tools)} tools]")
+        for i, tool_name in enumerate(tools):
+            inner = "└──" if i == len(tools) - 1 else "├──"
+            print(f"  {continuation}  {inner} {tool_name}")
+        print()
+
+    print("=" * 70)
+    print()
 
 
 def print_tool_breakdown(enable_dummy_tools: bool) -> dict[str, int]:
@@ -353,8 +452,9 @@ Enterprise Scale Demo:
         f"  Dummy Tools: {'ENABLED (100 enterprise tools)' if args.enable_dummy_tools else 'disabled'}"
     )
 
-    # Print tool breakdown if dummy tools enabled
+    # Print MCP tool discovery tree then breakdown if dummy tools enabled
     if args.enable_dummy_tools:
+        print_mcp_tool_tree(enable_dummy_tools=True)
         print_tool_breakdown(args.enable_dummy_tools)
 
     # Determine RAG override

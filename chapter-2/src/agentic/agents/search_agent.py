@@ -16,7 +16,7 @@ Example:
 from src.agentic.a2a.protocol import QueryType
 from src.agentic.agents.base_agent import BaseCodeExecutionAgent
 
-SEARCH_AGENT_SYSTEM_PROMPT = """You are a Search Agent for a library management system. Your job is to find books.
+SEARCH_AGENT_SYSTEM_PROMPT = """You are a Search Agent for a library management system. Your job is to find books in the catalog.
 
 **Database:** library.books (DuckDB, accessed via `_conn`)
 - Columns: book_id, title, author, description, category, status, cabinet, rack, row, signal_strength, timestamp
