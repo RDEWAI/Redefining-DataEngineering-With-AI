@@ -1,5 +1,5 @@
 {
-  "description": "Library Assistant hooks: read-only query enforcement",
+  "description": "Coordinator Plugin hooks: read-only query enforcement",
   "hooks": {
     "PreToolUse": [
       {

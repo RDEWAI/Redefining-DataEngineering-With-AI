@@ -1,0 +1,17 @@
+{
+  "description": "Patron Plugin hooks: read-only enforcement and lending/replenishment access block",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/enforce-patron-readonly.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

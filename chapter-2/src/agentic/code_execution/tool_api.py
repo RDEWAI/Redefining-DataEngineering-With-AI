@@ -327,6 +327,101 @@ class ToolAPIGenerator:
         for loan in results:
             print(f"{loan['book_title']} - {loan['quantity']} copies")"""
 
+            # Add replenishment tools when RAG is enabled
+            tool_help_map[
+                "search_replenish"
+            ] = """search_replenish(book_id: Optional[str] = None, supplier: Optional[str] = None, replenish_type: Optional[str] = None, priority: Optional[str] = None, limit: int = 20) -> List[Dict[str, Any]]
+    Search replenishment records with optional filters.
+
+    Args:
+        book_id: Filter by book ID
+        supplier: Filter by supplier name (e.g., "Ingram", "Baker & Taylor")
+        replenish_type: Filter by type (Purchase, Donation, Exchange, Transfer)
+        priority: Filter by priority (High, Medium, Low)
+        limit: Maximum results (default: 20)
+
+    Returns:
+        List of replenishment record dictionaries
+
+    Example:
+        orders = search_replenish(supplier="Ingram", priority="High")"""
+
+            tool_help_map[
+                "get_book_replenish"
+            ] = """get_book_replenish(book_id: str) -> Dict[str, Any]
+    Get all replenishment records for a specific book.
+
+    Args:
+        book_id: Book ID (e.g., "B001")
+
+    Returns:
+        Dictionary with records list, total_units_added, and total_cost
+
+    Example:
+        result = get_book_replenish("B001")
+        print(f"{result['total_units_added']} units added, ${result['total_cost']:.2f}")"""
+
+            tool_help_map[
+                "get_replenish_stats"
+            ] = """get_replenish_stats() -> Dict[str, Any]
+    Get aggregate statistics about replenishments.
+
+    Returns:
+        Dictionary with total_records, total_units, total_cost, by_supplier, by_type, by_priority
+
+    Example:
+        stats = get_replenish_stats()
+        print(f"Total replenishment cost: ${stats['total_cost']:,.2f}")"""
+
+            tool_help_map[
+                "get_most_replenished_books"
+            ] = """get_most_replenished_books(limit: int = 10) -> List[Dict[str, Any]]
+    Get most restocked books ranked by total quantity added.
+
+    Args:
+        limit: Number of results (default: 10)
+
+    Returns:
+        List of books with replenish_count, total_units, total_cost
+
+    Example:
+        top = get_most_replenished_books(5)
+        for book in top:
+            print(f"{book['title']}: {book['total_units']} units added")"""
+
+            tool_help_map[
+                "get_replenish_by_month"
+            ] = """get_replenish_by_month() -> List[Dict[str, Any]]
+    Get replenishments aggregated by month for trend analysis.
+
+    Returns:
+        List of monthly summaries with records, total_units, total_cost
+
+    Example:
+        monthly = get_replenish_by_month()
+        for m in monthly:
+            print(f"{m['month']}: {m['total_units']} units, ${m['total_cost']:.2f}")"""
+
+            tool_help_map[
+                "search_replenish_semantic"
+            ] = """search_replenish_semantic(query: str, top_k: int = 10) -> List[Dict[str, Any]]
+    Search replenishment data using natural language semantic similarity.
+
+    Use for queries like "urgent programming book restocks", "donated fiction books",
+    "bulk orders from Ingram".
+
+    Args:
+        query: Natural language query
+        top_k: Number of results (default: 10)
+
+    Returns:
+        List of replenishment results with similarity scores
+
+    Example:
+        results = search_replenish_semantic("urgent high-priority restocks")
+        for r in results:
+            print(f"{r['title']} - similarity: {r['similarity']}")"""
+
         # Generate the discovery functions
         code = f'''
 # Tool Discovery Functions (Progressive Loading Pattern)
@@ -425,6 +520,20 @@ def get_tool_help(tool_name: str) -> str:
                 "search_lending_semantic": self._generate_search_lending_semantic,
             }
             for tool_name, generator in lending_tool_generators.items():
+                if self._should_include_tool(tool_name):
+                    code_parts.append(generator())
+
+        # Conditionally add replenishment tools if RAG is enabled
+        if self.include_rag:
+            replenish_tool_generators = {
+                "search_replenish": self._generate_search_replenish,
+                "get_book_replenish": self._generate_get_book_replenish,
+                "get_replenish_stats": self._generate_get_replenish_stats,
+                "get_most_replenished_books": self._generate_get_most_replenished_books,
+                "get_replenish_by_month": self._generate_get_replenish_by_month,
+                "search_replenish_semantic": self._generate_search_replenish_semantic,
+            }
+            for tool_name, generator in replenish_tool_generators.items():
                 if self._should_include_tool(tool_name):
                     code_parts.append(generator())
 
@@ -1388,6 +1497,221 @@ def search_lending_semantic(query: str, top_k: int = 10) -> List[Dict[str, Any]]
     return loans
 '''
 
+    def _generate_search_replenish(self) -> str:
+        """Generate search_replenish function."""
+        return '''
+def search_replenish(book_id: Optional[str] = None, supplier: Optional[str] = None,
+                     replenish_type: Optional[str] = None, condition: Optional[str] = None,
+                     funding_source: Optional[str] = None, priority: Optional[str] = None,
+                     limit: int = 20) -> List[Dict[str, Any]]:
+    """Search replenishment records with optional filters.
+
+    Args:
+        book_id: Filter by book ID (e.g., "B001")
+        supplier: Filter by supplier (Ingram, Baker & Taylor, Brodart, Direct Publisher, Amazon Business)
+        replenish_type: Filter by type (New Acquisition, Replacement, Restock, Donation, Return Processing)
+        condition: Filter by condition (New, Refurbished, Used - Good, Used - Fair)
+        funding_source: Filter by funding source (Operating Budget, Grant, Donation Fund, Special Collection, Emergency Fund)
+        priority: Filter by priority (Urgent, High, Normal, Low)
+        limit: Maximum number of results
+
+    Example:
+        records = search_replenish(supplier="Ingram", replenish_type="Restock")
+    """
+    conditions = []
+    params = []
+    if book_id:
+        conditions.append("r.book_id = ?")
+        params.append(book_id)
+    if supplier:
+        conditions.append("r.supplier = ?")
+        params.append(supplier)
+    if replenish_type:
+        conditions.append("r.replenish_type = ?")
+        params.append(replenish_type)
+    if condition:
+        conditions.append("r.condition = ?")
+        params.append(condition)
+    if funding_source:
+        conditions.append("r.funding_source = ?")
+        params.append(funding_source)
+    if priority:
+        conditions.append("r.priority = ?")
+        params.append(priority)
+
+    where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+    query = f"""
+        SELECT r.replenish_id, r.book_id, b.title, r.replenish_date, r.quantity,
+               r.unit_cost, r.total_cost, r.discount_pct, r.supplier,
+               r.replenish_type, r.condition, r.funding_source, r.priority
+        FROM library.replenish r
+        JOIN library.books b ON r.book_id = b.book_id
+        {where_clause}
+        ORDER BY r.replenish_date DESC
+        LIMIT {limit}
+    """
+    rows = _conn.execute(query, params).fetchall() if params else _conn.execute(query).fetchall()
+    return [{"replenish_id": r[0], "book_id": r[1], "title": r[2], "replenish_date": str(r[3]),
+             "quantity": r[4], "unit_cost": float(r[5]), "total_cost": float(r[6]),
+             "discount_pct": float(r[7]), "supplier": r[8], "replenish_type": r[9],
+             "condition": r[10], "funding_source": r[11], "priority": r[12]} for r in rows]
+'''
+
+    def _generate_get_book_replenish(self) -> str:
+        """Generate get_book_replenish function."""
+        return '''
+def get_book_replenish(book_id: str) -> Dict[str, Any]:
+    """Get all replenishment records for a specific book.
+
+    Args:
+        book_id: Book ID (e.g., "B001")
+
+    Example:
+        result = get_book_replenish("B001")
+    """
+    rows = _conn.execute("""
+        SELECT r.replenish_id, r.replenish_date, r.quantity, r.unit_cost, r.total_cost,
+               r.supplier, r.replenish_type, r.condition, r.funding_source, r.priority
+        FROM library.replenish r
+        WHERE r.book_id = ?
+        ORDER BY r.replenish_date DESC
+    """, [book_id]).fetchall()
+    book = _conn.execute("SELECT title FROM library.books WHERE book_id = ?", [book_id]).fetchone()
+    records = [{"replenish_id": r[0], "replenish_date": str(r[1]), "quantity": r[2],
+                "unit_cost": float(r[3]), "total_cost": float(r[4]), "supplier": r[5],
+                "replenish_type": r[6], "condition": r[7], "funding_source": r[8],
+                "priority": r[9]} for r in rows]
+    total_units = sum(r["quantity"] for r in records)
+    total_cost = sum(r["total_cost"] for r in records)
+    return {"book_id": book_id, "title": book[0] if book else "Unknown",
+            "replenishment_count": len(records), "total_units_added": total_units,
+            "total_cost": round(total_cost, 2), "records": records}
+'''
+
+    def _generate_get_replenish_stats(self) -> str:
+        """Generate get_replenish_stats function."""
+        return '''
+def get_replenish_stats() -> Dict[str, Any]:
+    """Get aggregate statistics about replenishments.
+
+    Example:
+        stats = get_replenish_stats()
+    """
+    totals = _conn.execute("""
+        SELECT COUNT(*) as total_records, SUM(quantity) as total_units,
+               SUM(total_cost) as total_cost, AVG(total_cost) as avg_cost
+        FROM library.replenish
+    """).fetchone()
+    by_supplier = _conn.execute("""
+        SELECT supplier, COUNT(*) as records, SUM(quantity) as units, SUM(total_cost) as cost
+        FROM library.replenish GROUP BY supplier ORDER BY cost DESC
+    """).fetchall()
+    by_type = _conn.execute("""
+        SELECT replenish_type, COUNT(*) as records, SUM(quantity) as units
+        FROM library.replenish GROUP BY replenish_type ORDER BY records DESC
+    """).fetchall()
+    by_priority = _conn.execute("""
+        SELECT priority, COUNT(*) as records
+        FROM library.replenish GROUP BY priority ORDER BY records DESC
+    """).fetchall()
+    return {
+        "total_records": totals[0], "total_units": totals[1],
+        "total_cost": round(float(totals[2]), 2), "avg_cost_per_order": round(float(totals[3]), 2),
+        "by_supplier": [{"supplier": r[0], "records": r[1], "units": r[2], "cost": round(float(r[3]), 2)} for r in by_supplier],
+        "by_type": [{"type": r[0], "records": r[1], "units": r[2]} for r in by_type],
+        "by_priority": [{"priority": r[0], "records": r[1]} for r in by_priority],
+    }
+'''
+
+    def _generate_get_most_replenished_books(self) -> str:
+        """Generate get_most_replenished_books function."""
+        return '''
+def get_most_replenished_books(limit: int = 10) -> List[Dict[str, Any]]:
+    """Get most replenished books ranked by total quantity added.
+
+    Args:
+        limit: Maximum number of results (default 10)
+
+    Example:
+        top_books = get_most_replenished_books(limit=5)
+    """
+    rows = _conn.execute(f"""
+        SELECT r.book_id, b.title, b.author, b.category,
+               COUNT(*) as replenish_count, SUM(r.quantity) as total_units,
+               SUM(r.total_cost) as total_cost
+        FROM library.replenish r
+        JOIN library.books b ON r.book_id = b.book_id
+        GROUP BY r.book_id, b.title, b.author, b.category
+        ORDER BY total_units DESC
+        LIMIT {limit}
+    """).fetchall()
+    return [{"book_id": r[0], "title": r[1], "author": r[2], "category": r[3],
+             "replenish_count": r[4], "total_units": r[5],
+             "total_cost": round(float(r[6]), 2)} for r in rows]
+'''
+
+    def _generate_get_replenish_by_month(self) -> str:
+        """Generate get_replenish_by_month function."""
+        return '''
+def get_replenish_by_month() -> List[Dict[str, Any]]:
+    """Get replenishments aggregated by month for trend analysis.
+
+    Example:
+        monthly = get_replenish_by_month()
+    """
+    rows = _conn.execute("""
+        SELECT strftime(replenish_date, '%Y-%m') as month,
+               COUNT(*) as records, SUM(quantity) as total_units, SUM(total_cost) as total_cost
+        FROM library.replenish
+        GROUP BY month ORDER BY month DESC
+    """).fetchall()
+    return [{"month": r[0], "records": r[1], "total_units": r[2],
+             "total_cost": round(float(r[3]), 2)} for r in rows]
+'''
+
+    def _generate_search_replenish_semantic(self) -> str:
+        """Generate search_replenish_semantic function."""
+        return '''
+def search_replenish_semantic(query: str, top_k: int = 10) -> List[Dict[str, Any]]:
+    """Search replenishment data using natural language semantic similarity.
+
+    Use for queries like "urgent programming book restocks", "donated fiction books",
+    "bulk orders from Ingram".
+
+    Args:
+        query: Natural language query
+        top_k: Maximum number of results
+
+    Example:
+        results = search_replenish_semantic("urgent high-priority restocks")
+    """
+    try:
+        from sentence_transformers import SentenceTransformer
+        import numpy as np
+        model = SentenceTransformer("all-MiniLM-L6-v2")
+        query_embedding = model.encode(query).tolist()
+        rows = _conn.execute(f"""
+            SELECT re.book_id, b.title, b.author,
+                   array_cosine_similarity(re.embedding::FLOAT[384], {query_embedding}::FLOAT[384]) as similarity
+            FROM library.replenish_embeddings re
+            JOIN library.books b ON re.book_id = b.book_id
+            ORDER BY similarity DESC
+            LIMIT {top_k}
+        """).fetchall()
+        results = []
+        for book_id, title, author, sim in rows:
+            records = _conn.execute("""
+                SELECT supplier, replenish_type, priority, SUM(quantity) as units
+                FROM library.replenish WHERE book_id = ? GROUP BY supplier, replenish_type, priority
+            """, [book_id]).fetchall()
+            results.append({"book_id": book_id, "title": title, "author": author,
+                             "similarity": round(float(sim), 4),
+                             "replenishments": [{"supplier": r[0], "type": r[1], "priority": r[2], "units": r[3]} for r in records]})
+        return results
+    except Exception as e:
+        return [{"error": str(e)}]
+'''
+
     def _generate_dummy_tool_stubs(self) -> str:
         """Generate lightweight API stubs for dummy tools (code execution mode).
 
@@ -1505,6 +1829,20 @@ def search_lending_semantic(query: str, top_k: int = 10) -> List[Dict[str, Any]]
                 "search_lending_semantic": "Search lending using natural language similarity",
             }
             for name, desc in lending_descriptions.items():
+                if self._should_include_tool(name):
+                    descriptions[name] = desc
+
+        # Conditionally add replenishment tools if RAG is enabled
+        if self.include_rag:
+            replenish_descriptions = {
+                "search_replenish": "Search replenishment records with optional filters",
+                "get_book_replenish": "Get all replenishments for a specific book",
+                "get_replenish_stats": "Get aggregate statistics about replenishments",
+                "get_most_replenished_books": "Get most restocked books by total quantity added",
+                "get_replenish_by_month": "Get monthly replenishment trends",
+                "search_replenish_semantic": "Search replenishments using natural language similarity",
+            }
+            for name, desc in replenish_descriptions.items():
                 if self._should_include_tool(name):
                     descriptions[name] = desc
 

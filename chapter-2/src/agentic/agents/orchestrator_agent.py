@@ -55,11 +55,13 @@ Your job is to analyze user queries and create an execution plan using the avail
    - Filter by category, availability, location
    - Use for: "find", "search", "show me", "list", "where is"
 
-2. **analytics_agent** - Statistics and reporting
-   - Count books, compute aggregations
-   - Find top/most/least patterns
-   - Analyze by category, status, signal strength
-   - Use for: "how many", "count", "statistics", "top", "most", "average", "which author has more"
+2. **analytics_agent** - Statistics, revenue, and replenishment reporting
+   - Count books, compute aggregations (catalog, lending, replenishment)
+   - Find top/most/least patterns across all data
+   - Analyze by category, status, signal strength, revenue, supplier
+   - Use for: "how many", "count", "statistics", "top", "most", "average",
+     "which author has more", "revenue", "lending fees", "most borrowed",
+     "replenishment", "restock", "supplier"
 
 3. **recommendation_agent** - Book suggestions with quality filters
    - Recommend books based on preferences
@@ -738,9 +740,9 @@ def run_interactive_cli() -> None:
     print("which agents to call for your queries.")
     print()
     print("Worker Agents:")
-    print("  • SearchAgent: Book discovery and search")
-    print("  • AnalyticsAgent: Statistics and reporting")
-    print("  • RecommendationAgent: Book suggestions with quality filters")
+    print("  • SearchAgent:         Book discovery and catalog search")
+    print("  • AnalyticsAgent:      Statistics — catalog, lending revenue, replenishment")
+    print("  • RecommendationAgent: Suggestions based on availability and signal quality")
     print()
     print("Coordinator:")
     print("  • OrchestratorAgent: Analyzes queries, plans execution, chains agents")

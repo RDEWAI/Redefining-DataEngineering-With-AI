@@ -1,0 +1,9 @@
+{
+  "name": "patron-plugin",
+  "version": "1.0.0",
+  "description": "Library Patron Plugin — inventory and shelf location queries via the library MCP server. Searches books by title, author, or keyword; checks availability; locates physical copies (cabinet, rack, row); lists by category or status; identifies weak RFID signal books. No access to lending revenue or replenishment data.",
+  "author": {
+    "name": "RDEWAI"
+  },
+  "keywords": ["library", "books", "patron", "shelf", "availability", "rfid", "location", "inventory"]
+}

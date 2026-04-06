@@ -650,8 +650,15 @@ class LibraryAssistant:
         show_tool_calls: bool = True,
         enable_rag: bool = False,
         enable_dummy_tools: bool = False,
+        base_tool_definitions: list[ToolDefinition] | None = None,
+        rag_tool_definitions: list[ToolDefinition] | None = None,
     ) -> None:
-        """Initialize the Library Assistant."""
+        """Initialize the Library Assistant.
+
+        Args:
+            base_tool_definitions: Override the default base tools. If None, uses TOOL_DEFINITIONS.
+            rag_tool_definitions: Override the default RAG tools. If None, uses all RAG tool sets.
+        """
         self._provider = llm_provider
         self._system_prompt = system_prompt or SYSTEM_PROMPT
         self._max_tool_iterations = max_tool_iterations
@@ -659,6 +666,8 @@ class LibraryAssistant:
         self._show_tool_calls = show_tool_calls
         self._enable_rag = enable_rag
         self._enable_dummy_tools = enable_dummy_tools
+        self._base_tool_definitions = base_tool_definitions
+        self._rag_tool_definitions = rag_tool_definitions
         self._token_usage = TokenUsage()
 
         # Get tools based on RAG and dummy tools settings
@@ -671,16 +680,21 @@ class LibraryAssistant:
 
     def _get_tool_definitions(self) -> list[ToolDefinition]:
         """Get the list of tool definitions based on RAG and dummy tools settings."""
-        tools = list(TOOL_DEFINITIONS)
+        # Use custom base tools if provided, otherwise use defaults
+        tools = list(
+            self._base_tool_definitions if self._base_tool_definitions is not None else TOOL_DEFINITIONS
+        )
         if self._enable_rag:
-            # Add book semantic search
-            tools.append(SEMANTIC_SEARCH_TOOL)
-            # Add lending tools (only available with RAG)
-            tools.extend(LENDING_TOOL_DEFINITIONS)
-            tools.append(LENDING_SEMANTIC_SEARCH_TOOL)
-            # Add replenish tools (only available with RAG)
-            tools.extend(REPLENISH_TOOL_DEFINITIONS)
-            tools.append(REPLENISH_SEMANTIC_SEARCH_TOOL)
+            if self._rag_tool_definitions is not None:
+                # Use the custom RAG tool set (e.g. patron-only or coordination-only)
+                tools.extend(self._rag_tool_definitions)
+            else:
+                # Default: add all RAG tool groups
+                tools.append(SEMANTIC_SEARCH_TOOL)
+                tools.extend(LENDING_TOOL_DEFINITIONS)
+                tools.append(LENDING_SEMANTIC_SEARCH_TOOL)
+                tools.extend(REPLENISH_TOOL_DEFINITIONS)
+                tools.append(REPLENISH_SEMANTIC_SEARCH_TOOL)
         if self._enable_dummy_tools:
             tools.extend(generate_dummy_tool_definitions())
         return tools

@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""PreToolUse hook: enforce read-only database queries from the Library Assistant.
+"""PreToolUse hook: enforce read-only database queries from the Coordinator Plugin.
 
 Inspects Bash commands before execution. Blocks any commands that contain
 database write operations (INSERT, UPDATE, DELETE, DROP, etc.) or that
 invoke DuckDB without the -readonly flag.
+
+The Coordinator Plugin has access to library.books, library.lending, and
+library.replenish — all tables are permitted for reading.
 """
 
 import json
@@ -70,7 +73,7 @@ def main():
         if match:
             _deny(
                 f"BLOCKED: Database write operation detected ({match.group(0)}). "
-                f"The Library Assistant must only run read-only SELECT queries. "
+                f"The Coordinator Plugin must only run read-only SELECT queries. "
                 f"Use 'duckdb <path> -readonly' for all database access."
             )
 
