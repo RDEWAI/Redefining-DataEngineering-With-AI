@@ -10,6 +10,8 @@ proving that the answers come from the retrieved context, not training data.
 
 import os
 from dataclasses import dataclass
+from typing import Any
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -108,9 +110,9 @@ class LibraryRAG:
             books: List of book dictionaries. Uses sample data if None.
         """
         self.books = books or LIBRARY_BOOKS
-        self._llm_client = None
+        self._llm_client: Any = None
 
-    def _get_llm_client(self):
+    def _get_llm_client(self) -> Any:
         """Lazy-load LLM client."""
         if self._llm_client is None:
             from openai import OpenAI
@@ -194,7 +196,7 @@ class LibraryRAG:
             max_tokens=500,
         )
 
-        return response.choices[0].message.content
+        return str(response.choices[0].message.content)
 
     def query_with_rag(self, question: str) -> tuple[str, RetrievalResult]:
         """Query LLM WITH retrieved context (RAG enabled).
@@ -235,7 +237,7 @@ class LibraryRAG:
 # =============================================================================
 
 
-def llm_chat(use_rag: bool = False):
+def llm_chat(use_rag: bool = False) -> None:
     """Simple LLM chat mode.
 
     Args:

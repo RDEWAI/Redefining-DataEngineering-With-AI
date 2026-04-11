@@ -1,0 +1,221 @@
+# SE Rules for bronze.synthea_encounters
+# Generated from: DQS-2026-03-20-patient-360.md
+# Compatible with spark-expectations >= 2.6.0
+# Load with: load_rules_from_yaml(this_file, spark, options={"dq_env": "PROD"})
+# Product: patient-360
+# Generated: 2026-03-20
+# Rules: 11
+
+product_id: patient-360
+
+dq_env:
+  DEV:
+    table_name: "dev_bronze.synthea_encounters"
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 0
+    priority: medium
+  QA:
+    table_name: "qa_bronze.synthea_encounters"
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    priority: medium
+  PROD:
+    table_name: "bronze.synthea_encounters"
+    action_if_failed: fail
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    priority: high
+
+rules:
+  - rule: DQ-FLD-013
+    rule_type: row_dq
+    column_name: Id
+    expectation: "Id IS NOT NULL"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Encounter primary key must not be null"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-014
+    rule_type: row_dq
+    column_name: PATIENT
+    expectation: "PATIENT IS NOT NULL"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Encounter patient FK must not be null"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-015
+    rule_type: row_dq
+    column_name: START
+    expectation: "START IS NOT NULL"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Encounter start date must not be null"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-016
+    rule_type: row_dq
+    column_name: ENCOUNTERCLASS
+    expectation: "ENCOUNTERCLASS IS NOT NULL"
+    action_if_failed: drop
+    tag: field_validation
+    description: "Encounter class should not be null"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: medium
+
+  - rule: DQ-FLD-017
+    rule_type: row_dq
+    column_name: ENCOUNTERCLASS
+    expectation: "ENCOUNTERCLASS IN ('ambulatory','inpatient','emergency','outpatient','wellness','urgentcare','home','hospice','snf','virtual')"
+    action_if_failed: drop
+    tag: field_validation
+    description: "Encounter class must be valid enum [DRD SS3.2, STM Code Systems]"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: medium
+
+  - rule: DQ-FLD-018
+    rule_type: row_dq
+    column_name: START
+    expectation: "CAST(START AS DATE) >= '1900-01-01' AND CAST(START AS DATE) <= CURRENT_DATE"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Encounter start date must be between 1900-01-01 and today [DRD SS3.2]"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-019
+    rule_type: row_dq
+    column_name: BASE_ENCOUNTER_COST
+    expectation: "BASE_ENCOUNTER_COST IS NULL OR BASE_ENCOUNTER_COST >= 0"
+    action_if_failed: drop
+    tag: field_validation
+    description: "Encounter cost must be non-negative if present [DRD SS3.2]"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: medium
+
+  - rule: DQ-FLD-020
+    rule_type: row_dq
+    column_name: _ingested_at
+    expectation: "_ingested_at IS NOT NULL"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Ingestion timestamp must not be null"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  - rule: DQ-FLD-021
+    rule_type: row_dq
+    column_name: ds
+    expectation: "ds IS NOT NULL"
+    action_if_failed: fail
+    tag: field_validation
+    description: "Partition date must not be null"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  # --- Statistical Distribution (agg_dq) ---
+  - rule: DQ-STA-002
+    rule_type: agg_dq
+    column_name: ""
+    expectation: "count(*) > 333721 and count(*) < 347343"
+    action_if_failed: fail
+    tag: statistical_distribution
+    description: "Row count within +/-2% of baseline (340,532) -- patient-critical table"
+    enable_for_source_dq_validation: false
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: false
+    priority: high
+
+  # --- Reconciliation (query_dq) ---
+  - rule: DQ-REC-004
+    rule_type: query_dq
+    column_name: ""
+    expectation: >
+      CASE WHEN s.cnt = t.cnt
+      THEN 1 ELSE 0 END
+      FROM (SELECT COUNT(*) AS cnt FROM synthea.encounters) s,
+           (SELECT COUNT(*) AS cnt FROM bronze.synthea_encounters) t
+    action_if_failed: fail
+    tag: reconciliation
+    description: "Source-to-Bronze encounter count reconciliation -- exact match required"
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    query_dq_delimiter: "@"
+    enable_querydq_custom_output: true
+    priority: high

@@ -1,0 +1,23 @@
+[
+  {
+    "rule_name": "patient_fk_not_null",
+    "column": "patient",
+    "rule": "patient IS NOT NULL",
+    "action_if_failed": "fail",
+    "description": "Allergy must be linked to a patient — critical"
+  },
+  {
+    "rule_name": "allergy_description_not_null",
+    "column": "description",
+    "rule": "description IS NOT NULL",
+    "action_if_failed": "fail",
+    "description": "Allergy description required"
+  },
+  {
+    "rule_name": "valid_severity",
+    "column": "severity1",
+    "rule": "severity1 IS NULL OR severity1 IN ('MILD','MODERATE','SEVERE')",
+    "action_if_failed": "warn",
+    "description": "Severity null allowed (56% baseline) — unexpected values logged"
+  }
+]

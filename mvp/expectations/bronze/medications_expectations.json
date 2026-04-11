@@ -1,0 +1,30 @@
+[
+  {
+    "rule_name": "patient_fk_not_null",
+    "column": "patient",
+    "rule": "patient IS NOT NULL",
+    "action_if_failed": "fail",
+    "description": "Medication must be linked to a patient — critical"
+  },
+  {
+    "rule_name": "medication_code_not_null",
+    "column": "code",
+    "rule": "code IS NOT NULL",
+    "action_if_failed": "fail",
+    "description": "RxNorm medication code required"
+  },
+  {
+    "rule_name": "stop_after_start",
+    "column": "stop",
+    "rule": "stop IS NULL OR stop >= start",
+    "action_if_failed": "warn",
+    "description": "Medication stop must be after or equal to start"
+  },
+  {
+    "rule_name": "positive_dispenses",
+    "column": "dispenses",
+    "rule": "dispenses IS NULL OR dispenses > 0",
+    "action_if_failed": "warn",
+    "description": "Dispense count should be positive"
+  }
+]

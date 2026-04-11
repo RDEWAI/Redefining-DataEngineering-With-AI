@@ -1,0 +1,37 @@
+# STORY-{{ "%02d"|format(story.epic_number) }}-{{ "%03d"|format(story.number) }}: {{ story.title }}
+
+| Field | Value |
+|-------|-------|
+| **Epic** | EPIC-{{ "%02d"|format(story.epic_number) }}: {{ story.epic_title }} |
+| **Priority** | {{ story.priority }} |
+| **Story Points** | {{ story.points }} |
+| **Sprint** | {{ story.sprint }} |
+| **Dependencies** | {{ story.dependencies }} |
+| **Status** | {{ story.status }} |
+
+## User Story
+
+As a {{ story.persona }}, I want {{ story.goal }} so that {{ story.benefit }}.
+
+## Description
+
+{{ story.description }}
+
+## Acceptance Criteria
+
+{% for criterion in story.acceptance_criteria %}
+- [ ] {{ criterion.text }} [{{ criterion.reference }}]
+{% endfor %}
+
+## Technical Notes
+
+- **Upstream references**: {{ story.upstream_references }}
+- **Implementation hints**: {{ story.implementation_hints }}
+
+## Estimation Support
+
+| Artifact | Sections Covered |
+|----------|-----------------|
+{% for row in story.estimation_support %}
+| {{ row.artifact }} | {{ row.sections }} |
+{% endfor %}

@@ -1,0 +1,21 @@
+{
+  "name": "rdewai-plugins",
+  "owner": {
+    "name": "RDEWAI"
+  },
+  "metadata": {
+    "description": "Plugins for Redefining Data Engineering With AI"
+  },
+  "plugins": [
+    {
+      "name": "patron-plugin",
+      "source": "./patron-plugin",
+      "description": "Library Patron Plugin — inventory and shelf location queries via the library MCP server"
+    },
+    {
+      "name": "coordinator-plugin",
+      "source": "./coordinator-plugin",
+      "description": "Library Coordinator Plugin — operations staff analytics via the library MCP server"
+    }
+  ]
+}

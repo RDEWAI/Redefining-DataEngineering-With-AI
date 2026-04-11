@@ -11,7 +11,7 @@ ifeq ($(UNAME_S),Darwin)
     endif
 endif
 
-.PHONY: help dev-setup load-data verify-data generate-sales-data mcp-server mcp-dev mcp-client mcp-assistant mcp-compare-modes mcp-benchmark mcp-compare-modes-enterprise mcp-compare-modes-enterprise-all assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew llm llm-rag
+.PHONY: help dev-setup load-data verify-data generate-lending-data generate-replenish-data mcp-server mcp-dev mcp-client mcp-assistant mcp-compare-modes mcp-benchmark mcp-compare-modes-enterprise mcp-compare-modes-enterprise-all patron-agent coordination-agent assistant assistant-rag assistant-enhanced assistant-code assistant-dummy-tools assistant-code-dummy-tools compare-modes compare-modes-enterprise compare-modes-enterprise-all test-code-execution benchmark generate-embeddings semantic-search data-analysis multi-agent test test-unit test-integration test-multi-agent lint format clean install-brew llm llm-rag
 
 
 help:
@@ -26,12 +26,12 @@ help:
 	@echo "  llm                        - Chat with LLM (no RAG) - see hallucinations"
 	@echo "  llm-rag                    - Chat with LLM + RAG - see accurate answers"
 	@echo "  --- Production RAG (requires load-data first) ---"
-	@echo "  generate-embeddings        - Generate embeddings for books AND sales"
+	@echo "  generate-embeddings        - Generate embeddings for books AND lending"
 	@echo "  semantic-search            - Interactive semantic search CLI"
 	@echo "  assistant-rag              - Library Assistant with RAG enabled"
 	@echo ""
 	@echo "=== Section 2: MCP (requires load-data first) ==="
-	@echo "  load-data                  - Load 200 books + 750 sales into DuckDB"
+	@echo "  load-data                  - Load 200 books + 750 loans + 500 replenishments into DuckDB"
 	@echo "  verify-data                - Verify data loaded correctly"
 	@echo "  mcp-client                 - Settings menu to configure MCP options"
 	@echo "  mcp-assistant              - AI Chat (code execution ON by default)"
@@ -47,7 +47,9 @@ help:
 	@echo "  mcp-dev                    - Start MCP Inspector for debugging"
 	@echo ""
 	@echo "=== Section 3: Agentic AI ==="
-	@echo "  assistant                  - Traditional tool-calling assistant"
+	@echo "  patron-agent               - Library patron assistant (11 tools, RAG on)"
+	@echo "  coordination-agent         - Library operations assistant (11 tools, RAG on)"
+	@echo "  assistant                  - Traditional monolithic tool-calling assistant (22 tools)"
 	@echo "  data-analysis              - Start data analysis agent"
 	@echo "  multi-agent                - Start multi-agent orchestrator"
 	@echo ""
@@ -89,13 +91,17 @@ dev-setup: install-brew install-uv
 	@echo "  1. Copy .env.example to .env and add your OPENROUTER_API_KEY"
 	@echo "  2. Run 'make load-data' to load CSV into DuckDB"
 
-load-data: generate-sales-data
-	@echo "Loading CSV data (books + sales) into DuckDB..."
-	uv run python scripts/load_library_csv_to_duckdb.py --include-sales
+load-data: generate-lending-data generate-replenish-data
+	@echo "Loading CSV data (books + lending + replenish) into DuckDB..."
+	uv run python scripts/load_library_csv_to_duckdb.py --include-lending --include-replenish
 
-generate-sales-data:
-	@echo "Generating synthetic sales data..."
-	uv run python scripts/generate_sales_data.py
+generate-lending-data:
+	@echo "Generating synthetic lending data..."
+	uv run python scripts/generate_lending_data.py
+
+generate-replenish-data:
+	@echo "Generating synthetic replenish data..."
+	uv run python scripts/generate_replenish_data.py
 
 verify-data:
 	@echo "Verifying data load..."
@@ -151,6 +157,14 @@ mcp-compare-modes-enterprise-all:
 	@echo ""
 	uv run python scripts/compare_modes.py --enable-dummy-tools --all --no-rag
 
+patron-agent:
+	@echo "Starting Patron Agent (11 tools, RAG enabled)..."
+	@uv run python -W ignore::RuntimeWarning -m src.agentic.agents.patron_agent --rag
+
+coordination-agent:
+	@echo "Starting Coordination Agent (11 tools, RAG enabled)..."
+	@uv run python -W ignore::RuntimeWarning -m src.agentic.agents.coordination_agent --rag
+
 assistant:
 	@echo "Starting Library Assistant (Traditional Mode)..."
 	@uv run python -W ignore::RuntimeWarning -m src.agentic.agents.library_assistant
@@ -200,8 +214,11 @@ generate-embeddings:
 	@echo "Generating book embeddings..."
 	uv run python -c "from src.agentic.rag.embeddings import generate_all_embeddings; generate_all_embeddings()"
 	@echo ""
-	@echo "Generating sales embeddings..."
-	uv run python -c "from src.agentic.rag.embeddings import generate_sales_embeddings; generate_sales_embeddings()"
+	@echo "Generating lending embeddings..."
+	uv run python -c "from src.agentic.rag.embeddings import generate_lending_embeddings; generate_lending_embeddings()"
+	@echo ""
+	@echo "Generating replenish embeddings..."
+	uv run python -c "from src.agentic.rag.embeddings import generate_replenish_embeddings; generate_replenish_embeddings()"
 
 semantic-search:
 	@echo "Starting semantic search CLI..."
@@ -213,7 +230,7 @@ llm:
 	@echo "============================================================"
 	@echo ""
 	@echo "Ask about our library books - the LLM has NO access to the data."
-	@echo "Try: Who wrote 'The Quantum Garden'?"
+	@echo "Try: Where is The Quantum Garden located?"
 	@echo ""
 	uv run python -m src.rag.simple_rag --no-rag
 
@@ -223,7 +240,7 @@ llm-rag:
 	@echo "============================================================"
 	@echo ""
 	@echo "Now the LLM has access to our library database via RAG."
-	@echo "Try the same question: Who wrote 'The Quantum Garden'?"
+	@echo "Try the same question: Where is The Quantum Garden located?"
 	@echo ""
 	uv run python -m src.rag.simple_rag --rag
 

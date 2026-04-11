@@ -203,9 +203,14 @@ Redefining-DataEngineering-With-AI/
 │   └── duckdb/                    # DuckDB databases (gitignored)
 │       └── raw.db                 # Synthea data (synthea schema)
 │
+├── chapter-2/                     # AI Engineering (RAG, MCP, Agentic AI)
+├── chapter-3/                     # Business Analyst Agent (DRD Plugin)
+├── chapter-4/                     # Multi-Agent Artifact Chain (7 plugins)
+│
 ├── scripts/
 │   ├── validate-environment.sh    # Prerequisite validation
-│   └── add_duckdb_connection.py   # Auto-configure DuckDB in Superset
+│   ├── add_duckdb_connection.py   # Auto-configure DuckDB in Superset
+│   └── clean-outputs.sh           # Reset chapter-3/4 outputs & memory for fresh runs
 │
 ├── tests/
 │   ├── integration/               # Integration tests
@@ -216,6 +221,61 @@ Redefining-DataEngineering-With-AI/
 ├── Dockerfile                     # Docker for data extraction only
 └── README.md                      # This file
 ```
+
+---
+
+## 📖 Chapters
+
+### Chapter 2: AI Engineering with Library Management Data
+
+Demonstrates modern AI engineering patterns — **RAG**, **MCP**, and **Agentic AI** — using a Library Management dataset with 200 books in DuckDB.
+
+- RAG: Retrieval-Augmented Generation with vector embeddings and semantic search
+- MCP: Model Context Protocol server with code execution for token efficiency
+- Agentic AI: Multi-agent orchestration with specialist agents
+
+See [chapter-2/README.md](chapter-2/README.md) for full details.
+
+### Chapter 3: Business Analyst Agent
+
+A single Claude Code plugin that acts as a **Business Analyst Agent**, generating, updating, and validating **Data Requirements Documents (DRDs)** from business inputs for the Patient 360 use case.
+
+- 1 plugin, 3 skills (create-drd, update-drd, validate-drd)
+- Interactive Q&A elicitation workflow
+- Automatic validation via PostToolUse hooks
+
+See [chapter-3/README.md](chapter-3/README.md) for full details.
+
+### Chapter 4: Multi-Agent Artifact Chain
+
+Seven Claude Code plugins forming a **multi-agent artifact chain** where each role produces a structured artifact that feeds the next:
+
+```
+DRD → HLD → DMS → STM → DQS → LLD → Stories
+```
+
+| Plugin | Role | Artifact | Format |
+|--------|------|----------|--------|
+| ba-plugin | Business Analyst | DRD (Data Requirements Document) | Markdown |
+| architect-plugin | Data Architect | HLD (High-Level Design) | Markdown |
+| data-modeler-plugin | Data Modeler | DMS (Data Model Specification) | Markdown + YAML |
+| mapping-analyst-plugin | Mapping Analyst | STM (Source-to-Target Mapping) | Excel (.xlsx) |
+| dq-engineer-plugin | DQ Engineer | DQS (Data Quality Specification) | Markdown + SE YAML |
+| technical-lead-plugin | Technical Lead | LLD (Low-Level Design) | Markdown + Config + DAG |
+| scrum-master-plugin | Scrum Master | Sprint Backlog (Epics & Stories) | Markdown (multi-file) |
+
+See [chapter-4/README.md](chapter-4/README.md) for full details.
+
+**Want to try it yourself?** After cloning, reset the reference outputs and run the agents to generate your own artifacts:
+
+```bash
+# 1. Clean existing outputs (keeps DRD as starting input)
+./scripts/clean-outputs.sh
+
+# 2. Follow the step-by-step walkthrough
+```
+
+See the [Hands-On Guide](chapter-4/HANDS-ON-GUIDE.md) for the full walkthrough — from plugin installation through generating all 7 artifacts.
 
 ---
 
@@ -394,6 +454,9 @@ docker pull ghcr.io/rdewai/redefining-dataengineering-with-ai:raw-data
 - **marshmallow <4** - Data serialization (pinned for Superset compatibility)
 - **pytest 8.3.4** - Testing framework
 - **setuptools** - Python packaging tools
+- **openpyxl 3.1+** - Excel file generation for Source-to-Target Mappings (Chapter 4)
+- **jinja2** - Template rendering for artifact generation (Chapter 4)
+- **pyyaml** - YAML parsing for schema blocks and SE rules (Chapter 4)
 
 ### Python Version Support
 

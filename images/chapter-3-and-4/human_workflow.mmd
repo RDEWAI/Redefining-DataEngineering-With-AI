@@ -1,0 +1,64 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    subgraph origin["Business Origin"]
+        direction TB
+        CMO["CMO<br/><i>Identifies Need</i>"]
+        BIZ["Business Team<br/><i>Gathers Requirements</i>"]
+        CMO --> BIZ
+    end
+
+    subgraph planning["Planning"]
+        direction TB
+        BA["BA<br/><i>Business Analyst</i>"]
+        ARCH["Architect<br/><i>Data Architect</i>"]
+        DM["DM<br/><i>Data Modeler</i>"]
+        BA --> ARCH --> DM
+    end
+
+    subgraph engineering["Engineering"]
+        direction TB
+        TA["TA / MA<br/><i>Technical / Mapping Analyst</i>"]
+        DQE["DQE<br/><i>Data Quality Engineer</i>"]
+        TL["TL<br/><i>Technical Lead</i>"]
+        TA --> DQE --> TL
+    end
+
+    subgraph delivery["Delivery"]
+        SM["SM<br/><i>Scrum Master</i>"]
+    end
+
+    subgraph impl["Implementation"]
+        direction TB
+        DE["DE<br/><i>Data Engineer</i>"]
+        DQA["DQA<br/><i>Data Quality Analyst</i>"]
+        DEVOPS["DevOps<br/><i>DevOps Engineer</i>"]
+        DVE["DVE<br/><i>Data Viz Engineer</i>"]
+    end
+
+    BIZ -->|"BRD"| BA
+    DM -->|"DMS"| TA
+    TL -->|"LLD"| SM
+    SM -->|"Stories"| DE
+    SM -->|"Stories"| DQA
+    SM -->|"Stories"| DEVOPS
+    SM -->|"Stories"| DVE
+
+    style origin fill:#f3e5f5,stroke:#9C27B0,stroke-width:2px
+    style planning fill:#e8f5e9,stroke:#4CAF50,stroke-width:2px
+    style engineering fill:#fff3e0,stroke:#FF9800,stroke-width:2px
+    style delivery fill:#e3f2fd,stroke:#1976D2,stroke-width:2px
+    style impl fill:#fce4ec,stroke:#E91E63,stroke-width:2px
+
+    style CMO fill:#e1bee7,stroke:#333,stroke-width:2px
+    style BIZ fill:#ce93d8,stroke:#333,stroke-width:2px
+    style BA fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style ARCH fill:#dcedc1,stroke:#333,stroke-width:2px
+    style DM fill:#ffd3a5,stroke:#333,stroke-width:2px
+    style TA fill:#ffaaa5,stroke:#333,stroke-width:2px
+    style DQE fill:#ff8b94,stroke:#333,stroke-width:2px
+    style TL fill:#d4a5ff,stroke:#333,stroke-width:2px
+    style SM fill:#a5d4ff,stroke:#333,stroke-width:2px
+    style DE fill:#b3e5fc,stroke:#333,stroke-width:2px
+    style DQA fill:#b3e5fc,stroke:#333,stroke-width:2px
+    style DEVOPS fill:#b3e5fc,stroke:#333,stroke-width:2px
+    style DVE fill:#b3e5fc,stroke:#333,stroke-width:2px

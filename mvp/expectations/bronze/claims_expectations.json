@@ -1,0 +1,23 @@
+[
+  {
+    "rule_name": "claim_id_not_null",
+    "column": "id",
+    "rule": "id IS NOT NULL",
+    "action_if_failed": "fail",
+    "description": "Claim ID must never be null"
+  },
+  {
+    "rule_name": "patient_fk_not_null",
+    "column": "patientid",
+    "rule": "patientid IS NOT NULL",
+    "action_if_failed": "drop",
+    "description": "Claim must be linked to a patient"
+  },
+  {
+    "rule_name": "service_date_not_null",
+    "column": "servicedate",
+    "rule": "servicedate IS NOT NULL",
+    "action_if_failed": "warn",
+    "description": "Service date should be present on claims"
+  }
+]

@@ -78,8 +78,8 @@ CODE_EXECUTION_SYSTEM_PROMPT_BASE = """You are a Library Data Analyst with Pytho
 - get_library_stats() - Library-wide statistics
 - get_popular_books(category=None, limit=10) - Top/popular books by category
 
-**IMPORTANT: Sales data requires RAG mode.**
-- For "top selling books by revenue" or sales analytics: Enable RAG mode with /rag
+**IMPORTANT: Lending data requires RAG mode.**
+- For "most lent books by quantity" or lending analytics: Enable RAG mode with /rag
 - For "popular/top books in category" (catalog-based): Use get_popular_books() - works now!
 
 **CRITICAL INSTRUCTIONS:**
@@ -90,7 +90,7 @@ CODE_EXECUTION_SYSTEM_PROMPT_BASE = """You are a Library Data Analyst with Pytho
 
 **Example - Get top books in a category:**
 ```python
-# Get popular programming books (no sales data needed)
+# Get popular programming books (no lending data needed)
 books = get_popular_books("Programming", limit=5)
 print(f"Top {len(books)} Programming books:")
 for book in books:
@@ -112,25 +112,40 @@ for book in results:
 
 # RAG-specific additions to the system prompt
 CODE_EXECUTION_RAG_ADDITIONS = """
-**library.sales:** (ONLY AVAILABLE WITH RAG MODE)
-- Columns: sale_id, book_id, sale_date, quantity, unit_price, total_amount, discount, payment_method, customer_id, customer_segment, region, channel
-- Customer segments: "Individual", "Corporate", "Educational", "Government"
+**library.lending:** (ONLY AVAILABLE WITH RAG MODE)
+- Columns: loan_id, book_id, loan_date, quantity, lending_fee, total_fees, fee_waiver, payment_method, patron_id, patron_segment, region, channel
+- Patron segments: "Individual", "Corporate", "Educational", "Government"
 - Regions: "Northeast", "Southeast", "Midwest", "West", "International"
 - Channels: "In-Store", "Online", "Phone Order", "Partner"
 
-**Sales API Functions:** (ONLY AVAILABLE WITH RAG MODE)
-- search_sales(book_id, customer_segment, region, channel, limit) - Filter sales records
-- get_book_sales(book_id) - Get all sales for a book
-- get_sales_stats() - Aggregate sales statistics
-- get_top_selling_books(limit) - Best-selling books by quantity
-- get_most_discounted_sales(limit) - Sales with highest discounts
+**Lending API Functions:** (ONLY AVAILABLE WITH RAG MODE)
+- search_lending(book_id, patron_segment, region, channel, limit) - Filter lending records
+- get_book_lending(book_id) - Get all loans for a book
+- get_lending_stats() - Aggregate lending statistics
+- get_most_lent_books(limit) - Most lent books by quantity
+- search_lending_semantic(query, top_k) - Natural language lending search
+
+**library.replenish:** (ONLY AVAILABLE WITH RAG MODE)
+- Columns: replenish_id, book_id, replenish_date, quantity, unit_cost, total_cost, discount_pct, supplier, replenish_type, condition, funding_source, priority
+- Suppliers: "Ingram", "Baker & Taylor", "Brodart", "Direct Publisher", "Amazon Business"
+- Types: "New Acquisition", "Replacement", "Restock", "Donation", "Return Processing"
+- Conditions: "New", "Refurbished", "Used - Good", "Used - Fair"
+- Funding: "Operating Budget", "Grant", "Donation Fund", "Special Collection", "Emergency Fund"
+- Priority: "Urgent", "High", "Normal", "Low"
+
+**Replenish API Functions:** (ONLY AVAILABLE WITH RAG MODE)
+- search_replenish(book_id, supplier, replenish_type, condition, funding_source, priority, limit) - Filter replenish records
+- get_book_replenish(book_id) - Get all replenishments for a book
+- get_replenish_stats() - Aggregate replenishment statistics
+- get_most_replenished_books(limit) - Most replenished books by quantity
+- search_replenish_semantic(query, top_k) - Natural language replenish search
 
 **RAG/Semantic Search - WHEN TO USE:**
 - `semantic_search(query, top_k=5)` - Find books by meaning, not just keywords
-- `search_sales_semantic(query, top_k=10)` - Find sales by natural language
+- `search_lending_semantic(query, top_k=10)` - Find loans by natural language
 - **Book RAG indexes**: title, author, description, category (conceptual/text data)
-- **Sales RAG indexes**: book info + customer segment, region, channel, discount status
-- Use for: "books about time travel", "bulk corporate purchases", "holiday online sales"
+- **Lending RAG indexes**: book info + patron segment, region, channel, fee waiver status
+- Use for: "books about time travel", "bulk corporate loans", "online lending"
 - Do NOT use for: "available books", "missing books", "weak signal" (use tools/SQL instead)
 
 **Example - RAG + Availability in ONE block:**
@@ -145,14 +160,23 @@ for book in results:
     print(f"      Status: {avail['status']} | Location: {avail.get('location', 'N/A')}")
 ```
 
-**Example - Sales Semantic Search:**
+**Example - Lending Semantic Search:**
 ```python
-# Find bulk corporate purchases using semantic search
-results = search_sales_semantic("bulk corporate purchases")
-print(f"Found {len(results)} matching sales:\\n")
-for sale in results:
-    print(f"  {sale['book_title']} - {sale['quantity']} copies to {sale['customer_segment']}")
-    print(f"      Region: {sale['region']} | Channel: {sale['channel']} | Similarity: {sale['similarity']:.3f}")
+# Find bulk corporate loans using semantic search
+results = search_lending_semantic("bulk corporate loans")
+print(f"Found {len(results)} matching loans:\\n")
+for loan in results:
+    print(f"  {loan['book_title']} - {loan['quantity']} copies to {loan['patron_segment']}")
+    print(f"      Region: {loan['region']} | Channel: {loan['channel']} | Similarity: {loan['similarity']:.3f}")
+```
+
+**Example - Cross-dataset supply gap analysis (Lending vs Replenish):**
+```python
+# Compare lending demand vs replenishment supply by category
+lending_stats = get_lending_stats()
+replenish_stats = get_replenish_stats()
+print(f"Lending: {lending_stats['stats']['total_units']} copies lent")
+print(f"Replenish: {replenish_stats['stats']['total_units']} copies added")
 ```
 """
 
@@ -161,29 +185,29 @@ def get_code_execution_system_prompt(include_rag: bool = False) -> str:
     """Get the system prompt for code execution mode.
 
     Args:
-        include_rag: Whether to include RAG/semantic search instructions and sales tools
+        include_rag: Whether to include RAG/semantic search instructions and lending tools
 
     Returns:
         System prompt string
     """
     if include_rag:
         # Insert RAG additions after API functions list
-        # Add semantic_search to book tools and remove the sales warning
+        # Add semantic_search to book tools and remove the lending warning
         base = CODE_EXECUTION_SYSTEM_PROMPT_BASE.replace(
             "get_weak_signal_books()",
             "get_weak_signal_books(), semantic_search()",
         )
-        # Remove the "sales not available" warning when RAG is enabled
+        # Remove the "lending not available" warning when RAG is enabled
         # Use the actual text from the base prompt
         base = base.replace(
-            """**IMPORTANT: Sales data requires RAG mode.**
-- For "top selling books by revenue" or sales analytics: Enable RAG mode with /rag
+            """**IMPORTANT: Lending data requires RAG mode.**
+- For "most lent books by quantity" or lending analytics: Enable RAG mode with /rag
 - For "popular/top books in category" (catalog-based): Use get_popular_books() - works now!""",
-            """**Sales data is NOW AVAILABLE (RAG mode enabled).**
-- Use get_top_selling_books(limit) for best-selling books by quantity/revenue
-- Use get_sales_stats() for aggregate sales statistics
-- Use search_sales(...) to filter sales by book, segment, region, or channel
-- Use get_book_sales(book_id) for a specific book's sales history""",
+            """**Lending data is NOW AVAILABLE (RAG mode enabled).**
+- Use get_most_lent_books(limit) for most lent books by quantity
+- Use get_lending_stats() for aggregate lending statistics
+- Use search_lending(...) to filter loans by book, segment, region, or channel
+- Use get_book_lending(book_id) for a specific book's lending history""",
         )
         return base + CODE_EXECUTION_RAG_ADDITIONS
     return CODE_EXECUTION_SYSTEM_PROMPT_BASE
@@ -352,7 +376,9 @@ class EnhancedLibraryAssistant:
             # Code execution mode: base tools + RAG tools + dummy tools
             count = 10  # Base library tools (including get_library_stats and get_popular_books)
             if self._enable_rag:
-                count += 6  # semantic_search + 5 sales tools
+                count += (
+                    12  # semantic_search + 5 lending tools + 5 replenish tools + replenish_semantic
+                )
             if self._enable_dummy_tools:
                 count += get_total_tool_count()
             return count
@@ -495,7 +521,7 @@ class EnhancedLibraryAssistant:
                 )
             finally:
                 # Reopen connections after subprocess completes
-                self._repository.reopen(self._db_path, read_only=True)
+                self._repository.reopen(self._db_path, read_only=True)  # type: ignore[arg-type]
                 reopen_repository(self._db_path, read_only=True)
 
             # Add assistant's code generation to history
@@ -723,16 +749,16 @@ def run_interactive_cli() -> None:
                         print("  Now available:")
                         print("    - semantic_search: Natural language book search")
                         print(
-                            "    - Sales tools: search_sales, get_book_sales, get_sales_stats, get_top_selling_books"
+                            "    - Lending tools: search_lending, get_book_lending, get_lending_stats, get_most_lent_books"
                         )
-                        print("    - search_sales_semantic: Natural language sales search")
+                        print("    - search_lending_semantic: Natural language lending search")
                         print()
                         print(
-                            "  Try: 'Find books about time travel' or 'What are the top selling books?'"
+                            "  Try: 'Find books about time travel' or 'What are the most lent books?'"
                         )
-                        print("       'Find bulk corporate purchases' or 'Show sales statistics'")
+                        print("       'Find bulk corporate loans' or 'Show lending statistics'")
                     else:
-                        print("  Sales tools and semantic search are now disabled.")
+                        print("  Lending tools and semantic search are now disabled.")
 
                 elif cmd == "/dummy-tools":
                     new_dummy_status = not assistant.is_dummy_tools_enabled()

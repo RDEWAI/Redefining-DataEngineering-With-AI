@@ -1,0 +1,29 @@
+name: patient_360
+
+libraries:
+  - glob:
+      include: pipelines/bronze_pipeline.py
+  - glob:
+      include: pipelines/silver_pipeline.py
+  - glob:
+      include: pipelines/gold_pipeline.py
+  - glob:
+      include: src/**
+
+catalog: spark_catalog
+database: patient_360
+storage: /tmp/patient_360_checkpoints
+
+configuration:
+  spark.sql.extensions: "io.delta.sql.DeltaSparkSessionExtension"
+  # Unity Catalog replaces DeltaCatalog — all 2-part names (bronze.patients) resolve to UC
+  spark.sql.catalog.spark_catalog: "io.unitycatalog.spark.UCSingleCatalog"
+  spark.sql.catalog.spark_catalog.uri: "http://localhost:8080"
+  spark.sql.catalog.spark_catalog.token: ""
+  # OpenLineage → Marquez (host port 5001; 5000 reserved by macOS AirPlay)
+  spark.extraListeners: "io.openlineage.spark.agent.OpenLineageSparkListener"
+  spark.openlineage.transport.type: "http"
+  spark.openlineage.transport.url: "http://localhost:5001"
+  spark.openlineage.namespace: "patient_360"
+  spark.sql.shuffle.partitions: "8"
+  spark.ui.enabled: "false"

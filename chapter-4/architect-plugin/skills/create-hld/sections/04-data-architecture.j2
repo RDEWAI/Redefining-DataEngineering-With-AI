@@ -1,0 +1,66 @@
+## 4. Data Architecture
+
+<!-- Describes the architecture of data within the platform:
+     the pattern chosen, how data is organized into layers,
+     which domains the data belongs to, and how dimensions change over time.
+     Answers: "How is data structured and organized inside the system?" -->
+
+### 4.1 Selected Pattern
+
+**Pattern**: {{ hld.architecture.pattern }}
+
+**Justification**: {{ hld.architecture.justification }}
+
+### 4.2 Alternatives Considered
+
+| Option | Description | Why Not Selected |
+|--------|-------------|------------------|
+{% for option in hld.architecture.alternatives %}
+| {{ option.name }} | {{ option.description }} | {{ option.rejection_reason }} |
+{% endfor %}
+
+**Trade-off**: {{ hld.architecture.tradeoff }}
+
+### 4.3 Layer Strategy
+
+{% for layer in hld.data_architecture.layers %}
+**{{ layer.name }}**
+
+{{ layer.description }}
+
+{% endfor %}
+
+> Detailed table inventories, column schemas, and row-level write strategies are
+> documented in the **Data Model Specification (DMS)**.
+
+### 4.4 Data Domain Map
+
+{{ hld.data_architecture.domain_map }}
+
+<!-- Domain map diagram: show Clinical, Reference, Financial domains as groupings
+     with the tables in each domain and which Gold tables they feed.
+     Answers: "What data domains exist and which Gold tables do they serve?" -->
+
+```mermaid
+{{ hld.data_architecture.domain_diagram }}
+```
+
+### 4.5 SCD Strategy
+
+| Dimension Type | SCD Approach | Rationale |
+|----------------|-------------|-----------|
+{% for scd in hld.data_architecture.scd_strategy %}
+| {{ scd.dimension_type }} | {{ scd.approach }} | {{ scd.rationale }} |
+{% endfor %}
+
+### 4.6 Pipeline Architecture Diagram
+
+<!-- Conceptual data flow through layers: Sources → Bronze → Silver → Gold → Consumers.
+     Include quality gates between layers and SLA annotations per consumer group.
+     Do NOT list individual table names — those belong in the DMS. -->
+
+```mermaid
+{{ hld.architecture.pipeline_diagram }}
+```
+
+---

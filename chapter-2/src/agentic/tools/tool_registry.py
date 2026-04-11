@@ -451,6 +451,38 @@ def create_library_tool_registry() -> ToolRegistry:
 # This follows the "least privilege" principle and improves token efficiency.
 
 AGENT_TOOL_ASSIGNMENTS: dict[str, list[str]] = {
+    # ── Single-agent assistants ──────────────────────────────────────────────
+    "patron_agent": [
+        # Base (7) – inventory and shelf location only
+        "search_books",
+        "get_book_details",
+        "check_availability",
+        "locate_book",
+        "find_books_in_cabinet",
+        "list_by_category",
+        "list_by_status",
+        # RAG (1) – semantic book search only
+        "semantic_search",
+    ],
+    "coordination_agent": [
+        # Base (3) – operational overview
+        "get_library_stats",
+        "get_weak_signal_books",
+        "get_popular_books",
+        # RAG (11) – lending revenue + replenishment
+        "get_lending_stats",
+        "search_lending",
+        "get_book_lending",
+        "get_most_lent_books",
+        "search_lending_semantic",
+        "search_replenish",
+        "get_book_replenish",
+        "get_replenish_stats",
+        "get_most_replenished_books",
+        "get_replenish_by_month",
+        "search_replenish_semantic",
+    ],
+    # ── Multi-agent orchestrator workers ────────────────────────────────────
     "search_agent": [
         "search_books",
         "get_book_details",
@@ -460,11 +492,25 @@ AGENT_TOOL_ASSIGNMENTS: dict[str, list[str]] = {
         "semantic_search",  # For natural language search (if RAG enabled)
     ],
     "analytics_agent": [
+        # Catalog analytics
         "list_by_category",
         "list_by_status",
         "get_weak_signal_books",
         "get_library_stats",
-        # Analytics agent also gets direct SQL via _conn (not a tool, always available)
+        "get_popular_books",
+        # Lending / revenue analytics (RAG)
+        "get_lending_stats",
+        "search_lending",
+        "get_book_lending",
+        "get_most_lent_books",
+        "search_lending_semantic",
+        # Replenishment analytics (RAG)
+        "search_replenish",
+        "get_book_replenish",
+        "get_replenish_stats",
+        "get_most_replenished_books",
+        "get_replenish_by_month",
+        "search_replenish_semantic",
     ],
     "recommendation_agent": [
         "search_books",  # To find books matching criteria
@@ -543,6 +589,8 @@ def format_agent_tools_display(include_rag: bool = True) -> str:
     lines.append("")
 
     emoji_map = {
+        "patron_agent": "👤",
+        "coordination_agent": "🗂️",
         "search_agent": "🔍",
         "analytics_agent": "📊",
         "recommendation_agent": "⭐",
@@ -554,11 +602,23 @@ def format_agent_tools_display(include_rag: bool = True) -> str:
         "locate_book": "Get physical location of a book",
         "find_books_in_cabinet": "Find books in specific cabinet/rack",
         "check_availability": "Check if book is available",
+        "get_popular_books": "Get popular/featured books",
         "list_by_category": "List books by category",
         "list_by_status": "List books by status",
         "get_weak_signal_books": "Find books with weak RFID signal",
         "get_library_stats": "Get library statistics",
         "semantic_search": "Natural language semantic search (RAG)",
+        "search_lending": "Search lending records with filters",
+        "get_book_lending": "Get lending records for a book",
+        "get_most_lent_books": "Most borrowed books by quantity",
+        "search_lending_semantic": "Natural language lending search (RAG)",
+        "get_lending_stats": "Aggregate lending statistics",
+        "search_replenish": "Search replenishment records",
+        "get_book_replenish": "Replenishment records for a book",
+        "get_replenish_stats": "Aggregate replenishment statistics",
+        "get_most_replenished_books": "Most restocked books",
+        "get_replenish_by_month": "Monthly replenishment trends",
+        "search_replenish_semantic": "Natural language replenishment search (RAG)",
     }
 
     for agent_name, tools in AGENT_TOOL_ASSIGNMENTS.items():

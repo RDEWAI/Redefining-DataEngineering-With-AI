@@ -1,0 +1,18 @@
+{
+  "name": "dq-engineer-plugin",
+  "version": "1.0.0",
+  "description": "Data Quality Engineer Agent for generating, updating, and validating Data Quality Specifications (DQS) and Spark-Expectations rules",
+  "author": {
+    "name": "RDEWAI"
+  },
+  "keywords": [
+    "dq-engineer",
+    "dqs",
+    "data-quality",
+    "spark-expectations",
+    "validation-rules",
+    "reconciliation",
+    "freshness",
+    "sla"
+  ]
+}

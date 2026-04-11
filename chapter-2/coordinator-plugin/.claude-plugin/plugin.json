@@ -1,0 +1,9 @@
+{
+  "name": "coordinator-plugin",
+  "version": "1.0.0",
+  "description": "Library Coordinator Plugin — operations staff analytics via the library MCP server. Covers lending revenue, replenishment orders, supplier analytics, supply-chain reporting, RFID health, and cross-table analysis. Full access to all 18 library MCP tools including lending and replenishment. Not for patron-facing shelf queries.",
+  "author": {
+    "name": "RDEWAI"
+  },
+  "keywords": ["library", "lending", "revenue", "replenishment", "supplier", "analytics", "operations", "coordination", "supply-chain"]
+}

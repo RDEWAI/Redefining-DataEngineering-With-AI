@@ -1,8 +1,8 @@
-# Pre-commit hooks configuration for Chapter 2 and Chapter 3
+# Pre-commit hooks configuration for Chapter 2, Chapter 3, and Chapter 4
 # Install: uv run pre-commit install && uv run pre-commit install --hook-type pre-push
 # Run manually: uv run pre-commit run --all-files
 #
-# Note: Hooks are scoped to chapter-2/ and chapter-3/ directories
+# Note: Hooks are scoped to chapter-2/, chapter-3/, and chapter-4/ directories
 
 repos:
   # Ruff - fast Python linter and formatter (replaces flake8, isort, black)
@@ -14,14 +14,14 @@ repos:
         name: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
         types_or: [python, pyi]
-        files: ^(chapter-2|chapter-3)/
+        files: ^(chapter-2|chapter-3|chapter-4)/
 
       # Ruff formatting (check code format, don't auto-fix in pre-commit)
       - id: ruff-format
         name: ruff-format
         args: [--check]
         types_or: [python, pyi]
-        files: ^(chapter-2|chapter-3)/
+        files: ^(chapter-2|chapter-3|chapter-4)/
 
   # Mypy - static type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -57,3 +57,11 @@ repos:
         stages: [pre-push]
         pass_filenames: false
         files: ^chapter-3/
+
+      - id: pytest-unit-ch4
+        name: pytest-unit-ch4
+        entry: bash -c 'cd chapter-4 && uv run pytest tests/ -v --tb=short'
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        files: ^chapter-4/

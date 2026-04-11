@@ -1,0 +1,49 @@
+skill: update-lld
+version: "1.0"
+cases:
+  - id: TC-001
+    name: "Version incremented on update"
+    description: "Updating an LLD must increment the version number"
+    inputs:
+      existing_lld: "outputs/lld/v1/LLD-2026-03-22-patient-360.md"
+      change: "Update DAG scheduling from daily to hourly"
+    expected:
+      - type: content_contains
+        patterns: ["Version"]
+    success_criteria: "Version number is incremented after update"
+
+  - id: TC-002
+    name: "Unchanged sections preserved"
+    description: "Sections not affected by the update must be preserved"
+    inputs:
+      existing_lld: "outputs/lld/v1/LLD-2026-03-22-patient-360.md"
+      change: "Update deployment section only"
+    expected:
+      - type: section_present
+        sections:
+          - "1. Design Overview"
+          - "4. DAG Specification"
+          - "7. Configuration Schema"
+    success_criteria: "All 14 sections present after update"
+
+  - id: TC-003
+    name: "Cross-section consistency after update"
+    description: "Update to one section must trigger consistency check across related sections"
+    inputs:
+      existing_lld: "outputs/lld/v1/LLD-2026-03-22-patient-360.md"
+      change: "Change compute resources"
+    expected:
+      - type: content_contains
+        patterns: ["Performance", "Configuration", "Deployment"]
+    success_criteria: "Related sections assessed for consistency"
+
+  - id: TC-004
+    name: "DAG changes trigger derived artifact re-generation"
+    description: "When §4 task dependencies change, dag-definition.yaml and impl-sequence.md are re-generated"
+    inputs:
+      existing_lld: "outputs/lld/v1"
+      change: "Add new Silver task with dependency on transform_patients_silver"
+    expected:
+      - type: content_contains
+        patterns: ["dag-definition.yaml", "impl-sequence.md"]
+    success_criteria: "Derived artifacts re-generated after DAG structure change"

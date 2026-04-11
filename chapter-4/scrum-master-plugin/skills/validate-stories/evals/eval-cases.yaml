@@ -1,0 +1,45 @@
+skill: validate-stories
+version: "1.0"
+cases:
+  - id: TC-001
+    name: "Valid backlog passes"
+    description: "A complete backlog with all required sections passes validation"
+    inputs:
+      directory: "outputs/stories/v1"
+    expected:
+      - type: validation_pass
+        description: "0 CRITICAL, 0 WARNING issues"
+    success_criteria: "Validator returns exit code 0"
+
+  - id: TC-002
+    name: "Missing backlog sections flagged as CRITICAL"
+    description: "Backlog missing required sections produces CRITICAL findings"
+    inputs:
+      directory: "outputs/stories/v1"
+      remove_sections: ["3. Dependency Graph"]
+    expected:
+      - type: validation_fail
+        level: "CRITICAL"
+    success_criteria: "Validator returns exit code 1"
+
+  - id: TC-003
+    name: "Empty epic directory flagged as CRITICAL"
+    description: "Epic directory with no story files produces CRITICAL"
+    inputs:
+      directory: "outputs/stories/v1"
+      create_empty_epic: true
+    expected:
+      - type: validation_fail
+        level: "CRITICAL"
+    success_criteria: "Missing stories detected"
+
+  - id: TC-004
+    name: "Missing traceability flagged as WARNING"
+    description: "Stories without upstream references produce WARNING"
+    inputs:
+      directory: "outputs/stories/v1"
+      strip_references: true
+    expected:
+      - type: validation_fail
+        level: "WARNING"
+    success_criteria: "Traceability warning reported"

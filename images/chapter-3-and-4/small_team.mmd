@@ -1,0 +1,15 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+graph LR
+    subgraph team["Small Team (3 People)"]
+        direction LR
+        P1["Person 1<br/><i>Business Analyst (BA) + Data Architect (DA)</i>"]
+        P2["Person 2<br/><i>Data Modeler (DM) + Data Mapping Analyst (DMA) + Data Quality Engineer (DQE)</i>"]
+        P3["Person 3<br/><i>Technical Lead (TL)</i>"]
+    end
+
+    P1 --> P2 --> P3
+
+    style team fill:#e8f4f8,stroke:#2196F3,stroke-width:2px
+    style P1 fill:#a8e6cf,stroke:#333,stroke-width:2px
+    style P2 fill:#ffd3a5,stroke:#333,stroke-width:2px
+    style P3 fill:#d4a5ff,stroke:#333,stroke-width:2px

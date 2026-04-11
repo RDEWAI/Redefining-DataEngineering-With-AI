@@ -25,7 +25,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.agentic.library.domain import BookStatus, Category
 from src.agentic.library.repository import BookRepository
 
-from .sales_repository import SalesRepository
+from .lending_repository import LendingRepository
+from .replenish_repository import ReplenishRepository
 
 # Initialize FastMCP server
 mcp = FastMCP("LibraryServer")
@@ -36,7 +37,8 @@ DB_PATH = os.getenv(
 )
 # Use read_only=True to allow concurrent access from multiple MCP connections
 repository = BookRepository(DB_PATH, read_only=True)
-sales_repository = SalesRepository(db_path=DB_PATH, read_only=True)
+lending_repository = LendingRepository(db_path=DB_PATH, read_only=True)
+replenish_repository = ReplenishRepository(db_path=DB_PATH, read_only=True)
 
 
 # ============================================================================
@@ -296,142 +298,287 @@ def get_weak_signal_books(threshold: float = -55.0) -> list[dict[str, Any]] | di
 
 
 # ============================================================================
-# Sales Tools - 5 sales operations
+# Lending Tools - 5 lending operations
 # ============================================================================
 
 
 @mcp.tool()
-def search_sales(
+def search_lending(
     book_id: str | None = None,
-    customer_segment: str | None = None,
+    patron_segment: str | None = None,
     region: str | None = None,
     channel: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, Any]] | dict[str, str]:
-    """Search sales records with optional filters.
+    """Search lending records with optional filters.
 
     Args:
         book_id: Filter by book ID (e.g., 'B001')
-        customer_segment: Filter by segment (Individual, Corporate, Educational, Government)
+        patron_segment: Filter by segment (Individual, Corporate, Educational, Government)
         region: Filter by region (Northeast, Southeast, Midwest, West, International)
         channel: Filter by channel (In-Store, Online, Phone Order, Partner)
         limit: Maximum number of results (1-100, default: 20)
 
     Returns:
-        List of matching sales records
+        List of matching lending records
     """
     try:
         # Validate limit
         if limit < 1 or limit > 100:
             return {"error": "Limit must be between 1 and 100"}
 
-        sales = sales_repository.search_sales(
+        loans = lending_repository.search_lending(
             book_id=book_id,
-            customer_segment=customer_segment,
+            patron_segment=patron_segment,
             region=region,
             channel=channel,
             limit=limit,
         )
 
-        return [sale.to_dict() for sale in sales]
+        return [loan.to_dict() for loan in loans]
 
     except Exception as e:
         return {"error": f"Search failed: {str(e)}"}
 
 
 @mcp.tool()
-def get_book_sales(book_id: str) -> dict[str, Any]:
-    """Get all sales for a specific book with summary statistics.
+def get_book_lending(book_id: str) -> dict[str, Any]:
+    """Get all loans for a specific book with summary statistics.
 
     Args:
         book_id: Book ID (e.g., 'B001')
 
     Returns:
-        Sales records with total units and revenue
+        Lending records with total units and fees
     """
     try:
         book = repository.get_book_by_id(book_id)
         if not book:
             return {"error": f"No book found with ID '{book_id}'"}
 
-        sales = sales_repository.get_sales_for_book(book_id)
-        sales_list = [sale.to_dict() for sale in sales]
+        loans = lending_repository.get_lending_for_book(book_id)
+        loans_list = [loan.to_dict() for loan in loans]
 
-        total_revenue = sum(float(sale.total_amount) for sale in sales)
-        total_units = sum(sale.quantity for sale in sales)
+        total_fees = sum(float(loan.total_fees) for loan in loans)
+        total_units = sum(loan.quantity for loan in loans)
 
         return {
             "book_id": book_id,
             "book_title": book.title,
             "book_author": book.author,
-            "sales_count": len(sales),
+            "loan_count": len(loans),
             "total_units": total_units,
-            "total_revenue": round(total_revenue, 2),
-            "sales": sales_list,
+            "total_fees": round(total_fees, 2),
+            "loans": loans_list,
         }
 
     except Exception as e:
-        return {"error": f"Failed to get book sales: {str(e)}"}
+        return {"error": f"Failed to get book lending: {str(e)}"}
 
 
 @mcp.tool()
-def get_sales_stats() -> dict[str, Any]:
-    """Get aggregate statistics about all sales.
+def get_lending_stats() -> dict[str, Any]:
+    """Get aggregate statistics about all lending.
 
     Returns:
-        Statistics including total sales, revenue, units, and breakdowns
+        Statistics including total loans, fees, units, and breakdowns
     """
     try:
-        stats = sales_repository.get_sales_stats()
+        stats = lending_repository.get_lending_stats()
         return {
-            "total_sales": stats["total_sales"],
-            "total_revenue": round(stats["total_revenue"], 2),
+            "total_loans": stats["total_loans"],
+            "total_fees": round(stats["total_fees"], 2),
             "total_units": stats["total_units"],
-            "avg_order_value": round(stats["avg_order_value"], 2),
-            "unique_customers": stats["unique_customers"],
+            "avg_loan_fees": round(stats["avg_loan_fees"], 2),
+            "unique_patrons": stats["unique_patrons"],
             "by_segment": stats["by_segment"],
             "by_region": stats["by_region"],
             "by_channel": stats["by_channel"],
         }
 
     except Exception as e:
-        return {"error": f"Failed to get sales stats: {str(e)}"}
+        return {"error": f"Failed to get lending stats: {str(e)}"}
 
 
 @mcp.tool()
-def get_top_selling_books(limit: int = 10) -> list[dict[str, Any]] | dict[str, str]:
-    """Get best-selling books ranked by total quantity sold.
+def get_most_lent_books(limit: int = 10) -> list[dict[str, Any]] | dict[str, str]:
+    """Get most lent books ranked by total quantity lent.
 
     Args:
         limit: Maximum number of results (1-50, default: 10)
 
     Returns:
-        List of top-selling books with sales statistics
+        List of most lent books with lending statistics
     """
     try:
         if limit < 1 or limit > 50:
             return {"error": "Limit must be between 1 and 50"}
 
-        top_books = sales_repository.get_top_selling_books(limit=limit)
+        top_books = lending_repository.get_most_lent_books(limit=limit)
         return top_books
 
     except Exception as e:
-        return {"error": f"Failed to get top selling books: {str(e)}"}
+        return {"error": f"Failed to get most lent books: {str(e)}"}
 
 
 @mcp.tool()
-def get_sales_by_month() -> list[dict[str, Any]] | dict[str, str]:
-    """Get sales aggregated by month for trend analysis.
+def get_lending_by_month() -> list[dict[str, Any]] | dict[str, str]:
+    """Get lending aggregated by month for trend analysis.
 
     Returns:
-        List of monthly sales with totals and revenue
+        List of monthly lending with totals and fees
     """
     try:
-        monthly_sales = sales_repository.get_sales_by_month()
-        return monthly_sales
+        monthly_lending = lending_repository.get_lending_by_month()
+        return monthly_lending
 
     except Exception as e:
-        return {"error": f"Failed to get sales by month: {str(e)}"}
+        return {"error": f"Failed to get lending by month: {str(e)}"}
+
+
+# ============================================================================
+# Replenish Tools - 5 replenish operations
+# ============================================================================
+
+
+@mcp.tool()
+def search_replenish(
+    book_id: str | None = None,
+    supplier: str | None = None,
+    replenish_type: str | None = None,
+    condition: str | None = None,
+    funding_source: str | None = None,
+    priority: str | None = None,
+    limit: int = 20,
+) -> list[dict[str, Any]] | dict[str, str]:
+    """Search replenishment records with optional filters.
+
+    Args:
+        book_id: Filter by book ID (e.g., 'B001')
+        supplier: Filter by supplier (Ingram, Baker & Taylor, Brodart, Direct Publisher, Amazon Business)
+        replenish_type: Filter by type (New Acquisition, Replacement, Restock, Donation, Return Processing)
+        condition: Filter by condition (New, Refurbished, Used - Good, Used - Fair)
+        funding_source: Filter by funding (Operating Budget, Grant, Donation Fund, Special Collection, Emergency Fund)
+        priority: Filter by priority (Urgent, High, Normal, Low)
+        limit: Maximum number of results (1-100, default: 20)
+
+    Returns:
+        List of matching replenishment records
+    """
+    try:
+        if limit < 1 or limit > 100:
+            return {"error": "Limit must be between 1 and 100"}
+
+        records = replenish_repository.search_replenish(
+            book_id=book_id,
+            supplier=supplier,
+            replenish_type=replenish_type,
+            condition=condition,
+            funding_source=funding_source,
+            priority=priority,
+            limit=limit,
+        )
+
+        return [rec.to_dict() for rec in records]
+
+    except Exception as e:
+        return {"error": f"Search failed: {str(e)}"}
+
+
+@mcp.tool()
+def get_book_replenish(book_id: str) -> dict[str, Any]:
+    """Get all replenishments for a specific book with summary statistics.
+
+    Args:
+        book_id: Book ID (e.g., 'B001')
+
+    Returns:
+        Replenishment records with total units and cost
+    """
+    try:
+        book = repository.get_book_by_id(book_id)
+        if not book:
+            return {"error": f"No book found with ID '{book_id}'"}
+
+        records = replenish_repository.get_replenish_for_book(book_id)
+        records_list = [rec.to_dict() for rec in records]
+
+        total_cost = sum(float(rec.total_cost) for rec in records)
+        total_units = sum(rec.quantity for rec in records)
+
+        return {
+            "book_id": book_id,
+            "book_title": book.title,
+            "book_author": book.author,
+            "replenish_count": len(records),
+            "total_units": total_units,
+            "total_cost": round(total_cost, 2),
+            "replenishments": records_list,
+        }
+
+    except Exception as e:
+        return {"error": f"Failed to get book replenishments: {str(e)}"}
+
+
+@mcp.tool()
+def get_replenish_stats() -> dict[str, Any]:
+    """Get aggregate statistics about all replenishments.
+
+    Returns:
+        Statistics including total records, cost, units, and breakdowns
+    """
+    try:
+        stats = replenish_repository.get_replenish_stats()
+        return {
+            "total_records": stats["total_records"],
+            "total_cost": round(stats["total_cost"], 2),
+            "total_units": stats["total_units"],
+            "avg_cost": round(stats["avg_cost"], 2),
+            "unique_books": stats["unique_books"],
+            "by_supplier": stats["by_supplier"],
+            "by_type": stats["by_type"],
+            "by_funding": stats["by_funding"],
+            "by_condition": stats["by_condition"],
+        }
+
+    except Exception as e:
+        return {"error": f"Failed to get replenish stats: {str(e)}"}
+
+
+@mcp.tool()
+def get_most_replenished_books(limit: int = 10) -> list[dict[str, Any]] | dict[str, str]:
+    """Get most replenished books ranked by total quantity added.
+
+    Args:
+        limit: Maximum number of results (1-50, default: 10)
+
+    Returns:
+        List of most replenished books with statistics
+    """
+    try:
+        if limit < 1 or limit > 50:
+            return {"error": "Limit must be between 1 and 50"}
+
+        top_books = replenish_repository.get_most_replenished_books(limit=limit)
+        return top_books
+
+    except Exception as e:
+        return {"error": f"Failed to get most replenished books: {str(e)}"}
+
+
+@mcp.tool()
+def get_replenish_by_month() -> list[dict[str, Any]] | dict[str, str]:
+    """Get replenishments aggregated by month for trend analysis.
+
+    Returns:
+        List of monthly replenishments with totals and costs
+    """
+    try:
+        monthly = replenish_repository.get_replenish_by_month()
+        return monthly
+
+    except Exception as e:
+        return {"error": f"Failed to get replenish by month: {str(e)}"}
 
 
 # ============================================================================
@@ -510,19 +657,34 @@ def get_location_map() -> str:
         return json.dumps({"error": f"Failed to get location map: {str(e)}"})
 
 
-@mcp.resource("library://sales_stats")
-def get_sales_stats_resource() -> str:
-    """Get aggregate sales statistics.
+@mcp.resource("library://lending_stats")
+def get_lending_stats_resource() -> str:
+    """Get aggregate lending statistics.
 
     Returns:
-        JSON with sales totals and breakdowns by segment, region, channel
+        JSON with lending totals and breakdowns by segment, region, channel
     """
     try:
-        stats = sales_repository.get_sales_stats()
+        stats = lending_repository.get_lending_stats()
         return json.dumps(stats, indent=2, default=float)
 
     except Exception as e:
-        return json.dumps({"error": f"Failed to get sales stats: {str(e)}"})
+        return json.dumps({"error": f"Failed to get lending stats: {str(e)}"})
+
+
+@mcp.resource("library://replenish_stats")
+def get_replenish_stats_resource() -> str:
+    """Get aggregate replenishment statistics.
+
+    Returns:
+        JSON with replenish totals and breakdowns by supplier, type, funding, condition
+    """
+    try:
+        stats = replenish_repository.get_replenish_stats()
+        return json.dumps(stats, indent=2, default=float)
+
+    except Exception as e:
+        return json.dumps({"error": f"Failed to get replenish stats: {str(e)}"})
 
 
 # ============================================================================

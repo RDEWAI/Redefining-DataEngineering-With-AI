@@ -1,0 +1,37 @@
+[
+  {
+    "rule_name": "patient_id_not_null",
+    "column": "id",
+    "rule": "id IS NOT NULL",
+    "action_if_failed": "fail",
+    "description": "Patient ID must never be null — critical PK"
+  },
+  {
+    "rule_name": "first_name_not_null",
+    "column": "first",
+    "rule": "first IS NOT NULL",
+    "action_if_failed": "fail",
+    "description": "Patient first name required"
+  },
+  {
+    "rule_name": "last_name_not_null",
+    "column": "last",
+    "rule": "last IS NOT NULL",
+    "action_if_failed": "fail",
+    "description": "Patient last name required"
+  },
+  {
+    "rule_name": "valid_birthdate",
+    "column": "birthdate",
+    "rule": "birthdate <= current_date() AND birthdate >= '1900-01-01'",
+    "action_if_failed": "drop",
+    "description": "Birthdate must be between 1900-01-01 and today"
+  },
+  {
+    "rule_name": "valid_gender",
+    "column": "gender",
+    "rule": "gender IN ('M', 'F')",
+    "action_if_failed": "warn",
+    "description": "Gender should be M or F — unexpected values logged"
+  }
+]

@@ -1,0 +1,42 @@
+[project]
+name = "mvp-spark-pipelines"
+version = "0.1.0"
+description = "MVP: Data Engineering with AI — Spark Declarative Pipelines + Delta Lake"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "pyspark[pipelines]>=4.1.1",
+    "spark-expectations>=2.0.0",
+    "delta-spark>=4.0.0",
+    "duckdb>=1.4.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-mock>=3.12.0",
+    "ruff>=0.1.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "integration: tests that run against real Synthea data in data/raw/",
+]

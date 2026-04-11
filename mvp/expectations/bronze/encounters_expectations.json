@@ -1,0 +1,37 @@
+[
+  {
+    "rule_name": "encounter_id_not_null",
+    "column": "id",
+    "rule": "id IS NOT NULL",
+    "action_if_failed": "fail",
+    "description": "Encounter ID must never be null"
+  },
+  {
+    "rule_name": "patient_fk_not_null",
+    "column": "patient",
+    "rule": "patient IS NOT NULL",
+    "action_if_failed": "fail",
+    "description": "Encounter must be linked to a patient"
+  },
+  {
+    "rule_name": "start_not_null",
+    "column": "start",
+    "rule": "start IS NOT NULL",
+    "action_if_failed": "fail",
+    "description": "Encounter start timestamp required"
+  },
+  {
+    "rule_name": "stop_after_start",
+    "column": "stop",
+    "rule": "stop IS NULL OR stop >= start",
+    "action_if_failed": "drop",
+    "description": "Stop must be after or equal to start when present"
+  },
+  {
+    "rule_name": "valid_encounterclass",
+    "column": "encounterclass",
+    "rule": "encounterclass IN ('ambulatory','emergency','inpatient','wellness','urgentcare','outpatient','hospice','home','virtual','snf')",
+    "action_if_failed": "warn",
+    "description": "Unexpected encounter class — logged for review"
+  }
+]

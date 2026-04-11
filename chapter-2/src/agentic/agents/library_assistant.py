@@ -216,7 +216,7 @@ TOOL_DEFINITIONS: list[ToolDefinition] = [
     ),
     ToolDefinition(
         name="get_popular_books",
-        description="Get popular/featured books, optionally filtered by category. Use this when users ask for 'top books', 'popular books', 'best books in category', or recommendations. This does NOT require sales data - for actual best sellers by revenue, use get_top_selling_books with RAG mode.",
+        description="Get popular/featured books, optionally filtered by category. Use this when users ask for 'top books', 'popular books', 'best books in category', or recommendations. This does NOT require lending data - for actual most lent books by quantity, use get_most_lent_books with RAG mode.",
         parameters={
             "type": "object",
             "properties": {
@@ -257,11 +257,11 @@ SEMANTIC_SEARCH_TOOL = ToolDefinition(
     },
 )
 
-# Sales tool definitions (only available when RAG is enabled)
-SALES_TOOL_DEFINITIONS: list[ToolDefinition] = [
+# Lending tool definitions (only available when RAG is enabled)
+LENDING_TOOL_DEFINITIONS: list[ToolDefinition] = [
     ToolDefinition(
-        name="search_sales",
-        description="Search sales records with optional filters for book, customer segment, region, or channel. Use this for queries about sales data, transactions, or purchases.",
+        name="search_lending",
+        description="Search lending records with optional filters for book, patron segment, region, or channel. Use this for queries about lending data, transactions, or loans.",
         parameters={
             "type": "object",
             "properties": {
@@ -269,10 +269,10 @@ SALES_TOOL_DEFINITIONS: list[ToolDefinition] = [
                     "type": "string",
                     "description": "Filter by book ID (e.g., 'B001')",
                 },
-                "customer_segment": {
+                "patron_segment": {
                     "type": "string",
                     "enum": ["Individual", "Corporate", "Educational", "Government"],
-                    "description": "Filter by customer segment",
+                    "description": "Filter by patron segment",
                 },
                 "region": {
                     "type": "string",
@@ -282,7 +282,7 @@ SALES_TOOL_DEFINITIONS: list[ToolDefinition] = [
                 "channel": {
                     "type": "string",
                     "enum": ["In-Store", "Online", "Phone Order", "Partner"],
-                    "description": "Filter by sales channel",
+                    "description": "Filter by lending channel",
                 },
                 "limit": {
                     "type": "integer",
@@ -294,8 +294,8 @@ SALES_TOOL_DEFINITIONS: list[ToolDefinition] = [
         },
     ),
     ToolDefinition(
-        name="get_book_sales",
-        description="Get all sales records for a specific book, including total revenue and units sold.",
+        name="get_book_lending",
+        description="Get all lending records for a specific book, including total fees and units lent.",
         parameters={
             "type": "object",
             "properties": {
@@ -308,8 +308,8 @@ SALES_TOOL_DEFINITIONS: list[ToolDefinition] = [
         },
     ),
     ToolDefinition(
-        name="get_sales_stats",
-        description="Get aggregate statistics about sales: total revenue, units sold, counts by segment/region/channel, unique customers.",
+        name="get_lending_stats",
+        description="Get aggregate statistics about lending: total fees, units lent, counts by segment/region/channel, unique patrons.",
         parameters={
             "type": "object",
             "properties": {},
@@ -317,8 +317,8 @@ SALES_TOOL_DEFINITIONS: list[ToolDefinition] = [
         },
     ),
     ToolDefinition(
-        name="get_top_selling_books",
-        description="Get the best-selling books ranked by total quantity sold.",
+        name="get_most_lent_books",
+        description="Get the most lent books ranked by total quantity lent.",
         parameters={
             "type": "object",
             "properties": {
@@ -333,16 +333,150 @@ SALES_TOOL_DEFINITIONS: list[ToolDefinition] = [
     ),
 ]
 
-# Sales semantic search tool (RAG-enabled)
-SALES_SEMANTIC_SEARCH_TOOL = ToolDefinition(
-    name="search_sales_semantic",
-    description="Search sales data using natural language semantic similarity. Use for queries like 'bulk corporate purchases', 'holiday online sales', 'discounted programming books', 'high-performing regional sales'. Returns sales with similarity scores.",
+# Replenish tool definitions (only available when RAG is enabled)
+REPLENISH_TOOL_DEFINITIONS: list[ToolDefinition] = [
+    ToolDefinition(
+        name="search_replenish",
+        description="Search replenishment records with optional filters for book, supplier, type, condition, funding source, or priority. Use this for queries about restocking, acquisitions, or supply chain data.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "book_id": {
+                    "type": "string",
+                    "description": "Filter by book ID (e.g., 'B001')",
+                },
+                "supplier": {
+                    "type": "string",
+                    "enum": [
+                        "Ingram",
+                        "Baker & Taylor",
+                        "Brodart",
+                        "Direct Publisher",
+                        "Amazon Business",
+                    ],
+                    "description": "Filter by supplier",
+                },
+                "replenish_type": {
+                    "type": "string",
+                    "enum": [
+                        "New Acquisition",
+                        "Replacement",
+                        "Restock",
+                        "Donation",
+                        "Return Processing",
+                    ],
+                    "description": "Filter by replenishment type",
+                },
+                "condition": {
+                    "type": "string",
+                    "enum": ["New", "Refurbished", "Used - Good", "Used - Fair"],
+                    "description": "Filter by book condition",
+                },
+                "funding_source": {
+                    "type": "string",
+                    "enum": [
+                        "Operating Budget",
+                        "Grant",
+                        "Donation Fund",
+                        "Special Collection",
+                        "Emergency Fund",
+                    ],
+                    "description": "Filter by funding source",
+                },
+                "priority": {
+                    "type": "string",
+                    "enum": ["Urgent", "High", "Normal", "Low"],
+                    "description": "Filter by priority level",
+                },
+                "limit": {
+                    "type": "integer",
+                    "default": 20,
+                    "description": "Maximum number of results",
+                },
+            },
+            "required": [],
+        },
+    ),
+    ToolDefinition(
+        name="get_book_replenish",
+        description="Get all replenishment records for a specific book, including total cost and units added.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "book_id": {
+                    "type": "string",
+                    "description": "Book ID (e.g., 'B001')",
+                },
+            },
+            "required": ["book_id"],
+        },
+    ),
+    ToolDefinition(
+        name="get_replenish_stats",
+        description="Get aggregate statistics about replenishments: total cost, units added, counts by supplier/type/funding/condition.",
+        parameters={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    ToolDefinition(
+        name="get_most_replenished_books",
+        description="Get the most replenished books ranked by total quantity added.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "default": 10,
+                    "description": "Maximum number of results (default 10)",
+                },
+            },
+            "required": [],
+        },
+    ),
+    ToolDefinition(
+        name="get_replenish_by_month",
+        description="Get replenishments aggregated by month for trend analysis. Returns monthly totals, costs, and units.",
+        parameters={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+]
+
+# Replenish semantic search tool (RAG-enabled)
+REPLENISH_SEMANTIC_SEARCH_TOOL = ToolDefinition(
+    name="search_replenish_semantic",
+    description="Search replenishment data using natural language semantic similarity. Use for queries like 'urgent programming book restocks', 'donated fiction books', 'bulk orders from Ingram'. Returns replenishments with similarity scores.",
     parameters={
         "type": "object",
         "properties": {
             "query": {
                 "type": "string",
-                "description": "Natural language query describing sales patterns (e.g., 'bulk purchases by corporate customers')",
+                "description": "Natural language query describing replenishment patterns (e.g., 'bulk restocks of programming books')",
+            },
+            "top_k": {
+                "type": "integer",
+                "default": 10,
+                "description": "Maximum number of results (default 10)",
+            },
+        },
+        "required": ["query"],
+    },
+)
+
+# Lending semantic search tool (RAG-enabled)
+LENDING_SEMANTIC_SEARCH_TOOL = ToolDefinition(
+    name="search_lending_semantic",
+    description="Search lending data using natural language semantic similarity. Use for queries like 'bulk corporate loans', 'online lending', 'waived fee programming books', 'high-activity regional lending'. Returns loans with similarity scores.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Natural language query describing lending patterns (e.g., 'bulk loans by corporate patrons')",
             },
             "top_k": {
                 "type": "integer",
@@ -369,12 +503,20 @@ TOOL_FUNCTION_MAP: dict[str, Callable[..., dict[str, Any]]] = {
     "get_popular_books": library_tools.get_popular_books,  # Top books by category (no sales needed)
     # RAG book tools (only used when RAG is enabled)
     "semantic_search": library_tools.semantic_search,
-    # Sales tools (only used when RAG is enabled)
-    "search_sales": library_tools.search_sales,
-    "get_book_sales": library_tools.get_book_sales,
-    "get_sales_stats": library_tools.get_sales_stats,
-    "get_top_selling_books": library_tools.get_top_selling_books,
-    "search_sales_semantic": library_tools.search_sales_semantic,
+    # Lending tools (only used when RAG is enabled)
+    "search_lending": library_tools.search_lending,
+    "get_book_lending": library_tools.get_book_lending,
+    "get_lending_stats": library_tools.get_lending_stats,
+    "get_most_lent_books": library_tools.get_most_lent_books,
+    "get_lending_by_month": library_tools.get_lending_by_month,
+    "search_lending_semantic": library_tools.search_lending_semantic,
+    # Replenish tools (only used when RAG is enabled)
+    "search_replenish": library_tools.search_replenish,
+    "get_book_replenish": library_tools.get_book_replenish,
+    "get_replenish_stats": library_tools.get_replenish_stats,
+    "get_most_replenished_books": library_tools.get_most_replenished_books,
+    "get_replenish_by_month": library_tools.get_replenish_by_month,
+    "search_replenish_semantic": library_tools.search_replenish_semantic,
 }
 
 
@@ -385,7 +527,7 @@ def get_tools_for_llm(
     """Get tool definitions in OpenAI/LLM format.
 
     Args:
-        include_rag: If True, include RAG tools (semantic_search, sales tools, search_sales_semantic).
+        include_rag: If True, include RAG tools (semantic_search, lending tools, search_lending_semantic).
         include_dummy_tools: If True, include 100 enterprise dummy tools.
 
     Returns:
@@ -395,9 +537,12 @@ def get_tools_for_llm(
     if include_rag:
         # Add book semantic search
         tools.append(SEMANTIC_SEARCH_TOOL.to_openai_format())
-        # Add sales tools (only available with RAG)
-        tools.extend([tool.to_openai_format() for tool in SALES_TOOL_DEFINITIONS])
-        tools.append(SALES_SEMANTIC_SEARCH_TOOL.to_openai_format())
+        # Add lending tools (only available with RAG)
+        tools.extend([tool.to_openai_format() for tool in LENDING_TOOL_DEFINITIONS])
+        tools.append(LENDING_SEMANTIC_SEARCH_TOOL.to_openai_format())
+        # Add replenish tools (only available with RAG)
+        tools.extend([tool.to_openai_format() for tool in REPLENISH_TOOL_DEFINITIONS])
+        tools.append(REPLENISH_SEMANTIC_SEARCH_TOOL.to_openai_format())
     if include_dummy_tools:
         dummy_defs = generate_dummy_tool_definitions()
         tools.extend([t.to_openai_format() for t in dummy_defs])
@@ -505,8 +650,15 @@ class LibraryAssistant:
         show_tool_calls: bool = True,
         enable_rag: bool = False,
         enable_dummy_tools: bool = False,
+        base_tool_definitions: list[ToolDefinition] | None = None,
+        rag_tool_definitions: list[ToolDefinition] | None = None,
     ) -> None:
-        """Initialize the Library Assistant."""
+        """Initialize the Library Assistant.
+
+        Args:
+            base_tool_definitions: Override the default base tools. If None, uses TOOL_DEFINITIONS.
+            rag_tool_definitions: Override the default RAG tools. If None, uses all RAG tool sets.
+        """
         self._provider = llm_provider
         self._system_prompt = system_prompt or SYSTEM_PROMPT
         self._max_tool_iterations = max_tool_iterations
@@ -514,6 +666,8 @@ class LibraryAssistant:
         self._show_tool_calls = show_tool_calls
         self._enable_rag = enable_rag
         self._enable_dummy_tools = enable_dummy_tools
+        self._base_tool_definitions = base_tool_definitions
+        self._rag_tool_definitions = rag_tool_definitions
         self._token_usage = TokenUsage()
 
         # Get tools based on RAG and dummy tools settings
@@ -526,13 +680,21 @@ class LibraryAssistant:
 
     def _get_tool_definitions(self) -> list[ToolDefinition]:
         """Get the list of tool definitions based on RAG and dummy tools settings."""
-        tools = list(TOOL_DEFINITIONS)
+        # Use custom base tools if provided, otherwise use defaults
+        tools = list(
+            self._base_tool_definitions if self._base_tool_definitions is not None else TOOL_DEFINITIONS
+        )
         if self._enable_rag:
-            # Add book semantic search
-            tools.append(SEMANTIC_SEARCH_TOOL)
-            # Add sales tools (only available with RAG)
-            tools.extend(SALES_TOOL_DEFINITIONS)
-            tools.append(SALES_SEMANTIC_SEARCH_TOOL)
+            if self._rag_tool_definitions is not None:
+                # Use the custom RAG tool set (e.g. patron-only or coordination-only)
+                tools.extend(self._rag_tool_definitions)
+            else:
+                # Default: add all RAG tool groups
+                tools.append(SEMANTIC_SEARCH_TOOL)
+                tools.extend(LENDING_TOOL_DEFINITIONS)
+                tools.append(LENDING_SEMANTIC_SEARCH_TOOL)
+                tools.extend(REPLENISH_TOOL_DEFINITIONS)
+                tools.append(REPLENISH_SEMANTIC_SEARCH_TOOL)
         if self._enable_dummy_tools:
             tools.extend(generate_dummy_tool_definitions())
         return tools
@@ -948,16 +1110,16 @@ def interactive_repl(enable_rag: bool = False, enable_dummy_tools: bool = False)
                     print("  Now available:")
                     print("    - semantic_search: Natural language book search")
                     print(
-                        "    - Sales tools: search_sales, get_book_sales, get_sales_stats, get_top_selling_books"
+                        "    - Lending tools: search_lending, get_book_lending, get_lending_stats, get_most_lent_books"
                     )
-                    print("    - search_sales_semantic: Natural language sales search")
+                    print("    - search_lending_semantic: Natural language lending search")
                     print()
                     print(
-                        "  Try: 'Find books about time travel' or 'What are the top selling books?'"
+                        "  Try: 'Find books about time travel' or 'What are the most lent books?'"
                     )
-                    print("       'Find bulk corporate purchases' or 'Show sales statistics'")
+                    print("       'Find bulk corporate loans' or 'Show lending statistics'")
                 else:
-                    print("  Sales tools and semantic search are now disabled.")
+                    print("  Lending tools and semantic search are now disabled.")
                 print()
                 continue
 
