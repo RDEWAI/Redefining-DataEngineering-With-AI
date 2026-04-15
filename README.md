@@ -207,6 +207,9 @@ Redefining-DataEngineering-With-AI/
 ├── chapter-3/                     # Business Analyst Agent (DRD Plugin)
 ├── chapter-4/                     # Multi-Agent Artifact Chain (7 plugins)
 │
+├── templates/
+│   └── cookiecutter-chapter/      # Cookiecutter scaffold for chapter-5+
+│
 ├── scripts/
 │   ├── validate-environment.sh    # Prerequisite validation
 │   ├── add_duckdb_connection.py   # Auto-configure DuckDB in Superset
@@ -276,6 +279,79 @@ See [chapter-4/README.md](chapter-4/README.md) for full details.
 ```
 
 See the [Hands-On Guide](chapter-4/HANDS-ON-GUIDE.md) for the full walkthrough — from plugin installation through generating all 7 artifacts.
+
+### Chapter 5: From Artifacts to Development — Scaffold Your Project
+
+Chapter 5 moves from AI-generated planning artifacts to **actual data engineering development**. The approved artifacts from Chapter 4 (DRD, HLD, DMS, LLD, etc.) become the inputs for a medallion pipeline built with Airflow, Liquibase, and a contracts-driven DQ layer.
+
+A **cookiecutter template** is provided so every reader starts from the same project scaffold.
+
+#### Prerequisites
+
+The project uses `uv` — no separate install needed. Run via `uvx`:
+
+```bash
+# Verify uv is available
+uv --version
+```
+
+#### Generate Your Chapter 5 Directory
+
+```bash
+uvx cookiecutter templates/cookiecutter-chapter/ --overwrite-if-exists
+```
+
+The `--overwrite-if-exists` flag makes the command safe to re-run — it regenerates into an existing directory without errors.
+
+You will be prompted for four values (press Enter to accept defaults):
+
+```
+chapter_name [chapter-5]:      # top-level folder name
+project_name [patient_360]:    # Python package / project name
+python_version [3.12]:         # Python version for pyproject.toml
+author_name [Data Engineer]:   # your name
+```
+
+This generates the following structure:
+
+```
+chapter-5/
+├── inputs/                      # drop Chapter 4 approved artifacts here
+├── outputs/                     # chapter-5 generated outputs
+├── developer-plugin/            # AI developer agent (DAG + CI/CD skills)
+│   └── skills/
+│       ├── airflow/             # create-dag / update-dag / validate-dag
+│       └── cicd/                # create-pipeline / update-pipeline / validate-pipeline
+└── patient_360/                 # main Python project
+    ├── src/patient_360/         # bronze / silver / gold / utils packages
+    ├── tests/                   # mirrors src/ — bronze / silver / gold
+    ├── airflow/dags/            # Airflow DAG files
+    ├── airflow/configs/         # DAG configuration YAML
+    ├── contracts/               # table contracts (DDL + DQ pointers)
+    ├── dq_rules/                # DQ rule definitions (Spark Expectations)
+    ├── ddl/liquibase/           # schema migration changelogs
+    ├── _infra/docker|ci|cd/     # infrastructure configuration
+    ├── Makefile
+    └── pyproject.toml
+```
+
+#### After Generation
+
+```bash
+cd chapter-5/patient_360
+
+# Install dependencies
+make dev-setup
+
+# Run tests (empty suite passes out of the box)
+make test
+
+# Install the developer plugin
+/plugin install developer-plugin@chapter-5
+
+# Start generating DAGs from your approved LLD
+/developer-plugin:create-dag
+```
 
 ---
 

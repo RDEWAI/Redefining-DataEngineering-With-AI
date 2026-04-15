@@ -1,0 +1,9 @@
+{
+  "name": "developer-plugin",
+  "version": "1.0.0",
+  "description": "Developer Agent for generating, updating, and validating Airflow DAGs and CI/CD pipelines",
+  "author": {
+    "name": "{{cookiecutter.author_name}}"
+  },
+  "keywords": ["developer", "airflow", "dags", "cicd", "data-engineering"]
+}
