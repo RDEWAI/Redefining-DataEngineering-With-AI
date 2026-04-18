@@ -108,7 +108,44 @@ Discover and read the latest version of all input documents:
    If any input is missing, document the gap in the LLD's Decision Log section
    with `[TO BE DETERMINED - requires input from {source}]`.
 
-7. **Prior session notes** from `memory/lld/` (if any exist)
+7. **Project scaffold template** (REQUIRED — target project layout):
+   ```bash
+   SCAFFOLD_ROOT="$(ls -d inputs/lld/v* | sort -V | tail -1)/templates/cookiecutter-chapter"
+   cat "$SCAFFOLD_ROOT/cookiecutter.json"
+   find "$SCAFFOLD_ROOT"/'{{cookiecutter.chapter_name}}' -type d | sort
+   ```
+   Read `cookiecutter.json` to learn template variables (`chapter_name`,
+   `project_name`, `python_version`, `author_name`). Walk the
+   `{{cookiecutter.chapter_name}}/{{cookiecutter.project_name}}/` tree to
+   learn the standard directory layout the downstream developer agent will
+   scaffold. This is the **target project structure** — every path in the
+   LLD (§2 code modules, §3 storage layout, §4 DAG file path, §5 task
+   targets, §7 config files, §9 deployment assets) MUST match this tree.
+   If the `cookiecutter-chapter` directory is missing, STOP and ask the
+   user to add it before proceeding.
+
+   The standard tree (from the template):
+   ```
+   {project_name}/
+   +-- CLAUDE.md
+   +-- Makefile
+   +-- pyproject.toml
+   +-- src/{project_name}/{bronze,silver,gold,utils}/
+   +-- tests/{bronze,silver,gold}/
+   +-- airflow/{dags,configs}/
+   +-- contracts/                # one *.yml per table
+   +-- contracts/dq/             # per-table DQ contract pointers
+   +-- dq_rules/                 # one *.yml per table (Spark Expectations)
+   +-- ddl/liquibase/            # schema migration changelogs
+   +-- _infra/{ci,cd,docker}/
+   +-- scripts/
+   +-- ui/
+   ```
+
+   Every module, contract, DQ rule, DAG, and infra asset described in the
+   LLD must name a path under this tree — never invent paths.
+
+8. **Prior session notes** from `memory/lld/` (if any exist)
 
 ### Step 2: Assess Gaps Per LLD Section
 
@@ -117,8 +154,9 @@ internal checklist:
 
 | LLD Section | Required Information | Status |
 |---|---|---|
+| **Scaffold Alignment** | Chapter name + project name from cookiecutter, any deviations | ? |
 | **1. Design Overview** | Implementation approach summary, key decisions | ? |
-| **2. Code Architecture** | Project folder structure, coding conventions, templates | ? |
+| **2. Code Architecture** | §2.1 project tree (matches cookiecutter), §2.2 module responsibilities | ? |
 | **3. File Formats & Storage Layout** | Parquet/Delta/Iceberg, compression, partitioning | ? |
 | **4. DAG Specification** | Task inventory, dependencies, scheduling, critical path | ? |
 | **5. Task Implementation Details** | Per-task I/O contracts, transformation refs, DQ checks | ? |
@@ -201,8 +239,13 @@ terminal UI. You can ask 1-4 questions per call, each with 2-4 options.
 - The UI automatically adds an "Other" free-form option — do NOT include one
 
 **What to ask per LLD section gap:**
+- **Scaffold Alignment** → confirm `project_name` and `chapter_name` from the
+  cookiecutter-chapter template (defaults are `patient_360` and `chapter-5`);
+  ask whether any deviations from the scaffold tree are needed. Deviations
+  MUST be captured in §13 Decision Log.
 - **Design Overview** → implementation approach, key architectural constraints
-- **Code Architecture** → project structure preference, framework patterns
+- **Code Architecture** → §2.1 Project Layout tree (rendered from cookiecutter),
+  §2.2 Module Responsibilities per layer, coding conventions
 - **File Formats** → storage format (Parquet, Delta, Iceberg), compression, partitioning
 - **DAG Specification** → task organization, dependencies, scheduling
 - **Task Implementation** → transformation approach, DQ integration points
@@ -406,30 +449,71 @@ Write the LLD in Markdown following the template structure. The LLD has 14 secti
 - A developer should understand what they are building from this section alone
 
 **Section 2 — Code Architecture**
-- Project folder structure with tree diagram
-- Coding conventions and naming patterns (from development-standards.md)
-- Reusable code templates and patterns
-- Testing strategy with coverage targets
-- Reference: "For schema definitions, see DMS §4" — do NOT copy schemas here
+
+This section MUST have two subsections:
+
+**§2.1 Project Layout** — render the cookiecutter scaffold tree literally, with
+the project name and chapter name substituted in. The tree MUST include every
+top-level directory from `cookiecutter-chapter/{{cookiecutter.chapter_name}}/{{cookiecutter.project_name}}/`:
+`src/<project>/{bronze,silver,gold,utils}/`, `tests/{bronze,silver,gold}/`,
+`airflow/{dags,configs}/`, `contracts/` (with `contracts/dq/`), `dq_rules/`,
+`ddl/liquibase/`, `_infra/{ci,cd,docker}/`, `scripts/`. Any deviation from
+the scaffold MUST be called out here and logged in §13.
+
+**§2.2 Module Responsibilities** — a table mapping each scaffold directory to
+the DMS layer (or concern) it implements:
+
+| Scaffold Path | Layer / Concern | Responsibility | DMS Ref |
+|---------------|-----------------|----------------|---------|
+| `src/<project>/bronze/` | Bronze | Ingest raw sources into Delta | DMS §3 |
+| `src/<project>/silver/` | Silver | Cleanse + SCD2 | DMS §4 |
+| `src/<project>/gold/` | Gold | Denormalized analytics tables | DMS §5 |
+| `airflow/dags/` | Orchestration | DAG definitions | — |
+| `contracts/*.yml` | Contracts | Per-table DDL + DQ pointers | DMS §6 |
+| `dq_rules/*.yml` | DQ | Spark Expectations rules | DQS §2 |
+| `ddl/liquibase/` | DDL | Schema migration changelogs | DMS §7 |
+| `_infra/ci/`, `_infra/cd/`, `_infra/docker/` | Infra | CI/CD + container images | — |
+
+Additional: coding conventions from `development-standards.md`, testing
+strategy with coverage targets. For schema definitions, see DMS §4 — do NOT
+copy schemas here.
 
 **Section 3 — File Formats & Storage Layout**
 - Storage format selection (Parquet, Delta, Iceberg) with rationale
 - Compression codec and row group sizing
 - Partitioning strategy per layer (from HLD §4 layer design)
 - Directory naming: `{layer}/{domain}/{table}/year={YYYY}/month={MM}/day={DD}/`
+- Required table: `Layer | Scaffold Path | Format | Partitioning | Retention`.
+  Scaffold paths MUST come from the cookiecutter tree, e.g.
+  `src/<project>/bronze/`, `warehouse/bronze/<table>/` (from
+  `_infra/cd/config/*.yaml` storage block).
 
 **Section 4 — DAG Specification**
-- Task inventory table: Task | Type | Layer | Dependencies | Timeout | Retries
+- Task inventory table: Task | Type | Layer | Dependencies | Timeout | Retries |
+  DAG File (`airflow/dags/<dag_id>.py`) | Config File (`airflow/configs/<dag_id>.yaml`)
 - **Mermaid DAG diagram** (`graph TD`) showing task dependencies
 - Scheduling: cron expression, timezone, concurrency limits
 - Critical path analysis: longest dependency chain
 - Idempotency guarantee per task
+- Every DAG file path MUST be `airflow/dags/<dag_id>.py` and every DAG config
+  path MUST be `airflow/configs/<dag_id>.yaml` — no deviations.
 
 **Section 5 — Task Implementation Details**
-- Per-task specification table: Task | Input Path | Output Path | Transform Ref | DQ Check
+- Per-task specification table with scaffold-aligned columns:
+
+  | Task ID | Layer | Module Path | Contract File | DQ Rules File | DAG Task Node | Inputs | Outputs | Transform Ref | DQ Check |
+  |---------|-------|-------------|---------------|---------------|---------------|--------|---------|---------------|----------|
+
+  Where:
+  - **Module Path** = `src/<project_name>/{bronze|silver|gold|utils}/<module>.py`
+  - **Contract File** = `contracts/<table>.yml`
+  - **DQ Rules File** = `dq_rules/<table>.yml`
+  - **DAG Task Node** = task node ID in the DAG (matches §4 task inventory)
 - For each task: what happens when input is empty or late
 - Reference STM tab mappings: "Transformation logic per STM Tab:source-to-bronze"
 - Reference DQS rules: "DQ validation per DQS §2 (field-level rules)"
+- Every path in this table MUST exist in (or be creatable under) the
+  cookiecutter scaffold — never invent a path.
 
 **Section 6 — Performance & Optimization**
 - Parallelism settings: executors, cores, memory per task
@@ -442,6 +526,9 @@ Write the LLD in Markdown following the template structure. The LLD has 14 secti
 - Environment overrides: DEV (small), STAGING (medium), PROD (full)
 - Categories: scheduling, compute, storage, retry, alerting
 - This section drives config-template.yaml generation
+- Generated config YAMLs land at `_infra/cd/config/<env>.yaml` in the
+  scaffolded project — reference that destination explicitly so the
+  downstream developer agent knows where to write them.
 
 **Section 8 — Error Handling**
 - Retry policies: max retries, backoff strategy per task type
@@ -450,10 +537,23 @@ Write the LLD in Markdown following the template structure. The LLD has 14 secti
 - Circuit breaker patterns for external dependencies
 
 **Section 9 — Deployment**
-- Environment definitions: DEV, STAGING, PROD with resource profiles
-- Promotion process: PR → merge → CI → deploy with approval gates
-- Rollback procedure: detection, revert steps, data re-processing, notification
-- Health checks: what passes before traffic/workload shifts
+
+This section MUST have subsections keyed to the scaffold's `_infra/` tree:
+
+- **§9.1 CI (`_infra/ci/`)** — lint + test + contract validation workflows
+  (e.g., `_infra/ci/github-actions.yml`). Reference the specific workflow
+  files that the developer agent will generate.
+- **§9.2 CD (`_infra/cd/`)** — promotion process (DEV → STAGING → PROD),
+  approval gates, artifact location. Reference `_infra/cd/config/<env>.yaml`
+  for per-environment config.
+- **§9.3 Docker (`_infra/docker/`)** — image definitions (e.g.,
+  `_infra/docker/Dockerfile.bronze`, `_infra/docker/Dockerfile.silver`) and
+  base image strategy.
+- **§9.4 Schema Migrations (`ddl/liquibase/`)** — changelog file naming,
+  apply order, rollback changelog conventions.
+
+Also: environment definitions (DEV, STAGING, PROD) with resource profiles,
+rollback procedure (detection, revert, re-process, notify), health checks.
 
 **Section 10 — Monitoring**
 - Metrics table: Metric | Type | Collection | Threshold | Alert Channel
@@ -483,6 +583,13 @@ This section exists to avoid duplicating upstream content — the LLD says
 **Section 13 — Decision Log**
 - All major implementation decisions with Options Considered, Rationale, Trade-off
 - Uses the Decision Documentation Standard format (see below)
+- MUST include a bootstrap entry on first creation:
+  > Adopted the `cookiecutter-chapter` scaffold at
+  > `inputs/lld/v{N}/templates/cookiecutter-chapter/` as the target project
+  > layout. All paths in §2–§9 reference this tree.
+- Any deviation from the cookiecutter scaffold (new top-level directory,
+  renamed layer, additional layer) MUST be logged here with rationale and
+  an owner.
 
 **Section 14 — Version History**
 - Document versioning table: Version | Date | Author | Changes
@@ -642,6 +749,9 @@ Every LLD starts with this metadata table:
 | **Last Modified** | {today's date} |
 | **Author** | Technical Lead Agent |
 | **Status** | Draft |
+| **Target Scaffold** | cookiecutter-chapter (inputs/lld/v{N}/templates/cookiecutter-chapter/) |
+| **Project Name** | {project_name from cookiecutter.json} |
+| **Chapter** | {chapter_name from cookiecutter.json} |
 | **DRD Reference** | {DRD filename and version} |
 | **HLD Reference** | {HLD filename and version} |
 | **DMS Reference** | {DMS filename and version} |
@@ -668,7 +778,7 @@ Every LLD starts with this metadata table:
 
 ### Active Learnings
 
-_No learnings recorded yet. Learnings are added when corrections occur during skill execution._
+- **L-000** (default): Never invent file paths — every path referenced in the LLD (§2, §3, §4, §5, §7, §9) must exist in the cookiecutter scaffold at `inputs/lld/v{N}/templates/cookiecutter-chapter/{{cookiecutter.chapter_name}}/{{cookiecutter.project_name}}/`, or be logged as an explicit deviation in Section 13 (Decision Log) with rationale.
 
 <!-- Example format:
 - **L-001** (2026-03-20): Always specify empty-input behavior for every DAG task — never assume "skip" is the default.

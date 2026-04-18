@@ -3,7 +3,10 @@ name: generate-config-template
 description: >
   Extracts configuration parameters from LLD Section 7 (Configuration Schema)
   and generates environment-specific YAML configuration templates. Produces
-  one config-template.yaml with DEV, STAGING, and PROD environment blocks.
+  one YAML per environment (`dev.yaml`, `stage.yaml`, `prod.yaml`) plus a
+  combined `config-template.yaml`, each with a top-level `scaffold_target:`
+  pointing at the cookiecutter scaffold path (`_infra/cd/config/<env>.yaml`)
+  where the developer drops the file in chapter-5.
   Also known as: config generation, environment config, YAML config export,
   configuration template, deployment config.
   Input formats: LLD Markdown (.md) file with Section 7 parameter table.

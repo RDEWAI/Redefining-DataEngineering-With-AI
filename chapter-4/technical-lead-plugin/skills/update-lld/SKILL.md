@@ -194,6 +194,17 @@ SHORT_NAME=$(echo "$EXISTING_FILE" | sed "s/.*[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}-/
 
 Run the versioning decision flowchart:
 
+> **Cookiecutter scaffold version bump**: if the scaffold under
+> `inputs/lld/v{N}/templates/cookiecutter-chapter/` changed between v{N} and
+> v{N+1} (new/renamed dirs, updated `cookiecutter.json` variables), Scenario A
+> applies and §2.1 **Project Layout** MUST be regenerated from the new
+> scaffold. Check with:
+> ```bash
+> diff -rq "inputs/lld/${CURRENT_OUTPUT_V}/templates/cookiecutter-chapter/" \
+>         "inputs/lld/${LATEST_INPUT_V}/templates/cookiecutter-chapter/" 2>/dev/null
+> ```
+> Any non-empty diff → §2.1 regeneration required.
+
 1. **Scenario A — Cross-version** (input version > output version, OR user requested "new version"):
    ```bash
    NEW_V="v$((${CURRENT_OUTPUT_V#v} + 1))"
@@ -246,16 +257,17 @@ When changes affect code architecture (§2), deployment (§9), or task order (§
 #### 3d. Cross-section consistency check
 
 After applying all edits, verify:
-1. §4 DAG Specification still aligns with §5 Task Implementation Details
-2. §6 Performance settings match current infrastructure specs
-3. §7 Configuration Schema has entries for all configurable parameters
-4. §8 Error Handling retry policies align with §4 DAG timeout settings
-5. §9 Deployment environments match §7 Configuration environment overrides
-6. §10 Monitoring thresholds align with DRD SLAs
-7. §11 Upstream References have correct section numbers
-8. §12 Traceability Matrix maps all requirements to implementation components
-9. DAG definition YAML matches §4 task inventory
-10. Implementation sequence phases align with §2 module structure and §4 task order
+1. §2.1 Project Layout still matches the cookiecutter scaffold at `inputs/lld/v{N}/templates/cookiecutter-chapter/`; any new module added in §5 also appears in the §2.1 tree, and every path referenced in §3/§4/§5/§7/§9 resolves inside the scaffold (or is logged as a deviation in §13)
+2. §4 DAG Specification still aligns with §5 Task Implementation Details
+3. §6 Performance settings match current infrastructure specs
+4. §7 Configuration Schema has entries for all configurable parameters
+5. §8 Error Handling retry policies align with §4 DAG timeout settings
+6. §9 Deployment environments match §7 Configuration environment overrides; §9.1–9.4 still reference `_infra/ci/`, `_infra/cd/`, `_infra/docker/`, `ddl/liquibase/`
+7. §10 Monitoring thresholds align with DRD SLAs
+8. §11 Upstream References have correct section numbers
+9. §12 Traceability Matrix maps all requirements to implementation components
+10. DAG definition YAML matches §4 task inventory and emits `dag_file: airflow/dags/<dag_id>.py`
+11. Implementation sequence phases align with §2 module structure and §4 task order
 
 #### 3e. Update version tracking
 
