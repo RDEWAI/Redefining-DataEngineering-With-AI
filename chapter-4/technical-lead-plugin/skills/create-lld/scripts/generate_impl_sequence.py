@@ -57,6 +57,23 @@ def extract_lld_filename(content: str) -> str:
     return "LLD"
 
 
+def parse_lld_header(content: str) -> dict[str, str]:
+    """Parse the LLD header metadata table (Field | Value) at the top of the doc."""
+    header_end = content.find("\n## ")
+    header = content[:header_end] if header_end != -1 else content
+    meta: dict[str, str] = {}
+    for line in header.split("\n"):
+        stripped = line.strip()
+        if not stripped.startswith("|") or all(c in "|- " for c in stripped):
+            continue
+        cells = [c.strip() for c in stripped.split("|")[1:-1]]
+        if len(cells) >= 2 and cells[0].lower() != "field":
+            key = cells[0].strip("*` ")
+            value = cells[1].strip("*` ")
+            meta[key] = value
+    return meta
+
+
 def parse_code_tree(section_content: str) -> list[dict[str, str]]:
     """Parse a project structure code block into module entries.
 
@@ -387,6 +404,10 @@ def main() -> int:
 
     title = extract_title(content)
 
+    # Read project_name / chapter from LLD header for scaffold-aligned paths
+    header = parse_lld_header(content)
+    project_name = header.get("Project Name", "project")
+
     # Parse modules from §2 code tree
     modules = parse_code_tree(section_2) if section_2 else []
 
@@ -397,17 +418,31 @@ def main() -> int:
     # Build phases
     phases = build_phases(modules)
 
-    # If no modules parsed from code tree, create modules from task inventory
-    if not modules and section_4:
-        task_content = extract_subsection(section_4, "4.2")
-        tasks = parse_task_table(task_content) if task_content else parse_task_table(section_4)
-        for task in tasks:
-            modules.append(
-                {
-                    "path": task.get("task id", "unknown").strip("`"),
-                    "comment": f"{task.get('type', '')} task",
-                }
-            )
+    # If no modules parsed from code tree, derive scaffold paths from §5 task table
+    if not modules:
+        section_5 = sections.get("5. Task Implementation Details", "")
+        s5_tasks = parse_task_table(section_5) if section_5 else []
+        for task in s5_tasks:
+            module_path = task.get("module path", "").strip("` ")
+            if not module_path:
+                layer = task.get("layer", "").strip().lower() or "utils"
+                tid = task.get("task id", "unknown").strip("`").lower()
+                module_path = f"src/{project_name}/{layer}/{tid}.py"
+            modules.append({"path": module_path, "comment": task.get("layer", "")})
+
+        # Last-resort fallback: §4 task inventory
+        if not modules and section_4:
+            task_content = extract_subsection(section_4, "4.2")
+            tasks = parse_task_table(task_content) if task_content else parse_task_table(section_4)
+            for task in tasks:
+                layer = task.get("layer", "").strip().lower() or "utils"
+                tid = task.get("task id", "unknown").strip("`").lower()
+                modules.append(
+                    {
+                        "path": f"src/{project_name}/{layer}/{tid}.py",
+                        "comment": f"{task.get('type', '')} task",
+                    }
+                )
         phases = build_phases(modules)
 
     output_path = args.output or (args.path.parent / "impl-sequence.md")

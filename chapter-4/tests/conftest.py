@@ -1,4 +1,5 @@
 """Shared fixtures for DRD and HLD validator tests."""
+# ruff: noqa: E501  # test fixtures embed long markdown tables verbatim
 
 from __future__ import annotations
 
@@ -1816,6 +1817,9 @@ VALID_LLD = """\
 | **DMS Reference** | DMS-2026-03-14-patient-360.md v1.0 |
 | **STM Reference** | STM-2026-03-16-patient-360.xlsx v1.0 |
 | **DQS Reference** | DQS-2026-03-18-patient-360.md v1.0 |
+| **Target Scaffold** | cookiecutter-chapter (see `inputs/lld/v1/templates/cookiecutter-chapter/`) |
+| **Project Name** | patient_360 |
+| **Chapter** | chapter-5 |
 
 ---
 
@@ -1829,19 +1833,40 @@ include Delta Lake for storage format [HLD §5.1], daily batch processing
 
 ## 2. Code Architecture
 
-The project follows a layered structure per development standards.
+### 2.1 Project Layout
+
+The project structure below is the cookiecutter scaffold at
+`inputs/lld/v1/templates/cookiecutter-chapter/`.
 
 ```
-src/
-├── pipelines/
+patient_360/
+├── src/patient_360/
 │   ├── bronze/
 │   ├── silver/
-│   └── gold/
-├── common/
-│   ├── config.py
-│   └── utils.py
-└── tests/
+│   ├── gold/
+│   └── utils/
+├── tests/
+├── airflow/
+│   ├── dags/
+│   └── configs/
+├── contracts/
+├── dq_rules/
+├── ddl/
+│   └── liquibase/
+└── _infra/
+    ├── ci/
+    ├── cd/
+    └── docker/
 ```
+
+### 2.2 Module Responsibilities
+
+| Module Path | DMS Layer | Responsibility |
+|---|---|---|
+| `src/patient_360/bronze/` | Bronze | Ingestion from raw sources. |
+| `src/patient_360/silver/` | Silver | Conformed dimensions/facts. |
+| `src/patient_360/gold/` | Gold | Patient 360 marts. |
+| `src/patient_360/utils/` | Cross-cutting | SparkSession, contracts, DQ. |
 
 Coding conventions follow PEP 8 with Ruff linting. For schema definitions,
 see DMS §4.2. Testing targets 80% coverage with pytest.
@@ -1888,12 +1913,12 @@ graph TD
 
 Each task has explicit I/O contracts per STM Tab:source-to-bronze mappings.
 
-| Task | Input Path | Output Path | Transform Ref | DQ Check |
-|------|-----------|-------------|---------------|----------|
-| ingest_patients | raw/patients.csv | bronze/patients/ | STM src-to-bronze | DQS §2 |
-| cleanse_patients | bronze/patients/ | silver/patients/ | STM brz-to-silver | DQS §2 |
-| build_patient_360 | silver/patients/ | gold/patient_360/ | STM slv-to-gold | DQS §4 |
-| validate_gold | /data/gold/patient_360/ | validation_report | DQS §5 | DQS §5 (DQ-REC-001) |
+| Task ID | Layer | Module Path | Contract File | DQ Rules File | DAG Task Node | Inputs | Outputs | Transform Ref | DQ Check |
+|---|---|---|---|---|---|---|---|---|---|
+| T-B01 | Bronze | `src/patient_360/bronze/patients.py` | `contracts/patients.yml` | `dq_rules/patients.yml` | ingest_patients | raw/patients.csv | bronze/patients/ | STM src-to-bronze | DQS §2 |
+| T-S01 | Silver | `src/patient_360/silver/patient_dim.py` | `contracts/patient_dim.yml` | `dq_rules/patient_dim.yml` | cleanse_patients | bronze/patients/ | silver/patient_dim/ | STM brz-to-silver | DQS §2 |
+| T-G01 | Gold | `src/patient_360/gold/patient_360.py` | `contracts/patient_360.yml` | `dq_rules/patient_360.yml` | build_patient_360 | silver/patient_dim/ | gold/patient_360/ | STM slv-to-gold | DQS §4 |
+| T-G02 | Gold | `src/patient_360/gold/readmission_risk.py` | `contracts/readmission_risk.yml` | `dq_rules/readmission_risk.yml` | validate_gold | gold/patient_360/ | gold/readmission_risk/ | DQS §5 | DQS §5 (DQ-REC-001) |
 
 When input is empty, ingestion tasks write a zero-row Delta table with schema preserved.
 
@@ -1930,6 +1955,25 @@ Alerting: CRITICAL failures page on-call via PagerDuty. WARNING issues post to
 
 Environments: DEV (2 executors, 4GB each), STAGING (4 executors, 8GB each),
 PROD (8 executors, 16GB each).
+
+### 9.1 `_infra/ci/` — Continuous Integration
+
+`_infra/ci/github-actions.yaml` runs `ruff check`, `pytest`, and contract
+validation on every PR.
+
+### 9.2 `_infra/cd/` — Continuous Deployment
+
+`_infra/cd/deploy.yaml` promotes an image tag across envs using per-env YAMLs
+in `_infra/cd/config/{dev,stage,prod}.yaml`.
+
+### 9.3 `_infra/docker/` — Container Images
+
+One image per layer: `_infra/docker/Dockerfile.{bronze,silver,gold}`.
+
+### 9.4 `ddl/liquibase/` — Schema Migrations
+
+`ddl/liquibase/master.xml` includes per-table changelogs under
+`ddl/liquibase/changelogs/`.
 
 Promotion: PR merge → CI tests → DEV deploy → smoke test → STAGING deploy →
 integration test → PROD deploy with manual approval gate.

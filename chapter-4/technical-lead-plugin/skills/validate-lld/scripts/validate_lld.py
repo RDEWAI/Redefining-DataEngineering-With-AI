@@ -336,6 +336,287 @@ def check_configuration_schema(sections: dict[str, str]) -> list[ValidationResul
     return results
 
 
+DEFAULT_SCAFFOLD_TOP_DIRS = (
+    "src",
+    "tests",
+    "airflow",
+    "contracts",
+    "dq_rules",
+    "ddl",
+    "_infra",
+)
+
+
+def _load_scaffold_dirs(template_root: Path | None) -> tuple[str, ...]:
+    """Read the cookiecutter scaffold tree once and return expected top-level dirs.
+
+    Falls back to DEFAULT_SCAFFOLD_TOP_DIRS if template_root is missing or empty.
+    The template_root is expected to be the directory containing
+    `{{cookiecutter.project_name}}/` (i.e. the chapter-level cookiecutter dir).
+    """
+    if not template_root or not template_root.exists():
+        return DEFAULT_SCAFFOLD_TOP_DIRS
+    project_dirs = list(template_root.glob("*"))
+    if not project_dirs:
+        return DEFAULT_SCAFFOLD_TOP_DIRS
+    inner = project_dirs[0]
+    if not inner.is_dir():
+        return DEFAULT_SCAFFOLD_TOP_DIRS
+    dirs = [p.name for p in inner.iterdir() if p.is_dir()]
+    return tuple(sorted(dirs)) if dirs else DEFAULT_SCAFFOLD_TOP_DIRS
+
+
+def _find_scaffold_root(lld_path: Path) -> Path | None:
+    """Walk up from the LLD and look for `inputs/lld/v*/templates/cookiecutter-chapter/`."""
+    for ancestor in [lld_path.parent, *lld_path.parents]:
+        candidate = list(ancestor.glob("inputs/lld/v*/templates/cookiecutter-chapter"))
+        if candidate:
+            latest = sorted(candidate)[-1]
+            project_dir = next(
+                (p for p in latest.iterdir() if p.is_dir() and p.name.startswith("{{")),
+                None,
+            )
+            if project_dir:
+                inner = next(
+                    (p for p in project_dir.iterdir() if p.is_dir() and p.name.startswith("{{")),
+                    None,
+                )
+                if inner:
+                    return inner.parent
+    return None
+
+
+def _parse_header_metadata(content: str) -> dict[str, str]:
+    """Parse the LLD header metadata table at the top of the file."""
+    header_end = content.find("\n## ")
+    header = content[:header_end] if header_end != -1 else content
+    meta: dict[str, str] = {}
+    for line in header.split("\n"):
+        stripped = line.strip()
+        if not stripped.startswith("|") or all(c in "|- " for c in stripped):
+            continue
+        cells = [c.strip() for c in stripped.split("|")[1:-1]]
+        if len(cells) >= 2 and cells[0].lower() != "field":
+            key = cells[0].strip("*` ")
+            value = cells[1].strip("*` ")
+            meta[key] = value
+    return meta
+
+
+def _extract_table_headers(section_content: str) -> list[str]:
+    """Return the header row cells of the first markdown table in the section."""
+    lines = section_content.strip().split("\n")
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("|") and not all(c in "|- " for c in stripped):
+            if i + 1 < len(lines) and all(c in "|- " for c in lines[i + 1].strip()):
+                return [c.strip().lower() for c in stripped.split("|")[1:-1]]
+    return []
+
+
+def check_scaffold_metadata(content: str) -> list[ValidationResult]:
+    """CRITICAL: metadata must contain Target Scaffold, Project Name, and Chapter rows."""
+    results: list[ValidationResult] = []
+    meta = _parse_header_metadata(content)
+    for field_name in ("Target Scaffold", "Project Name", "Chapter"):
+        if field_name not in meta or not meta[field_name]:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.CRITICAL,
+                    section="Metadata",
+                    message=f'Metadata row "{field_name}" is missing or empty.',
+                    suggestion=(
+                        f'Add a "| **{field_name}** | ... |" row to the header table. '
+                        "Target Scaffold should reference `inputs/lld/v{N}/templates/"
+                        "cookiecutter-chapter/`; Project Name and Chapter must match "
+                        "cookiecutter.json."
+                    ),
+                )
+            )
+    return results
+
+
+def check_scaffold_layout(
+    sections: dict[str, str], scaffold_top_dirs: tuple[str, ...]
+) -> list[ValidationResult]:
+    """CRITICAL: §2.1 Project Layout must list the expected scaffold top-level dirs."""
+    results: list[ValidationResult] = []
+    content = sections.get("2. Code Architecture", "")
+    if not content:
+        return results
+
+    has_subsection = bool(re.search(r"^\s*###\s+2\.1", content, re.MULTILINE))
+    if not has_subsection:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section="2. Code Architecture",
+                message="Missing §2.1 Project Layout subsection.",
+                suggestion=(
+                    "Add a `### 2.1 Project Layout` subsection that renders the "
+                    "cookiecutter scaffold tree as a fenced code block."
+                ),
+            )
+        )
+
+    missing = [d for d in scaffold_top_dirs if d not in content]
+    if missing:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section="2. Code Architecture",
+                message=(
+                    "§2.1 Project Layout is missing scaffold top-level dirs: "
+                    f"{', '.join(missing)}."
+                ),
+                suggestion=(
+                    "Include every cookiecutter top-level directory in the §2.1 tree: "
+                    + ", ".join(scaffold_top_dirs)
+                    + "."
+                ),
+            )
+        )
+    return results
+
+
+def check_task_table_columns(sections: dict[str, str]) -> list[ValidationResult]:
+    """CRITICAL: §5 task table must have the scaffold-aligned column set."""
+    results: list[ValidationResult] = []
+    content = sections.get("5. Task Implementation Details", "")
+    if not content:
+        return results
+    headers = _extract_table_headers(content)
+    required = ["module path", "contract file", "dq rules file", "dag task node"]
+    missing = [h for h in required if h not in headers]
+    if missing:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section="5. Task Implementation Details",
+                message=(
+                    "§5 task table is missing required columns: "
+                    + ", ".join(m.title() for m in missing)
+                    + "."
+                ),
+                suggestion=(
+                    "Task table must include: Task ID | Layer | Module Path | "
+                    "Contract File | DQ Rules File | DAG Task Node | Inputs | Outputs "
+                    "| Transform Ref | DQ Check."
+                ),
+            )
+        )
+    return results
+
+
+def check_scaffold_paths(sections: dict[str, str], content: str) -> list[ValidationResult]:
+    """WARNING: src/, contracts/, dq_rules/ paths in §5 must match scaffold conventions."""
+    results: list[ValidationResult] = []
+    meta = _parse_header_metadata(content)
+    project_name = meta.get("Project Name", "").strip()
+    section_5 = sections.get("5. Task Implementation Details", "")
+    if not section_5:
+        return results
+
+    src_paths = re.findall(r"`(src/[^`]+)`", section_5)
+    if project_name:
+        bad_src = [
+            p
+            for p in src_paths
+            if not re.match(rf"^src/{re.escape(project_name)}/(bronze|silver|gold|utils)/", p)
+        ]
+        if bad_src:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    section="5. Task Implementation Details",
+                    message=(
+                        f"§5 has src/ paths that don't match the scaffold shape "
+                        f"`src/{project_name}/{{bronze|silver|gold|utils}}/`: "
+                        f"{', '.join(bad_src[:5])}" + ("..." if len(bad_src) > 5 else "")
+                    ),
+                    suggestion=(
+                        "Rename modules to live under `src/{project_name}/"
+                        "{bronze|silver|gold|utils}/` or log the deviation in §13 "
+                        "Decision Log."
+                    ),
+                )
+            )
+
+    contract_paths = re.findall(r"`(contracts/[^`]+)`", section_5)
+    bad_contracts = [p for p in contract_paths if not re.match(r"^contracts/[^/]+\.yml$", p)]
+    if bad_contracts:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section="5. Task Implementation Details",
+                message=(
+                    "Contract file paths in §5 don't match `contracts/*.yml`: "
+                    + ", ".join(bad_contracts[:5])
+                ),
+                suggestion="Use one-file-per-table contract paths like `contracts/<table>.yml`.",
+            )
+        )
+
+    dq_paths = re.findall(r"`(dq_rules/[^`]+)`", section_5)
+    bad_dq = [p for p in dq_paths if not re.match(r"^dq_rules/[^/]+\.yml$", p)]
+    if bad_dq:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section="5. Task Implementation Details",
+                message=(
+                    "DQ rules paths in §5 don't match `dq_rules/*.yml`: " + ", ".join(bad_dq[:5])
+                ),
+                suggestion="Use `dq_rules/<table>.yml` per Spark-Expectations convention.",
+            )
+        )
+    return results
+
+
+def check_deployment_infra_paths(sections: dict[str, str]) -> list[ValidationResult]:
+    """WARNING: §9 must reference _infra/ci/, _infra/cd/, _infra/docker/, ddl/liquibase/."""
+    results: list[ValidationResult] = []
+    content = sections.get("9. Deployment", "")
+    if not content:
+        return results
+    required_refs = ["_infra/ci", "_infra/cd", "_infra/docker", "ddl/liquibase"]
+    missing = [r for r in required_refs if r not in content]
+    if missing:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section="9. Deployment",
+                message=("§9 does not reference scaffold infra directories: " + ", ".join(missing)),
+                suggestion=(
+                    "Structure §9 as 9.1 `_infra/ci/`, 9.2 `_infra/cd/`, "
+                    "9.3 `_infra/docker/`, 9.4 `ddl/liquibase/`."
+                ),
+            )
+        )
+    return results
+
+
+def check_scaffold_decision_entry(sections: dict[str, str]) -> list[ValidationResult]:
+    """INFO: §13 Decision Log should contain the bootstrap scaffold-adoption entry."""
+    results: list[ValidationResult] = []
+    content = sections.get("13. Decision Log", "")
+    if not content:
+        return results
+    if not re.search(r"cookiecutter[- ]chapter", content, re.IGNORECASE):
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.INFO,
+                section="13. Decision Log",
+                message="§13 does not record the scaffold-adoption bootstrap entry.",
+                suggestion=(
+                    'Add: "Adopted cookiecutter-chapter scaffold at '
+                    'inputs/lld/v{N}/templates/cookiecutter-chapter/ as target project layout."'
+                ),
+            )
+        )
+    return results
+
+
 def check_upstream_references(sections: dict[str, str]) -> list[ValidationResult]:
     """Check that Upstream Artifact References cites all 5 upstream docs."""
     results: list[ValidationResult] = []
@@ -755,12 +1036,19 @@ def validate_lld(file_path: Path) -> ValidationReport:
 
     sections = parse_lld_sections(content)
 
+    # Resolve scaffold top-level dirs (falls back to default tuple if not found)
+    scaffold_root = _find_scaffold_root(file_path)
+    scaffold_top_dirs = _load_scaffold_dirs(scaffold_root)
+
     # CRITICAL checks
     report.results.extend(check_required_sections(sections))
     report.results.extend(check_metadata(content))
+    report.results.extend(check_scaffold_metadata(content))
     report.results.extend(check_design_overview(sections))
     report.results.extend(check_dag_specification(sections))
     report.results.extend(check_task_implementation(sections))
+    report.results.extend(check_task_table_columns(sections))
+    report.results.extend(check_scaffold_layout(sections, scaffold_top_dirs))
     report.results.extend(check_configuration_schema(sections))
     report.results.extend(check_upstream_references(sections))
 
@@ -768,15 +1056,18 @@ def validate_lld(file_path: Path) -> ValidationReport:
     report.results.extend(check_upstream_traceability(content))
     report.results.extend(check_error_handling(sections))
     report.results.extend(check_deployment_environments(sections))
+    report.results.extend(check_deployment_infra_paths(sections))
     report.results.extend(check_monitoring_metrics(sections))
     report.results.extend(check_mermaid_diagram(content))
     report.results.extend(check_decision_documentation(content))
     report.results.extend(check_performance_numerics(sections))
+    report.results.extend(check_scaffold_paths(sections, content))
 
     # INFO checks
     report.results.extend(check_placeholders(content))
     report.results.extend(check_rollback(sections))
     report.results.extend(check_critical_path(sections))
+    report.results.extend(check_scaffold_decision_entry(sections))
     report.results.extend(check_config_template_exists(sections, file_path))
     report.results.extend(check_dag_definition_exists(sections, file_path))
     report.results.extend(check_mermaid_export_exists(sections, file_path))
