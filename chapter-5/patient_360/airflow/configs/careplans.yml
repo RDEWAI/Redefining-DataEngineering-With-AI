@@ -1,0 +1,24 @@
+# Bronze ingestion config — careplans
+# Generated from LLD §5.1 (ingest_careplans). DQ: inline SE from
+# dq_rules/careplans.yml. Empty-input: write_empty (default).
+# updated: 2026-04-21
+
+table: careplans
+source:
+  schema: synthea
+  table: careplans
+  format: csv
+  path: data/raw/careplans.csv
+schema_ref: contracts/careplans.yml
+output_path: warehouse/{env}/bronze/synthea_careplans/
+metadata_columns:
+  - ds
+  - _ingested_at
+  - _source_batch_id
+empty_input_behavior: write_empty
+dq_rules_table: careplans
+se_action_if_failed: drop
+quarantine_path: warehouse/{env}/quarantine/bronze/careplans/
+timeout_minutes: 30
+retries: 3
+retry_delay_seconds: 60

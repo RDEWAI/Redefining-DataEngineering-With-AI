@@ -1,0 +1,42 @@
+# Contract for synthea.patients. Columns sourced from docs/ERD.mmd.
+# updated: 2026-04-18
+
+table: patients
+layer: bronze
+schema: synthea
+ddl_path: ddl/liquibase/changelogs/patients.xml
+dq_path: dq_rules/patients.yml
+
+owner: "Data Engineer"
+description: "Synthea patient demographics (one row per patient)."
+tags: [clinical, dimension]
+
+columns:
+  - {name: id,                  type: string,        nullable: false, description: "Primary key"}
+  - {name: birthdate,           type: date,          nullable: true}
+  - {name: deathdate,           type: date,          nullable: true}
+  - {name: ssn,                 type: string,        nullable: true}
+  - {name: drivers,             type: string,        nullable: true}
+  - {name: passport,            type: string,        nullable: true}
+  - {name: prefix,              type: string,        nullable: true}
+  - {name: first,               type: string,        nullable: true}
+  - {name: middle,              type: string,        nullable: true}
+  - {name: last,                type: string,        nullable: true}
+  - {name: suffix,              type: string,        nullable: true}
+  - {name: maiden,              type: string,        nullable: true}
+  - {name: marital,             type: string,        nullable: true}
+  - {name: race,                type: string,        nullable: true}
+  - {name: ethnicity,           type: string,        nullable: true}
+  - {name: gender,              type: string,        nullable: true}
+  - {name: birthplace,          type: string,        nullable: true}
+  - {name: address,             type: string,        nullable: true}
+  - {name: city,                type: string,        nullable: true}
+  - {name: state,               type: string,        nullable: true}
+  - {name: county,              type: string,        nullable: true}
+  - {name: fips,                type: string,        nullable: true}
+  - {name: zip,                 type: string,        nullable: true}
+  - {name: lat,                 type: double,        nullable: true}
+  - {name: lon,                 type: double,        nullable: true}
+  - {name: healthcare_expenses, type: "decimal(18, 2)", nullable: true}
+  - {name: healthcare_coverage, type: "decimal(18, 2)", nullable: true}
+  - {name: income,              type: "decimal(18, 2)", nullable: true}

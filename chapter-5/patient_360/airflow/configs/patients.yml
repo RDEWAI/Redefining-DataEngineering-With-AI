@@ -1,0 +1,24 @@
+# Bronze ingestion config — patients
+# Generated from LLD §5.1 (ingest_patients). DQ: inline SE row_dq + agg_dq from
+# dq_rules/patients.yml. Empty-input: fail (required for downstream). [DRD §1.3]
+# updated: 2026-04-21
+
+table: patients
+source:
+  schema: synthea
+  table: patients
+  format: csv
+  path: data/raw/patients.csv
+schema_ref: contracts/patients.yml
+output_path: warehouse/{env}/bronze/synthea_patients/
+metadata_columns:
+  - ds
+  - _ingested_at
+  - _source_batch_id
+empty_input_behavior: fail
+dq_rules_table: patients
+se_action_if_failed: fail
+quarantine_path: warehouse/{env}/quarantine/bronze/patients/
+timeout_minutes: 30
+retries: 3
+retry_delay_seconds: 60

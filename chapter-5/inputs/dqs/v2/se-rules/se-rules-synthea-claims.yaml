@@ -1,0 +1,100 @@
+# SE Rules for raw.synthea_claims
+# Generated from: DQS-2026-03-21-patient-360.md
+# Compatible with spark-expectations >= 2.6.0
+# Load with: load_rules_from_yaml(this_file, spark, options={"dq_env": "PROD"})
+# Product: patient-360
+# Rules: 4
+
+product_id: patient-360
+dq_env:
+  DEV:
+    table_name: dev_raw.synthea_claims
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 0
+    priority: medium
+  QA:
+    table_name: qa_raw.synthea_claims
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    priority: medium
+  PROD:
+    table_name: raw.synthea_claims
+    action_if_failed: fail
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    priority: high
+rules:
+- rule: DQ-FLD-040
+  rule_type: row_dq
+  column_name: Id
+  expectation: Id IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on Id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ-FLD-041
+  rule_type: row_dq
+  column_name: PATIENTID
+  expectation: PATIENTID IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on PATIENTID
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ-STA-009
+  rule_type: agg_dq
+  column_name: ''
+  expectation: count(*) > 599134 and count(*) < 662201
+  action_if_failed: ignore
+  tag: statistical_distribution
+  description: 'Statistical check: Row Count baseline=630,668'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: true
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ-REC-008
+  rule_type: query_dq
+  column_name: ''
+  expectation: CASE WHEN ABS(s.cnt - t.cnt) * 100.0 / NULLIF(s.cnt, 0) <= 0 THEN 1
+    ELSE 0 END FROM (SELECT COUNT(*) AS cnt FROM synthea.claims) s, (SELECT COUNT(*)
+    AS cnt FROM bronze.synthea_claims) t
+  action_if_failed: fail
+  tag: reconciliation
+  description: 'Reconciliation: synthea.claims vs bronze.synthea_claims (COUNT(*)),
+    tolerance=0% (exact match)'
+  enable_for_source_dq_validation: true
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: true
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: true
+  priority: high

@@ -1,0 +1,24 @@
+# Bronze ingestion config — claims
+# Generated from LLD §5.1 (ingest_claims). DQ: inline SE from
+# dq_rules/claims.yml. Empty-input: write_empty (default).
+# updated: 2026-04-21
+
+table: claims
+source:
+  schema: synthea
+  table: claims
+  format: csv
+  path: data/raw/claims.csv
+schema_ref: contracts/claims.yml
+output_path: warehouse/{env}/bronze/synthea_claims/
+metadata_columns:
+  - ds
+  - _ingested_at
+  - _source_batch_id
+empty_input_behavior: write_empty
+dq_rules_table: claims
+se_action_if_failed: drop
+quarantine_path: warehouse/{env}/quarantine/bronze/claims/
+timeout_minutes: 30
+retries: 3
+retry_delay_seconds: 60

@@ -1,0 +1,36 @@
+# Contract for synthea.payers. Columns sourced from docs/ERD.mmd.
+# updated: 2026-04-18
+
+table: payers
+layer: bronze
+schema: synthea
+ddl_path: ddl/liquibase/changelogs/payers.xml
+dq_path: dq_rules/payers.yml
+
+owner: "Data Engineer"
+description: "Insurance payers (coverage entities)."
+tags: [reference, dimension]
+
+columns:
+  - {name: id,                      type: string,           nullable: false, description: "Primary key"}
+  - {name: name,                    type: string,           nullable: true}
+  - {name: ownership,               type: string,           nullable: true}
+  - {name: address,                 type: string,           nullable: true}
+  - {name: city,                    type: string,           nullable: true}
+  - {name: state_headquartered,     type: string,           nullable: true}
+  - {name: zip,                     type: string,           nullable: true}
+  - {name: phone,                   type: string,           nullable: true}
+  - {name: amount_covered,          type: "decimal(18, 2)", nullable: true}
+  - {name: amount_uncovered,        type: "decimal(18, 2)", nullable: true}
+  - {name: revenue,                 type: "decimal(18, 2)", nullable: true}
+  - {name: covered_encounters,      type: int,              nullable: true}
+  - {name: uncovered_encounters,    type: int,              nullable: true}
+  - {name: covered_medications,     type: int,              nullable: true}
+  - {name: uncovered_medications,   type: int,              nullable: true}
+  - {name: covered_procedures,      type: int,              nullable: true}
+  - {name: uncovered_procedures,    type: int,              nullable: true}
+  - {name: covered_immunizations,   type: int,              nullable: true}
+  - {name: uncovered_immunizations, type: int,              nullable: true}
+  - {name: unique_customers,        type: int,              nullable: true}
+  - {name: qols_avg,                type: "decimal(18, 4)", nullable: true}
+  - {name: member_months,           type: int,              nullable: true}

@@ -1,0 +1,24 @@
+# Bronze ingestion config — allergies
+# Generated from LLD §5.1 (ingest_allergies). DQ: inline SE from
+# dq_rules/allergies.yml. Empty-input: fail — safety critical [DRD §1.3].
+# updated: 2026-04-21
+
+table: allergies
+source:
+  schema: synthea
+  table: allergies
+  format: csv
+  path: data/raw/allergies.csv
+schema_ref: contracts/allergies.yml
+output_path: warehouse/{env}/bronze/synthea_allergies/
+metadata_columns:
+  - ds
+  - _ingested_at
+  - _source_batch_id
+empty_input_behavior: fail
+dq_rules_table: allergies
+se_action_if_failed: fail
+quarantine_path: warehouse/{env}/quarantine/bronze/allergies/
+timeout_minutes: 30
+retries: 3
+retry_delay_seconds: 60

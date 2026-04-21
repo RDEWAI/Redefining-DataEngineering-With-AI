@@ -1,0 +1,27 @@
+# Contract for synthea.medications. Columns sourced from docs/ERD.mmd.
+# updated: 2026-04-18
+
+table: medications
+layer: bronze
+schema: synthea
+ddl_path: ddl/liquibase/changelogs/medications.xml
+dq_path: dq_rules/medications.yml
+
+owner: "Data Engineer"
+description: "Medication prescriptions."
+tags: [clinical, fact]
+
+columns:
+  - {name: start,             type: timestamp,        nullable: true}
+  - {name: stop,              type: timestamp,        nullable: true}
+  - {name: patient,           type: string,           nullable: false, description: "FK -> patients.id; required"}
+  - {name: payer,             type: string,           nullable: true,  description: "FK -> payers.id"}
+  - {name: encounter,         type: string,           nullable: true,  description: "FK -> encounters.id"}
+  - {name: code,              type: string,           nullable: true}
+  - {name: description,       type: string,           nullable: true}
+  - {name: base_cost,         type: "decimal(18, 2)", nullable: true}
+  - {name: payer_coverage,    type: "decimal(18, 2)", nullable: true}
+  - {name: dispenses,         type: int,              nullable: true}
+  - {name: totalcost,         type: "decimal(18, 2)", nullable: true}
+  - {name: reasoncode,        type: string,           nullable: true}
+  - {name: reasondescription, type: string,           nullable: true}

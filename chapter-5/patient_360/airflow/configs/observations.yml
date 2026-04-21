@@ -1,0 +1,24 @@
+# Bronze ingestion config — observations
+# Generated from LLD §5.1 (ingest_observations). DQ: inline SE from
+# dq_rules/observations.yml. Empty-input: write_empty (default).
+# updated: 2026-04-21
+
+table: observations
+source:
+  schema: synthea
+  table: observations
+  format: csv
+  path: data/raw/observations.csv
+schema_ref: contracts/observations.yml
+output_path: warehouse/{env}/bronze/synthea_observations/
+metadata_columns:
+  - ds
+  - _ingested_at
+  - _source_batch_id
+empty_input_behavior: write_empty
+dq_rules_table: observations
+se_action_if_failed: drop
+quarantine_path: warehouse/{env}/quarantine/bronze/observations/
+timeout_minutes: 30
+retries: 3
+retry_delay_seconds: 60
