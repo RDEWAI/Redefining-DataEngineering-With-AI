@@ -1,0 +1,147 @@
+# SE Rules for clinical.clinical_conditions
+# Generated from: DQS-2026-03-21-patient-360.md
+# Compatible with spark-expectations >= 2.6.0
+# Load with: load_rules_from_yaml(this_file, spark, options={"dq_env": "PROD"})
+# Product: patient-360
+# Rules: 7
+
+product_id: patient-360
+dq_env:
+  DEV:
+    table_name: dev_clinical.clinical_conditions
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 0
+    priority: medium
+  QA:
+    table_name: qa_clinical.clinical_conditions
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    priority: medium
+  PROD:
+    table_name: clinical.clinical_conditions
+    action_if_failed: fail
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    priority: high
+rules:
+- rule: DQ-FLD-066
+  rule_type: row_dq
+  column_name: patient_id
+  expectation: patient_id IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on patient_id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ-FLD-067
+  rule_type: row_dq
+  column_name: encounter_id
+  expectation: encounter_id IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on encounter_id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ-FLD-068
+  rule_type: row_dq
+  column_name: snomed_code
+  expectation: snomed_code IS NOT NULL
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on snomed_code
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ-FLD-069
+  rule_type: row_dq
+  column_name: condition_status
+  expectation: condition_status IN ('ACTIVE', 'RESOLVED')
+  action_if_failed: ignore
+  tag: field_validation
+  description: ENUM on condition_status
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ-FLD-070
+  rule_type: row_dq
+  column_name: onset_date
+  expectation: onset_date IS NULL OR (onset_date >= '1900-01-01' AND onset_date <=
+    CURRENT_DATE)
+  action_if_failed: ignore
+  tag: field_validation
+  description: RANGE on onset_date
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ-REF-004
+  rule_type: query_dq
+  column_name: ''
+  expectation: CASE WHEN (SELECT COUNT(*) FROM clinical_conditions c LEFT JOIN clinical_patients
+    p ON c.patient_id = p.patient_id WHERE p.patient_id IS NULL) = 0 THEN 1 ELSE 0
+    END
+  action_if_failed: fail
+  tag: referential_integrity
+  description: 'FK check: clinical_conditions.patient_id -> clinical_patients.patient_id'
+  enable_for_source_dq_validation: true
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: true
+  priority: high
+- rule: DQ-REF-005
+  rule_type: query_dq
+  column_name: ''
+  expectation: CASE WHEN (SELECT COUNT(*) FROM clinical_conditions c LEFT JOIN clinical_encounters
+    p ON c.encounter_id = p.encounter_id WHERE p.encounter_id IS NULL) = 0 THEN 1
+    ELSE 0 END
+  action_if_failed: fail
+  tag: referential_integrity
+  description: 'FK check: clinical_conditions.encounter_id -> clinical_encounters.encounter_id'
+  enable_for_source_dq_validation: true
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: true
+  priority: high

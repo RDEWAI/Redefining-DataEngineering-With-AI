@@ -1,0 +1,27 @@
+# Contract for synthea.providers. Columns sourced from docs/ERD.mmd.
+# updated: 2026-04-18
+
+table: providers
+layer: bronze
+schema: synthea
+ddl_path: ddl/liquibase/changelogs/providers.xml
+dq_path: dq_rules/providers.yml
+
+owner: "Data Engineer"
+description: "Clinicians (providers) employed by an organization."
+tags: [reference, dimension]
+
+columns:
+  - {name: id,           type: string, nullable: false, description: "Primary key"}
+  - {name: organization, type: string, nullable: true,  description: "FK -> organizations.id"}
+  - {name: name,         type: string, nullable: true}
+  - {name: gender,       type: string, nullable: true}
+  - {name: speciality,   type: string, nullable: true}
+  - {name: address,      type: string, nullable: true}
+  - {name: city,         type: string, nullable: true}
+  - {name: state,        type: string, nullable: true}
+  - {name: zip,          type: string, nullable: true}
+  - {name: lat,          type: double, nullable: true}
+  - {name: lon,          type: double, nullable: true}
+  - {name: encounters,   type: int,    nullable: true}
+  - {name: procedures,   type: int,    nullable: true}

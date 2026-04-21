@@ -103,16 +103,12 @@ environments:
       storage_vacuum_retention_hours: `168`
       # Auto compaction
       storage_auto_compact: `false`
-      # Dead-letter path for schema/FK rejection records
+      # Quarantine path
       storage_dead_letter_path: `warehouse/dev/dead-letter`
-      # SE drop-action quarantine root; per-table path = {quarantine_path}/bronze/{table}/
-      storage_quarantine_path: `warehouse/dev/quarantine`
       # Checkpoint path
       storage_checkpoint_path: `warehouse/dev/checkpoints`
       # Local filesystem path for Delta warehouse
       catalog_warehouse_path: `warehouse/dev`
-      # Per-table SE drop-action quarantine path (resolved at runtime by se_runner.py)
-      ingestion_quarantine_path: `warehouse/dev/quarantine/bronze/{table}/`
 
 
   STAGING:
@@ -211,16 +207,12 @@ environments:
       storage_vacuum_retention_hours: `168`
       # Auto compaction
       storage_auto_compact: `false`
-      # Dead-letter path for schema/FK rejection records
+      # Quarantine path
       storage_dead_letter_path: `warehouse/dev/dead-letter`
-      # SE drop-action quarantine root; per-table path = {quarantine_path}/bronze/{table}/
-      storage_quarantine_path: `warehouse/dev/quarantine`
       # Checkpoint path
       storage_checkpoint_path: `warehouse/dev/checkpoints`
       # Local filesystem path for Delta warehouse
       catalog_warehouse_path: `warehouse/dev`
-      # Per-table SE drop-action quarantine path (resolved at runtime by se_runner.py)
-      ingestion_quarantine_path: `warehouse/dev/quarantine/bronze/{table}/`
 
 
   PROD:
@@ -319,14 +311,10 @@ environments:
       storage_vacuum_retention_hours: `168`
       # Auto compaction
       storage_auto_compact: `false`
-      # Dead-letter path for schema/FK rejection records
+      # Quarantine path
       storage_dead_letter_path: `warehouse/dev/dead-letter`
-      # SE drop-action quarantine root; per-table path = {quarantine_path}/bronze/{table}/
-      storage_quarantine_path: `warehouse/dev/quarantine`
       # Checkpoint path
       storage_checkpoint_path: `warehouse/dev/checkpoints`
       # Local filesystem path for Delta warehouse
       catalog_warehouse_path: `warehouse/dev`
-      # Per-table SE drop-action quarantine path (resolved at runtime by se_runner.py)
-      ingestion_quarantine_path: `warehouse/dev/quarantine/bronze/{table}/`
 

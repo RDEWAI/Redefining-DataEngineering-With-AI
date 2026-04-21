@@ -1,0 +1,20 @@
+# Contract for synthea.immunizations. Columns sourced from docs/ERD.mmd.
+# updated: 2026-04-18
+
+table: immunizations
+layer: bronze
+schema: synthea
+ddl_path: ddl/liquibase/changelogs/immunizations.xml
+dq_path: dq_rules/immunizations.yml
+
+owner: "Data Engineer"
+description: "Immunization events. Natural key: patient + encounter + date + code."
+tags: [clinical, fact]
+
+columns:
+  - {name: date,        type: date,             nullable: true}
+  - {name: patient,     type: string,           nullable: false, description: "FK -> patients.id; required"}
+  - {name: encounter,   type: string,           nullable: true,  description: "FK -> encounters.id"}
+  - {name: code,        type: string,           nullable: true}
+  - {name: description, type: string,           nullable: true}
+  - {name: base_cost,   type: "decimal(18, 2)", nullable: true}

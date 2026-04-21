@@ -1,0 +1,25 @@
+# Contract for synthea.organizations. Columns sourced from docs/ERD.mmd.
+# updated: 2026-04-18
+
+table: organizations
+layer: bronze
+schema: synthea
+ddl_path: ddl/liquibase/changelogs/organizations.xml
+dq_path: dq_rules/organizations.yml
+
+owner: "Data Engineer"
+description: "Healthcare organizations (hospitals, clinics)."
+tags: [reference, dimension]
+
+columns:
+  - {name: id,          type: string,           nullable: false, description: "Primary key"}
+  - {name: name,        type: string,           nullable: true}
+  - {name: address,     type: string,           nullable: true}
+  - {name: city,        type: string,           nullable: true}
+  - {name: state,       type: string,           nullable: true}
+  - {name: zip,         type: string,           nullable: true}
+  - {name: lat,         type: double,           nullable: true}
+  - {name: lon,         type: double,           nullable: true}
+  - {name: phone,       type: string,           nullable: true}
+  - {name: revenue,     type: "decimal(18, 2)", nullable: true}
+  - {name: utilization, type: int,              nullable: true}

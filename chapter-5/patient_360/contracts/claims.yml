@@ -1,0 +1,45 @@
+# Contract for synthea.claims. Columns sourced from docs/ERD.mmd.
+# updated: 2026-04-18
+
+table: claims
+layer: bronze
+schema: synthea
+ddl_path: ddl/liquibase/changelogs/claims.xml
+dq_path: dq_rules/claims.yml
+
+owner: "Data Engineer"
+description: "Insurance claims submitted for patient encounters."
+tags: [clinical, fact, financial]
+
+columns:
+  - {name: id,                            type: string,           nullable: false, description: "Primary key"}
+  - {name: patientid,                     type: string,           nullable: false, description: "FK -> patients.id; required"}
+  - {name: providerid,                    type: string,           nullable: true,  description: "FK -> providers.id"}
+  - {name: primarypatientinsuranceid,     type: string,           nullable: true}
+  - {name: secondarypatientinsuranceid,   type: string,           nullable: true}
+  - {name: departmentid,                  type: string,           nullable: true}
+  - {name: patientdepartmentid,           type: string,           nullable: true}
+  - {name: diagnosis1,                    type: string,           nullable: true}
+  - {name: diagnosis2,                    type: string,           nullable: true}
+  - {name: diagnosis3,                    type: string,           nullable: true}
+  - {name: diagnosis4,                    type: string,           nullable: true}
+  - {name: diagnosis5,                    type: string,           nullable: true}
+  - {name: diagnosis6,                    type: string,           nullable: true}
+  - {name: diagnosis7,                    type: string,           nullable: true}
+  - {name: diagnosis8,                    type: string,           nullable: true}
+  - {name: referringproviderid,           type: string,           nullable: true}
+  - {name: appointmentid,                 type: string,           nullable: true}
+  - {name: currentillnessdate,            type: date,             nullable: true}
+  - {name: servicedate,                   type: date,             nullable: true}
+  - {name: supervisingproviderid,         type: string,           nullable: true}
+  - {name: status1,                       type: string,           nullable: true}
+  - {name: status2,                       type: string,           nullable: true}
+  - {name: statusp,                       type: string,           nullable: true}
+  - {name: outstanding1,                  type: "decimal(18, 2)", nullable: true}
+  - {name: outstanding2,                  type: "decimal(18, 2)", nullable: true}
+  - {name: outstandingp,                  type: "decimal(18, 2)", nullable: true}
+  - {name: lastbilleddate1,               type: date,             nullable: true}
+  - {name: lastbilleddate2,               type: date,             nullable: true}
+  - {name: lastbilleddatep,               type: date,             nullable: true}
+  - {name: healthcareclaimtypeid1,        type: string,           nullable: true}
+  - {name: healthcareclaimtypeid2,        type: string,           nullable: true}

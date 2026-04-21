@@ -1,0 +1,29 @@
+# Contract for synthea.encounters. Columns sourced from docs/ERD.mmd.
+# updated: 2026-04-18
+
+table: encounters
+layer: bronze
+schema: synthea
+ddl_path: ddl/liquibase/changelogs/encounters.xml
+dq_path: dq_rules/encounters.yml
+
+owner: "Data Engineer"
+description: "Clinical encounters — one row per patient visit."
+tags: [clinical, fact]
+
+columns:
+  - {name: id,                  type: string,          nullable: false, description: "Primary key"}
+  - {name: start,               type: timestamp,       nullable: true}
+  - {name: stop,                type: timestamp,       nullable: true}
+  - {name: patient,             type: string,          nullable: true,  description: "FK -> patients.id"}
+  - {name: organization,        type: string,          nullable: true,  description: "FK -> organizations.id"}
+  - {name: provider,            type: string,          nullable: true,  description: "FK -> providers.id"}
+  - {name: payer,               type: string,          nullable: true,  description: "FK -> payers.id"}
+  - {name: encounterclass,      type: string,          nullable: true}
+  - {name: code,                type: string,          nullable: true}
+  - {name: description,         type: string,          nullable: true}
+  - {name: base_encounter_cost, type: "decimal(18, 2)", nullable: true}
+  - {name: total_claim_cost,    type: "decimal(18, 2)", nullable: true}
+  - {name: payer_coverage,      type: "decimal(18, 2)", nullable: true}
+  - {name: reasoncode,          type: string,          nullable: true}
+  - {name: reasondescription,   type: string,          nullable: true}
