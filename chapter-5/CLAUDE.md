@@ -14,9 +14,9 @@ DAGs, CI/CD pipeline configs, and the Bronze config-driven ingestion framework.
 
 Lives in `developer-plugin/` and is defined by `developer-plugin/.claude-plugin/plugin.json`.
 
-- `developer-plugin/skills/airflow/` — create-dag, update-dag, validate-dag
-- `developer-plugin/skills/cicd/` — create-pipeline, update-pipeline, validate-pipeline
-- `developer-plugin/skills/ingestion/` — create-ingestion, update-ingestion, validate-ingestion
+- `developer-plugin/skills/create-dag/`, `update-dag/`, `validate-dag/`
+- `developer-plugin/skills/create-pipeline/`, `update-pipeline/`, `validate-pipeline/`
+- `developer-plugin/skills/create-ingestion/`, `update-ingestion/`, `validate-ingestion/`
 - `developer-plugin/skills/apply-learnings/` — apply corrections from learnings queue
 - `developer-plugin/hooks/` — PreToolUse (destructive-op guard) + PostToolUse (auto-validate + learnings)
 - `developer-plugin/scripts/` — hook scripts (enforce-readonly-queries, validate-output-hook, check-learnings-queue)

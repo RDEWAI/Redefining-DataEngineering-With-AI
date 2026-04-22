@@ -75,7 +75,7 @@ Apply this learning? [Yes / No / Edit]
 For each approved learning:
 
 1. Read the target skill file:
-   `chapter-5/developer-plugin/skills/{category}/{skill-name}/SKILL.md`
+   `chapter-5/developer-plugin/skills/{skill-name}/SKILL.md`
 
 2. Find the `### Active Learnings` section (create it under a `## Learnings & Corrections`
    heading if absent)

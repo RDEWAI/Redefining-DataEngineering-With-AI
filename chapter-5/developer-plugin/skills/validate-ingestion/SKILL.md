@@ -20,7 +20,7 @@ You are a senior Data Engineer. Validate the ingestion artifacts and report find
 ## Step 1: Run the validator
 
 ```bash
-uv run python chapter-5/developer-plugin/skills/ingestion/validate-ingestion/scripts/validate_ingestion.py \
+uv run python chapter-5/developer-plugin/skills/validate-ingestion/scripts/validate_ingestion.py \
   --project-root chapter-5/patient_360 \
   --lld "$(ls -t chapter-5/inputs/lld/v*/LLD-*.md | grep -v '\.bak$' | head -1)"
 ```
