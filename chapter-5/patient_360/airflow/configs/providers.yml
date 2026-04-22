@@ -1,12 +1,8 @@
-# Bronze ingestion config — providers
-# Generated from LLD §5.1 (ingest_providers). DQ: inline SE from
-# dq_rules/providers.yml. Empty-input: fail — FK dimension.
-# updated: 2026-04-21
-
+# updated: 2026-04-22
 table: providers
 source:
   schema: synthea
-  table: providers
+  table: synthea.providers
   format: csv
   path: data/raw/providers.csv
 schema_ref: contracts/providers.yml

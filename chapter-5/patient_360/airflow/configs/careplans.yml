@@ -1,12 +1,8 @@
-# Bronze ingestion config — careplans
-# Generated from LLD §5.1 (ingest_careplans). DQ: inline SE from
-# dq_rules/careplans.yml. Empty-input: write_empty (default).
-# updated: 2026-04-21
-
+# updated: 2026-04-22
 table: careplans
 source:
   schema: synthea
-  table: careplans
+  table: synthea.careplans
   format: csv
   path: data/raw/careplans.csv
 schema_ref: contracts/careplans.yml

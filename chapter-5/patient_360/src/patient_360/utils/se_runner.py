@@ -1,12 +1,11 @@
-"""Spark Expectations inline runner for Bronze (and future Silver/Gold) DQ.
+"""Spark Expectations inline runner for Bronze DQ (LLD §2.3, §5.4).
 
-Implements the interface specified in LLD §2.3:
+Implements the interface:
 
-    run_dq(df, table, env, dq_rules_dir, action_if_failed) -> DataFrame
+    run_dq(df, table, env, action_if_failed, dq_rules_dir) -> DataFrame
 
-The caller passes the runtime env (DEV/STAGING/PROD); this module maps it to
-the SE dq_env key (DEV/QA/PROD) and selects the matching rule profile from the
-per-table YAML in dq_rules/{table}.yml.
+``env`` is the runtime environment (DEV/STAGING/PROD); this module maps it to
+the SE dq_env key (DEV/QA/PROD) before passing to Spark Expectations.
 
 Stats are appended to a managed Delta table ``bronze_se_stats`` (created on
 first run). Error/quarantine rows (action_if_failed=drop) are written to the
@@ -19,6 +18,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import yaml
 from pyspark.sql import DataFrame, SparkSession
 
 from spark_expectations.core.expectations import SparkExpectations, WrappedDataFrameWriter
@@ -32,12 +32,10 @@ SE_STATS_TABLE = "bronze_se_stats"
 
 
 def _ensure_stats_table(spark: SparkSession) -> None:
-    """Register the SE stats Delta table in the current session catalog.
+    """Pre-register the SE stats Delta table to avoid DELTA_CREATE_TABLE_WITH_NON_EMPTY_LOCATION.
 
-    SE calls saveAsTable(SE_STATS_TABLE) which fails on a fresh SparkSession
-    if the managed table already exists on disk but is not in the in-memory
-    catalog. Pre-registering it with CREATE TABLE IF NOT EXISTS avoids the
-    DELTA_CREATE_TABLE_WITH_NON_EMPTY_LOCATION error on re-runs.
+    SE calls saveAsTable which fails on a fresh SparkSession if the managed table
+    already exists on disk but is absent from the in-memory catalog.
     """
     warehouse = spark.conf.get("spark.sql.warehouse.dir", "spark-warehouse")
     stats_path = Path(warehouse.lstrip("file:")) / SE_STATS_TABLE
@@ -48,48 +46,22 @@ def _ensure_stats_table(spark: SparkSession) -> None:
         )
 
 
-def _load_rules_df(
-    spark: SparkSession,
-    rules_path: Path,
-    dq_env: str,
-) -> tuple[DataFrame, str]:
-    """Load rules YAML → rules DataFrame + product_id."""
-    loader = SparkExpectationsYamlRuleLoaderImpl()
-    rules_df = loader.load_rules(
-        path=str(rules_path),
-        format="yaml",
-        options={"dq_env": dq_env},
-        spark=spark,
-    )
-    if rules_df is None:
-        raise ValueError(f"SE YAML loader returned None for {rules_path}")
-
-    import yaml
-    data = yaml.safe_load(rules_path.read_text(encoding="utf-8"))
-    product_id: str = str(data.get("product_id", rules_path.stem))
-    return rules_df, product_id
-
-
 def run_dq(
     df: DataFrame,
-    *,
     table: str,
     env: str,
+    action_if_failed: str,
     dq_rules_dir: Path,
-    action_if_failed: str = "drop",
-    quarantine_path: str | None = None,
 ) -> DataFrame:
-    """Run row_dq + agg_dq checks via Spark Expectations and return validated rows.
+    """Run row_dq + agg_dq via Spark Expectations and return validated rows.
 
     Args:
         df: Input DataFrame (post-metadata-column enrichment).
-        table: DQ rules table name; resolves to ``dq_rules_dir/{table}.yml``.
+        table: Table name; resolves to ``dq_rules_dir/{table}.yml``.
         env: Runtime environment (DEV/STAGING/PROD) — mapped to SE dq_env.
+        action_if_failed: Fail-closed default (fail|drop|ignore) per LLD §5.4.
+            Per-rule declarations in the YAML take precedence.
         dq_rules_dir: Path to the dq_rules directory.
-        action_if_failed: Fail-closed default for rules without their own
-            action_if_failed declaration (per LLD §5.4). Per-rule declarations
-            take precedence.
-        quarantine_path: Delta path for error/drop rows. Defaults to a temp path.
 
     Returns:
         DataFrame of rows that passed all row_dq checks.
@@ -104,10 +76,22 @@ def run_dq(
         logger.warning("DQ rules file not found: %s — skipping DQ for %s", rules_path, table)
         return df
 
-    rules_df, product_id = _load_rules_df(spark, rules_path, dq_env)
+    loader = SparkExpectationsYamlRuleLoaderImpl()
+    rules_df = loader.load_rules(
+        path=str(rules_path),
+        format="yaml",
+        options={"dq_env": dq_env},
+        spark=spark,
+    )
+    if rules_df is None:
+        raise ValueError(f"SE YAML loader returned None for {rules_path}")
+
+    data = yaml.safe_load(rules_path.read_text(encoding="utf-8"))
+    product_id: str = str(data.get("product_id", rules_path.stem))
+
     _ensure_stats_table(spark)
 
-    _quarantine = quarantine_path or f"/tmp/se_quarantine/{table}/"
+    _quarantine = f"/tmp/se_quarantine/{table}/"
 
     target_writer = (
         WrappedDataFrameWriter()
@@ -115,11 +99,7 @@ def run_dq(
         .format("delta")
         .option("path", _quarantine)
     )
-    stats_writer = (
-        WrappedDataFrameWriter()
-        .mode("append")
-        .format("delta")
-    )
+    stats_writer = WrappedDataFrameWriter().mode("append").format("delta")
 
     se = SparkExpectations(
         product_id=product_id,
@@ -140,8 +120,6 @@ def run_dq(
         "spark.expectations.notifications.zoom.enabled": False,
     }
 
-    validated_df: DataFrame | None = None
-
     @se.with_expectations(
         target_table=table,
         write_to_table=False,
@@ -151,9 +129,6 @@ def run_dq(
     def _run() -> DataFrame:
         return df
 
-    validated_df = _run()
-    logger.info(
-        "SE DQ complete for %s (env=%s, dq_env=%s, action=%s)",
-        table, env, dq_env, action_if_failed,
-    )
+    validated_df: DataFrame = _run()
+    logger.info("SE DQ complete for %s (env=%s, dq_env=%s)", table, env, dq_env)
     return validated_df

@@ -1,12 +1,8 @@
-# Bronze ingestion config — allergies
-# Generated from LLD §5.1 (ingest_allergies). DQ: inline SE from
-# dq_rules/allergies.yml. Empty-input: fail — safety critical [DRD §1.3].
-# updated: 2026-04-21
-
+# updated: 2026-04-22
 table: allergies
 source:
   schema: synthea
-  table: allergies
+  table: synthea.allergies
   format: csv
   path: data/raw/allergies.csv
 schema_ref: contracts/allergies.yml

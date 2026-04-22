@@ -1,12 +1,8 @@
-# Bronze ingestion config — claims
-# Generated from LLD §5.1 (ingest_claims). DQ: inline SE from
-# dq_rules/claims.yml. Empty-input: write_empty (default).
-# updated: 2026-04-21
-
+# updated: 2026-04-22
 table: claims
 source:
   schema: synthea
-  table: claims
+  table: synthea.claims
   format: csv
   path: data/raw/claims.csv
 schema_ref: contracts/claims.yml

@@ -1,12 +1,8 @@
-# Bronze ingestion config — medications
-# Generated from LLD §5.1 (ingest_medications). DQ: inline SE from
-# dq_rules/medications.yml. Empty-input: write_empty (default).
-# updated: 2026-04-21
-
+# updated: 2026-04-22
 table: medications
 source:
   schema: synthea
-  table: medications
+  table: synthea.medications
   format: csv
   path: data/raw/medications.csv
 schema_ref: contracts/medications.yml

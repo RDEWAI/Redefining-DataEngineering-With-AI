@@ -1,12 +1,8 @@
-# Bronze ingestion config — observations
-# Generated from LLD §5.1 (ingest_observations). DQ: inline SE from
-# dq_rules/observations.yml. Empty-input: write_empty (default).
-# updated: 2026-04-21
-
+# updated: 2026-04-22
 table: observations
 source:
   schema: synthea
-  table: observations
+  table: synthea.observations
   format: csv
   path: data/raw/observations.csv
 schema_ref: contracts/observations.yml

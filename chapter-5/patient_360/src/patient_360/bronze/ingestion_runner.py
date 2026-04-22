@@ -120,7 +120,9 @@ def load_table_config(config_path: Path) -> TableConfig:
             raw.get("quarantine_path", f"warehouse/{{env}}/quarantine/bronze/{table}/")
         )
     except KeyError as exc:
-        raise IngestionConfigError(f"{config_path}: missing required key {exc.args[0]!r}") from exc
+        raise IngestionConfigError(
+            f"{config_path}: missing required key {exc.args[0]!r}"
+        ) from exc
 
     metadata_columns = tuple(
         raw.get("metadata_columns", ("ds", "_ingested_at", "_source_batch_id"))
@@ -154,8 +156,7 @@ def load_struct_type(contract_path: Path) -> StructType:
     """Build a ``StructType`` from ``contracts/{table}.yml``.
 
     The contract's ``columns`` list is the source of truth; each entry must
-    have ``name``, ``type``, and ``nullable`` (default True). DECIMAL types
-    are written as ``decimal(18, 2)``.
+    have ``name``, ``type``, and ``nullable`` (default True).
     """
     if not contract_path.exists():
         raise IngestionConfigError(f"contract file not found: {contract_path}")
@@ -196,17 +197,16 @@ def read_source(spark: SparkSession, cfg: TableConfig) -> DataFrame:
             raise IngestionConfigError(
                 f"{cfg.table}: source.format=csv requires source.path"
             )
-        reader = (
+        return (
             spark.read.format("csv")
             .option("header", "true")
             .option("timestampFormat", "yyyy-MM-dd'T'HH:mm:ssZ")
             .schema(schema)
+            .load(cfg.source_path)
         )
-        return reader.load(cfg.source_path)
     if fmt == "delta":
         return spark.read.format("delta").load(cfg.source_path or cfg.source_table)
     if fmt == "jdbc":
-        # Expects source.path = JDBC URL; connection properties provided via Spark conf.
         if not cfg.source_path:
             raise IngestionConfigError(
                 f"{cfg.table}: source.format=jdbc requires source.path (JDBC URL)"
@@ -214,7 +214,7 @@ def read_source(spark: SparkSession, cfg: TableConfig) -> DataFrame:
         return (
             spark.read.format("jdbc")
             .option("url", cfg.source_path)
-            .option("dbtable", f"{cfg.source_schema}.{cfg.source_table}")
+            .option("dbtable", cfg.source_table)
             .load()
         )
     raise IngestionConfigError(f"{cfg.table}: unsupported source.format={fmt!r}")
@@ -252,42 +252,21 @@ def run_inline_dq(
     env: str,
     dq_rules_dir: Path,
 ) -> DataFrame:
-    """Call spark-expectations inline for row_dq + agg_dq.
+    """Call spark-expectations inline for row_dq + agg_dq (LLD §5.4)."""
+    from patient_360.utils.se_runner import run_dq  # type: ignore[import-not-found]
 
-    ``env`` is the runtime environment (DEV/STAGING/PROD); it is mapped to the
-    SE ``dq_env`` key (DEV/QA/PROD) per LLD §2.3 before passing to run_dq.
-
-    Bootstrap mode: if ``patient_360.utils.se_runner`` is not yet available,
-    logs a WARNING and returns the DataFrame unchanged. Remove this fallback
-    once se_runner.py is implemented — per LLD §2.3, ingestion must fail closed
-    if SE is unavailable post-implementation.
-    """
-    try:
-        from patient_360.utils.se_runner import run_dq  # type: ignore[import-not-found]
-    except ImportError:
-        logger.warning(
-            "se_runner not available — skipping inline DQ for %s (action=%s)",
-            cfg.table,
-            cfg.se_action_if_failed,
-        )
-        return df
     dq_env = _DQ_ENV_MAP.get(env.upper(), env)
     return run_dq(
         df,
-        table=cfg.dq_rules_table,
-        env=dq_env,
-        dq_rules_dir=dq_rules_dir,
-        action_if_failed=cfg.se_action_if_failed,
+        cfg.dq_rules_table,
+        dq_env,
+        cfg.se_action_if_failed,
+        dq_rules_dir,
     )
 
 
 def write_delta(df: DataFrame, output_path: str, ds: str) -> None:
-    """Write Delta to the table root, partitioned by ``ds``.
-
-    ``output_path`` is the table directory (no ``ds=`` suffix); the ``ds``
-    column is materialized as a true Delta partition so ``replaceWhere`` can
-    overwrite just the target partition on rerun.
-    """
+    """Write Delta to the table root, partitioned by ``ds`` with ``replaceWhere``."""
     (
         df.write.format("delta")
         .mode("overwrite")
@@ -307,13 +286,8 @@ def ingest(
     cfg = load_table_config(config_path)
     output_path = cfg.resolved_output_path(env, ds)
     logger.info(
-        "ingesting table=%s source=%s.%s -> %s (ds=%s, env=%s)",
-        cfg.table,
-        cfg.source_schema,
-        cfg.source_table,
-        output_path,
-        ds,
-        env,
+        "ingesting table=%s source=%s -> %s (ds=%s, env=%s)",
+        cfg.table, cfg.source_table, output_path, ds, env,
     )
 
     raw = read_source(spark, cfg)
@@ -338,12 +312,7 @@ def ingest(
 
 
 def _build_spark(app_name: str) -> SparkSession:
-    """Build a SparkSession with Delta Lake wired up for local `python -m` and
-    SparkSubmit runs. Uses ``configure_spark_with_delta_pip`` so the Delta JAR
-    bundled with ``delta-spark`` is added to ``spark.jars.packages`` — the
-    same JAR SparkSubmit would otherwise need via ``--packages``.
-    """
-    from delta import configure_spark_with_delta_pip  # local import: optional dep
+    from delta import configure_spark_with_delta_pip
 
     builder = (
         SparkSession.builder
@@ -359,21 +328,17 @@ def _build_spark(app_name: str) -> SparkSession:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config-path", type=Path, required=True, help="Per-table YAML config")
-    parser.add_argument("--ds", required=True, help="Load date YYYY-MM-DD")
+    parser.add_argument("--config-path", type=Path, required=True)
+    parser.add_argument("--ds", required=True)
     parser.add_argument("--env", required=True, choices=("DEV", "STAGING", "PROD"))
-    parser.add_argument(
-        "--log-level",
-        default="INFO",
-        choices=("DEBUG", "INFO", "WARNING", "ERROR"),
-    )
+    parser.add_argument("--log-level", default="INFO",
+                        choices=("DEBUG", "INFO", "WARNING", "ERROR"))
     args = parser.parse_args(argv)
 
     logging.basicConfig(
         level=getattr(logging, args.log_level),
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-
     spark = _build_spark(app_name=f"bronze_ingest_{args.config_path.stem}_{args.ds}")
     try:
         ingest(spark, args.config_path, args.ds, args.env)
