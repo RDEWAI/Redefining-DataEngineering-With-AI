@@ -1,6 +1,18 @@
 {
-  "description": "Developer plugin hooks: post-write validation for DAGs and pipelines",
+  "description": "Developer plugin hooks: guard against destructive shell ops (PreToolUse) and auto-validate outputs + surface pending learnings (PostToolUse)",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/enforce-readonly-queries.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
@@ -9,6 +21,11 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-output-hook.py",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/check-learnings-queue.py",
+            "timeout": 10
           }
         ]
       }

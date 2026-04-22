@@ -1,0 +1,16 @@
+{
+  "name": "rdewai-chapter5-plugins",
+  "owner": {
+    "name": "RDEWAI"
+  },
+  "metadata": {
+    "description": "Plugins for Chapter 5 — Story-Driven Implementation with AI Agents"
+  },
+  "plugins": [
+    {
+      "name": "developer-plugin",
+      "source": "./developer-plugin",
+      "description": "Developer Agent for generating, updating, and validating Airflow DAGs, CI/CD pipelines, and the Bronze config-driven ingestion framework"
+    }
+  ]
+}
