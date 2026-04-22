@@ -1,84 +1,57 @@
-"""Bronze TaskGroup factory.
+"""TaskGroup factory for Bronze ingestion (LLD §2.3, §4.2).
 
-Scans ``airflow/configs/*.yml`` at DAG parse time and produces one
-``SparkSubmitOperator`` per file, grouped into a ``bronze_ingestion``
-TaskGroup. Per LLD §2.3 and §5.1.
+``create_bronze_taskgroup`` scans ``airflow/configs/*.yml`` at DAG parse time
+and returns an Airflow TaskGroup named ``bronze_ingestion`` with one
+SparkSubmitOperator per file. Adding a new Bronze table requires only a new
+YAML file in ``airflow/configs/`` — no code changes needed.
+
+No Spark jobs are executed at DAG parse time (LLD §4.1).
 """
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import yaml
+from airflow.utils.task_group import TaskGroup
 
-from patient_360.bronze.spark_submit_wrapper import (
-    DEFAULT_ENTRY_POINT,
-    build_spark_submit_task,
-)
-
-try:
-    from airflow.utils.task_group import TaskGroup
-except ImportError:  # pragma: no cover
-    TaskGroup = None  # type: ignore[assignment]
-
-logger = logging.getLogger(__name__)
+from patient_360.bronze.spark_submit_wrapper import create_spark_submit_task
 
 
-def _iter_config_files(configs_dir: Path) -> Iterable[Path]:
-    return sorted(p for p in configs_dir.glob("*.yml") if p.stem != "table_name")
-
-
-def build_bronze_taskgroup(
-    *,
+def create_bronze_taskgroup(
+    config_dir: str | Path,
     dag: Any,
-    configs_dir: Path,
-    ds: str,
-    env: str,
-    compute: dict[str, Any],
-    entry_point: str = DEFAULT_ENTRY_POINT,
-    group_id: str = "bronze_ingestion",
-    spark_conn_id: str = "spark_default",
-) -> Any:
-    """Return a TaskGroup with one SparkSubmitOperator per per-table config.
+    ds: str = "{{ ds }}",
+    env: str = "DEV",
+    pipeline_config: dict[str, Any] | None = None,
+) -> TaskGroup:
+    """Build the ``bronze_ingestion`` TaskGroup from per-table YAML configs.
+
+    Scans ``config_dir`` for ``*.yml`` files at DAG parse time. Creates one
+    SparkSubmitOperator per file with task ID ``bronze_ingestion.ingest_{table}``.
+    All 13 tasks run in parallel within the TaskGroup (LLD §6.3).
 
     Args:
-        dag: Parent Airflow DAG.
-        configs_dir: Directory containing per-table YAML configs.
-        ds: Load date (Airflow ``{{ ds }}`` template).
-        env: Target environment (DEV | STAGING | PROD).
-        compute: Pipeline compute config (§7) — executor memory, cores, etc.
-        entry_point: Python module name executed by spark-submit.
-        group_id: Airflow TaskGroup name.
-        spark_conn_id: Airflow connection ID for the Spark cluster.
-
-    Returns:
-        Airflow ``TaskGroup`` containing one task per YAML config file.
+        config_dir: Path to ``airflow/configs/`` directory.
+        dag: Airflow DAG instance.
+        ds: Partition date template (default: Airflow ``{{ ds }}`` macro).
+        env: Runtime environment (DEV/STAGING/PROD).
+        pipeline_config: Parsed pipeline config dict for Spark resource params.
     """
-    if TaskGroup is None:
-        raise RuntimeError("Airflow is not installed — cannot build TaskGroup")
+    config_dir = Path(config_dir)
+    pipeline_config = pipeline_config or {}
 
-    configs = list(_iter_config_files(configs_dir))
-    if not configs:
-        raise FileNotFoundError(f"no per-table configs found under {configs_dir}")
-
-    with TaskGroup(group_id=group_id, dag=dag) as group:
-        for config_path in configs:
-            table_cfg = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
-            table = str(table_cfg.get("table") or config_path.stem)
-            task_id = f"ingest_{table}"
-            logger.info("registering bronze task %s from %s", task_id, config_path)
-            build_spark_submit_task(
-                task_id=task_id,
+    with TaskGroup(group_id="bronze_ingestion", dag=dag) as tg:
+        for config_path in sorted(config_dir.glob("*.yml")):
+            raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            table = str(raw.get("table", config_path.stem))
+            create_spark_submit_task(
+                task_id=f"ingest_{table}",
                 config_path=str(config_path),
                 ds=ds,
                 env=env,
-                compute=compute,
-                retries=int(table_cfg.get("retries", 3)),
-                retry_delay_seconds=int(table_cfg.get("retry_delay_seconds", 60)),
-                timeout_minutes=int(table_cfg.get("timeout_minutes", 30)),
-                entry_point=entry_point,
-                conn_id=spark_conn_id,
+                pipeline_config=pipeline_config,
+                dag=dag,
             )
-    return group
+    return tg

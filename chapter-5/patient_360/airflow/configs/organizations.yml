@@ -1,12 +1,8 @@
-# Bronze ingestion config — organizations
-# Generated from LLD §5.1 (ingest_organizations). DQ: inline SE from
-# dq_rules/organizations.yml. Empty-input: fail — FK dimension.
-# updated: 2026-04-21
-
+# updated: 2026-04-22
 table: organizations
 source:
   schema: synthea
-  table: organizations
+  table: synthea.organizations
   format: csv
   path: data/raw/organizations.csv
 schema_ref: contracts/organizations.yml

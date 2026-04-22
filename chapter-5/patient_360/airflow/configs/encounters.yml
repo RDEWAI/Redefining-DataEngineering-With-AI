@@ -1,12 +1,8 @@
-# Bronze ingestion config — encounters
-# Generated from LLD §5.1 (ingest_encounters). DQ: inline SE from
-# dq_rules/encounters.yml. Empty-input: fail — required for Gold.
-# updated: 2026-04-21
-
+# updated: 2026-04-22
 table: encounters
 source:
   schema: synthea
-  table: encounters
+  table: synthea.encounters
   format: csv
   path: data/raw/encounters.csv
 schema_ref: contracts/encounters.yml

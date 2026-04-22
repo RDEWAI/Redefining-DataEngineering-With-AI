@@ -1,12 +1,8 @@
-# Bronze ingestion config — patients
-# Generated from LLD §5.1 (ingest_patients). DQ: inline SE row_dq + agg_dq from
-# dq_rules/patients.yml. Empty-input: fail (required for downstream). [DRD §1.3]
-# updated: 2026-04-21
-
+# updated: 2026-04-22
 table: patients
 source:
   schema: synthea
-  table: patients
+  table: synthea.patients
   format: csv
   path: data/raw/patients.csv
 schema_ref: contracts/patients.yml

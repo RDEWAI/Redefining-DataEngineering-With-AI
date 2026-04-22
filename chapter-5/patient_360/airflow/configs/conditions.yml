@@ -1,12 +1,8 @@
-# Bronze ingestion config — conditions
-# Generated from LLD §5.1 (ingest_conditions). DQ: inline SE from
-# dq_rules/conditions.yml. Empty-input: write_empty (default).
-# updated: 2026-04-21
-
+# updated: 2026-04-22
 table: conditions
 source:
   schema: synthea
-  table: conditions
+  table: synthea.conditions
   format: csv
   path: data/raw/conditions.csv
 schema_ref: contracts/conditions.yml

@@ -1,12 +1,8 @@
-# Bronze ingestion config — procedures
-# Generated from LLD §5.1 (ingest_procedures). DQ: inline SE from
-# dq_rules/procedures.yml. Empty-input: write_empty (default).
-# updated: 2026-04-21
-
+# updated: 2026-04-22
 table: procedures
 source:
   schema: synthea
-  table: procedures
+  table: synthea.procedures
   format: csv
   path: data/raw/procedures.csv
 schema_ref: contracts/procedures.yml

@@ -1,8 +1,7 @@
 """Unit tests for ``patient_360.bronze.ingestion_runner``.
 
 Config-loading and schema-building tests run with no Spark cluster. Tests
-that touch ``DataFrame`` APIs are marked so they skip when pyspark is not
-installed.
+that touch ``DataFrame`` APIs are skipped when pyspark is not installed.
 """
 
 from __future__ import annotations
@@ -75,13 +74,16 @@ def _valid_config_payload(table: str = "patients") -> dict:
 
 class TestLoadTableConfig:
     def test_valid_config_round_trips(self, tmp_path: Path) -> None:
-        config_path = _write_yaml(tmp_path / "patients.yml", _valid_config_payload())
-        cfg = load_table_config(config_path)
+        cfg = load_table_config(_write_yaml(tmp_path / "patients.yml", _valid_config_payload()))
         assert cfg.table == "patients"
         assert cfg.source_format == "csv"
         assert cfg.source_path == "data/raw/patients.csv"
         assert cfg.empty_input_behavior == "fail"
         assert cfg.metadata_columns == ("ds", "_ingested_at", "_source_batch_id")
+
+    def test_source_table_fully_qualified(self, tmp_path: Path) -> None:
+        cfg = load_table_config(_write_yaml(tmp_path / "patients.yml", _valid_config_payload()))
+        assert cfg.source_table == "synthea.patients"
 
     def test_resolved_output_path_interpolates_env(self, tmp_path: Path) -> None:
         cfg = load_table_config(_write_yaml(tmp_path / "patients.yml", _valid_config_payload()))
@@ -104,23 +106,20 @@ class TestLoadTableConfig:
     def test_missing_required_key_raises(self, tmp_path: Path) -> None:
         payload = _valid_config_payload()
         payload.pop("schema_ref")
-        path = _write_yaml(tmp_path / "bad.yml", payload)
         with pytest.raises(IngestionConfigError, match="schema_ref"):
-            load_table_config(path)
+            load_table_config(_write_yaml(tmp_path / "bad.yml", payload))
 
     def test_invalid_empty_input_behavior_raises(self, tmp_path: Path) -> None:
         payload = _valid_config_payload()
         payload["empty_input_behavior"] = "ignore"
-        path = _write_yaml(tmp_path / "bad.yml", payload)
         with pytest.raises(IngestionConfigError, match="empty_input_behavior"):
-            load_table_config(path)
+            load_table_config(_write_yaml(tmp_path / "bad.yml", payload))
 
     def test_invalid_se_action_raises(self, tmp_path: Path) -> None:
         payload = _valid_config_payload()
         payload["se_action_if_failed"] = "quarantine"
-        path = _write_yaml(tmp_path / "bad.yml", payload)
         with pytest.raises(IngestionConfigError, match="se_action_if_failed"):
-            load_table_config(path)
+            load_table_config(_write_yaml(tmp_path / "bad.yml", payload))
 
     def test_non_mapping_yaml_raises(self, tmp_path: Path) -> None:
         path = tmp_path / "bad.yml"
@@ -170,9 +169,7 @@ class TestLoadStructType:
                 {"name": "salary", "type": "decimal(10, 2)", "nullable": True},
             ],
         }
-        contract_path = _write_yaml(tmp_path / "patients.yml", contract)
-
-        struct = load_struct_type(contract_path)
+        struct = load_struct_type(_write_yaml(tmp_path / "patients.yml", contract))
         assert isinstance(struct, StructType)
         assert [f.name for f in struct.fields] == ["id", "age", "salary"]
         assert struct["id"].nullable is False
@@ -183,17 +180,15 @@ class TestLoadStructType:
             load_struct_type(tmp_path / "nope.yml")
 
     def test_empty_contract_raises(self, tmp_path: Path) -> None:
-        path = _write_yaml(tmp_path / "empty.yml", {"table": "patients"})
         with pytest.raises(IngestionConfigError, match="no `columns` block"):
-            load_struct_type(path)
+            load_struct_type(_write_yaml(tmp_path / "empty.yml", {"table": "patients"}))
 
 
 class TestAddMetadataColumns:
     def test_adds_full_metadata_set(self, spark: SparkSession) -> None:
         df = spark.createDataFrame([(1,), (2,)], ["id"])
         out = add_metadata_columns(
-            df,
-            ds="2026-04-18",
+            df, ds="2026-04-18",
             columns=("ds", "_ingested_at", "_source_batch_id"),
             table="patients",
         )
@@ -235,12 +230,10 @@ class TestIngestEmptyBehavior:
         with pytest.raises(EmptyInputError):
             ingest(spark, cfg_path, ds="2026-04-18", env="DEV")
 
-    def test_write_empty_behavior_succeeds(
+    def test_write_empty_behavior_does_not_raise_empty_input_error(
         self, spark: SparkSession, tmp_path: Path
     ) -> None:
         cfg_path = self._make_cfg("write_empty", tmp_path)
-        # write_empty calls write_delta which needs Delta extensions. Skip the
-        # actual Delta write; just ensure ingest does not raise EmptyInputError.
         with pytest.raises(Exception) as exc_info:
             ingest(spark, cfg_path, ds="2026-04-18", env="DEV")
         assert not isinstance(exc_info.value, EmptyInputError)
@@ -265,16 +258,10 @@ class TestDqEnvMap:
 class TestTableConfigImmutable:
     def test_frozen_dataclass(self) -> None:
         cfg = TableConfig(
-            table="t",
-            source_schema="s",
-            source_table="s.t",
-            source_format="csv",
-            source_path="p",
-            schema_ref=Path("x"),
-            output_path_template="o",
-            metadata_columns=("ds",),
-            empty_input_behavior="fail",
-            dq_rules_table="t",
+            table="t", source_schema="s", source_table="synthea.t",
+            source_format="csv", source_path="p", schema_ref=Path("x"),
+            output_path_template="o", metadata_columns=("ds",),
+            empty_input_behavior="fail", dq_rules_table="t",
             se_action_if_failed="fail",
         )
         with pytest.raises((AttributeError, Exception)):

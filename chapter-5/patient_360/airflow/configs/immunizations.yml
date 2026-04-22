@@ -1,12 +1,8 @@
-# Bronze ingestion config — immunizations
-# Generated from LLD §5.1 (ingest_immunizations). DQ: inline SE from
-# dq_rules/immunizations.yml. Empty-input: write_empty (default).
-# updated: 2026-04-21
-
+# updated: 2026-04-22
 table: immunizations
 source:
   schema: synthea
-  table: immunizations
+  table: synthea.immunizations
   format: csv
   path: data/raw/immunizations.csv
 schema_ref: contracts/immunizations.yml

@@ -1,19 +1,22 @@
 ---
 name: create-ingestion
 description: >
-  Generates the Bronze config-driven ingestion framework from the approved LLD.
-  Produces the generic ingestion runner, TaskGroup factory, SparkSubmitOperator
-  wrapper, and one per-table YAML config for every Bronze table listed in LLD §5.1.
+  Generates the Bronze config-driven ingestion framework from the approved LLD
+  or from a specific Scrum story. Can run in two modes:
+  - Full mode: generates the entire framework from an LLD file path.
+  - Story mode: generates only the deliverables for a single story (e.g. STORY-02-002),
+    validates against that story's acceptance criteria, and checks dependencies.
   Also known as: bronze ingestion scaffolding, ingestion-runner generation,
   per-table config generation.
-  Input formats: LLD markdown (inputs/lld/v{N}/LLD-*.md), STM xlsx, config-template.yaml.
+  Input formats: LLD markdown (inputs/lld/v{N}/LLD-*.md) OR story ID (STORY-NN-NNN).
   Output format: Python modules + YAML configs written under patient_360/.
   Use when the user asks to:
   - Create, generate, or scaffold the Bronze ingestion code
   - Build the ingestion runner / factory / SparkSubmit wrapper
   - Generate per-table ingestion configs from the LLD
   - "Write the ingestion framework from the LLD"
-argument-hint: "[lld-path]"
+  - "Implement story STORY-02-002" or "implement story 02 of epic 02"
+argument-hint: "[lld-path | STORY-NN-NNN]"
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 ---
@@ -29,9 +32,77 @@ module path, config file, and table name must already be named in the LLD.
 Use `mvp/src/patient_360/bronze/ingest.py` as a reference only; the output
 must be config-driven, not hard-coded like the MVP.
 
+## Story → Deliverable Map
+
+Use this map in story mode to determine what to generate and what to skip.
+
+| Story ID     | Title                              | Deliverables to generate                                                      |
+|--------------|------------------------------------|-------------------------------------------------------------------------------|
+| STORY-02-001 | Per-Table YAML Ingestion Configs   | `airflow/configs/{table}.yml` × 13, `dq_rules/*.yml` sync                    |
+| STORY-02-002 | Generic Ingestion Runner           | `src/patient_360/bronze/ingestion_runner.py`                                  |
+| STORY-02-003 | SparkSubmitOperator Wrapper        | `src/patient_360/bronze/spark_submit_wrapper.py`                              |
+| STORY-02-004 | TaskGroup Factory                  | `src/patient_360/bronze/ingestion_factory.py`                                 |
+| STORY-02-006 | SE Runner + Bronze DQ Rules        | `src/patient_360/utils/se_runner.py`, `dq_rules/*.yml` sync                  |
+| STORY-02-009 | Unit Tests for Bronze              | `tests/bronze/test_ingestion_runner.py`, `tests/bronze/test_per_table_configs.py` |
+| STORY-02-010 | Integration / Validate Tests       | `tests/bronze/test_validate_ingestion.py`                                     |
+
+Stories not in this map belong to a different epic or are not implemented by this skill.
+
 ## Workflow
 
-### Phase 0: Upstream Gate
+### Phase 0: Detect Input Mode and Upstream Gate
+
+**Step 1 — Detect mode from the argument:**
+
+- If the argument matches the pattern `STORY-NN-NNN` (e.g. `STORY-02-002`) or the user
+  says something like "implement story 2 of epic 2" → **Story mode**. Normalize to
+  `STORY-{EPIC:02d}-{NUM:03d}` format (e.g. "story 2 of epic 2" → `STORY-02-002`).
+- If the argument is a file path (ends in `.md`) → **Full mode**. Skip to the LLD gate.
+- If no argument is given → ask the user: "Provide an LLD file path for full generation,
+  or a story ID (e.g. STORY-02-002) to implement a single story."
+
+**Step 2 — Story mode: resolve and read the story file:**
+
+```bash
+STORY_ID="STORY-02-002"   # substitute actual ID
+EPIC_NUM=$(echo "$STORY_ID" | cut -d- -f2)
+STORY_FILE=$(ls chapter-5/inputs/stories/v*/EPIC-${EPIC_NUM}-*/STORY-${STORY_ID}*.md \
+             chapter-5/inputs/stories/v*/${STORY_ID}*.md 2>/dev/null | head -1)
+echo "$STORY_FILE"
+```
+
+Read the story file and extract:
+- **Title** and **Story Points**
+- **Sprint** number
+- **Acceptance Criteria** (the numbered AC list)
+- **Dependencies** (`Depends On:` lines)
+
+If the story file is not found, stop and tell the user which path was searched.
+If the story ID is not in the Story → Deliverable Map above, stop and tell the user
+this skill does not implement that story (it may belong to a different skill).
+
+**Step 3 — Story mode: dependency check:**
+
+For each story listed under `Depends On:`, verify its deliverables exist on disk
+using the map above. For example, STORY-02-002 depends on STORY-02-001
+(configs must exist). If any dependency is unmet, stop and list what is missing:
+
+```
+Dependency check failed:
+  STORY-02-002 depends on STORY-02-001
+  Missing: chapter-5/patient_360/airflow/configs/ (0 yml files found, 13 required)
+Complete STORY-02-001 first, then re-run.
+```
+
+**Step 4 — Set GENERATION_SCOPE:**
+
+In story mode, set `GENERATION_SCOPE` to only the deliverables for that story ID
+per the map above. All Phase 3/4 generation blocks check this scope and skip
+anything not in it.
+
+In full mode, `GENERATION_SCOPE = all`.
+
+**Step 5 — LLD gate (both modes):**
 
 Read the latest LLD and verify `Status: Approved` (or `Updated - Pending Review`
 if the user explicitly opts to proceed with a draft).
@@ -68,18 +139,40 @@ If not approved, stop and inform the user.
 
 ### Phase 2: Clarify
 
-Use `AskUserQuestion` to confirm (only where the LLD is silent):
+**Story mode** — show a scope summary before generating anything:
+
+```
+Story:       STORY-02-002 — Generic Ingestion Runner (5 pts, Sprint 3)
+Deliverable: chapter-5/patient_360/src/patient_360/bronze/ingestion_runner.py
+Depends on:  ✓ STORY-02-001 (13 configs found)
+LLD status:  Approved
+
+Acceptance Criteria:
+  1. Runner reads per-table YAML config
+  2. Enforces StructType schema (no inference)
+  3. Adds metadata columns: ds, _ingested_at, _source_batch_id
+  4. Writes Delta partitioned by ds with replaceWhere ds = '{ds}'
+  5. Respects empty_input_behavior (fail raises, write_empty proceeds)
+```
+
+Then use `AskUserQuestion` to ask: "Generate this story's deliverable now?
+If a file already exists, overwrite or skip?"
+
+**Full mode** — use `AskUserQuestion` to confirm (only where the LLD is silent):
 
 - Which Bronze tables to include on this run (all 13 from §5.1, or a subset).
 - Whether existing files should be overwritten or skipped.
 - Source read format when STM leaves it ambiguous (CSV vs JDBC vs Delta).
 
-Skip the question entirely if the LLD/config-template gives an unambiguous
-answer.
+Skip any question if the LLD/config-template gives an unambiguous answer.
 
 ### Phase 3: Generate Code
 
-Write three Python modules to `chapter-5/patient_360/src/patient_360/bronze/`:
+> **Scope gate**: In story mode, generate only the module(s) for the active story
+> per the Story → Deliverable Map. Skip all others — do not create empty stubs.
+
+Write Python modules to `chapter-5/patient_360/src/patient_360/bronze/`
+(and `utils/` for se_runner). Only write a module if it is in `GENERATION_SCOPE`:
 
 1. **`ingestion_runner.py`** — reads a per-table YAML, enforces `StructType`
    (no schema inference), adds metadata columns (`ds`, `_ingested_at`,
@@ -161,6 +254,9 @@ Write three Python modules to `chapter-5/patient_360/src/patient_360/bronze/`:
 
 ### Phase 4: Generate Per-Table Configs
 
+> **Scope gate**: Skip this phase entirely in story mode unless `GENERATION_SCOPE`
+> includes `configs` (STORY-02-001) or `dq_rules` (STORY-02-006).
+
 For every Bronze table named in LLD §5.1, write
 `chapter-5/patient_360/airflow/configs/{table}.yml` with this shape:
 
@@ -216,6 +312,9 @@ stub, because runtime loads expect the full SE schema (`product_id`,
 
 ### Phase 4.5: Runtime Dependencies
 
+> **Scope gate**: Always run this check — pyproject.toml deps are required regardless
+> of which story is being implemented.
+
 The ingestion runner imports `pyspark`, writes Delta, and loads Spark
 Expectations rules; the factory uses `SparkSubmitOperator`. Ensure
 `chapter-5/patient_360/pyproject.toml` declares each of these — add any
@@ -234,6 +333,11 @@ drift in the change-set report so the Technical Lead can reconcile on the
 next LLD revision.
 
 ### Phase 4.6: Generate Tests
+
+> **Scope gate**: In story mode, generate only the test module(s) for the active story
+> per the Story → Deliverable Map. STORY-02-009 → `test_ingestion_runner.py` +
+> `test_per_table_configs.py`. STORY-02-010 → `test_validate_ingestion.py`.
+> Other stories do not trigger new test files (their code is covered by existing tests).
 
 Write three test modules under `chapter-5/patient_360/tests/bronze/` so the
 generated code is exercised in CI. Use `pytest.importorskip("pyspark")` so
@@ -254,7 +358,46 @@ Invoke `/developer-plugin:validate-ingestion` on the generated files. Fix any
 CRITICAL findings before reporting completion. Report WARNING/INFO findings to
 the user without blocking.
 
+**Story mode only — Acceptance Criteria verification:**
+
+After the validator passes, check each AC from the story file against the generated
+code and report a pass/fail table. Use `Grep` to verify structural presence.
+Examples for common ACs:
+
+| Acceptance Criterion | Check |
+|----------------------|-------|
+| "Runner reads per-table YAML config" | `load_table_config` function exists in `ingestion_runner.py` |
+| "Enforces StructType schema (no inference)" | `load_struct_type` + no `inferSchema` in runner |
+| "Metadata columns ds, _ingested_at, _source_batch_id" | `add_metadata_columns` present; `_source_batch_id` in its body |
+| "replaceWhere ds = '{ds}'" | `replaceWhere` string in `write_delta()` |
+| "empty_input_behavior respected" | `EmptyInputError` class + `fail` branch in `ingest()` |
+| "SE runner loads YAML rules" | `SparkExpectationsYamlRuleLoaderImpl` in `se_runner.py` |
+| "action_if_failed: fail\|drop\|ignore" | validation in `load_table_config` checking those three values |
+| "Critical tables use fail" | `test_per_table_configs.py::test_critical_tables_use_fail_behavior` or direct YAML check |
+
+Print:
+```
+Story STORY-02-002 — Acceptance Criteria:
+  AC 1: Runner reads per-table YAML config ................... PASS
+  AC 2: Enforces StructType (no schema inference) ............ PASS
+  AC 3: Metadata columns ds, _ingested_at, _source_batch_id .. PASS
+  AC 4: replaceWhere ds = '{ds}' Delta write ................. PASS
+  AC 5: empty_input_behavior respected ....................... PASS
+  Result: 5/5 AC PASS
+```
+
+If any AC fails (code structure is absent), report it as a CRITICAL and fix before
+declaring the story done.
+
 ## Output Summary
 
 At the end, print a table: `Module/Config | Path | Action (created|updated|skipped)`
 so the user can see exactly what changed.
+
+In story mode, prefix the table with the story ID and AC result summary:
+```
+Story: STORY-02-002 — Generic Ingestion Runner | Result: 5/5 AC PASS
+
+Module/Config             | Path                                              | Action
+ingestion_runner.py       | src/patient_360/bronze/ingestion_runner.py        | created
+```

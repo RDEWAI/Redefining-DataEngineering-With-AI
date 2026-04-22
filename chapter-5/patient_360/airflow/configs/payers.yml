@@ -1,12 +1,8 @@
-# Bronze ingestion config — payers
-# Generated from LLD §5.1 (ingest_payers). DQ: inline SE from
-# dq_rules/payers.yml. Empty-input: fail — FK dimension.
-# updated: 2026-04-21
-
+# updated: 2026-04-22
 table: payers
 source:
   schema: synthea
-  table: payers
+  table: synthea.payers
   format: csv
   path: data/raw/payers.csv
 schema_ref: contracts/payers.yml
