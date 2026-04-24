@@ -32,6 +32,42 @@ The JSON output supplies `{workspace_root}`, `{project_root}`,
 `{project_name}`, `{stories_dir}`, and `{learnings_queue}`. The plugin is
 project-agnostic — never hardcode project or chapter names in edits.
 
+## Coding Patterns & Libraries Handbook
+
+Before patching any scaffold file, load the latest coding-patterns handbook:
+
+```bash
+PATTERNS_DIR=$(ls -d "{workspace_root}/inputs/code/v"* 2>/dev/null | sort -V | tail -1)
+if [ -z "$PATTERNS_DIR" ] || [ ! -d "$PATTERNS_DIR" ]; then
+  echo "CRITICAL: inputs/code/v*/ not found. Run /developer-plugin:refresh-libraries to initialize the library cache."
+  exit 1
+fi
+LIBRARIES_FILE="$PATTERNS_DIR/LIBRARIES.md"
+```
+
+**Required pattern docs for this skill:**
+
+- `$PATTERNS_DIR/project-structure.md` — medallion tree + mandatory dirs
+- `$PATTERNS_DIR/makefile-conventions.md` — required Make targets
+- `$PATTERNS_DIR/docker-compose-conventions.md` — UC + Marquez stack
+- `$PATTERNS_DIR/dependency-management.md` — UV + pyproject.toml layout
+- `$PATTERNS_DIR/naming-conventions.md` — file / module naming rules
+- `$PATTERNS_DIR/LIBRARIES.md` — pinned library versions
+
+### Library freshness check
+
+```bash
+LAST_VERIFIED=$(grep '^last_verified:' "$LIBRARIES_FILE" | awk '{print $2}')
+TODAY=$(date -u +%Y-%m-%d)
+AGE_DAYS=$(python3 -c "from datetime import date; print((date.fromisoformat('$TODAY') - date.fromisoformat('$LAST_VERIFIED')).days")
+```
+
+If `AGE_DAYS > 30`, pause and call **AskUserQuestion** with options `Refresh now` / `Proceed with cached versions` / `Cancel`. If the user picks Refresh, invoke `/developer-plugin:refresh-libraries` and resume.
+
+### References trailer (in output)
+
+Emit a `### References` section citing the consumed pattern docs + LIBRARIES.md vintage. Add `⚠ Library versions cached $AGE_DAYS days ago; run /developer-plugin:refresh-libraries to refresh.` if the user proceeded with stale cache.
+
 ## When to use vs create-scaffold
 
 | Situation                                       | Skill             |

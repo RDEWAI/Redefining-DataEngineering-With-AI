@@ -31,6 +31,38 @@ The JSON output supplies `{workspace_root}`, `{project_root}`,
 `{project_name}`, `{stories_dir}`, and `{learnings_queue}`. The plugin is
 project-agnostic — never hardcode project or chapter names in edits.
 
+## Coding Patterns & Libraries Handbook
+
+Before editing CI config, load the latest coding-patterns handbook:
+
+```bash
+PATTERNS_DIR=$(ls -d "{workspace_root}/inputs/code/v"* 2>/dev/null | sort -V | tail -1)
+if [ -z "$PATTERNS_DIR" ] || [ ! -d "$PATTERNS_DIR" ]; then
+  echo "CRITICAL: inputs/code/v*/ not found. Run /developer-plugin:refresh-libraries to initialize the library cache."
+  exit 1
+fi
+LIBRARIES_FILE="$PATTERNS_DIR/LIBRARIES.md"
+```
+
+**Required pattern docs for this skill:**
+
+- `$PATTERNS_DIR/ci-cd-pattern.md` — stage layout, pinned action SHAs, UV in CI
+- `$PATTERNS_DIR/LIBRARIES.md` — pinned Python / pytest / ruff versions driving the matrix
+
+### Library freshness check
+
+```bash
+LAST_VERIFIED=$(grep '^last_verified:' "$LIBRARIES_FILE" | awk '{print $2}')
+TODAY=$(date -u +%Y-%m-%d)
+AGE_DAYS=$(python3 -c "from datetime import date; print((date.fromisoformat('$TODAY') - date.fromisoformat('$LAST_VERIFIED')).days")
+```
+
+If `AGE_DAYS > 30`, pause and call **AskUserQuestion** with options `Refresh now` / `Proceed with cached versions` / `Cancel`. On Refresh, invoke `/developer-plugin:refresh-libraries` then resume.
+
+### References trailer (in output)
+
+Emit a `### References` section citing consumed pattern docs + LIBRARIES.md vintage. Add a stale-cache warning if the user proceeded with cached versions.
+
 ## Workflow
 
 ### Phase 1: Read Current State

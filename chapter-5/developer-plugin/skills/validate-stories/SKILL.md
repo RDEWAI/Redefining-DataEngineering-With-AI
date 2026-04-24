@@ -35,6 +35,25 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py -
 The JSON output supplies `{workspace_root}`, `{project_root}`,
 `{project_name}`, `{stories_dir}`, and `{learnings_queue}`.
 
+## Coding Patterns Handbook
+
+Load the pattern doc this skill checks against (read-only; no freshness prompt):
+
+```bash
+PATTERNS_DIR=$(ls -d "{workspace_root}/inputs/code/v"* 2>/dev/null | sort -V | tail -1)
+if [ -z "$PATTERNS_DIR" ] || [ ! -d "$PATTERNS_DIR" ]; then
+  echo "WARNING: inputs/code/v*/ not found — test-pattern conformance will be INDETERMINATE."
+fi
+```
+
+**Pattern docs consulted:**
+
+- `$PATTERNS_DIR/test-pattern.md` — expected pytest layout + integration marker
+
+### References trailer (in output)
+
+Cite each pattern doc consulted, e.g. `Checked against inputs/code/v1/test-pattern.md §layout`.
+
 ## Validator Dispatch (content-based classification — no config)
 
 Per-story validator is resolved from the story's acceptance-criteria content

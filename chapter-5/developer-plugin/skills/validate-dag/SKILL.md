@@ -30,6 +30,26 @@ The JSON output supplies `{workspace_root}`, `{project_root}`,
 `{project_name}`, `{stories_dir}`, and `{learnings_queue}`. The plugin is
 project-agnostic — never hardcode project or chapter names in edits.
 
+## Coding Patterns Handbook
+
+Load the pattern docs this skill checks against (read-only; no freshness prompt):
+
+```bash
+PATTERNS_DIR=$(ls -d "{workspace_root}/inputs/code/v"* 2>/dev/null | sort -V | tail -1)
+if [ -z "$PATTERNS_DIR" ] || [ ! -d "$PATTERNS_DIR" ]; then
+  echo "WARNING: inputs/code/v*/ not found — pattern-conformance checks will be INDETERMINATE."
+fi
+```
+
+**Pattern docs consulted:**
+
+- `$PATTERNS_DIR/airflow-dag-pattern.md` — factory/TaskGroup/SparkSubmitOperator defaults
+- `$PATTERNS_DIR/test-pattern.md` — DAG-integrity test expectations
+
+### References trailer (in output)
+
+Cite each pattern doc consulted, e.g. `Checked against inputs/code/v1/airflow-dag-pattern.md §2`.
+
 ## Checks
 
 ### CRITICAL (must fix before merge)

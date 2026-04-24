@@ -26,7 +26,6 @@ from pathlib import Path
 
 import yaml
 
-
 REQUIRED_MODULES = (
     "ingestion_runner.py",
     "ingestion_factory.py",
@@ -58,7 +57,7 @@ LLD_TASK_ROW = re.compile(
 )
 
 
-def _load_discovery_module() -> "object | None":
+def _load_discovery_module() -> object | None:
     """Import ``status_rollup`` from the sibling ``validate-stories`` skill.
 
     The helper lives at
@@ -69,12 +68,7 @@ def _load_discovery_module() -> "object | None":
     plugin is installed.
     """
     here = Path(__file__).resolve()
-    helper = (
-        here.parent.parent.parent
-        / "validate-stories"
-        / "scripts"
-        / "status_rollup.py"
-    )
+    helper = here.parent.parent.parent / "validate-stories" / "scripts" / "status_rollup.py"
     if not helper.exists():
         return None
     module_name = "_rdewai_status_rollup"
@@ -191,9 +185,7 @@ def check_module_syntax(module_path: Path, findings: Findings) -> None:
         literal = match.group(1)
         if literal.startswith("/tmp") or literal.startswith("/dev/null"):
             continue
-        findings.critical.append(
-            f"{module_path}: absolute filesystem path literal {literal!r}"
-        )
+        findings.critical.append(f"{module_path}: absolute filesystem path literal {literal!r}")
 
 
 def check_yaml_config(
@@ -270,9 +262,7 @@ def check_yaml_config(
     if isinstance(dq_table, str):
         dq_path = project_root / "dq_rules" / f"{dq_table}.yml"
         if not dq_path.exists():
-            findings.critical.append(
-                f"{yaml_path}: dq_rules/{dq_table}.yml referenced but missing"
-            )
+            findings.critical.append(f"{yaml_path}: dq_rules/{dq_table}.yml referenced but missing")
         else:
             check_dq_rules_schema(dq_path, findings)
 
@@ -345,15 +335,12 @@ def check_contract_config(
     for pointer_key in ("ddl_path", "dq_path"):
         pointer = data.get(pointer_key)
         if not isinstance(pointer, str) or not pointer:
-            findings.critical.append(
-                f"{contract_path}: `{pointer_key}` missing or not a string"
-            )
+            findings.critical.append(f"{contract_path}: `{pointer_key}` missing or not a string")
             continue
         target = project_root / pointer
         if not target.exists():
             findings.critical.append(
-                f"{contract_path}: {pointer_key} `{pointer}` does not exist "
-                f"(resolved to {target})"
+                f"{contract_path}: {pointer_key} `{pointer}` does not exist (resolved to {target})"
             )
 
     raw_columns = data.get("columns")
@@ -395,9 +382,7 @@ def check_soft_import_removed(
     implementation; a missing import is a deployment error, not a graceful
     degradation.
     """
-    runner_path = (
-        project_root / "src" / project_name / "bronze" / "ingestion_runner.py"
-    )
+    runner_path = project_root / "src" / project_name / "bronze" / "ingestion_runner.py"
     if not runner_path.exists():
         # Missing runner is already flagged by check_module_syntax upstream.
         return
@@ -407,9 +392,7 @@ def check_soft_import_removed(
     if not has_soft_import:
         return
 
-    se_runner_path = (
-        project_root / "src" / project_name / "utils" / "se_runner.py"
-    )
+    se_runner_path = project_root / "src" / project_name / "utils" / "se_runner.py"
     if se_runner_path.exists():
         findings.critical.append(
             f"{runner_path}: soft-import bootstrap `try/except ImportError` "
@@ -575,9 +558,7 @@ def main() -> int:
     project_name = args.project_name
     lld_path = args.lld
 
-    need_discovery = (
-        project_root is None or lld_path is None or args.workspace_root is not None
-    )
+    need_discovery = project_root is None or lld_path is None or args.workspace_root is not None
     workspace_root: Path | None = args.workspace_root
 
     if need_discovery:

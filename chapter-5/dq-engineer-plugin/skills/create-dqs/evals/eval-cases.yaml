@@ -1,0 +1,77 @@
+skill: create-dqs
+version: "1.0"
+cases:
+  - id: TC-001
+    name: "Complete inputs produce valid DQS"
+    description: "Given STM, DMS, DRD, and DQ inputs, skill produces a valid DQS"
+    inputs:
+      folder: "inputs/dqs/v1"
+      upstream: "outputs/stm/v1"
+    expected:
+      - type: validation_pass
+      - type: section_present
+        sections:
+          - "1. Field-Level Validation Rules"
+          - "2. Referential Integrity Checks"
+          - "3. Statistical Distribution Tests"
+          - "4. Reconciliation Rules"
+          - "5. Freshness & SLA Monitoring"
+          - "6. Alert & Escalation Framework"
+      - type: no_vague_language
+        banned: ["real-time", "all data", "comprehensive"]
+    success_criteria: "All expected checks pass"
+
+  - id: TC-002
+    name: "Rule IDs follow naming convention"
+    description: "All rule IDs must follow the DQ-{layer}-{table}-{NNN} pattern"
+    inputs:
+      folder: "inputs/dqs/v1"
+      upstream: "outputs/stm/v1"
+    expected:
+      - type: content_contains
+        patterns: ["DQ-"]
+    success_criteria: "All rules have properly formatted IDs"
+
+  - id: TC-003
+    name: "Coverage across all layers"
+    description: "DQS must have rules for bronze, silver, and gold layers"
+    inputs:
+      folder: "inputs/dqs/v1"
+      upstream: "outputs/stm/v1"
+    expected:
+      - type: content_contains
+        patterns: ["bronze", "silver", "gold"]
+    success_criteria: "Rules present for all 3 Medallion layers"
+
+  - id: TC-004
+    name: "Alert framework has escalation paths"
+    description: "Alert section must define severity routing and notification channels"
+    inputs:
+      folder: "inputs/dqs/v1"
+      upstream: "outputs/stm/v1"
+    expected:
+      - type: content_contains
+        patterns: ["CRITICAL", "WARNING", "notification", "escalat"]
+    success_criteria: "Alert framework with escalation paths documented"
+
+  - id: TC-005
+    name: "STM traceability maintained"
+    description: "Quality rules reference source STM mapping rows"
+    inputs:
+      folder: "inputs/dqs/v1"
+      upstream: "outputs/stm/v1"
+    expected:
+      - type: content_contains
+        patterns: ["STM"]
+    success_criteria: "STM references found in quality rules"
+
+  - id: TC-006
+    name: "SLA targets are numeric"
+    description: "Freshness and SLA targets must be specific numbers, not vague"
+    inputs:
+      folder: "inputs/dqs/v1"
+      upstream: "outputs/stm/v1"
+    expected:
+      - type: no_vague_language
+        banned: ["fast", "soon", "quickly", "timely"]
+    success_criteria: "All SLA values are concrete numeric targets"

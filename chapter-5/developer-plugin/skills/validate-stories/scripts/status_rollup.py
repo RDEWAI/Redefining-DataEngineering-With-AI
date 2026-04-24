@@ -32,7 +32,6 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 STORY_ID_RE = re.compile(r"STORY-\d{2}-\d{3}")
 EPIC_ID_RE = re.compile(r"EPIC-\d{2}")
 META_ROW_RE = re.compile(r"^\|\s*\*\*(?P<key>[^*]+)\*\*\s*\|\s*(?P<value>.+?)\s*\|\s*$")
@@ -60,34 +59,48 @@ VALID_EPIC_STATUSES = {"To Do", "Updated - Pending Review", "Done"}
 #   * Identifier patterns (e.g. `StructType`, `ingestion_runner`) — match
 #     domain concepts that uniquely belong to one kind.
 CLASSIFIER_RULES: list[tuple[str, re.Pattern[str]]] = [
-    ("pipeline", re.compile(
-        r"\.github/workflows/|_infra/c[id]/[^/\s`]+\.(?:ya?ml|sh|toml)|"
-        r"\.gitlab-ci",
-        re.IGNORECASE)),
-    ("dag", re.compile(
-        # Must reference a DAG-defining construct or a specific .py file
-        # under airflow/dags/. A bare mention of `dag_id` (e.g. in a log
-        # schema) is intentionally excluded — it appears in non-DAG stories.
-        r"airflow/dags/[^/\s`]+\.py|_dag\.py\b|"
-        r"TaskGroup|@dag\b|default_args\s*=",
-        re.IGNORECASE)),
-    ("ingestion", re.compile(
-        # Bronze ingestion: per-table YAML configs, bronze source files, or
-        # the canonical module/identifier names that create-ingestion emits.
-        r"airflow/configs/[^/\s`]+\.ya?ml|/bronze/[^/\s`]+\.py|"
-        r"empty_input_behavior|spark[_-]expectations|"
-        r"ingestion_runner|ingestion_factory|spark_submit_wrapper|"
-        r"se_runner",
-        re.IGNORECASE)),
-    ("scaffold", re.compile(
-        # Foundation: project layout, packaging, config/logging bootstrap,
-        # schema contracts, DDL migrations, docker setup. `tests/` alone is
-        # deliberately NOT here — test stories belong to the kind they test.
-        r"pyproject\.toml|\bMakefile\b|/utils/|schemas\.py|StructType|"
-        r"SCHEMAS\[|src/[^/]+/config/|config-template|config_loader|"
-        r"logging_config|docker-compose|ddl/liquibase|"
-        r"_infra/docker/|dev-setup|uv sync|contracts/|dq_rules/",
-        re.IGNORECASE)),
+    (
+        "pipeline",
+        re.compile(
+            r"\.github/workflows/|_infra/c[id]/[^/\s`]+\.(?:ya?ml|sh|toml)|" r"\.gitlab-ci",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "dag",
+        re.compile(
+            # Must reference a DAG-defining construct or a specific .py file
+            # under airflow/dags/. A bare mention of `dag_id` (e.g. in a log
+            # schema) is intentionally excluded — it appears in non-DAG stories.
+            r"airflow/dags/[^/\s`]+\.py|_dag\.py\b|" r"TaskGroup|@dag\b|default_args\s*=",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "ingestion",
+        re.compile(
+            # Bronze ingestion: per-table YAML configs, bronze source files, or
+            # the canonical module/identifier names that create-ingestion emits.
+            r"airflow/configs/[^/\s`]+\.ya?ml|/bronze/[^/\s`]+\.py|"
+            r"empty_input_behavior|spark[_-]expectations|"
+            r"ingestion_runner|ingestion_factory|spark_submit_wrapper|"
+            r"se_runner",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "scaffold",
+        re.compile(
+            # Foundation: project layout, packaging, config/logging bootstrap,
+            # schema contracts, DDL migrations, docker setup. `tests/` alone is
+            # deliberately NOT here — test stories belong to the kind they test.
+            r"pyproject\.toml|\bMakefile\b|/utils/|schemas\.py|StructType|"
+            r"SCHEMAS\[|src/[^/]+/config/|config-template|config_loader|"
+            r"logging_config|docker-compose|ddl/liquibase|"
+            r"_infra/docker/|dev-setup|uv sync|contracts/|dq_rules/",
+            re.IGNORECASE,
+        ),
+    ),
 ]
 
 
@@ -111,7 +124,13 @@ class GateResult:
     blocked: bool = False
     blockers: list[Blocker] = field(default_factory=list)
 
-    def block(self, code: str, message: str, file: str | None = None, line: int | None = None) -> None:
+    def block(
+        self,
+        code: str,
+        message: str,
+        file: str | None = None,
+        line: int | None = None,
+    ) -> None:
         self.blocked = True
         self.blockers.append(Blocker(code=code, message=message, file=file, line=line))
 
@@ -223,9 +242,7 @@ def discover_workspace(
 def _build_workspace(ws_root: Path, project_name_override: str | None) -> Workspace:
     stories_dir = ws_root / "inputs" / "stories"
     if not stories_dir.is_dir():
-        raise DiscoveryError(
-            f"--workspace-root {ws_root}: {stories_dir} does not exist"
-        )
+        raise DiscoveryError(f"--workspace-root {ws_root}: {stories_dir} does not exist")
     children = _find_project_children(ws_root)
     if not children:
         raise DiscoveryError(
@@ -241,7 +258,11 @@ def _pick_project(
     project_name_override: str | None,
 ) -> Workspace:
     if project_name_override:
-        matches = [c for c in children if c[1] == project_name_override or c[0].name == project_name_override]
+        matches = [
+            c
+            for c in children
+            if c[1] == project_name_override or c[0].name == project_name_override
+        ]
         if not matches:
             names = ", ".join(f"{c[0].name} (pkg {c[1]})" for c in children)
             raise DiscoveryError(
@@ -301,7 +322,8 @@ def resolve_epic_path(ws: Workspace, epic_id: str) -> Path:
 def resolve_backlog_path(ws: Workspace) -> Path:
     latest = find_latest_stories_dir(ws)
     candidates = sorted(
-        p for p in latest.glob(ws.backlog_glob)
+        p
+        for p in latest.glob(ws.backlog_glob)
         if not p.name.endswith(".bak") and ".bak" not in p.suffixes
     )
     if not candidates:
@@ -335,12 +357,14 @@ def parse_ac_section(text: str, heading_re: re.Pattern[str]) -> list[dict]:
         m = AC_LINE_RE.match(line)
         if m:
             idx += 1
-            items.append({
-                "index": idx,
-                "checked": m.group("mark").lower() == "x",
-                "text": m.group("text").strip(),
-                "line": lineno,
-            })
+            items.append(
+                {
+                    "index": idx,
+                    "checked": m.group("mark").lower() == "x",
+                    "text": m.group("text").strip(),
+                    "line": lineno,
+                }
+            )
     return items
 
 
@@ -427,21 +451,25 @@ def rollup(ws: Workspace, epic_id: str) -> dict:
             story = parse_story(resolve_story_path(ws, child["id"]))
             status = story["status"] or "To Do"
             counts[status] = counts.get(status, 0) + 1
-            per_child.append({
-                "story_id": child["id"],
-                "status": status,
-                "ac_checked": story["ac_checked"],
-                "ac_total": story["ac_total"],
-            })
+            per_child.append(
+                {
+                    "story_id": child["id"],
+                    "status": status,
+                    "ac_checked": story["ac_checked"],
+                    "ac_total": story["ac_total"],
+                }
+            )
         except FileNotFoundError:
             counts["To Do"] = counts.get("To Do", 0) + 1
-            per_child.append({
-                "story_id": child["id"],
-                "status": "To Do",
-                "ac_checked": 0,
-                "ac_total": 0,
-                "file_missing": True,
-            })
+            per_child.append(
+                {
+                    "story_id": child["id"],
+                    "status": "To Do",
+                    "ac_checked": 0,
+                    "ac_total": 0,
+                    "file_missing": True,
+                }
+            )
 
     total = sum(counts.values())
     all_done = total > 0 and counts.get("Done", 0) == total
@@ -493,9 +521,7 @@ def classify_story(ws: Workspace, story_id: str) -> dict:
             if ac["index"] in matched_ac_indices.setdefault(kind, set()):
                 continue
             matched_ac_indices[kind].add(ac["index"])
-            per_kind_reasons.setdefault(kind, []).append(
-                f"AC {ac['index']} matched /{m.group(0)}/"
-            )
+            per_kind_reasons.setdefault(kind, []).append(f"AC {ac['index']} matched /{m.group(0)}/")
 
     # Full-body fallback: only for kinds that didn't already match an AC.
     if not per_kind_reasons:
@@ -504,9 +530,7 @@ def classify_story(ws: Workspace, story_id: str) -> dict:
             m = pattern.search(full_text)
             if not m:
                 continue
-            per_kind_reasons.setdefault(kind, []).append(
-                f"story body matched /{m.group(0)}/"
-            )
+            per_kind_reasons.setdefault(kind, []).append(f"story body matched /{m.group(0)}/")
             matched_ac_indices.setdefault(kind, set()).add(0)
 
     if not per_kind_reasons:
@@ -541,9 +565,7 @@ def classify_story(ws: Workspace, story_id: str) -> dict:
         "confidence": confidence,
         "reasons": per_kind_reasons[chosen],
         "matched_rule_count": n_matches,
-        "all_matches": {
-            k: sorted(v) for k, v in matched_ac_indices.items()
-        },
+        "all_matches": {k: sorted(v) for k, v in matched_ac_indices.items()},
     }
 
 
@@ -556,7 +578,10 @@ def gate(ws: Workspace, target: str) -> GateResult:
     elif EPIC_ID_RE.fullmatch(target):
         _gate_epic(ws, target, result)
     else:
-        result.block("invalid_target", f"Target {target!r} is not a STORY-NN-NNN or EPIC-NN identifier")
+        result.block(
+            "invalid_target",
+            f"Target {target!r} is not a STORY-NN-NNN or EPIC-NN identifier",
+        )
     return result
 
 
@@ -570,7 +595,10 @@ def _gate_story(ws: Workspace, story_id: str, result: GateResult) -> None:
     if story["status"] not in VALID_STORY_STATUSES:
         result.block(
             "invalid_status",
-            f"{story_id}: Status cell {story['status']!r} is not one of {sorted(VALID_STORY_STATUSES)}",
+            (
+                f"{story_id}: Status cell {story['status']!r} is not one of "
+                f"{sorted(VALID_STORY_STATUSES)}"
+            ),
             file=story["file"],
         )
 
@@ -595,7 +623,10 @@ def _gate_story(ws: Workspace, story_id: str, result: GateResult) -> None:
         if dep["status"] != "Done":
             result.block(
                 "dependency_not_done",
-                f"{story_id} depends on {dep_id} (Status: {dep['status'] or 'To Do'}) — must be Done first",
+                (
+                    f"{story_id} depends on {dep_id} "
+                    f"(Status: {dep['status'] or 'To Do'}) — must be Done first"
+                ),
                 file=dep["file"],
             )
 
@@ -662,13 +693,15 @@ def _parse_stories_table(text: str) -> list[dict]:
             deps: list[str] = []
         else:
             deps = sorted({d.group(0) for d in STORY_ID_RE.finditer(deps_raw)})
-        rows.append({
-            "id": m.group("id"),
-            "title": m.group("title").strip(),
-            "points": int(m.group("points")),
-            "sprint": m.group("sprint").strip(),
-            "depends_on": deps,
-        })
+        rows.append(
+            {
+                "id": m.group("id"),
+                "title": m.group("title").strip(),
+                "points": int(m.group("points")),
+                "sprint": m.group("sprint").strip(),
+                "depends_on": deps,
+            }
+        )
     return rows
 
 
@@ -692,8 +725,14 @@ def main() -> int:
         "--mode",
         required=True,
         choices=[
-            "parse-story", "parse-epic", "parse-backlog",
-            "rollup", "gate", "find", "discover", "classify",
+            "parse-story",
+            "parse-epic",
+            "parse-backlog",
+            "rollup",
+            "gate",
+            "find",
+            "discover",
+            "classify",
         ],
     )
     parser.add_argument("--story", help="Story ID (STORY-NN-NNN)")

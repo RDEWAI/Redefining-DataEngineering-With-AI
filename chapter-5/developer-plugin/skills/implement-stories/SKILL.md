@@ -40,6 +40,34 @@ The JSON output supplies `{workspace_root}`, `{project_root}`,
 `{project_name}`, `{stories_dir}`, and `{learnings_queue}`. The plugin is
 project-agnostic — never hardcode project or chapter names in edits.
 
+## Coding Patterns & Libraries Handbook (orchestrator-level)
+
+Before dispatching to any sub-skill, the orchestrator runs the freshness
+check ONCE so every downstream generator inherits an up-to-date library
+cache without re-prompting:
+
+```bash
+PATTERNS_DIR=$(ls -d "{workspace_root}/inputs/code/v"* 2>/dev/null | sort -V | tail -1)
+if [ -z "$PATTERNS_DIR" ] || [ ! -d "$PATTERNS_DIR" ]; then
+  echo "CRITICAL: inputs/code/v*/ not found. Run /developer-plugin:refresh-libraries to initialize the library cache."
+  exit 1
+fi
+LIBRARIES_FILE="$PATTERNS_DIR/LIBRARIES.md"
+LAST_VERIFIED=$(grep '^last_verified:' "$LIBRARIES_FILE" | awk '{print $2}')
+TODAY=$(date -u +%Y-%m-%d)
+AGE_DAYS=$(python3 -c "from datetime import date; print((date.fromisoformat('$TODAY') - date.fromisoformat('$LAST_VERIFIED')).days")
+```
+
+If `AGE_DAYS > 30`, call **AskUserQuestion** *once* with options `Refresh now` / `Proceed with cached versions` / `Cancel`:
+
+- `Refresh now` — invoke `/developer-plugin:refresh-libraries`, wait for completion, then continue dispatching.
+- `Proceed with cached versions` — dispatch sub-skills with the cached versions; prepend a single stale-cache warning to the batch's final References trailer.
+- `Cancel` — abort the batch; no stories run.
+
+**Do not** let each sub-skill re-prompt — the orchestrator answers once for the whole batch. Downstream create-*/update-* skills skip their own freshness check when invoked from this skill (detect via an env var such as `DEVPLUGIN_FRESHNESS_OK=1`).
+
+Read `$PATTERNS_DIR/LIBRARIES.md` in full so versions are available to any sub-skill that asks.
+
 ## Dispatch (content-based classification — no config)
 
 There is NO dispatch yaml. Story and epic numbers are not stable across

@@ -34,6 +34,27 @@ The JSON output supplies `{workspace_root}`, `{project_root}`,
 `{project_name}`, `{stories_dir}`, and `{learnings_queue}`. The plugin is
 project-agnostic — never hardcode project or chapter names in edits.
 
+## Coding Patterns Handbook
+
+Load the pattern docs this skill checks against (read-only; no freshness prompt):
+
+```bash
+PATTERNS_DIR=$(ls -d "{workspace_root}/inputs/code/v"* 2>/dev/null | sort -V | tail -1)
+if [ -z "$PATTERNS_DIR" ] || [ ! -d "$PATTERNS_DIR" ]; then
+  echo "WARNING: inputs/code/v*/ not found — pattern-conformance checks will be INDETERMINATE."
+fi
+```
+
+**Pattern docs consulted:**
+
+- `$PATTERNS_DIR/project-structure.md` — tree + mandatory dirs
+- `$PATTERNS_DIR/makefile-conventions.md` — required Make targets
+- `$PATTERNS_DIR/LIBRARIES.md` — pinned versions to compare pyproject.toml against
+
+### References trailer (in output)
+
+Cite each pattern doc consulted, e.g. `Checked against inputs/code/v1/project-structure.md §tree`. Flag an INDETERMINATE verdict on any check whose pattern doc was missing.
+
 ## Checks
 
 ### Directory tree (STORY-01-001)

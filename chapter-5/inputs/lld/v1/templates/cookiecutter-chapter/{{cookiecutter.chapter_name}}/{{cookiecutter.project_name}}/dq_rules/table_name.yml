@@ -1,0 +1,20 @@
+# DQ rules for table_name.
+# Rename this file to match the table (e.g., patients.yml).
+# Rules follow the Spark Expectations rule schema.
+
+table: table_name
+rules:
+  - rule_type: row_dq
+    rule: "id IS NOT NULL"
+    description: "Primary key must never be null"
+    error_drop_threshold: 0
+
+  - rule_type: row_dq
+    rule: "created_at IS NOT NULL"
+    description: "created_at must never be null"
+    error_drop_threshold: 0
+
+  - rule_type: agg_dq
+    rule: "COUNT(*) > 0"
+    description: "Table must not be empty"
+    error_drop_threshold: 0

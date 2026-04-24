@@ -1,0 +1,9 @@
+{
+  "name": "mapping-analyst-plugin",
+  "version": "1.0.0",
+  "description": "Mapping Analyst Agent for generating, updating, and validating Source-to-Target Mapping (STM) Excel workbooks",
+  "author": {
+    "name": "RDEWAI"
+  },
+  "keywords": ["mapping-analyst", "stm", "source-to-target", "mapping", "xlsx", "excel", "openpyxl", "etl", "transformation"]
+}

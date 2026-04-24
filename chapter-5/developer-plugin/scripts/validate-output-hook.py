@@ -25,13 +25,7 @@ from pathlib import Path
 def _load_discovery_module():
     """Import ``status_rollup`` from the sibling validate-stories skill."""
     here = Path(__file__).resolve()
-    helper = (
-        here.parent.parent
-        / "skills"
-        / "validate-stories"
-        / "scripts"
-        / "status_rollup.py"
-    )
+    helper = here.parent.parent / "skills" / "validate-stories" / "scripts" / "status_rollup.py"
     if not helper.exists():
         return None
     module_name = "_rdewai_status_rollup"
@@ -120,8 +114,12 @@ def main():
         sys.exit(0)
 
     rel_posix = rel.as_posix()
-    is_bronze_module = rel_posix.startswith(f"src/{project_name}/bronze/") and rel_posix.endswith(".py")
-    is_airflow_config = rel_posix.startswith("airflow/configs/") and rel_posix.endswith((".yml", ".yaml"))
+    is_bronze_module = rel_posix.startswith(f"src/{project_name}/bronze/") and rel_posix.endswith(
+        ".py"
+    )
+    is_airflow_config = rel_posix.startswith("airflow/configs/") and rel_posix.endswith(
+        (".yml", ".yaml")
+    )
 
     if not (is_bronze_module or is_airflow_config):
         sys.exit(0)
@@ -129,14 +127,20 @@ def main():
     plugin_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     validator = os.path.join(
         plugin_root,
-        "skills", "validate-ingestion", "scripts", "validate_ingestion.py",
+        "skills",
+        "validate-ingestion",
+        "scripts",
+        "validate_ingestion.py",
     )
     _skill_validate(
         validator,
         [
-            "--project-root", str(project_root),
-            "--project-name", project_name,
-            "--workspace-root", str(ws.workspace_root),
+            "--project-root",
+            str(project_root),
+            "--project-name",
+            project_name,
+            "--workspace-root",
+            str(ws.workspace_root),
         ],
     )
 

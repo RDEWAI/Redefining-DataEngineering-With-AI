@@ -30,6 +30,27 @@ The JSON output supplies `{workspace_root}`, `{project_root}`,
 `{project_name}`, `{stories_dir}`, and `{learnings_queue}`. The plugin is
 project-agnostic — never hardcode project or chapter names in edits.
 
+## Coding Patterns Handbook
+
+Load the pattern docs this skill checks against (read-only; no freshness prompt):
+
+```bash
+PATTERNS_DIR=$(ls -d "{workspace_root}/inputs/code/v"* 2>/dev/null | sort -V | tail -1)
+if [ -z "$PATTERNS_DIR" ] || [ ! -d "$PATTERNS_DIR" ]; then
+  echo "WARNING: inputs/code/v*/ not found — pattern-conformance checks will be INDETERMINATE."
+fi
+```
+
+**Pattern docs consulted:**
+
+- `$PATTERNS_DIR/bronze-ingestion-pattern.md` — expected runner/factory shape
+- `$PATTERNS_DIR/spark-expectations-pattern.md` — expected SE rule + runner shape
+- `$PATTERNS_DIR/test-pattern.md` — expected test fixtures
+
+### References trailer (in output)
+
+Cite each pattern doc consulted, e.g. `Checked against inputs/code/v1/bronze-ingestion-pattern.md §2`.
+
 ## Step 1: Run the validator
 
 ```bash

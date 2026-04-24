@@ -9,7 +9,6 @@ edit is outside any discoverable workspace, the hook fails open and exits 0.
 
 import importlib.util
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -18,13 +17,7 @@ ROLE = "developer"
 
 def _load_discovery_module():
     here = Path(__file__).resolve()
-    helper = (
-        here.parent.parent
-        / "skills"
-        / "validate-stories"
-        / "scripts"
-        / "status_rollup.py"
-    )
+    helper = here.parent.parent / "skills" / "validate-stories" / "scripts" / "status_rollup.py"
     if not helper.exists():
         return None
     module_name = "_rdewai_status_rollup"

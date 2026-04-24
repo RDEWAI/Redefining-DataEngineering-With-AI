@@ -1,124 +1,232 @@
-# Chapter 5: Story-Driven Implementation — Developer Agent
+# Chapter 5: Full-Chain Workspace — Planning + Story-Driven Implementation
 
 ## Overview
 
-Chapter 5 implements the Developer Agent as a Claude Code Plugin, translating
-approved LLD artifacts and Scrum stories into production-ready code: Airflow
-DAGs, CI/CD pipeline configs, and the Bronze config-driven ingestion framework.
+Chapter 5 is a **self-contained workspace** that runs the entire data-engineering
+pipeline end-to-end — from an initial business request through generated code.
+It ships working copies of the six planning plugins (moved/copied from
+chapter-4) plus two implementation-phase plugins: the Scrum Master (story
+decomposition) and the Developer (code generation).
 
-**Artifact chain (upstream)**: DRD → HLD → DMS → STM → DQS → LLD → Stories → **Code**
+**Artifact chain**: DRD → HLD → DMS → STM → DQS → LLD → **Stories** → **Code**
 
-## Plugin
+> Chapter-4 remains the canonical reference implementation for the planning
+> plugins (DRD → LLD). Chapter-5 is the full-loop workspace — planning,
+> backlog, and code — where students iterate.
 
-### Developer Plugin
+## Plugins
 
-Lives in `developer-plugin/` and is defined by `developer-plugin/.claude-plugin/plugin.json`.
+All eight plugins live under `chapter-5/` and are registered in
+`chapter-5/.claude-plugin/marketplace.json` under the
+`rdewai-chapter5-plugins` marketplace.
 
-- `developer-plugin/skills/create-scaffold/`, `update-scaffold/`, `validate-scaffold/`
-- `developer-plugin/skills/create-dag/`, `update-dag/`, `validate-dag/`
-- `developer-plugin/skills/create-pipeline/`, `update-pipeline/`, `validate-pipeline/`
-- `developer-plugin/skills/create-ingestion/`, `update-ingestion/`, `validate-ingestion/`
-- `developer-plugin/skills/implement-stories/` — orchestrate create-/update- skills across stories/epics/sprints
-- `developer-plugin/skills/validate-stories/` — verify story/epic ACs via heuristic scan + downstream validator
-- `developer-plugin/skills/complete-stories/` — hard-gated completion; flips Status only when every child + AC is Done
-- `developer-plugin/skills/apply-learnings/` — apply corrections from learnings queue
-- `developer-plugin/hooks/` — PreToolUse (destructive-op guard) + PostToolUse (auto-validate + learnings)
-- `developer-plugin/scripts/` — hook scripts (enforce-readonly-queries, validate-output-hook, check-learnings-queue)
+### Planning plugins (DRD → LLD)
 
-## Installing the Plugin
+These six plugins are working copies of the chapter-4 reference. Each lives
+in its own directory with `skills/`, `hooks/`, `scripts/`, and `agents/`.
+
+| Plugin | Artifact | Skills |
+|---|---|---|
+| `ba-plugin` | DRD (markdown) | create-drd, update-drd, validate-drd, approve-drd |
+| `architect-plugin` | HLD (markdown) | create-hld, update-hld, validate-hld, approve-hld |
+| `data-modeler-plugin` | DMS (markdown) | create-dms, update-dms, validate-dms, approve-dms |
+| `mapping-analyst-plugin` | STM (**.xlsx**) | create-stm, update-stm, validate-stm, approve-stm |
+| `dq-engineer-plugin` | DQS (markdown + SE YAML) | create-dqs, update-dqs, validate-dqs, generate-se-rules, approve-dqs |
+| `technical-lead-plugin` | LLD (markdown + config + DAG + impl-sequence) | create-lld, update-lld, validate-lld, generate-config-template, apply-learnings, approve-lld |
+
+**Inputs**: `inputs/{role}/v{N}/` per role (folder-versioned).
+**Outputs**: `outputs/{artifact}/v{N}/` per artifact (folder-versioned).
+
+### Scrum Master plugin (Sprint Backlog)
+
+`scrum-master-plugin/` decomposes the approved LLD into a Sprint Backlog of
+epics and user stories.
+
+- **Skills**: create-stories, update-stories, validate-stories, approve-stories
+- **Inputs**: all 6 upstream artifacts + `inputs/stories/v{N}/` (team capacity, story standards)
+- **Outputs**: `outputs/stories/v{N}/` (BACKLOG index + EPIC and STORY markdown files)
+- **Story IDs**: `STORY-{NN}-{NNN}` (2-digit epic + 3-digit story)
+
+### Developer plugin (Code)
+
+`developer-plugin/` reads approved Stories + LLD and emits Airflow DAGs,
+CI/CD pipeline configs, and the Bronze config-driven ingestion framework.
+
+- **Skills**: create-scaffold/update/validate, create-dag/update/validate, create-pipeline/update/validate, create-ingestion/update/validate, implement-stories, validate-stories, complete-stories, apply-learnings, refresh-libraries
+- **Inputs**: `inputs/lld/v{N}/`, `inputs/stories/v{N}/`, `inputs/dqs/v{N}/se-rules/`, `inputs/stm/v{N}/`, `inputs/code/v{N}/` (coding-pattern + library-version handbook)
+- **Outputs**: generated project code under `patient_360/`
+
+## Installing the plugins
 
 From the repo root:
+
 ```bash
 /plugin marketplace add ./chapter-5
+/plugin install ba-plugin@rdewai-chapter5-plugins
+/plugin install architect-plugin@rdewai-chapter5-plugins
+/plugin install data-modeler-plugin@rdewai-chapter5-plugins
+/plugin install mapping-analyst-plugin@rdewai-chapter5-plugins
+/plugin install dq-engineer-plugin@rdewai-chapter5-plugins
+/plugin install technical-lead-plugin@rdewai-chapter5-plugins
+/plugin install scrum-master-plugin@rdewai-chapter5-plugins
 /plugin install developer-plugin@rdewai-chapter5-plugins
 ```
 
 ## Directory Layout
 
-- `inputs/lld/v{N}/` — approved LLD (source of truth for code generation)
-- `inputs/stories/v{N}/` — sprint backlog (BACKLOG index + EPIC/STORY files)
-- `inputs/dqs/v{N}/se-rules/` — Spark Expectations YAML rule files per table
-- `inputs/stm/v{N}/` — Source-to-Target Mapping workbook (column reference)
-- `patient_360/` — generated project code
-  - `src/patient_360/bronze/` — ingestion_runner, ingestion_factory, spark_submit_wrapper
-  - `src/patient_360/utils/` — se_runner (Spark Expectations wrapper)
-  - `airflow/dags/` — generated Airflow DAG files
-  - `airflow/configs/` — per-table YAML ingestion configs
-  - `contracts/` — StructType schema YAML files (owned by Data Modeler)
-  - `dq_rules/` — Spark Expectations YAML rule files (synced from inputs/dqs/)
-  - `_infra/ci/` — CI/CD pipeline configs (GitHub Actions / GitLab CI)
-  - `tests/bronze/` — unit and integration tests for the ingestion framework
-- `developer-plugin/` — Developer Agent plugin
-- `memory/developer/` — learnings queue (learnings-queue.jsonl)
+### Plugins
 
-## Story → Skill Map (content-based classification)
+- `ba-plugin/`
+- `architect-plugin/`
+- `data-modeler-plugin/`
+- `mapping-analyst-plugin/`
+- `dq-engineer-plugin/`
+- `technical-lead-plugin/`
+- `scrum-master-plugin/`
+- `developer-plugin/`
 
-The plugin is project-agnostic. Story and epic numbers are NOT stable across
-projects — `EPIC-02` may be ingestion in one project and something else in
-another. Each story is classified from its acceptance-criteria content:
+### Workspace data
 
-| `skill_kind` classifier verdict | Triggers on AC content referencing…                                           | Generator triplet                                         |
-|---------------------------------|-------------------------------------------------------------------------------|-----------------------------------------------------------|
-| `scaffold`                      | `pyproject.toml`, `Makefile`, `src/<name>/utils/`, `contracts/`, `dq_rules/`, DDL, docker | `create-scaffold` / `update-scaffold` / `validate-scaffold` |
-| `dag`                           | `airflow/dags/<name>.py`, `TaskGroup`, `@dag`, `default_args`                 | `create-dag` / `update-dag` / `validate-dag`              |
-| `ingestion`                     | `airflow/configs/<table>.yml`, `src/<name>/bronze/`, `ingestion_runner`, `se_runner`, `empty_input_behavior`, `spark_expectations` | `create-ingestion` / `update-ingestion` / `validate-ingestion` |
-| `pipeline`                      | `.github/workflows/`, `_infra/ci/…`, `.gitlab-ci.yml`                        | `create-pipeline` / `update-pipeline` / `validate-pipeline` |
-| `unknown`                       | No rule matched — orchestrator asks the user to override or tighten the story | —                                                         |
+Inputs (folder-versioned `v{N}/`):
+- `inputs/drd/`, `inputs/architect/`, `inputs/dms/`, `inputs/stm/`, `inputs/dqs/`
+- `inputs/lld/` — seeded with an approved LLD so developer-plugin can run standalone
+- `inputs/stories/` — team capacity + story standards
+- `inputs/code/` — coding-pattern handbook + `LIBRARIES.md` version catalogue (developer-plugin)
 
-For story/epic/sprint orchestration, prefer the three story-lifecycle skills
-over invoking generators directly:
+Outputs (folder-versioned `v{N}/`):
+- `outputs/drd/`, `outputs/hld/`, `outputs/dms/`, `outputs/stm/`, `outputs/dqs/`, `outputs/lld/`
+- `outputs/stories/` — BACKLOG index + EPIC/STORY markdown files
 
-- `/developer-plugin:implement-stories STORY-NN-NNN|EPIC-NN|'Sprint N'` —
-  classifies each story, dispatches to the correct create-*/update-* skill
-  (topo-sorted by `Depends On`); never edits story markdown.
-- `/developer-plugin:validate-stories <same-arg>` — read-only AC compliance
-  report; combines heuristic scan with the matching `validate-*` skill.
-- `/developer-plugin:complete-stories <same-arg>` — atomic hard gate; flips
-  Story/Epic Status and ticks ACs only when every child story + AC passes.
-  Edits nothing if any target in the set blocks.
+Session memory (cross-session persistence with learnings queues):
+- `memory/{drd,hld,dms,stm,dqs,lld,stories,developer}/`
 
-### Workspace Discovery (no dispatch yaml)
+Generated project code:
+- `patient_360/src/patient_360/bronze/`, `patient_360/src/patient_360/utils/`
+- `patient_360/airflow/dags/`, `patient_360/airflow/configs/`
+- `patient_360/contracts/`, `patient_360/dq_rules/`, `patient_360/_infra/ci/`
+- `patient_360/tests/bronze/`
 
-The story-lifecycle skills discover the workspace automatically: starting
-from CWD they walk upward to find a directory with both `inputs/stories/`
-and a cookiecutter-style project (`pyproject.toml` + `src/<name>/`). That
-anchor supplies the `{workspace_root}`, `{project_root}`, `{project_name}`,
-`{stories_dir}`, and `{learnings_queue}` paths used throughout every
-skill. No config file, no epic mapping — the agent reads each story and
-classifies it at runtime.
+Tests:
+- `tests/` — unit + integration tests for all 8 plugins
 
-Inspect the resolved paths with:
+## Artifact Status Lifecycle
 
-```bash
-python3 chapter-5/developer-plugin/skills/validate-stories/scripts/status_rollup.py --mode discover
+All artifacts use a 3-state status tracked in the metadata table:
 
-# Classify a specific story:
-python3 chapter-5/developer-plugin/skills/validate-stories/scripts/status_rollup.py --mode classify --story STORY-02-002
 ```
+Draft  →  Updated - Pending Review  →  Approved
+  ↑              ↑                        │
+  └──────────────┴── (update cycles) ─────┘
+```
+
+Each plugin has an `approve-{artifact}` skill that sets Status to `Approved`.
 
 ## Upstream Approval Gate
 
-`create-dag` and `create-ingestion` require the LLD to have `Status: Approved`
-(or `Updated - Pending Review` with explicit user consent). Use the
-`technical-lead-plugin:approve-lld` skill from Chapter 4 to approve the LLD.
+Before creating a downstream artifact, ALL required upstream artifacts MUST
+have `Status: Approved`. This gate has no override.
+
+| create-* Skill | Required Approved Upstream |
+|---|---|
+| create-drd | None (first in chain) |
+| create-hld | DRD |
+| create-dms | DRD, HLD |
+| create-stm | DRD, HLD, DMS |
+| create-dqs | DRD, DMS, STM |
+| create-lld | DRD, HLD, DMS, STM, DQS |
+| create-stories | DRD, HLD, DMS, STM, DQS, LLD |
+| create-scaffold / create-dag / create-ingestion / create-pipeline | LLD (+ Stories for implement-stories) |
+
+## Output → Input Handoff (planning → developer)
+
+The planning plugins (DRD … Stories) write into `outputs/{artifact}/v{N}/`.
+The developer-plugin reads from `inputs/{lld,stories,dqs,stm}/v{N}/`. At
+the approval handoff, copy the approved artifact from `outputs/` into
+`inputs/`:
+
+```bash
+# After technical-lead-plugin:approve-lld
+cp -R outputs/lld/v1/* inputs/lld/v1/
+
+# After scrum-master-plugin:approve-stories
+cp -R outputs/stories/v1/* inputs/stories/v1/
+
+# After dq-engineer-plugin:approve-dqs (for SE YAML rules)
+cp -R outputs/dqs/v1/se-rules inputs/dqs/v1/
+```
+
+This preserves developer-plugin's existing contract — it always reads from
+`inputs/` — and makes the planning → implementation transition explicit.
+
+## `validate-stories` namespace note
+
+Two plugins ship a `validate-stories` skill with different purposes:
+
+- `/scrum-master-plugin:validate-stories` — validates backlog markdown
+  structure, story format, and upstream traceability.
+- `/developer-plugin:validate-stories` — validates acceptance-criteria
+  implementation by scanning generated code + running downstream `validate-*`
+  skills.
+
+Always use the fully qualified name (`<plugin>:validate-stories`) so the
+right skill fires.
+
+## Versioning Convention
+
+All inputs and outputs use **folder-based versioning** (`v1/`, `v2/`, etc.).
+The latest version folder is the source of truth for that component. Agents
+auto-discover the latest version via:
+
+```bash
+ls -d {path}/v* | sort -V | tail -1
+```
+
+### Update Versioning Rules (3 Scenarios)
+
+When an `update-*` skill is invoked, it MUST follow one of these three scenarios:
+
+**Scenario A — Cross-version (v1 → v2)**
+- **Trigger**: `inputs/{role}/v{N+1}/` exists but `outputs/{artifact}/v{N+1}/` does not, OR user explicitly requests a new version.
+- **Action**: Create `outputs/{artifact}/v{N+1}/`, copy latest artifact from v{N} with today's date in filename, rename the original as `.bak`, apply incremental edits. Set metadata version to `{N+1}.0`, status to `Draft`.
+
+**Scenario B — Same version, different date**
+- **Trigger**: Latest artifact filename date ≠ today.
+- **Action**: Copy old file to new file with today's date, rename old as `.bak`, apply incremental edits. Bump minor version.
+
+**Scenario C — Same version, same date (re-run)**
+- **Trigger**: Latest artifact filename date = today.
+- **Action**: Edit in-place, bump minor version. No `.bak` created.
 
 ## Learnings & Corrections Protocol
 
 After ANY user correction during skill execution, the agent MUST immediately
-append to the learnings queue:
+append to the role's learnings queue:
 
 ```bash
 echo '{"skill": "{skill-name}", "date": "{YYYY-MM-DD}", "correction": "{what}", "pattern": "{rule}", "status": "pending"}' \
-  >> chapter-5/memory/developer/learnings-queue.jsonl
+  >> memory/{role}/learnings-queue.jsonl
 ```
 
 At the end of any skill session where the learnings queue has pending entries,
-run `/developer-plugin:apply-learnings` before finishing.
+run the matching `/apply-learnings` skill (`technical-lead-plugin`,
+`developer-plugin`) before finishing.
+
+The 7 planning plugins each resolve the chapter root via `CHAPTER5_ROOT`
+(with a 3-levels-up fallback from `scripts/check-learnings-queue.py`).
 
 ## Key Commands
 
 ```bash
-make dev-setup   # Install dependencies in patient_360/
-make test        # Run all tests (patient_360/)
-make lint        # Run ruff on src/
+make dev-setup          # Install dependencies (uv sync)
+make test               # Run all tests
+make validate-drd       # Validate all DRDs in outputs/drd/
+make validate-hld       # Validate all HLDs in outputs/hld/
+make validate-dms       # Validate all DMSs in outputs/dms/
+make validate-stm       # Validate all STMs in outputs/stm/
+make validate-dqs       # Validate all DQSs in outputs/dqs/
+make validate-lld       # Validate all LLDs in outputs/lld/
+make validate-stories   # Validate all Backlogs in outputs/stories/
+make lint               # Run ruff linter
+make format             # Auto-format code
+make clean              # Remove caches
 ```
