@@ -47,7 +47,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py \
 ```
 
 The helper auto-discovers the workspace by walking upward from CWD until it
-finds a directory with both `inputs/stories/` and a cookiecutter-style
+finds a directory with both `outputs/stories/` and a cookiecutter-style
 project (`pyproject.toml` + `src/<name>/`). It resolves `{project_root}`,
 `{stories_dir}`, `{learnings_queue}`, and the backlog glob from that
 anchor. No per-project flags are needed as long as CWD is at or under the

@@ -5,7 +5,7 @@ Shared helper for the developer plugin's orchestration skills
 (implement-stories, validate-stories, complete-stories) and its per-artifact
 validators. The plugin is project-agnostic: the workspace is auto-discovered
 by walking upward from the CWD until a directory is found that contains both
-``inputs/stories/`` and a cookiecutter-style project (``pyproject.toml`` +
+``outputs/stories/`` and a cookiecutter-style project (``pyproject.toml`` +
 ``src/<project_name>/``).
 
 Modes:
@@ -148,7 +148,7 @@ class Workspace:
     Layout assumption (matches the cookiecutter-chapter template)::
 
         {workspace_root}/
-          inputs/stories/v*/...
+          outputs/stories/v*/...
           {project_root}/                   <- cookiecutter-generated
             pyproject.toml
             src/{project_name}/...
@@ -209,7 +209,7 @@ def discover_workspace(
     """Walk upward from ``start`` to find the workspace anchor.
 
     Raises ``DiscoveryError`` with a clear remediation hint if no ancestor
-    contains both ``inputs/stories/`` and a cookiecutter-style project. When
+    contains both ``outputs/stories/`` and a cookiecutter-style project. When
     multiple projects qualify (e.g. two cookiecutter projects side-by-side),
     ``project_name_override`` disambiguates.
     """
@@ -219,7 +219,7 @@ def discover_workspace(
 
     start = start.resolve()
     for candidate in (start, *start.parents):
-        stories_dir = candidate / "inputs" / "stories"
+        stories_dir = candidate / "outputs" / "stories"
         if not stories_dir.is_dir():
             continue
         children = _find_project_children(candidate)
@@ -228,19 +228,19 @@ def discover_workspace(
         return _pick_project(candidate, children, project_name_override)
 
     # Fallback: CWD itself may BE the cookiecutter project root (nested CWD,
-    # no inputs/stories/ in the tree). In that case the caller should invoke
+    # no outputs/stories/ in the tree). In that case the caller should invoke
     # from the workspace root. Surface a clear error either way.
     raise DiscoveryError(
         f"no workspace found at or above {start}: need a directory with both "
-        f"`inputs/stories/` and a cookiecutter-style project "
+        f"`outputs/stories/` and a cookiecutter-style project "
         f"(pyproject.toml + src/<name>/). Generate one from "
-        f"chapter-4/inputs/lld/v1/templates/cookiecutter-chapter/ or pass "
+        f"the cookiecutter-chapter template or pass "
         f"--workspace-root."
     )
 
 
 def _build_workspace(ws_root: Path, project_name_override: str | None) -> Workspace:
-    stories_dir = ws_root / "inputs" / "stories"
+    stories_dir = ws_root / "outputs" / "stories"
     if not stories_dir.is_dir():
         raise DiscoveryError(f"--workspace-root {ws_root}: {stories_dir} does not exist")
     children = _find_project_children(ws_root)
@@ -283,7 +283,7 @@ def _pick_project(
         workspace_root=ws_root,
         project_root=project_root,
         project_name=project_name,
-        stories_dir=ws_root / "inputs" / "stories",
+        stories_dir=ws_root / "outputs" / "stories",
         learnings_queue=ws_root / "memory" / "developer" / "learnings-queue.jsonl",
     )
 

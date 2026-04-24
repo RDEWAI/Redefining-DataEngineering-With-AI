@@ -109,10 +109,10 @@ STORY-01-007 (DAG skeleton) is NOT in scope — route it to `create-dag`.
 
 ### Phase 1: Pre-flight
 
-- Read the latest LLD (`{workspace_root}/inputs/lld/v*/LLD-*.md`) for the canonical directory tree (§2.1), Makefile targets (§9.3), and Decision 13 (cookiecutter).
+- Read the latest LLD (`{workspace_root}/outputs/lld/v*/LLD-*.md`) for the canonical directory tree (§2.1), Makefile targets (§9.3), and Decision 13 (cookiecutter).
 - Check which deliverables already exist on disk. If ALL exist → tell the user to use `update-scaffold` instead and exit.
 - Check that the cookiecutter template path exists
-  (`{workspace_root}/inputs/lld/v*/templates/cookiecutter-chapter/` or the repo-root
+  (`{workspace_root}/outputs/lld/v*/templates/cookiecutter-chapter/` or the repo-root
   `templates/cookiecutter-chapter/`).
 
 ### Phase 2: Generate
@@ -159,7 +159,7 @@ For each of the 13 tables (patients, encounters, allergies, careplans,
 claims, conditions, immunizations, medications, observations, organizations,
 payers, procedures, providers), emit `contracts/{table}.yml` with the
 StructType-compatible schema. Schema content comes from the DMS
-(`{workspace_root}/inputs/dms/v*/` or `chapter-4/outputs/dms/v*/`). Do NOT invent columns — if a DMS table is
+(`{workspace_root}/outputs/dms/v*/`). Do NOT invent columns — if a DMS table is
 missing, stop with CRITICAL.
 
 ### Phase 3: Smoke Tests

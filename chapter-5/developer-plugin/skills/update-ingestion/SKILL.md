@@ -75,7 +75,7 @@ Emit a `### References` section citing consumed pattern docs + LIBRARIES.md vint
 
 1. Read the latest LLD:
    ```bash
-   LATEST_LLD_DIR=$(ls -d {workspace_root}/inputs/lld/v* | sort -V | tail -1)
+   LATEST_LLD_DIR=$(ls -d {workspace_root}/outputs/lld/v* | sort -V | tail -1)
    ls -t "$LATEST_LLD_DIR"/LLD-*.md | grep -v '\.bak$' | head -1
    ```
 2. Read the current ingestion artifacts:
@@ -98,7 +98,7 @@ Map the request to exactly one scenario:
 | C. Rename a Bronze table | Table name changed in LLD §5.1 | Rename the YAML file; update references in contracts/dq_rules/DAG if needed (ask user first). |
 | D. Change per-table knob | Retry, timeout, empty-input behavior, SE action, or quarantine path changed | Edit only the affected keys in `airflow/configs/{table}.yml`. |
 | E. Runner/factory logic change | LLD §2.3 interface contract changed | Edit `ingestion_runner.py` / `ingestion_factory.py` / `spark_submit_wrapper.py` in place; preserve public function signatures unless the LLD explicitly renames them. |
-| F. DQ rules refresh | New DQS version published under `{workspace_root}/inputs/dqs/v{N}/se-rules/` | Re-sync `dq_rules/{table}.yml` from `se-rules-synthea-{table}.yaml` for each changed table. Runner/configs stay untouched. |
+| F. DQ rules refresh | New DQS version published under `{workspace_root}/outputs/dqs/v{N}/se-rules/` | Re-sync `dq_rules/{table}.yml` from `se-rules-synthea-{table}.yaml` for each changed table. Runner/configs stay untouched. |
 | G. SE runner change | LLD §2.3 `se_runner.py` interface updated (new parameter, dq_env mapping change, quarantine routing change) | Edit `src/{project_name}/utils/se_runner.py`. Re-verify `_DQ_ENV_MAP`, `user_conf` wiring keys, and `_ensure_stats_table` logic. Update `run_inline_dq` call site in `ingestion_runner.py` if the `run_dq` signature changed. |
 
 Ambiguous request? Call `AskUserQuestion` with the candidate scenarios as

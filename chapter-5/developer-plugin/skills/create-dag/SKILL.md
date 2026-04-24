@@ -2,7 +2,7 @@
 name: create-dag
 description: >
   Generates an Airflow DAG from the LLD artifact and pipeline configs.
-  Reads the approved LLD from inputs/, applies DAG templates, and writes
+  Reads the approved LLD from outputs/, applies DAG templates, and writes
   a production-ready DAG file to airflow/dags/.
   Also known as: dag generation, pipeline scaffolding, airflow pipeline creation.
   Input formats: LLD markdown, DAG config YAML.
@@ -71,11 +71,11 @@ Emit a `### References` section citing consumed pattern docs + LIBRARIES.md vint
 ## Workflow
 
 ### Phase 0: Upstream Gate
-Read the latest LLD from `inputs/` and verify `Status: Approved`.
+Read the latest LLD from `outputs/lld/v*/` and verify `Status: Approved`.
 If not approved, stop and inform the user.
 
 ### Phase 1: Read Inputs
-- Latest LLD markdown from `{workspace_root}/inputs/`
+- Latest LLD markdown from `{workspace_root}/outputs/lld/v*/`
 - DAG config from `{project_root}/airflow/configs/` if present
 - Existing DAGs in `{project_root}/airflow/dags/` for patterns
 

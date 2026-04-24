@@ -67,7 +67,7 @@ Emit a `### References` section citing consumed pattern docs + LIBRARIES.md vint
 ## Workflow
 
 ### Phase 0: Upstream Gate
-Confirm the LLD in `{workspace_root}/inputs/` has `Status: Approved`.
+Confirm the LLD in `{workspace_root}/outputs/lld/v*/` has `Status: Approved`.
 
 ### Phase 1: Clarify Platform & Stages
 Use `AskUserQuestion` to confirm:

@@ -8,7 +8,7 @@ description: >
     validates against that story's acceptance criteria, and checks dependencies.
   Also known as: bronze ingestion scaffolding, ingestion-runner generation,
   per-table config generation.
-  Input formats: LLD markdown (inputs/lld/v{N}/LLD-*.md) OR story ID (STORY-NN-NNN).
+  Input formats: LLD markdown (outputs/lld/v{N}/LLD-*.md) OR story ID (STORY-NN-NNN).
   Output format: Python modules + YAML configs written under the project root.
   Use when the user asks to:
   - Create, generate, or scaffold the Bronze ingestion code
@@ -155,7 +155,7 @@ Read the latest LLD and verify `Status: Approved` (or `Updated - Pending Review`
 if the user explicitly opts to proceed with a draft).
 
 ```bash
-LATEST_LLD_DIR=$(ls -d {workspace_root}/inputs/lld/v* | sort -V | tail -1)
+LATEST_LLD_DIR=$(ls -d {workspace_root}/outputs/lld/v* | sort -V | tail -1)
 ls -t "$LATEST_LLD_DIR"/LLD-*.md | grep -v '\.bak$' | head -1
 ```
 
@@ -166,11 +166,11 @@ If not approved, stop and inform the user.
 - **LLD markdown**: read §2.3 (Module Interface Contracts), §5.1 (Bronze task
   table), §3 (storage layout), §7 (configuration schema). The LLD §5.1 task
   table lists every table to generate a config for.
-- **Config template**: `{workspace_root}/inputs/lld/v{N}/config/config-template.yaml`
+- **Config template**: `{workspace_root}/outputs/lld/v{N}/config/config-template.yaml`
   — source of truth for default storage paths, ingestion knobs (`ingestion_config_dir`,
   `ingestion_dq_rules_dir`, `ingestion_default_empty_input_behavior`,
   `ingestion_spark_submit_class`), and compute defaults.
-- **STM workbook** (reference only): `{workspace_root}/inputs/stm/v{N}/STM-*.xlsx` →
+- **STM workbook** (reference only): `{workspace_root}/outputs/stm/v{N}/STM-*.xlsx` →
   `Source-to-Bronze` tab. Column lists inform the per-table YAML schema block.
 - **Existing project tree**: `{project_root}/` — confirm target
   directories (`src/{project_name}/bronze/`, `airflow/configs/`, `contracts/`,
@@ -179,7 +179,7 @@ If not approved, stop and inform the user.
   reference only. Do NOT copy its hard-coded `TABLE_REGISTRY`; the generated
   runner is config-driven.
 - **DQS SE rules** (source of truth for `dq_rules/`): latest
-  `{workspace_root}/inputs/dqs/v{N}/se-rules/se-rules-synthea-{table}.yaml` files.
+  `{workspace_root}/outputs/dqs/v{N}/se-rules/se-rules-synthea-{table}.yaml` files.
   These are Spark Expectations-formatted rule sets (`product_id`, `dq_env`,
   `rules[]`) produced by the upstream DQ Engineer plugin. Never hand-write
   stubs when a matching SE file exists.
@@ -234,7 +234,7 @@ Write Python modules to `{project_root}/src/{project_name}/bronze/`
    so local `python -m` runs work without `PYSPARK_SUBMIT_ARGS`. SparkSubmit
    production runs will pick up the same JAR via `--packages`.
    **Metadata column names** match the DQS SE rules in
-   `{workspace_root}/inputs/dqs/v{N}/se-rules/` — underscore prefix is required.
+   `{workspace_root}/outputs/dqs/v{N}/se-rules/` — underscore prefix is required.
    **`TableConfig` dataclass** must include a `quarantine_path_template` field
    (default `warehouse/{env}/quarantine/bronze/{table}/` per LLD §7) with a
    `resolved_quarantine_path(env)` method. Load it from the per-table YAML
@@ -347,7 +347,7 @@ resolve (offer to generate it from `docs/ERD.mmd` as a fallback).
 For `dq_rules/{table}.yml`, sync from the DQS SE rules:
 
 ```bash
-LATEST_DQS_DIR=$(ls -d {workspace_root}/inputs/dqs/v* | sort -V | tail -1)
+LATEST_DQS_DIR=$(ls -d {workspace_root}/outputs/dqs/v* | sort -V | tail -1)
 cp "$LATEST_DQS_DIR/se-rules/se-rules-synthea-{table}.yaml" \
    {project_root}/dq_rules/{table}.yml
 ```

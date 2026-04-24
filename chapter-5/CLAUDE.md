@@ -53,7 +53,7 @@ epics and user stories.
 CI/CD pipeline configs, and the Bronze config-driven ingestion framework.
 
 - **Skills**: create-scaffold/update/validate, create-dag/update/validate, create-pipeline/update/validate, create-ingestion/update/validate, implement-stories, validate-stories, complete-stories, apply-learnings, refresh-libraries
-- **Inputs**: `inputs/lld/v{N}/`, `inputs/stories/v{N}/`, `inputs/dqs/v{N}/se-rules/`, `inputs/stm/v{N}/`, `inputs/code/v{N}/` (coding-pattern + library-version handbook)
+- **Inputs**: `outputs/lld/v{N}/`, `outputs/stories/v{N}/`, `outputs/dqs/v{N}/se-rules/`, `outputs/stm/v{N}/` (read directly from upstream plugins) + `inputs/code/v{N}/` (coding-pattern + library-version handbook — developer-specific)
 - **Outputs**: generated project code under `patient_360/`
 
 ## Installing the plugins
@@ -88,10 +88,13 @@ From the repo root:
 ### Workspace data
 
 Inputs (folder-versioned `v{N}/`):
-- `inputs/drd/`, `inputs/architect/`, `inputs/dms/`, `inputs/stm/`, `inputs/dqs/`
-- `inputs/lld/` — seeded with an approved LLD so developer-plugin can run standalone
-- `inputs/stories/` — team capacity + story standards
-- `inputs/code/` — coding-pattern handbook + `LIBRARIES.md` version catalogue (developer-plugin)
+- `inputs/drd/`, `inputs/architect/`, `inputs/dms/`, `inputs/stm/`, `inputs/dqs/` — per-role user-provided inputs for the planning plugins
+- `inputs/lld/`, `inputs/stories/` — per-role user-provided inputs (team capacity, standards) for technical-lead-plugin / scrum-master-plugin
+- `inputs/code/` — developer-plugin's own inputs: coding-pattern handbook + `LIBRARIES.md` version catalogue
+
+Note: the developer-plugin reads upstream artifacts (LLD, Stories, DQS, STM)
+directly from `outputs/{artifact}/v{N}/`. It only keeps its own
+`inputs/code/v{N}/` for developer-specific inputs.
 
 Outputs (folder-versioned `v{N}/`):
 - `outputs/drd/`, `outputs/hld/`, `outputs/dms/`, `outputs/stm/`, `outputs/dqs/`, `outputs/lld/`
@@ -137,26 +140,22 @@ have `Status: Approved`. This gate has no override.
 | create-stories | DRD, HLD, DMS, STM, DQS, LLD |
 | create-scaffold / create-dag / create-ingestion / create-pipeline | LLD (+ Stories for implement-stories) |
 
-## Output → Input Handoff (planning → developer)
+## Planning → Developer Handoff
 
 The planning plugins (DRD … Stories) write into `outputs/{artifact}/v{N}/`.
-The developer-plugin reads from `inputs/{lld,stories,dqs,stm}/v{N}/`. At
-the approval handoff, copy the approved artifact from `outputs/` into
-`inputs/`:
+The developer-plugin reads these upstream artifacts **directly** from
+`outputs/{lld,stories,dqs,stm,dms}/v{N}/` — no copy step is required.
 
-```bash
-# After technical-lead-plugin:approve-lld
-cp -R outputs/lld/v1/* inputs/lld/v1/
+Under `chapter-5/`, `inputs/` is reserved for two categories:
 
-# After scrum-master-plugin:approve-stories
-cp -R outputs/stories/v1/* inputs/stories/v1/
+- Per-role user-provided inputs to the planning plugins (team capacity,
+  standards, catalogs).
+- `inputs/code/v{N}/` — developer-plugin's own inputs (coding-pattern
+  handbook + `LIBRARIES.md` version catalogue).
 
-# After dq-engineer-plugin:approve-dqs (for SE YAML rules)
-cp -R outputs/dqs/v1/se-rules inputs/dqs/v1/
-```
-
-This preserves developer-plugin's existing contract — it always reads from
-`inputs/` — and makes the planning → implementation transition explicit.
+The developer-plugin never reads upstream artifacts from `inputs/`. Once a
+planning artifact is `Approved` in `outputs/`, the developer-plugin picks it
+up automatically.
 
 ## `validate-stories` namespace note
 
