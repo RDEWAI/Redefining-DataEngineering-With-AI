@@ -57,7 +57,7 @@ The validator checks rules across three severity levels:
 
 ### WARNING (needs attention)
 - Upstream traceability — at least 5 citations with § section references
-- Error Handling mentions retry, dead letter/quarantine, and alerting
+- Error Handling covers retry, SE `_error` table (row_dq), SE stats table (agg_dq/query_dq), ingest DLQ (pre-validation only), and alerting
 - Deployment mentions DEV and PROD environments
 - Monitoring has specific metric names or metrics table
 - DAG section has ≥1 Mermaid diagram
@@ -80,7 +80,7 @@ A complete LLD contains these 14 sections:
 - **5. Task Implementation Details**: Per-task I/O contracts, transform refs, DQ checks
 - **6. Performance & Optimization**: Parallelism, caching, join strategies, memory
 - **7. Configuration Schema**: Parameters with per-environment defaults
-- **8. Error Handling**: Retry policies, dead letter queues, alerting
+- **8. Error Handling**: Retry policies, SE `_error` table (row_dq), SE stats/detailed tables (agg_dq/query_dq), ingest DLQ (pre-validation only), alerting
 - **9. Deployment**: Environments, promotion, rollback, health checks
 - **10. Monitoring**: Metrics, dashboards, alerting rules
 - **11. Upstream Artifact References**: Hub cross-reference to DRD, HLD, DMS, STM, DQS
@@ -127,7 +127,7 @@ CRITICAL (must fix):
 
 WARNING (should fix):
 - [ ] DAG Specification: No Mermaid diagram for task dependencies
-- [ ] Error Handling: Missing dead letter queue strategy
+- [ ] Error Handling: Missing SE `_error` table reference for row_dq, or missing ingest DLQ scope statement
 
 INFO (nice to have):
 - [ ] Deployment: No rollback procedure described

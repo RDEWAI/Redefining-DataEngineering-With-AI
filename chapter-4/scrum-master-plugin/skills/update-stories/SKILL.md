@@ -99,6 +99,23 @@ Call the `AskUserQuestion` tool to clarify if the user's intent is ambiguous:
 - **Changed DQS rules** → update DQ-related story references
 - **Capacity change** → re-allocate stories across sprints
 - **Priority change** → re-order stories, may affect sprint allocation
+- **New medallion layer or newly-split layer** (LLD grew a §5.1/§5.2/§5.3
+  section) → the new layer epic MUST ship with the closure sequence: a
+  `performance-optimization` story (LLD §6 derived), an `integration-test` story
+  (local Airflow DAG + Unity Catalog OSS local + data-in-UC validation), and an
+  optional `deploy-validation` story (only if LLD §9 prescribes layer-scoped
+  deploy work).
+- **LLD §6 perf change for a layer** → update that layer epic's
+  `performance-optimization` story acceptance criteria; if none exists, create one
+  and insert it before the `integration-test` story.
+- **LLD §9.1 added or removed DDL for a layer** → add/remove the corresponding
+  `deploy-validation` story in that layer epic; update the epic Objective's
+  Deploy note accordingly (`Layer-scoped — ...` vs `N/A — layer completes at
+  integration-test; ...`).
+- **Closure stories missing from a pre-existing layer epic** (common in v1
+  backlogs generated before this rule) → flag and propose backfill: at minimum
+  one perf + one integration-test story per layer, with dependency `perf →
+  integration-test` wired up.
 
 Document ripple effects:
 
@@ -226,6 +243,18 @@ Guard against these three common scrum master mistakes:
 - **Never** place a Gold layer story before its Silver layer prerequisite
 - Infrastructure stories always come first
 - Check the LLD's implementation sequence for correct ordering
+
+### Pitfall 4: Breaking the Layer Closure Sequence During Updates
+- Every medallion layer epic (LLD §5.1 / §5.2 / §5.3) must retain the closure
+  sequence: `build → performance-optimization → integration-test → (optional)
+  deploy-validation`. When editing, do not:
+  - Remove the perf story without replacing it (the integration-test story
+    depends on it)
+  - Move perf or integration-test stories into a trailing Release/Hardening epic
+  - Change an integration-test story's AC to drop the "Airflow DAG" or "Unity
+    Catalog" wording (validator enforces both)
+- If a closure story has to change scope, update it in place rather than
+  splitting it across a layer epic and a trailing epic.
 
 ---
 

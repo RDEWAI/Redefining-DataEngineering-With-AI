@@ -21,21 +21,34 @@ edits to the ingestion runner, factory, wrapper, or per-table YAML configs so
 they stay in sync with the latest LLD and STM without breaking existing
 pipeline runs.
 
+## Workspace Discovery
+
+Before any file operation, run the discovery helper and substitute the
+returned tokens into every path this skill reads, writes, or edits:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py --mode discover
+```
+
+The JSON output supplies `{workspace_root}`, `{project_root}`,
+`{project_name}`, `{stories_dir}`, and `{learnings_queue}`. The plugin is
+project-agnostic — never hardcode project or chapter names in edits.
+
 ## Workflow
 
 ### Phase 0: Read Current State
 
 1. Read the latest LLD:
    ```bash
-   LATEST_LLD_DIR=$(ls -d chapter-5/inputs/lld/v* | sort -V | tail -1)
+   LATEST_LLD_DIR=$(ls -d {workspace_root}/inputs/lld/v* | sort -V | tail -1)
    ls -t "$LATEST_LLD_DIR"/LLD-*.md | grep -v '\.bak$' | head -1
    ```
 2. Read the current ingestion artifacts:
-   - `chapter-5/patient_360/src/patient_360/bronze/ingestion_runner.py`
-   - `chapter-5/patient_360/src/patient_360/bronze/ingestion_factory.py`
-   - `chapter-5/patient_360/src/patient_360/bronze/spark_submit_wrapper.py`
-   - `chapter-5/patient_360/src/patient_360/utils/se_runner.py`
-   - `chapter-5/patient_360/airflow/configs/*.yml`
+   - `{project_root}/src/{project_name}/bronze/ingestion_runner.py`
+   - `{project_root}/src/{project_name}/bronze/ingestion_factory.py`
+   - `{project_root}/src/{project_name}/bronze/spark_submit_wrapper.py`
+   - `{project_root}/src/{project_name}/utils/se_runner.py`
+   - `{project_root}/airflow/configs/*.yml`
 3. Diff LLD §2.3, §5.1, §7 against the generated files to compute the
    minimum set of edits. Produce a short change-set plan before editing.
 
@@ -50,8 +63,8 @@ Map the request to exactly one scenario:
 | C. Rename a Bronze table | Table name changed in LLD §5.1 | Rename the YAML file; update references in contracts/dq_rules/DAG if needed (ask user first). |
 | D. Change per-table knob | Retry, timeout, empty-input behavior, SE action, or quarantine path changed | Edit only the affected keys in `airflow/configs/{table}.yml`. |
 | E. Runner/factory logic change | LLD §2.3 interface contract changed | Edit `ingestion_runner.py` / `ingestion_factory.py` / `spark_submit_wrapper.py` in place; preserve public function signatures unless the LLD explicitly renames them. |
-| F. DQ rules refresh | New DQS version published under `chapter-5/inputs/dqs/v{N}/se-rules/` | Re-sync `dq_rules/{table}.yml` from `se-rules-synthea-{table}.yaml` for each changed table. Runner/configs stay untouched. |
-| G. SE runner change | LLD §2.3 `se_runner.py` interface updated (new parameter, dq_env mapping change, quarantine routing change) | Edit `src/patient_360/utils/se_runner.py`. Re-verify `_DQ_ENV_MAP`, `user_conf` wiring keys, and `_ensure_stats_table` logic. Update `run_inline_dq` call site in `ingestion_runner.py` if the `run_dq` signature changed. |
+| F. DQ rules refresh | New DQS version published under `{workspace_root}/inputs/dqs/v{N}/se-rules/` | Re-sync `dq_rules/{table}.yml` from `se-rules-synthea-{table}.yaml` for each changed table. Runner/configs stay untouched. |
+| G. SE runner change | LLD §2.3 `se_runner.py` interface updated (new parameter, dq_env mapping change, quarantine routing change) | Edit `src/{project_name}/utils/se_runner.py`. Re-verify `_DQ_ENV_MAP`, `user_conf` wiring keys, and `_ensure_stats_table` logic. Update `run_inline_dq` call site in `ingestion_runner.py` if the `run_dq` signature changed. |
 
 Ambiguous request? Call `AskUserQuestion` with the candidate scenarios as
 options before editing.

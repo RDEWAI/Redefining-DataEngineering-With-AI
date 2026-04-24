@@ -677,7 +677,13 @@ def check_upstream_traceability(content: str) -> list[ValidationResult]:
 
 
 def check_error_handling(sections: dict[str, str]) -> list[ValidationResult]:
-    """Check that Error Handling mentions retry, dead letter, and alerting."""
+    """Check Error Handling covers the four failure classes.
+
+    Spark Expectations owns row-level DQ rejections via the `<target>_error`
+    table, so the LLD must reference that (not invent a custom writer). The
+    term "dead letter" is reserved for the ingest DLQ covering pre-validation
+    parse/schema/encoding failures that SE never sees.
+    """
     results: list[ValidationResult] = []
     section_key = "8. Error Handling"
     content = sections.get(section_key, "")
@@ -689,21 +695,41 @@ def check_error_handling(sections: dict[str, str]) -> list[ValidationResult]:
                 section=section_key,
                 message="Error Handling section is empty.",
                 suggestion=(
-                    "Add retry policies, dead letter queue strategy," " and alerting thresholds."
+                    "Cover retry policies; SE `_error` table for row_dq; SE stats"
+                    " table for agg_dq/query_dq; ingest DLQ for pre-validation"
+                    " parse/schema failures; and alerting thresholds."
                 ),
             )
         )
         return results
 
     has_retry = bool(re.search(r"\bretry\b", content, re.IGNORECASE))
-    has_dlq = bool(re.search(r"\b(dead.letter|quarantine|DLQ)\b", content, re.IGNORECASE))
+    has_se_error = bool(
+        re.search(
+            r"(_error\s+table|spark[- ]expectations.{0,40}error|se[._ ]error)",
+            content,
+            re.IGNORECASE,
+        )
+    )
+    has_stats = bool(
+        re.search(r"(stats\s+table|se[._ ]stats|agg_dq|query_dq)", content, re.IGNORECASE)
+    )
+    has_ingest_dlq = bool(
+        re.search(
+            r"(ingest\s+DLQ|dead.letter|pre.validation|parse|schema\s+fail)", content, re.IGNORECASE
+        )
+    )
     has_alert = bool(re.search(r"\balert\b", content, re.IGNORECASE))
 
     missing = []
     if not has_retry:
         missing.append("retry policies")
-    if not has_dlq:
-        missing.append("dead letter/quarantine")
+    if not has_se_error:
+        missing.append("SE `_error` table (row_dq)")
+    if not has_stats:
+        missing.append("SE stats/detailed tables (agg_dq/query_dq)")
+    if not has_ingest_dlq:
+        missing.append("ingest DLQ (pre-validation)")
     if not has_alert:
         missing.append("alerting")
 
@@ -713,7 +739,33 @@ def check_error_handling(sections: dict[str, str]) -> list[ValidationResult]:
                 level=ValidationLevel.WARNING,
                 section=section_key,
                 message=f"Error Handling is missing: {', '.join(missing)}.",
-                suggestion="Add retry policies, dead letter queue handling, and alerting setup.",
+                suggestion=(
+                    "Structure §8 as: 8.1 Retry, 8.2 SE `_error` table (row_dq),"
+                    " 8.3 SE stats/detailed (agg_dq/query_dq), 8.4 Ingest DLQ"
+                    " (pre-validation only), 8.5 Alerting."
+                ),
+            )
+        )
+
+    # Anti-pattern: a custom writer for row-level DQ rejections duplicates SE's
+    # built-in `_error` table. Flag it so reviewers catch the redundancy.
+    custom_row_dq_writer = re.search(
+        r"custom.{0,20}(writer|dlq|dead.letter).{0,120}(row_dq|row.level\s+DQ|rejected\s+row)",
+        content,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if custom_row_dq_writer:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section=section_key,
+                message=("§8 appears to define a custom writer for row-level DQ rejections."),
+                suggestion=(
+                    "Spark Expectations already writes row_dq drops to `<target>_error`"
+                    " automatically (se.enable.error.table=true). Remove the custom"
+                    " writer and reference the SE `_error` table instead. Reserve the"
+                    " ingest DLQ for pre-validation parse/schema failures only."
+                ),
             )
         )
     return results

@@ -73,3 +73,89 @@ cases:
       - type: content_contains
         patterns: ["Acceptance Criteria", "- [ ]"]
     success_criteria: "Acceptance criteria with checkboxes present"
+
+  - id: TC-007
+    name: "Medallion-layer epics contain closure sequence"
+    description: >
+      Each medallion-layer epic (Bronze / Silver-Dim / Silver-Fact / Gold, cited
+      via LLD §5.1 / §5.2 / §5.3) must close with a performance-optimization
+      story AND an integration-test story. Deploy-validation is optional but a
+      `Deploy: N/A — layer completes at integration-test` note must appear in
+      the epic Objective when omitted. Closure order is perf BEFORE
+      integration-test.
+    inputs:
+      folder: "inputs/stories/v1"
+      upstream: "outputs/lld/v1"
+    expected:
+      - type: content_contains
+        scope: "EPIC-02-*/STORY-*.md"
+        patterns:
+          - "Story Type | performance-optimization"
+          - "Story Type | integration-test"
+      - type: content_contains
+        scope: "EPIC-03-*/STORY-*.md"
+        patterns:
+          - "Story Type | performance-optimization"
+          - "Story Type | integration-test"
+      - type: content_contains
+        scope: "EPIC-04-*/STORY-*.md"
+        patterns:
+          - "Story Type | performance-optimization"
+          - "Story Type | integration-test"
+      - type: content_contains
+        scope: "EPIC-05-*/STORY-*.md"
+        patterns:
+          - "Story Type | performance-optimization"
+          - "Story Type | integration-test"
+      - type: content_contains
+        scope: "EPIC-02-*/STORY-*integration-test*.md"
+        patterns: ["Airflow DAG", "Unity Catalog"]
+      - type: validator_check
+        check: "STORIES-CLOSURE-001"
+        expected: "not-fired"
+      - type: validator_check
+        check: "STORIES-CLOSURE-002"
+        expected: "not-fired"
+      - type: validator_check
+        check: "STORIES-CLOSURE-003"
+        expected: "not-fired"
+      - type: validator_check
+        check: "STORIES-CLOSURE-004"
+        expected: "not-fired"
+    success_criteria: >
+      Each layer epic (EPIC-02 Bronze, EPIC-03 Silver-Dim, EPIC-04 Silver-Fact,
+      EPIC-05 Gold) contains perf + integration-test stories; integration-test
+      AC mentions both the Airflow DAG and Unity Catalog; integration-test
+      depends on the perf story from the same epic.
+
+  - id: TC-008
+    name: "Trailing epics do not collect layer-specific closure work"
+    description: >
+      EPIC-07 (Release) and EPIC-08 (Hardening) must NOT contain stories of type
+      performance-optimization, integration-test, or deploy-validation scoped to
+      a single medallion layer. Those belong inside the layer epic. Trailing
+      epics are reserved for system-wide concerns: CI pipeline, PROD promotion,
+      rollback runbook, full-pipeline E2E load test, security audit,
+      documentation audit, maintenance cadence.
+    inputs:
+      folder: "inputs/stories/v1"
+      upstream: "outputs/lld/v1"
+    expected:
+      - type: content_not_contains
+        scope: "EPIC-07-*/STORY-*.md"
+        patterns:
+          - "Story Type | performance-optimization"
+          - "Story Type | integration-test"
+          - "Story Type | deploy-validation"
+      - type: content_not_contains
+        scope: "EPIC-08-*/STORY-*.md"
+        patterns:
+          - "Story Type | performance-optimization"
+          - "Story Type | integration-test"
+          - "Story Type | deploy-validation"
+      - type: validator_check
+        check: "STORIES-CLOSURE-006"
+        expected: "not-fired"
+    success_criteria: >
+      Trailing epics contain only release / hardening story types; no layer
+      closure work leaks into them.

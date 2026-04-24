@@ -17,12 +17,25 @@ allowed-tools: Read, Bash, Grep, Glob
 
 You are a senior Data Engineer. Validate the ingestion artifacts and report findings.
 
+## Workspace Discovery
+
+Before any file operation, run the discovery helper and substitute the
+returned tokens into every path this skill reads, writes, or edits:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py --mode discover
+```
+
+The JSON output supplies `{workspace_root}`, `{project_root}`,
+`{project_name}`, `{stories_dir}`, and `{learnings_queue}`. The plugin is
+project-agnostic — never hardcode project or chapter names in edits.
+
 ## Step 1: Run the validator
 
 ```bash
-uv run python chapter-5/developer-plugin/skills/validate-ingestion/scripts/validate_ingestion.py \
-  --project-root chapter-5/patient_360 \
-  --lld "$(ls -t chapter-5/inputs/lld/v*/LLD-*.md | grep -v '\.bak$' | head -1)"
+uv run python ${CLAUDE_PLUGIN_ROOT}/skills/validate-ingestion/scripts/validate_ingestion.py \
+  --project-root {project_root} \
+  --lld "$(ls -t {workspace_root}/inputs/lld/v*/LLD-*.md | grep -v '\.bak$' | head -1)"
 ```
 
 The script returns a non-zero exit code if any CRITICAL issues are found.
@@ -33,7 +46,7 @@ The script returns a non-zero exit code if any CRITICAL issues are found.
 - Python syntax errors in `ingestion_runner.py`, `ingestion_factory.py`,
   `spark_submit_wrapper.py` (`python -m py_compile`)
 - Missing required module (`ingestion_runner.py` / `ingestion_factory.py` /
-  `spark_submit_wrapper.py`) under `src/patient_360/bronze/`
+  `spark_submit_wrapper.py`) under `src/{project_name}/bronze/`
 - LLD §5.1 lists a Bronze table with no matching
   `airflow/configs/{table}.yml`
 - A YAML config references a `dq_rules/{table}.yml` that does not exist
@@ -54,6 +67,11 @@ The script returns a non-zero exit code if any CRITICAL issues are found.
   `tests/bronze/test_ingestion_runner.py`,
   `tests/bronze/test_per_table_configs.py`,
   `tests/bronze/test_validate_ingestion.py`
+- `contracts/{table}.yml` `ddl_path` or `dq_path` missing or points to a file
+  that does not exist on disk (LLD §2.3)
+- `ingestion_runner.py` still contains the `try/except ImportError`
+  soft-import block around `se_runner` while `se_runner.py` is shipped —
+  ingestion must fail closed post-implementation (LLD §8.5)
 
 ### WARNING (should fix)
 - `empty_input_behavior` missing (falls back to default but should be explicit)
@@ -65,11 +83,16 @@ The script returns a non-zero exit code if any CRITICAL issues are found.
 - Extra YAML config files with no row in LLD §5.1
 - `metadata_columns` contains legacy `ingested_at` (without underscore) —
   should be renamed to `_ingested_at`
+- `contracts/{table}.yml` `schema.columns` includes runtime metadata columns
+  (`ds`, `_ingested_at`, `_source_batch_id`) — these are added by the runner,
+  not declared in the business contract (LLD §2.3)
 
 ### INFO (good to know)
 - Module missing a module-level docstring
 - YAML config missing a `# updated:` trailer
 - Runner `action_if_failed` defaults to `ignore` rather than `fail`/`drop`
+- `ingestion_runner.py` soft-import bootstrap block present but `se_runner.py`
+  not yet shipped (expected during bootstrap mode, LLD §8.5)
 
 ## Output Format
 

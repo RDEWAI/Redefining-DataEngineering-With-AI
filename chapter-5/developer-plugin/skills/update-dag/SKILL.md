@@ -18,11 +18,24 @@ You are a senior Data Engineer specialising in Apache Airflow. Your job is to
 apply incremental changes to an existing DAG based on an updated LLD or user
 instruction, without breaking existing task dependencies.
 
+## Workspace Discovery
+
+Before any file operation, run the discovery helper and substitute the
+returned tokens into every path this skill reads, writes, or edits:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py --mode discover
+```
+
+The JSON output supplies `{workspace_root}`, `{project_root}`,
+`{project_name}`, `{stories_dir}`, and `{learnings_queue}`. The plugin is
+project-agnostic — never hardcode project or chapter names in edits.
+
 ## Workflow
 
 ### Phase 0: Read Current State
 - Read the existing DAG file
-- Read the latest LLD from `inputs/` to understand what changed
+- Read the latest LLD from `{workspace_root}/inputs/` to understand what changed
 - Diff the two to determine the minimal set of edits needed
 
 ### Phase 1: Clarify Changes

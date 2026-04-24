@@ -84,6 +84,50 @@ EPIC_REQUIRED_SECTIONS = ["Objective", "Stories"]
 
 STORY_REQUIRED_SECTIONS = ["User Story", "Acceptance Criteria"]
 
+# Layer epic detection: LLD Section metadata cites §5.1, §5.2, or §5.3
+LAYER_LLD_SECTION_PATTERN = re.compile(r"§\s*5\.[123]\b")
+
+# Trailing (cross-layer) epic detection: LLD Section cites §9.x, or title/scope flags release/hardening  # noqa: E501
+TRAILING_EPIC_TITLE_PATTERN = re.compile(
+    r"\b(release|hardening|deployment|post[- ]launch)\b", re.IGNORECASE
+)
+TRAILING_LLD_SECTION_PATTERN = re.compile(r"§\s*9\.\d+")
+
+# Story Type field in metadata table
+STORY_TYPE_META_PATTERN = re.compile(r"\|\s*\*\*Story Type\*\*\s*\|\s*([^|]+?)\s*\|")
+
+# Epic Scope field in metadata table
+EPIC_SCOPE_META_PATTERN = re.compile(r"\|\s*\*\*Epic Scope\*\*\s*\|\s*([^|]+?)\s*\|")
+
+# Integration-test AC wording: must mention BOTH an Airflow DAG AND Unity Catalog (or UC local / uc_oss)  # noqa: E501
+DAG_WORDING_PATTERN = re.compile(r"airflow\s+dag|\btrigger\b.*\bdag\b|dag\s+trigger", re.IGNORECASE)
+UC_WORDING_PATTERN = re.compile(
+    r"unity\s+catalog|\buc\s+local\b|\buc_oss\b|\buc\s+oss\b", re.IGNORECASE
+)
+
+# Deploy N/A note in epic Objective (accept either the canonical phrasing or the word "N/A" near integration-test)  # noqa: E501
+DEPLOY_NA_NOTE_PATTERN = re.compile(
+    r"deploy\s*:\s*n/a.*integration[- ]test|layer\s+completes\s+at\s+integration[- ]test",
+    re.IGNORECASE,
+)
+
+VALID_STORY_TYPES = {
+    "build",
+    "performance-optimization",
+    "integration-test",
+    "deploy-validation",
+    "observability",
+    "release",
+    "hardening",
+}
+
+LAYER_REQUIRED_STORY_TYPES = {"performance-optimization", "integration-test"}
+TRAILING_FORBIDDEN_STORY_TYPES = {
+    "performance-optimization",
+    "integration-test",
+    "deploy-validation",
+}
+
 
 def parse_sections(content: str) -> dict[str, str]:
     """Parse a markdown file into a dict of section_heading -> section_content."""
@@ -126,6 +170,87 @@ def find_epic_file(epic_dir: Path) -> Path | None:
 def find_story_files(epic_dir: Path) -> list[Path]:
     """Find all STORY-*.md files in an epic directory."""
     return sorted(epic_dir.glob("STORY-*.md"))
+
+
+# --- Epic / Story classification helpers ---
+
+
+def _read_metadata_field(content: str, field_name: str) -> str:
+    """Extract a metadata table field value; return '' if missing."""
+    pattern = rf"\|\s*\*\*{re.escape(field_name)}\*\*\s*\|\s*([^|]+?)\s*\|"
+    match = re.search(pattern, content)
+    return match.group(1).strip() if match else ""
+
+
+def get_story_type(story_file: Path) -> str:
+    """Return the Story Type metadata value, defaulting to 'build' when unspecified."""
+    content = story_file.read_text(encoding="utf-8")
+    match = STORY_TYPE_META_PATTERN.search(content)
+    if not match:
+        return "build"
+    value = match.group(1).strip().lower()
+    return value if value in VALID_STORY_TYPES else "build"
+
+
+def get_epic_scope(epic_file: Path) -> str:
+    """Return the Epic Scope metadata value (layer / foundation / crosscut), or '' if unset."""
+    content = epic_file.read_text(encoding="utf-8")
+    match = EPIC_SCOPE_META_PATTERN.search(content)
+    return match.group(1).strip().lower() if match else ""
+
+
+def is_layer_epic(epic_file: Path) -> bool:
+    """Detect a medallion-layer epic via Epic Scope == layer OR LLD Section cites §5.1/§5.2/§5.3."""
+    content = epic_file.read_text(encoding="utf-8")
+    scope = _read_metadata_field(content, "Epic Scope").lower()
+    if scope == "layer":
+        return True
+    if scope in {"foundation", "crosscut"}:
+        return False
+    lld_section = _read_metadata_field(content, "LLD Section")
+    return bool(LAYER_LLD_SECTION_PATTERN.search(lld_section))
+
+
+def is_trailing_epic(epic_file: Path) -> bool:
+    """Detect a trailing/cross-cutting epic (release or hardening)."""
+    content = epic_file.read_text(encoding="utf-8")
+    scope = _read_metadata_field(content, "Epic Scope").lower()
+    if scope == "crosscut":
+        return True
+    if scope == "layer":
+        return False
+    # Fall back to title / LLD section pattern
+    title_match = re.search(r"^#\s*EPIC-\d+:\s*(.+)$", content, re.MULTILINE)
+    title = title_match.group(1) if title_match else ""
+    lld_section = _read_metadata_field(content, "LLD Section")
+    return bool(
+        TRAILING_EPIC_TITLE_PATTERN.search(title)
+        or TRAILING_LLD_SECTION_PATTERN.search(lld_section)
+    )
+
+
+def _epic_number_from_dir(epic_dir: Path) -> int | None:
+    """Extract the numeric epic number from EPIC-NN-slug/ directory name."""
+    match = re.match(r"EPIC-(\d+)", epic_dir.name)
+    return int(match.group(1)) if match else None
+
+
+def _parse_dependency_story_ids(story_file: Path) -> list[str]:
+    """Parse the Dependencies metadata field into a list of STORY-NN-NNN IDs."""
+    content = story_file.read_text(encoding="utf-8")
+    dep_match = re.search(r"\*\*Dependencies\*\*\s*\|\s*([^|]+)", content)
+    if not dep_match:
+        return []
+    dep_text = dep_match.group(1).strip()
+    if dep_text.lower() in ("none", "—", "-", "n/a", ""):
+        return []
+    return re.findall(r"STORY-\d{2}-\d{3}", dep_text)
+
+
+def _get_section_content(content: str, section_name: str) -> str:
+    """Return the content of a '## section_name' block, or '' if missing."""
+    sections = parse_sections(content)
+    return sections.get(section_name, "")
 
 
 # --- CRITICAL checks ---
@@ -436,6 +561,191 @@ def check_estimation_support(story_file: Path) -> list[ValidationResult]:
     return results
 
 
+# --- Layer-closure checks (CRITICAL / WARNING) ---
+
+
+def check_layer_closure(
+    epic_dir: Path,
+    story_type_by_id: dict[str, str],
+    story_file_by_id: dict[str, Path],
+) -> list[ValidationResult]:
+    """Enforce the per-layer closure sequence: perf → integration-test → (optional) deploy.
+
+    Fires CRITICAL / WARNING findings when a medallion-layer epic (detected via
+    Epic Scope == layer OR LLD Section §5.1/§5.2/§5.3) is missing required
+    closure stories, the integration-test lacks the DAG + UC wording, or the
+    dependency order is inverted. For trailing epics, emits a WARNING when
+    layer-specific perf/integration-test stories have leaked in.
+    """
+    results: list[ValidationResult] = []
+    epic_file = find_epic_file(epic_dir)
+    if not epic_file:
+        return results
+
+    epic_num = _epic_number_from_dir(epic_dir)
+    epic_content = epic_file.read_text(encoding="utf-8")
+
+    # Collect this epic's stories and their types
+    story_files = find_story_files(epic_dir)
+    epic_story_ids = [sid for sid in (_extract_story_id(s) for s in story_files) if sid]
+    epic_story_types = {sid: story_type_by_id.get(sid, "build") for sid in epic_story_ids}
+    types_present = set(epic_story_types.values())
+
+    if is_layer_epic(epic_file):
+        # CLOSURE-001: must have a performance-optimization story
+        if "performance-optimization" not in types_present:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.CRITICAL,
+                    section=epic_dir.name,
+                    message=(
+                        "Layer epic has no performance-optimization story. "
+                        "Every medallion-layer epic (LLD §5.1/§5.2/§5.3) must close with "
+                        "a performance-optimization story derived from LLD §6."
+                    ),
+                    suggestion=(
+                        "Add a STORY-NN-NNN with `Story Type: performance-optimization` "
+                        "citing LLD §6 (partitioning, shuffle, join strategy, or caching)."
+                    ),
+                )
+            )
+
+        # CLOSURE-002: must have an integration-test story
+        if "integration-test" not in types_present:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.CRITICAL,
+                    section=epic_dir.name,
+                    message=(
+                        "Layer epic has no integration-test story. "
+                        "Every layer epic must close with a local integration test "
+                        "(trigger layer DAG on local Airflow against Unity Catalog OSS local)."
+                    ),
+                    suggestion=(
+                        "Add a STORY-NN-NNN with `Story Type: integration-test` whose "
+                        "AC includes both the Airflow DAG trigger and validation of data "
+                        "in Unity Catalog local."
+                    ),
+                )
+            )
+
+        # CLOSURE-003: integration-test AC must mention both "Airflow DAG" and "Unity Catalog"
+        integration_story_ids = [
+            sid for sid, stype in epic_story_types.items() if stype == "integration-test"
+        ]
+        for sid in integration_story_ids:
+            sfile = story_file_by_id.get(sid)
+            if not sfile:
+                continue
+            sfile_content = sfile.read_text(encoding="utf-8")
+            ac_content = _get_section_content(sfile_content, "Acceptance Criteria")
+            dag_ok = bool(DAG_WORDING_PATTERN.search(ac_content))
+            uc_ok = bool(UC_WORDING_PATTERN.search(ac_content))
+            if not (dag_ok and uc_ok):
+                missing = []
+                if not dag_ok:
+                    missing.append("Airflow DAG")
+                if not uc_ok:
+                    missing.append("Unity Catalog")
+                results.append(
+                    ValidationResult(
+                        level=ValidationLevel.CRITICAL,
+                        section=f"{epic_dir.name}/{sfile.name}",
+                        message=(
+                            "Integration-test AC missing required wording: "
+                            f"{', '.join(missing)}. Local integration testing means "
+                            "triggering the layer DAG on local Airflow against Unity "
+                            "Catalog OSS local and validating data in UC local."
+                        ),
+                        suggestion=(
+                            "Rewrite acceptance criteria to include both the Airflow "
+                            "DAG id (from LLD §4.2) being triggered and the Unity "
+                            "Catalog local assertions (row counts, schema, metadata "
+                            "columns, reconciliation)."
+                        ),
+                    )
+                )
+
+        # CLOSURE-004: integration-test must depend on a performance-optimization story from same epic  # noqa: E501
+        perf_story_ids = {
+            sid for sid, stype in epic_story_types.items() if stype == "performance-optimization"
+        }
+        for sid in integration_story_ids:
+            sfile = story_file_by_id.get(sid)
+            if not sfile:
+                continue
+            deps = _parse_dependency_story_ids(sfile)
+            dep_set = set(deps)
+            if perf_story_ids and not (perf_story_ids & dep_set):
+                results.append(
+                    ValidationResult(
+                        level=ValidationLevel.CRITICAL,
+                        section=f"{epic_dir.name}/{sfile.name}",
+                        message=(
+                            "Integration-test story does not depend on a "
+                            "performance-optimization story from the same epic. "
+                            "Closure order is perf BEFORE integration-test."
+                        ),
+                        suggestion=(
+                            "Add one of these to the Dependencies metadata field: "
+                            + ", ".join(sorted(perf_story_ids))
+                        ),
+                    )
+                )
+
+        # CLOSURE-005: if no deploy-validation, Objective must carry the Deploy N/A note
+        if "deploy-validation" not in types_present:
+            objective = _get_section_content(epic_content, "Objective")
+            if not DEPLOY_NA_NOTE_PATTERN.search(objective):
+                results.append(
+                    ValidationResult(
+                        level=ValidationLevel.WARNING,
+                        section=epic_dir.name,
+                        message=(
+                            "Layer epic has no deploy-validation story and no explicit "
+                            '"Deploy: N/A — layer completes at integration-test" note in '
+                            "Objective. Closure intent is unclear."
+                        ),
+                        suggestion=(
+                            "Either add a deploy-validation story (if LLD §9 prescribes "
+                            "layer-scoped deploy work) OR add this line to the Objective "
+                            "section: `Deploy: N/A — layer completes at integration-test; "
+                            "system-wide deploy handled in trailing release epic.`"
+                        ),
+                    )
+                )
+
+    elif is_trailing_epic(epic_file):
+        # CLOSURE-006: trailing epics should not contain layer-specific closure stories
+        leaked = [
+            sid
+            for sid, stype in epic_story_types.items()
+            if stype in TRAILING_FORBIDDEN_STORY_TYPES
+        ]
+        if leaked:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    section=epic_dir.name,
+                    message=(
+                        f"Trailing epic contains {len(leaked)} layer-specific closure "
+                        f"story/stories ({', '.join(sorted(leaked))}). Closure work "
+                        "belongs in the layer epic, not here."
+                    ),
+                    suggestion=(
+                        "Move these stories into their corresponding layer epic "
+                        "(EPIC-02 Bronze, EPIC-03 Silver-Dims, EPIC-04 Silver-Facts, "
+                        "EPIC-05 Gold). Trailing epics are only for cross-layer "
+                        "concerns: CI pipeline, PROD promotion, rollback runbook, "
+                        "full-pipeline E2E load test, security audit, docs, maintenance."
+                    ),
+                )
+            )
+
+    _ = epic_num  # reserved for future per-epic logic
+    return results
+
+
 # --- Main validation ---
 
 
@@ -476,9 +786,11 @@ def validate_stories_dir(directory: Path) -> ValidationReport:
 
     epic_dirs = find_epic_dirs(directory)
 
-    # Collect all story IDs for dependency checking
+    # Collect all story IDs for dependency checking and layer-closure checks
     all_story_ids: set[str] = set()
     all_story_files: list[Path] = []
+    story_type_by_id: dict[str, str] = {}
+    story_file_by_id: dict[str, Path] = {}
     for epic_dir in epic_dirs:
         story_files = find_story_files(epic_dir)
         all_story_files.extend(story_files)
@@ -486,6 +798,8 @@ def validate_stories_dir(directory: Path) -> ValidationReport:
             sid = _extract_story_id(sf)
             if sid:
                 all_story_ids.add(sid)
+                story_type_by_id[sid] = get_story_type(sf)
+                story_file_by_id[sid] = sf
 
     # Check each epic
     for epic_dir in epic_dirs:
@@ -497,6 +811,8 @@ def validate_stories_dir(directory: Path) -> ValidationReport:
             report.results.extend(check_placeholders(epic_content, epic_dir.name))
 
         report.results.extend(check_stories_exist(epic_dir))
+        report.results.extend(check_layer_closure(epic_dir, story_type_by_id, story_file_by_id))
+
         story_files = find_story_files(epic_dir)
         for story_file in story_files:
             report.results.extend(check_story_sections(story_file))

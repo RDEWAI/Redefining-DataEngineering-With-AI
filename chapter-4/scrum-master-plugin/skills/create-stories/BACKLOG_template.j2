@@ -19,13 +19,20 @@
 
 ## 2. Epic Overview
 
-| Epic | Title | Stories | Points | Sprints | LLD Section |
-|------|-------|---------|--------|---------|-------------|
+| Epic | Title | Scope | Stories | Points | Sprints | LLD Section | Perf | Int-Test | Deploy |
+|------|-------|-------|---------|--------|---------|-------------|------|----------|--------|
 {% for epic in backlog.epics %}
-| EPIC-{{ "%02d"|format(epic.number) }} | {{ epic.title }} | {{ epic.story_count }} | {{ epic.total_points }} | {{ epic.sprint_range }} | {{ epic.lld_section }} |
+| EPIC-{{ "%02d"|format(epic.number) }} | {{ epic.title }} | {{ epic.scope_type }} | {{ epic.story_count }} | {{ epic.total_points }} | {{ epic.sprint_range }} | {{ epic.lld_section }} | {{ epic.closure.perf }} | {{ epic.closure.integration_test }} | {{ epic.closure.deploy }} |
 {% endfor %}
 
 **Total**: {{ backlog.total_stories }} stories, {{ backlog.total_points }} points across {{ backlog.total_sprints }} sprints
+
+<!--
+  Closure columns (Perf / Int-Test / Deploy) report per-epic closure-sequence coverage:
+    - For `layer` epics: must show ≥1 for Perf and Int-Test; Deploy may be "N/A" when layer completes at integration-test.
+    - For `foundation` / `crosscut` epics: leave dashes ("—"); closure-sequence rule does not apply.
+-->
+
 
 ---
 

@@ -3,11 +3,24 @@
 | Field | Value |
 |-------|-------|
 | **Epic** | EPIC-{{ "%02d"|format(story.epic_number) }}: {{ story.epic_title }} |
+| **Story Type** | {{ story.story_type }} |
 | **Priority** | {{ story.priority }} |
 | **Story Points** | {{ story.points }} |
 | **Sprint** | {{ story.sprint }} |
 | **Dependencies** | {{ story.dependencies }} |
 | **Status** | {{ story.status }} |
+
+<!--
+  Story Type vocabulary (required):
+    - build                    → primary construction work
+    - performance-optimization → layer-scoped perf tuning (LLD §6); runs BEFORE integration-test
+    - integration-test         → triggers layer DAG on local Airflow against Unity Catalog OSS local; validates landed data in UC local
+    - deploy-validation        → layer-scoped DDL/DAG/config deploy smoke (optional; only when LLD prescribes it)
+    - observability            → layer-scoped lineage/metrics/dashboard wiring
+    - release                  → cross-layer promotion/rollback (trailing epic only)
+    - hardening                → cross-layer security/docs/maintenance (trailing epic only)
+-->
+
 
 ## User Story
 

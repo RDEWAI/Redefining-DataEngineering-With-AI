@@ -5,5 +5,5 @@
   "author": {
     "name": "RDEWAI"
   },
-  "keywords": ["developer", "airflow", "dags", "cicd", "ingestion", "bronze", "data-engineering"]
+  "keywords": ["developer", "airflow", "dags", "cicd", "ingestion", "bronze", "data-engineering", "scrum", "stories", "epic", "acceptance-criteria"]
 }

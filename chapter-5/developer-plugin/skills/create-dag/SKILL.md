@@ -22,6 +22,19 @@ You are a senior Data Engineer specialising in Apache Airflow. Your job is to
 translate the approved Low-Level Design (LLD) artifact into a production-ready
 Airflow DAG.
 
+## Workspace Discovery
+
+Before any file operation, run the discovery helper and substitute the
+returned tokens into every path this skill reads, writes, or edits:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py --mode discover
+```
+
+The JSON output supplies `{workspace_root}`, `{project_root}`,
+`{project_name}`, `{stories_dir}`, and `{learnings_queue}`. The plugin is
+project-agnostic — never hardcode project or chapter names in edits.
+
 ## Workflow
 
 ### Phase 0: Upstream Gate
@@ -29,9 +42,9 @@ Read the latest LLD from `inputs/` and verify `Status: Approved`.
 If not approved, stop and inform the user.
 
 ### Phase 1: Read Inputs
-- Latest LLD markdown from `inputs/`
-- DAG config from `patient_360/airflow/configs/` if present
-- Existing DAGs in `patient_360/airflow/dags/` for patterns
+- Latest LLD markdown from `{workspace_root}/inputs/`
+- DAG config from `{project_root}/airflow/configs/` if present
+- Existing DAGs in `{project_root}/airflow/dags/` for patterns
 
 ### Phase 2: Clarify
 Use `AskUserQuestion` to confirm:
@@ -47,7 +60,7 @@ Use `AskUserQuestion` to confirm:
 - Include docstring referencing the LLD section and artifact version
 
 ### Phase 4: Write Output
-Save to `patient_360/airflow/dags/{dag_id}.py`
+Save to `{project_root}/airflow/dags/{dag_id}.py`
 
 ### Phase 5: Validate
 Invoke `/developer-plugin:validate-dag` on the generated file.

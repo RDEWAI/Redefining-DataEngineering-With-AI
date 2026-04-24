@@ -51,6 +51,10 @@ The validator checks rules across three severity levels:
 - `STORIES-META-001`: Backlog metadata incomplete (version, date, author, status, LLD reference)
 - `STORIES-FORMAT-001`: User story does not follow "As a... I want... So that..." format
 - `STORIES-AC-001`: Story has fewer than 3 acceptance criteria
+- `STORIES-CLOSURE-001`: Layer epic (LLD §5.1 / §5.2 / §5.3) has no `performance-optimization` story
+- `STORIES-CLOSURE-002`: Layer epic has no `integration-test` story
+- `STORIES-CLOSURE-003`: Integration-test story AC is missing "Airflow DAG" or "Unity Catalog" wording — local integration testing means triggering the layer DAG on local Airflow against UC OSS local and validating data in UC local
+- `STORIES-CLOSURE-004`: Integration-test story does not depend on a `performance-optimization` story from the same epic — closure order is perf BEFORE integration-test
 
 ### WARNING (needs attention)
 - `STORIES-TRACE-001`: Story lacks upstream artifact reference — citations must match
@@ -60,6 +64,8 @@ The validator checks rules across three severity levels:
 - Story point estimates present for all stories
 - No orphaned stories — every story belongs to an epic
 - Dependency graph present in backlog (Mermaid diagram)
+- `STORIES-CLOSURE-005`: Layer epic has no `deploy-validation` story and its Objective is missing the explicit "Deploy: N/A — layer completes at integration-test" note — closure intent unclear
+- `STORIES-CLOSURE-006`: Trailing epic (Release / Hardening) contains a layer-specific `performance-optimization` or `integration-test` story — closure work leaked out of its layer epic
 
 ### INFO (suggestions for improvement)
 - Placeholder text remaining ([TBD], [TODO])

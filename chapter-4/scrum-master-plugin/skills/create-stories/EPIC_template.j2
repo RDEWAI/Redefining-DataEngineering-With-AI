@@ -3,14 +3,31 @@
 | Field | Value |
 |-------|-------|
 | **LLD Section** | {{ epic.lld_section }} |
+| **Epic Scope** | {{ epic.scope_type }} |
 | **Stories** | {{ epic.story_count }} |
 | **Total Points** | {{ epic.total_points }} |
 | **Sprints** | {{ epic.sprint_range }} |
 | **Status** | {{ epic.status }} |
 
+<!--
+  Epic Scope vocabulary:
+    - layer      → medallion layer epic (Bronze/Silver Dims/Silver Facts/Gold). MUST include closure sequence: performance-optimization → integration-test → (optional) deploy-validation.
+    - foundation → scaffold/infra epic (no closure sequence required).
+    - crosscut   → cross-layer concerns (observability, release, hardening).
+-->
+
 ## Objective
 
 {{ epic.objective }}
+
+{% if epic.scope_type == "layer" %}
+**Deploy Scope**: {{ epic.deploy_scope }}
+<!--
+  Deploy Scope must be ONE of:
+    - "Layer-scoped — see deploy-validation story below"  (when LLD prescribes layer-scoped deploy work)
+    - "N/A — layer completes at integration-test; system-wide deploy handled in trailing release epic"
+-->
+{% endif %}
 
 ## Scope
 
@@ -26,11 +43,33 @@
 
 ## Stories
 
-| ID | Title | Points | Sprint | Dependencies |
-|----|-------|--------|--------|-------------|
+| ID | Title | Type | Points | Sprint | Dependencies |
+|----|-------|------|--------|--------|-------------|
 {% for story in epic.stories %}
-| STORY-{{ "%02d"|format(epic.number) }}-{{ "%03d"|format(story.number) }} | {{ story.title }} | {{ story.points }} | {{ story.sprint }} | {{ story.dependencies }} |
+| STORY-{{ "%02d"|format(epic.number) }}-{{ "%03d"|format(story.number) }} | {{ story.title }} | {{ story.story_type }} | {{ story.points }} | {{ story.sprint }} | {{ story.dependencies }} |
 {% endfor %}
+
+{% if epic.scope_type == "layer" %}
+## Layer Closure Sequence
+
+Stories below must execute in this order (enforced by dependencies):
+
+1. **Build** → all `build` stories complete before perf starts.
+2. **Performance Optimization** (LLD §6 derived):
+{% for story in epic.stories if story.story_type == "performance-optimization" %}
+   - STORY-{{ "%02d"|format(epic.number) }}-{{ "%03d"|format(story.number) }}: {{ story.title }}
+{% endfor %}
+3. **Local Integration Testing** (trigger layer DAG on local Airflow, validate data in UC OSS local):
+{% for story in epic.stories if story.story_type == "integration-test" %}
+   - STORY-{{ "%02d"|format(epic.number) }}-{{ "%03d"|format(story.number) }}: {{ story.title }}
+{% endfor %}
+4. **Deployment Validation** (optional — only if LLD prescribes layer-scoped deploy work):
+{% for story in epic.stories if story.story_type == "deploy-validation" %}
+   - STORY-{{ "%02d"|format(epic.number) }}-{{ "%03d"|format(story.number) }}: {{ story.title }}
+{% else %}
+   - _N/A — layer moves to Done after integration testing; system-wide deploy in trailing release epic._
+{% endfor %}
+{% endif %}
 
 ## Acceptance Criteria (Epic-Level)
 

@@ -19,10 +19,23 @@ You are a senior DevOps / Data Engineer. Your job is to generate CI/CD
 pipeline configuration that automates lint, test, and deploy for the
 medallion data pipeline.
 
+## Workspace Discovery
+
+Before any file operation, run the discovery helper and substitute the
+returned tokens into every path this skill reads, writes, or edits:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py --mode discover
+```
+
+The JSON output supplies `{workspace_root}`, `{project_root}`,
+`{project_name}`, `{stories_dir}`, and `{learnings_queue}`. The plugin is
+project-agnostic — never hardcode project or chapter names in edits.
+
 ## Workflow
 
 ### Phase 0: Upstream Gate
-Confirm the LLD in `inputs/` has `Status: Approved`.
+Confirm the LLD in `{workspace_root}/inputs/` has `Status: Approved`.
 
 ### Phase 1: Clarify Platform & Stages
 Use `AskUserQuestion` to confirm:
@@ -31,8 +44,8 @@ Use `AskUserQuestion` to confirm:
 - Required stages: lint → unit-test → integration-test → deploy
 
 ### Phase 2: Generate Pipeline Config
-- **GitHub Actions**: write to `patient_360/_infra/ci/.github/workflows/`
-- **GitLab CI**: write to `patient_360/_infra/ci/.gitlab-ci.yml`
+- **GitHub Actions**: write to `{project_root}/_infra/ci/.github/workflows/`
+- **GitLab CI**: write to `{project_root}/_infra/ci/.gitlab-ci.yml`
 - Include caching for `uv` dependencies
 - Run `uv run pytest tests/` in the test stage
 - Run `uv run ruff check src/` in the lint stage

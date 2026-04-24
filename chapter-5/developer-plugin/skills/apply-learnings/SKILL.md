@@ -19,10 +19,23 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
 Process pending corrections from the developer learnings queue and apply them
 as generalized rules to the relevant skill files.
 
+## Workspace Discovery
+
+Before any file operation, run the discovery helper and substitute the
+returned tokens into every path this skill reads, writes, or edits:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py --mode discover
+```
+
+The JSON output supplies `{workspace_root}`, `{project_root}`,
+`{project_name}`, `{stories_dir}`, and `{learnings_queue}`. The plugin is
+project-agnostic — never hardcode project or chapter names in edits.
+
 ## Step 1: Read the Learnings Queue
 
 ```bash
-cat chapter-5/memory/developer/learnings-queue.jsonl
+cat "{learnings_queue}"   # substituted from discovery
 ```
 
 If the file is empty or contains no `"status": "pending"` entries, report
@@ -75,7 +88,7 @@ Apply this learning? [Yes / No / Edit]
 For each approved learning:
 
 1. Read the target skill file:
-   `chapter-5/developer-plugin/skills/{skill-name}/SKILL.md`
+   `${CLAUDE_PLUGIN_ROOT}/skills/{skill-name}/SKILL.md`
 
 2. Find the `### Active Learnings` section (create it under a `## Learnings & Corrections`
    heading if absent)
@@ -89,7 +102,7 @@ For each approved learning:
 
 ## Step 5: Update the Queue
 
-After all learnings are processed, update `chapter-5/memory/developer/learnings-queue.jsonl`:
+After all learnings are processed, update `{learnings_queue}`:
 - Change `"status": "pending"` to `"status": "applied"` for applied entries
 - Change `"status": "pending"` to `"status": "rejected"` for rejected entries
 

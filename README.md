@@ -318,10 +318,15 @@ This generates the following structure:
 chapter-5/
 ├── inputs/                      # drop Chapter 4 approved artifacts here
 ├── outputs/                     # chapter-5 generated outputs
-├── developer-plugin/            # AI developer agent (DAG + CI/CD skills)
+├── developer-plugin/            # AI developer agent (code + story orchestration)
 │   └── skills/
-│       ├── airflow/             # create-dag / update-dag / validate-dag
-│       └── cicd/                # create-pipeline / update-pipeline / validate-pipeline
+│       ├── create-dag/ update-dag/ validate-dag/                 # Airflow DAGs
+│       ├── create-ingestion/ update-ingestion/ validate-ingestion/  # Bronze ingestion
+│       ├── create-pipeline/ update-pipeline/ validate-pipeline/  # CI/CD pipeline
+│       ├── implement-stories/   # dispatch create-/update- per story or epic
+│       ├── validate-stories/    # verify story ACs (read-only)
+│       ├── complete-stories/    # atomic gate — close stories/epics when all ACs pass
+│       └── apply-learnings/     # apply corrections from learnings queue
 └── patient_360/                 # main Python project
     ├── src/patient_360/         # bronze / silver / gold / utils packages
     ├── tests/                   # mirrors src/ — bronze / silver / gold
@@ -351,6 +356,11 @@ make test
 
 # Start generating DAGs from your approved LLD
 /developer-plugin:create-dag
+
+# Or drive it from the Scrum backlog (story/epic/sprint)
+/developer-plugin:implement-stories EPIC-02
+/developer-plugin:validate-stories  EPIC-02
+/developer-plugin:complete-stories  EPIC-02   # blocks unless every child story + AC passes
 ```
 
 ---

@@ -350,7 +350,7 @@ the LLD is not ready for handoff to the development team.
 | §5 Task Implementation Details | Per-task I/O contracts, transform refs, DQ checks |
 | §6 Performance & Optimization | Parallelism, caching, join strategies, memory |
 | §7 Configuration Schema | Parameters with per-environment defaults |
-| §8 Error Handling | Retry, dead letter, alerting thresholds |
+| §8 Error Handling | Retry; SE `_error` table (row_dq); SE stats/detailed (agg_dq/query_dq); ingest DLQ (pre-validation only); alerting. Never add a custom writer for row_dq drops — SE owns `<target>_error`. |
 | §9 Deployment | Environments, promotion, rollback, health checks |
 | §10 Monitoring | Metrics, dashboards, alerting rules |
 | §11 Upstream Artifact References | Hub cross-reference to DRD, HLD, DMS, STM, DQS |

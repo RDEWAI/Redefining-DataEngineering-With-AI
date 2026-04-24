@@ -48,6 +48,19 @@
 
 ## 8. Error Handling
 
+<!--
+  Structure §8 around the four failure classes. "Dead letter" here means ONLY
+  the ingest DLQ (pre-validation failures). Row-level DQ rejections are owned
+  by Spark Expectations' `<target>_error` table — do NOT duplicate with a
+  custom writer.
+
+  ### 8.1 Retry Policies
+  ### 8.2 SE `_error` Table (row_dq) — Delta; auto-written by Spark Expectations
+  ### 8.3 SE Stats & Detailed Tables (agg_dq, query_dq) — metrics only
+  ### 8.4 Ingest DLQ (pre-validation parse/schema/encoding only) — Parquet
+  ### 8.5 Alerting Thresholds
+-->
+
 {{ lld.error_handling }}
 
 ## 9. Deployment

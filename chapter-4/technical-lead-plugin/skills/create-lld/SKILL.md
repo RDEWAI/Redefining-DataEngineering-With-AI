@@ -162,7 +162,7 @@ internal checklist:
 | **5. Task Implementation Details** | Per-task I/O contracts, transformation refs, DQ checks | ? |
 | **6. Performance & Optimization** | Parallelism, caching, join strategies, memory | ? |
 | **7. Configuration Schema** | All configurable parameters with per-environment defaults | ? |
-| **8. Error Handling** | Retry policies, dead letter queues, alerting thresholds | ? |
+| **8. Error Handling** | Retry policies, SE `_error` table (row_dq), SE stats/detailed tables (agg_dq/query_dq), ingest DLQ (pre-validation parse/schema), alerting thresholds | ? |
 | **9. Deployment** | Environments, promotion process, rollback procedures | ? |
 | **10. Monitoring** | Metrics, dashboards, alerting rules | ? |
 | **11. Upstream Artifact References** | Hub document cross-reference table | ? |
@@ -251,7 +251,7 @@ terminal UI. You can ask 1-4 questions per call, each with 2-4 options.
 - **Task Implementation** → transformation approach, DQ integration points
 - **Performance** → parallelism strategy, caching, join optimization
 - **Configuration Schema** → what should be configurable per environment
-- **Error Handling** → retry strategy, dead letter approach, alerting channels
+- **Error Handling** → retry strategy; confirm SE `_error` table wiring for row_dq drops and SE stats table for agg_dq/query_dq (do NOT add a custom writer for row-level DQ rejections — SE handles this); define the **ingest DLQ** (pre-validation parse/schema/encoding failures only); alerting channels
 - **Deployment** → environment promotion, rollback strategy
 - **Monitoring** → metrics collection, dashboard tooling, alerting thresholds
 
@@ -331,7 +331,11 @@ the LLD is not ready for handoff to the development team.
 - Specify performance optimization strategies (join hints, caching, broadcast)
 
 ### 4. Operability Design
-- Define error handling: retry policies, dead letter queues, quarantine tables
+- Define error handling per failure class:
+  - **Row-level DQ** (`row_dq` with `action_if_failed: drop`) → Spark Expectations auto-writes rejected rows to `<target>_error` (Delta). Do NOT design a custom writer for these.
+  - **Aggregate / query DQ** (`agg_dq`, `query_dq`) → SE stats table + optional `*_agg_dq_detailed` / `*_query_dq_detailed` tables.
+  - **Ingest DLQ** (pre-validation parse/schema/encoding failures that SE never sees) → custom Parquet writer to `warehouse/{env}/dead-letter/{table}/{ds}/` with retention.
+  - **Non-DQ runtime exceptions** → Airflow task retries → DAG failure alert.
 - Specify configuration management: all parameters with per-environment defaults
 - Document deployment procedures: environment promotion, rollback, health checks
 - Define monitoring: metrics to collect, dashboards, alerting rules and thresholds
@@ -531,10 +535,30 @@ copy schemas here.
   downstream developer agent knows where to write them.
 
 **Section 8 — Error Handling**
-- Retry policies: max retries, backoff strategy per task type
-- Dead letter / quarantine: where failed records go, retention period
-- Alerting thresholds: what triggers notifications and escalation
-- Circuit breaker patterns for external dependencies
+
+Structure §8 around the four failure classes below. "Dead letter" in this LLD
+refers ONLY to the **ingest DLQ** (pre-validation failures). Row-level DQ
+rejections are handled by Spark Expectations' `_error` table automatically and
+MUST NOT be duplicated by a custom writer.
+
+- **§8.1 Retry Policies** — max retries, backoff strategy per task type; circuit
+  breaker patterns for external dependencies.
+- **§8.2 SE `_error` Table (row_dq)** — for each Bronze/Silver table, name the
+  SE-managed error table (`<target>_error`, Delta) that receives `row_dq` drops
+  when `action_if_failed: drop`. State that this is created/written by Spark
+  Expectations via `se.enable.error.table=true` and `target_and_error_table_writer`;
+  no custom writer is needed. Reference DQS §X for the rule set.
+- **§8.3 SE Stats & Detailed Tables (agg_dq, query_dq)** — name the stats table
+  (e.g., `bronze_se_stats`) plus any enabled `*_agg_dq_detailed` /
+  `*_query_dq_detailed` tables. These carry metrics, not rejected rows.
+- **§8.4 Ingest DLQ (pre-validation)** — ONLY for failures SE never sees:
+  malformed files, encoding errors, missing required columns, pre-validation
+  cast failures. Specify path (`warehouse/{env}/dead-letter/{table}/{ds}/`),
+  format (Parquet), metadata columns (`_rejection_reason`, `_rejected_at`,
+  `_pipeline_run_id`), and retention. If no such failures are expected, state
+  "No ingest DLQ required" with rationale.
+- **§8.5 Alerting Thresholds** — what triggers notifications (SE error drop
+  threshold, DLQ row count, task failure) and escalation routing.
 
 **Section 9 — Deployment**
 
@@ -720,7 +744,7 @@ A complete LLD contains these 14 sections:
 - **5. Task Implementation Details**: Per-task I/O contracts, transformation refs, DQ checks
 - **6. Performance & Optimization**: Parallelism, caching, join strategies, memory allocation
 - **7. Configuration Schema**: All parameters with per-environment defaults
-- **8. Error Handling**: Retry policies, dead letter queues, alerting thresholds
+- **8. Error Handling**: Retry policies, SE `_error` table (row_dq), SE stats/detailed tables (agg_dq/query_dq), ingest DLQ (pre-validation only), alerting thresholds
 - **9. Deployment**: Environments, promotion, rollback, health checks
 - **10. Monitoring**: Metrics, dashboards, alerting rules, SLA tracking
 - **11. Upstream Artifact References**: Hub document cross-reference to DRD, HLD, DMS, STM, DQS

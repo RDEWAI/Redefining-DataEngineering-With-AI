@@ -70,6 +70,19 @@ Discover and read the latest version of all input documents:
    - Configuration parameters
    - Deployment and monitoring requirements
    - Implementation sequence and phases
+   - **Medallion layer boundaries** (LLD §5.1 Bronze, §5.2 Silver, §5.3 Gold). Every layer
+     epic you generate must reference its layer section here.
+   - **Testing strategy per layer** (LLD §2.4) — specifically, which tests run locally
+     against the docker-compose stack (Airflow local + Unity Catalog OSS local + Spark
+     + Delta). This is what "local integration testing" means in this project.
+   - **Performance section** (LLD §6): per-layer tuning knobs — partitioning (§6.5),
+     shuffle/parallelism (§6.3), join strategy (§6.2), caching (§6.4). Each layer epic
+     must have at least one `performance-optimization` story derived from this section.
+   - **Deployment section** (LLD §9): per-layer DDL migrations (§9.1), environment
+     overrides (§9.2), promotion gates (§9.3). If the LLD prescribes layer-scoped
+     deploy work, emit a `deploy-validation` story in that layer's epic. Otherwise
+     the layer moves to Done after integration testing — system-wide promotion stays
+     in the trailing release epic.
 
 2. **All upstream artifacts** (for traceability):
    ```bash
@@ -118,6 +131,7 @@ internal checklist:
 | **Sprint Allocation** | How many sprints, what goes in each | ? |
 | **Dependency Mapping** | Which stories block others | ? |
 | **Acceptance Criteria** | Standards for AC format, upstream refs | ? |
+| **Layer Closure** | For each medallion layer epic, confirm perf + integration-test stories (and optional deploy-validation) per LLD §2.4 / §6 / §9 | ? |
 
 Mark each area as COMPLETE, PARTIAL, or MISSING.
 
@@ -197,6 +211,25 @@ terminal UI. You can ask 1-4 questions per call, each with 2-4 options.
 - **Priority Scheme** → P1 critical path, P2 important, P3 nice-to-have
 - **Sprint Allocation** → front-load infrastructure? parallel tracks?
 - **Acceptance Criteria** → how detailed? require upstream traceability per AC?
+- **Layer Closure** → per layer epic, (a) which LLD §6 perf knobs become `performance-optimization` stories, (b) does the LLD prescribe layer-scoped deploy work so we emit `deploy-validation`, or does the layer complete at integration-test (system-wide deploy in trailing epic)?
+
+**Example — Layer Closure gaps (1 call, 1 question, multiSelect):**
+```json
+{
+  "questions": [
+    {
+      "question": "For each medallion layer epic (Bronze/Silver-Dims/Silver-Facts/Gold), which closure stories should be generated?",
+      "header": "Closure",
+      "multiSelect": true,
+      "options": [
+        { "label": "Perf only", "description": "Perf-optimization + integration-test; no per-layer deploy (system-wide only)" },
+        { "label": "Perf + Deploy", "description": "Perf-optimization + integration-test + deploy-validation (e.g., Liquibase DDL per layer)" },
+        { "label": "Layer-by-layer", "description": "Decide per layer based on what the LLD prescribes" }
+      ]
+    }
+  ]
+}
+```
 
 ### Step 4: Iterate Until Complete
 
@@ -417,12 +450,72 @@ NNN = 3-digit story number. This gives globally unique IDs (e.g., STORY-02-001).
 #### Story content requirements
 
 Each story file MUST include:
+- **Story Type** field (build / performance-optimization / integration-test / deploy-validation / observability / release / hardening)
 - **User story** in "As a / I want / So that" format
 - **Detailed description** of the technical work (not just a one-liner)
 - **Acceptance criteria** with upstream artifact references (`[LLD §X.Y]`, `[DQS §X.Y]`)
 - **Dependencies** listing prerequisite STORY IDs
 - **Estimation support** table mapping to DMS tables, STM sheets, DQS rules, LLD tasks
 - **Technical notes** with implementation hints from the LLD
+
+#### Layer Epic Closure Sequence (MANDATORY for medallion-layer epics)
+
+An epic is a **medallion layer epic** when its `LLD Section` metadata cites
+`§5.1` (Bronze), `§5.2` (Silver), or `§5.3` (Gold). For every such epic:
+
+1. Generate all `build` stories first (the layer's core implementation work).
+2. After the build stories, emit **at least one `performance-optimization` story**
+   derived from LLD §6 (partitioning, parallelism, join strategy, caching) that
+   targets *this layer specifically*. Its dependencies must include the relevant
+   `build` stories.
+3. After the perf story, emit **at least one `integration-test` story** that:
+   - **Triggers the layer's Airflow DAG** on the local docker-compose stack
+     (Airflow local) against **Unity Catalog OSS local**.
+   - **Validates the landed data in Unity Catalog local** — row counts, schema
+     conformance, metadata columns (`ds`, `_ingested_at`, etc.), reconciliation
+     task outputs per LLD §5.5.
+   - Its acceptance criteria MUST mention **both** "Airflow DAG" (or the concrete
+     DAG id from LLD §4.2) **and** "Unity Catalog" (or `UC local` / `uc_oss`).
+     The validator enforces this wording.
+   - Its Dependencies field must list the `performance-optimization` story from
+     the same epic. Perf comes before integration-test — always.
+4. Emit a `deploy-validation` story **only if** the LLD §9 prescribes layer-scoped
+   deploy work for this layer (e.g., Liquibase DDL changelogs for the layer's
+   tables, layer-specific env overrides, a layer deploy runbook). If the LLD does
+   not call out per-layer deploy work, **skip** `deploy-validation` and add this
+   note to the epic's Objective section:
+   `Deploy: N/A — layer completes at integration-test; system-wide deploy in trailing release epic.`
+5. Set the epic's `Epic Scope` field to `layer`.
+
+**Example closure sequence (illustrative — derive the actual content from the LLD):**
+
+```
+EPIC-02 Bronze Ingestion (LLD §5.1)
+  build stories (config, runner, factory, SE, reconciliation, dead-letter...)
+  STORY-02-NNN  perf: replaceWhere partition pruning + shuffle.partitions tuning [LLD §3, §6.3, §6.5]
+                 Dependencies: <bronze build stories>
+  STORY-02-NNN  integration-test: trigger bronze_ingest DAG on local Airflow against UC OSS
+                 local; assert 13 Bronze Delta tables in UC local with correct schema + metadata
+                 cols; reconciliation_bronze passes [LLD §2.4, §5.1, §5.5]
+                 Dependencies: STORY-02-NNN (perf)
+  STORY-02-NNN  deploy-validation: Liquibase changelogs for 13 Bronze tables; local DAG
+                 deploy smoke [LLD §9.1]  (emit only if LLD prescribes; otherwise skip)
+                 Dependencies: STORY-02-NNN (integration-test)
+```
+
+**Non-layer epics** (Foundation, Observability, trailing Release, trailing Hardening)
+do NOT need the closure sequence. Set `Epic Scope` to `foundation` or `crosscut`.
+
+#### Trailing Epic Scope (Release & Hardening)
+
+- **Release epic** (`Epic Scope: crosscut`, `Story Type: release`): cross-layer
+  concerns only — CI pipeline, DEV→STAGING→PROD promotion, rollback runbook,
+  full-pipeline E2E load test. Do NOT put layer-specific DDL / perf / integration
+  work here — those belong in the layer epic.
+- **Hardening epic** (`Epic Scope: crosscut`, `Story Type: hardening`): security /
+  PHI audit, documentation & coverage audit, Delta VACUUM/OPTIMIZE maintenance
+  scheduling. Same rule: layer-specific perf/integration work does NOT belong
+  here.
 
 #### Writing Style
 - **Actionable over vague**: "Create bronze_patients table with 12 columns per DMS §4.2"
@@ -490,6 +583,32 @@ Guard against these three common scrum master mistakes:
 - Data quality stories depend on the layer they validate being built first
 - Check the LLD's implementation sequence — it defines the correct ordering
 - Use Mermaid diagrams in the BACKLOG to visualize the dependency graph
+
+### Pitfall 4: Collecting Closure Work Into Trailing Epics
+- **Never** pile all integration tests / perf optimization / deploy validation into
+  trailing "Deployment" and "Hardening" epics at the end of the plan. Each
+  medallion layer epic must **close itself out** with its own perf, integration-test,
+  and (optional) deploy-validation stories — in that order.
+- If you find yourself writing `STORY-08-NNN: performance tuning for Bronze
+  observations` in a trailing epic, stop — that story belongs in EPIC-02.
+- Trailing epics are for truly cross-cutting work: CI pipeline, PROD promotion,
+  rollback runbook, full-pipeline E2E load test, security audit, documentation
+  audit, maintenance cadence. Nothing layer-specific.
+- If the user says "just put all testing at the end", push back:
+  "The Bronze layer closure (perf → local DAG + UC integration test → optional
+  deploy) lets Bronze reach Done independently. Trailing epics should only carry
+  cross-layer concerns. Should we keep the per-layer closure?"
+
+### Pitfall 5: Generic Integration Tests
+- **Never** write an integration-test story as "run pytest with marker `integration`".
+  That is a unit-test wrapper, not an integration test. In this project, an
+  integration-test story MUST:
+  1. Trigger the layer's Airflow DAG on the local docker-compose stack (Airflow local).
+  2. Run against Unity Catalog OSS local as the metastore.
+  3. Validate data landed in UC local — not just an assertion in a pytest fixture.
+- The acceptance criteria MUST name both the Airflow DAG (or its id from LLD §4.2)
+  and Unity Catalog (or `UC local` / `uc_oss`). The validator rejects stories
+  missing either term.
 
 ---
 
