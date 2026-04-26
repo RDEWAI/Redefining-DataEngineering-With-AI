@@ -1,8 +1,12 @@
 # Chapter 4: Planning with Context — Multi-Agent Artifact Chain
 
-Seven Claude Code plugins that act as a **Business Analyst Agent**, **Data Architect Agent**, **Data Modeler Agent**, **Mapping Analyst Agent**, **DQ Engineer Agent**, **Technical Lead Agent**, and **Scrum Master Agent**, producing structured artifacts that feed the next role in the chain.
+Six Claude Code plugins that act as a **Business Analyst Agent**, **Data Architect Agent**, **Data Modeler Agent**, **Mapping Analyst Agent**, **DQ Engineer Agent**, and **Technical Lead Agent**, producing structured artifacts that feed the next role in the chain.
 
-**Artifact chain**: DRD → **HLD** → **DMS** → **STM** → DQS → LLD → Stories
+**Artifact chain**: DRD → **HLD** → **DMS** → **STM** → DQS → LLD
+
+> **Story generation and downstream code implementation live in chapter-5.**
+> The Scrum Master + Developer plugins (plus working copies of all six
+> planning plugins) ship there; see `chapter-5/README.md`.
 
 The use case is **Patient 360** — a unified patient search experience across Synthea healthcare data.
 
@@ -43,7 +47,6 @@ From the repo root, open Claude Code and add the local marketplace:
 /plugin install mapping-analyst-plugin@rdewai-plugins
 /plugin install dq-engineer-plugin@rdewai-plugins
 /plugin install technical-lead-plugin@rdewai-plugins
-/plugin install scrum-master-plugin@rdewai-plugins
 ```
 
 You can verify the install by running `/plugin` — you should see:
@@ -82,12 +85,6 @@ dq-engineer-plugin (v1.0.0)
 technical-lead-plugin (v1.0.0)
   Skills: create-lld, update-lld, validate-lld, generate-config-template, apply-learnings, approve-lld
   Agents: technical-lead-agent
-  Hooks: PreToolUse, PostToolUse
-  Status: Enabled
-
-scrum-master-plugin (v1.0.0)
-  Skills: create-stories, update-stories, validate-stories, approve-stories
-  Agents: scrum-master-agent
   Hooks: PreToolUse, PostToolUse
   Status: Enabled
 ```
@@ -243,32 +240,7 @@ Other agent invocations:
 @technical-lead-plugin:technical-lead-agent Validate the LLD at outputs/lld/v1/LLD-2026-03-22-patient-360.md
 ```
 
-### 10. Use the Scrum Master Agent
-
-The Scrum Master Agent decomposes the LLD into a Sprint Backlog with epics and user stories:
-
-```
-@scrum-master-plugin:scrum-master-agent Create the Sprint Backlog for the project
-```
-
-The agent will:
-1. Discover all 6 upstream artifacts (DRD, HLD, DMS, STM, DQS, LLD) and scrum master input version folders automatically
-2. Read team capacity, story standards, and all upstream artifact sections
-3. Decompose LLD implementation modules into epics and user stories
-4. Ask you story decomposition decisions via structured `AskUserQuestion` UI — one epic at a time
-5. Generate a BACKLOG index file plus individual EPIC and STORY markdown files in `outputs/stories/v{N}/`
-6. Validate automatically and fix any critical issues
-
-**Note**: Unlike other plugins that produce a single artifact file, the Scrum Master produces a **directory of files**: one BACKLOG index, one file per epic, and one file per story. Story IDs use `STORY-{NN}-{NNN}` format.
-
-Other agent invocations:
-
-```
-@scrum-master-plugin:scrum-master-agent Update the backlog with revised team capacity
-@scrum-master-plugin:scrum-master-agent Validate the backlog at outputs/stories/v1/BACKLOG-2026-03-23-patient-360.md
-```
-
-### 11. Use skills directly (alternative)
+### 10. Use skills directly (alternative)
 
 You can also invoke skills directly without the agent wrapper. Make sure you have `data/duckdb/raw.db` already created.
 
@@ -304,10 +276,6 @@ Other skills:
 /technical-lead-plugin:validate-lld outputs/lld/v1/LLD-2026-03-22-patient-360.md
 /technical-lead-plugin:generate-config-template outputs/lld/v1/LLD-2026-03-22-patient-360.md
 /technical-lead-plugin:approve-lld outputs/lld/v1/LLD-2026-03-22-patient-360.md
-/scrum-master-plugin:create-stories
-/scrum-master-plugin:update-stories outputs/stories/v1/BACKLOG-2026-03-23-patient-360.md
-/scrum-master-plugin:validate-stories outputs/stories/v1/BACKLOG-2026-03-23-patient-360.md
-/scrum-master-plugin:approve-stories outputs/stories/v1/BACKLOG-2026-03-23-patient-360.md
 ```
 
 ## How the Plugins Work
@@ -373,16 +341,6 @@ The `technical-lead-agent` sub-agent (`technical-lead-plugin/agents/technical-le
 - **All-Upstream Traceability** — every design decision must cite the upstream artifact section it implements
 - **Session Memory** — writes notes to `memory/lld/` after each engagement
 
-### Scrum Master Agent
-
-The `scrum-master-agent` sub-agent (`scrum-master-plugin/agents/scrum-master-agent.md`) embodies the Scrum Master role with:
-
-- **Story Decomposition Protocol** — breaks LLD implementation modules into epics and user stories using `AskUserQuestion`, covering scope, acceptance criteria, and story points
-- **All-Upstream Traceability** — every story must trace back to the upstream artifact section it implements (DRD, HLD, DMS, STM, DQS, LLD)
-- **Multi-File Output** — generates a BACKLOG index file plus individual EPIC and STORY markdown files in a directory structure
-- **Globally Unique IDs** — story IDs use `STORY-{NN}-{NNN}` format (2-digit epic + 3-digit story)
-- **Session Memory** — writes notes to `memory/stories/` after each engagement
-
 ### Skills
 
 | Plugin | Skill | What it does |
@@ -413,14 +371,10 @@ The `scrum-master-agent` sub-agent (`scrum-master-plugin/agents/scrum-master-age
 | technical-lead-plugin | `validate-lld` | Runs validation checks on an LLD (sections, artifact references, DAG syntax) |
 | technical-lead-plugin | `generate-config-template` | Generates environment config YAML from LLD §7 |
 | technical-lead-plugin | `approve-lld` | Sets LLD status to Approved |
-| scrum-master-plugin | `create-stories` | Reads all 6 upstream artifacts + scrum master inputs, generates Sprint Backlog (requires all 6 approved) |
-| scrum-master-plugin | `update-stories` | Copies existing backlog, applies incremental edits (Write only for new stories) |
-| scrum-master-plugin | `validate-stories` | Runs validation checks on a backlog (structure, story format, traceability) |
-| scrum-master-plugin | `approve-stories` | Sets Stories status to Approved |
 
 ### Hooks
 
-All seven plugins register two hooks each:
+All six plugins register two hooks each:
 
 **PreToolUse — Read-Only Query Enforcement**
 
@@ -428,9 +382,9 @@ Fires before every `Bash` command. Blocks database write operations (INSERT, UPD
 
 **PostToolUse — Automatic Validation**
 
-Fires after every `Write` or `Edit` operation. When Claude writes a file to `outputs/drd/`, `outputs/hld/`, `outputs/dms/`, `outputs/stm/`, `outputs/dqs/`, `outputs/lld/`, or `outputs/stories/`:
+Fires after every `Write` or `Edit` operation. When Claude writes a file to `outputs/drd/`, `outputs/hld/`, `outputs/dms/`, `outputs/stm/`, `outputs/dqs/`, or `outputs/lld/`:
 
-1. The hook script checks if the file is a DRD/HLD/DMS/DQS/LLD/Stories (`.md`) or STM (`.xlsx`) in the outputs directory
+1. The hook script checks if the file is a DRD/HLD/DMS/DQS/LLD (`.md`) or STM (`.xlsx`) in the outputs directory
 2. Runs the Python validator against the file
 3. **CRITICAL issues** → blocks Claude and feeds errors back for auto-fix
 4. **Warnings** → passed as non-blocking context
@@ -476,7 +430,6 @@ Before creating a downstream artifact, ALL required upstream artifacts MUST have
 | create-stm | DRD, HLD, DMS |
 | create-dqs | DRD, DMS, STM |
 | create-lld | DRD, HLD, DMS, STM, DQS |
-| create-stories | DRD, HLD, DMS, STM, DQS, LLD |
 
 If any upstream artifact is not `Approved`, the create skill stops and informs the user which artifacts need approval. This gate has no override.
 
@@ -529,13 +482,6 @@ If any upstream artifact is not `Approved`, the create skill stops and informs t
 | `development-standards.md` | Coding standards, branching strategy, PR conventions |
 | `infrastructure-specs.md` | Compute specs, storage layout, networking, monitoring |
 | `orchestration-patterns.md` | DAG design patterns, retry policies, alerting conventions |
-
-**Scrum Master Agent inputs** — `inputs/stories/v1/`:
-
-| File | Contents |
-|------|----------|
-| `team-capacity.md` | Sprint length, team velocity, role availability |
-| `story-standards.md` | Story template, acceptance criteria format, definition of done |
 
 ## Plugin Directory Structure
 
@@ -699,49 +645,27 @@ chapter-4/
 │   └── scripts/
 │       ├── validate-lld-hook.py
 │       └── enforce-readonly-queries.py
-├── scrum-master-plugin/                  # Scrum Master Agent plugin
-│   ├── .claude-plugin/
-│   │   └── plugin.json
-│   ├── agents/
-│   │   └── scrum-master-agent.md
-│   ├── skills/
-│   │   ├── create-stories/
-│   │   │   └── SKILL.md
-│   │   ├── update-stories/
-│   │   │   └── SKILL.md
-│   │   └── validate-stories/
-│   │       ├── SKILL.md
-│   │       └── scripts/
-│   │           └── validate_stories.py
-│   ├── hooks/
-│   │   └── hooks.json
-│   └── scripts/
-│       ├── validate-stories-hook.py
-│       └── enforce-readonly-queries.py
 ├── inputs/
 │   ├── drd/v1/                         # BA Agent inputs (versioned)
 │   ├── architect/v1/                   # Architect Agent inputs (versioned)
 │   ├── dms/v1/                         # Data Modeler inputs (versioned)
 │   ├── stm/v1/                         # Mapping Analyst inputs (versioned)
 │   ├── dqs/v1/                         # DQ Engineer inputs (versioned)
-│   ├── lld/v1/                         # Technical Lead inputs (versioned)
-│   └── stories/v1/                     # Scrum Master inputs (versioned)
+│   └── lld/v1/                         # Technical Lead inputs (versioned)
 ├── outputs/
 │   ├── drd/v1/                         # Generated DRDs (versioned)
 │   ├── hld/v1/                         # Generated HLDs (versioned)
 │   ├── dms/v1/                         # Generated DMSs (versioned)
 │   ├── stm/v1/                         # Generated STM Excel workbooks (versioned)
 │   ├── dqs/v1/                         # Generated DQS + SE YAML rules (versioned)
-│   ├── lld/v1/                         # Generated LLD + config + DAG + impl sequence (versioned)
-│   └── stories/v1/                     # Generated Sprint Backlog + EPIC/STORY files (versioned)
+│   └── lld/v1/                         # Generated LLD + config + DAG + impl sequence (versioned)
 ├── memory/                             # Session memory (cross-session persistence)
 │   ├── drd/                            # BA Agent session notes + learnings
 │   ├── hld/                            # Architect session notes + learnings
 │   ├── dms/                            # Data Modeler session notes + learnings
 │   ├── stm/                            # Mapping Analyst session notes + learnings
 │   ├── dqs/                            # DQ Engineer session notes + learnings
-│   ├── lld/                            # Technical Lead session notes + learnings
-│   └── stories/                        # Scrum Master session notes + learnings
+│   └── lld/                            # Technical Lead session notes + learnings
 ├── tests/                              # Unit tests
 ├── pyproject.toml
 ├── Makefile
@@ -757,7 +681,7 @@ cd chapter-4
 make test
 ```
 
-This runs all tests covering all seven plugins: validators, validation hooks, read-only query enforcement, agent definition structure, and derived artifact generators.
+This runs all tests covering all six plugins: validators, validation hooks, read-only query enforcement, agent definition structure, and derived artifact generators.
 
 ### Run validators directly
 
@@ -782,9 +706,6 @@ uv run python dq-engineer-plugin/skills/validate-dqs/scripts/validate_dqs.py out
 # Validate a specific LLD
 uv run python technical-lead-plugin/skills/validate-lld/scripts/validate_lld.py outputs/lld/v1/LLD-2026-03-22-patient-360.md
 
-# Validate a specific Backlog
-uv run python scrum-master-plugin/skills/validate-stories/scripts/validate_stories.py outputs/stories/v1/BACKLOG-2026-03-23-patient-360.md
-
 # Validate all artifacts
 make validate-drd
 make validate-hld
@@ -792,14 +713,13 @@ make validate-dms
 make validate-stm
 make validate-dqs
 make validate-lld
-make validate-stories
 ```
 
 ### Test the plugin end-to-end
 
 1. Start Claude Code from the repo root (`claude`)
 2. Add marketplace: `/plugin marketplace add ./chapter-4`
-3. Install plugins: `/plugin install ba-plugin@rdewai-plugins`, `/plugin install architect-plugin@rdewai-plugins`, `/plugin install data-modeler-plugin@rdewai-plugins`, `/plugin install mapping-analyst-plugin@rdewai-plugins`, `/plugin install dq-engineer-plugin@rdewai-plugins`, `/plugin install technical-lead-plugin@rdewai-plugins`, `/plugin install scrum-master-plugin@rdewai-plugins`
+3. Install plugins: `/plugin install ba-plugin@rdewai-plugins`, `/plugin install architect-plugin@rdewai-plugins`, `/plugin install data-modeler-plugin@rdewai-plugins`, `/plugin install mapping-analyst-plugin@rdewai-plugins`, `/plugin install dq-engineer-plugin@rdewai-plugins`, `/plugin install technical-lead-plugin@rdewai-plugins`
 4. Invoke the BA agent: `@ba-agent Create a DRD from inputs/drd/v1`
 5. Answer the agent's clarifying questions until it confirms readiness
 6. Verify a DRD was created in `outputs/drd/v1/`
@@ -818,9 +738,10 @@ make validate-stories
 19. Invoke the Technical Lead agent: `@technical-lead-plugin:technical-lead-agent Create the LLD for the project`
 20. Answer implementation design questions until the agent confirms readiness
 21. Verify an LLD was created in `outputs/lld/v1/` with config, DAG, and impl-sequence files
-22. Invoke the Scrum Master agent: `@scrum-master-plugin:scrum-master-agent Create the Sprint Backlog for the project`
-23. Answer story decomposition questions until the agent confirms readiness
-24. Verify a BACKLOG index and EPIC/STORY files were created in `outputs/stories/v1/`
+
+For sprint-backlog generation + code implementation, continue in
+`chapter-5/` — it ships a self-contained workspace with the Scrum Master
+and Developer plugins that consume the approved artifacts from here.
 
 ### Debug plugin loading
 
@@ -856,9 +777,6 @@ Or uninstall and reinstall:
 
 /plugin uninstall technical-lead-plugin@rdewai-plugins
 /plugin install technical-lead-plugin@rdewai-plugins
-
-/plugin uninstall scrum-master-plugin@rdewai-plugins
-/plugin install scrum-master-plugin@rdewai-plugins
 ```
 
 ## Makefile Targets
@@ -873,7 +791,6 @@ make validate-dms   # Validate all DMSs in outputs/dms/
 make validate-stm   # Validate all STMs (.xlsx) in outputs/stm/
 make validate-dqs   # Validate all DQSs in outputs/dqs/
 make validate-lld       # Validate all LLDs in outputs/lld/
-make validate-stories   # Validate all Backlogs in outputs/stories/
 make lint               # Run ruff linter
 make format             # Auto-format code
 make clean              # Remove caches

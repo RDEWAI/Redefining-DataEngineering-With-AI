@@ -1,0 +1,53 @@
+skill: generate-se-rules
+version: "1.0"
+cases:
+  - id: TC-001
+    name: "Generates per-table YAML files"
+    description: "One YAML file per target table in se-rules/ directory"
+    inputs:
+      file: "outputs/dqs/v1/"
+    expected:
+      - type: file_created
+        pattern: "outputs/dqs/v1/se-rules/*.yaml"
+      - type: file_count_gt
+        min: 1
+    success_criteria: "At least one per-table YAML file generated"
+
+  - id: TC-002
+    name: "YAML files are valid"
+    description: "All generated YAML files parse without errors"
+    inputs:
+      file: "outputs/dqs/v1/"
+    expected:
+      - type: yaml_valid
+    success_criteria: "All YAML files parse correctly"
+
+  - id: TC-003
+    name: "SE format compatible with spark-expectations >= 2.6.0"
+    description: "YAML structure matches spark-expectations rule schema"
+    inputs:
+      file: "outputs/dqs/v1/"
+    expected:
+      - type: content_contains
+        patterns: ["row_dq", "product_id", "rule", "type", "expectation"]
+    success_criteria: "Rules follow spark-expectations schema"
+
+  - id: TC-004
+    name: "Rules grouped by table"
+    description: "Each YAML file contains only rules for its target table"
+    inputs:
+      file: "outputs/dqs/v1/"
+    expected:
+      - type: content_contains
+        patterns: ["table_name"]
+    success_criteria: "Rules properly grouped by target table"
+
+  - id: TC-005
+    name: "Rule types correctly mapped"
+    description: "DQS rule types map to SE rule types (row_dq, agg_dq, query_dq)"
+    inputs:
+      file: "outputs/dqs/v1/"
+    expected:
+      - type: content_contains
+        patterns: ["row_dq"]
+    success_criteria: "At least row_dq rules present"

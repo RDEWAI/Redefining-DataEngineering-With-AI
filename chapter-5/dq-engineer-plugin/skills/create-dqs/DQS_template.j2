@@ -1,0 +1,165 @@
+# Data Quality Specification: {{ dqs.title }}
+
+| Field | Value |
+|-------|-------|
+| **Version** | {{ dqs.version }} |
+| **Created** | {{ dqs.created_date }} |
+| **Last Modified** | {{ dqs.modified_date }} |
+| **Author** | {{ dqs.author }} |
+| **Status** | {{ dqs.status }} |
+| **STM Reference** | {{ dqs.stm_reference }} |
+| **DMS Reference** | {{ dqs.dms_reference }} |
+| **DRD Reference** | {{ dqs.drd_reference }} |
+
+---
+
+## 1. Overview
+
+{{ dqs.overview.description }}
+
+### Severity Definitions
+
+| Severity | Action | Description |
+|----------|--------|-------------|
+{% for sev in dqs.overview.severities %}
+| **{{ sev.level }}** | {{ sev.action }} | {{ sev.description }} |
+{% endfor %}
+
+### Rule ID Conventions
+
+| Prefix | Category | Applies To |
+|--------|----------|------------|
+{% for conv in dqs.overview.rule_id_conventions %}
+| {{ conv.prefix }} | {{ conv.category }} | {{ conv.applies_to }} |
+{% endfor %}
+
+### Scope
+
+This DQS covers validation rules for the following tables:
+
+| Layer | Tables Covered |
+|-------|---------------|
+{% for scope in dqs.overview.scope %}
+| {{ scope.layer }} | {{ scope.tables }} |
+{% endfor %}
+
+---
+
+## 2. Field-Level Validation Rules
+
+{% for layer_block in dqs.field_level_rules %}
+### {{ layer_block.layer }} Layer
+
+| Rule ID | Table | Column | Check Type | Expression | Severity | Action |
+|---------|-------|--------|------------|------------|----------|--------|
+{% for rule in layer_block.rules %}
+| {{ rule.rule_id }} | {{ rule.table }} | {{ rule.column }} | {{ rule.check_type }} | {{ rule.expression }} | {{ rule.severity }} | {{ rule.action }} |
+{% endfor %}
+
+{% endfor %}
+
+---
+
+## 3. Referential Integrity Rules
+
+| Rule ID | Child Table | Child Column | Parent Table | Parent Column | Layer | Orphan Action | Severity |
+|---------|-------------|--------------|--------------|---------------|-------|---------------|----------|
+{% for rule in dqs.referential_integrity_rules %}
+| {{ rule.rule_id }} | {{ rule.child_table }} | {{ rule.child_column }} | {{ rule.parent_table }} | {{ rule.parent_column }} | {{ rule.layer }} | {{ rule.orphan_action }} | {{ rule.severity }} |
+{% endfor %}
+
+---
+
+## 4. Statistical Distribution Tests
+
+| Rule ID | Table | Metric | Baseline | Threshold | Frequency | Layer | Alert |
+|---------|-------|--------|----------|-----------|-----------|-------|-------|
+{% for rule in dqs.statistical_tests %}
+| {{ rule.rule_id }} | {{ rule.table }} | {{ rule.metric }} | {{ rule.baseline }} | {{ rule.threshold }} | {{ rule.frequency }} | {{ rule.layer }} | {{ rule.alert }} |
+{% endfor %}
+
+---
+
+## 5. Reconciliation Rules
+
+| Rule ID | Source Table | Target Table | Comparison | Tolerance | Frequency | Escalation |
+|---------|-------------|--------------|------------|-----------|-----------|------------|
+{% for rule in dqs.reconciliation_rules %}
+| {{ rule.rule_id }} | {{ rule.source_table }} | {{ rule.target_table }} | {{ rule.comparison }} | {{ rule.tolerance }} | {{ rule.frequency }} | {{ rule.escalation }} |
+{% endfor %}
+
+---
+
+## 6. Freshness & SLA Monitoring
+
+| Consumer | Table | Max Latency | Check Frequency | Alert Channel | DRD Ref |
+|----------|-------|-------------|-----------------|---------------|---------|
+{% for sla in dqs.freshness_sla %}
+| {{ sla.consumer }} | {{ sla.table }} | {{ sla.max_latency }} | {{ sla.check_frequency }} | {{ sla.alert_channel }} | {{ sla.drd_ref }} |
+{% endfor %}
+
+---
+
+## 7. Alert & Escalation Framework
+
+### Severity Routing
+
+| Severity | Response Time | Notification Channel | Escalation |
+|----------|--------------|---------------------|------------|
+{% for route in dqs.alert_framework.routing %}
+| {{ route.severity }} | {{ route.response_time }} | {{ route.channel }} | {{ route.escalation }} |
+{% endfor %}
+
+### Threshold Breach Actions
+
+{% for env in dqs.alert_framework.breach_actions %}
+**{{ env.environment }}**: {{ env.action }}
+{% endfor %}
+
+### Escalation Contacts
+
+| Role | Contact | Channel |
+|------|---------|---------|
+{% for contact in dqs.alert_framework.contacts %}
+| {{ contact.role }} | {{ contact.contact }} | {{ contact.channel }} |
+{% endfor %}
+
+---
+
+## 8. Traceability Matrix
+
+| DQS Rule | DRD Requirement | DMS Section | STM Sheet | Description |
+|----------|----------------|-------------|-----------|-------------|
+{% for trace in dqs.traceability %}
+| {{ trace.rule_id }} | {{ trace.drd_ref }} | {{ trace.dms_section }} | {{ trace.stm_sheet }} | {{ trace.description }} |
+{% endfor %}
+
+---
+
+## 9. Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+{% for v in dqs.version_history %}
+| {{ v.version }} | {{ v.date }} | {{ v.author }} | {{ v.changes }} |
+{% endfor %}
+
+---
+
+## 10. Open Questions
+
+| # | Question | Assigned To | Due Date | Status |
+|---|----------|-------------|----------|--------|
+{% for q in dqs.open_questions %}
+| {{ loop.index }} | {{ q.question }} | {{ q.assigned_to }} | {{ q.due_date }} | {{ q.status }} |
+{% endfor %}
+
+---
+
+## 11. Approval
+
+| Role | Name | Date | Signature |
+|------|------|------|-----------|
+{% for a in dqs.approvals %}
+| {{ a.role }} | {{ a.name }} | {{ a.date }} | {{ a.signature }} |
+{% endfor %}

@@ -1,0 +1,54 @@
+# Illustrative Airflow DAG factory — see airflow-dag-pattern.md.
+# Generic placeholders: {project}.
+
+from datetime import datetime, timedelta
+from airflow.decorators import dag, task_group
+from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+
+DEFAULT_ARGS = {
+    "owner": "{project}",
+    "retries": 2,
+    "retry_delay": timedelta(minutes=5),
+    "sla": timedelta(minutes=30),
+    "depends_on_past": False,
+}
+
+
+def _spark_task(task_id: str, layer: str, target: str):
+    return SparkSubmitOperator(
+        task_id=task_id,
+        application="run_local.py",
+        application_args=["--layer", layer, "--table", target, "--ds", "{{ ds }}"],
+        conn_id="spark_default",
+    )
+
+
+def make_pipeline_dag(project: str, schedule: str,
+                      bronze: list[str], silver: list[str], gold: list[str]):
+    @dag(
+        dag_id=f"{project}_{schedule.lstrip('@')}_v1",
+        schedule=schedule,
+        start_date=datetime(2026, 1, 1),
+        catchup=False,
+        default_args=DEFAULT_ARGS,
+        tags=[project, "medallion"],
+    )
+    def pipeline():
+        @task_group(group_id="bronze")
+        def bronze_tg():
+            for t in bronze:
+                _spark_task(f"ingest_{t}", "bronze", t)
+
+        @task_group(group_id="silver")
+        def silver_tg():
+            for t in silver:
+                _spark_task(f"transform_{t}", "silver", t)
+
+        @task_group(group_id="gold")
+        def gold_tg():
+            for t in gold:
+                _spark_task(f"build_{t}", "gold", t)
+
+        bronze_tg() >> silver_tg() >> gold_tg()
+
+    return pipeline()

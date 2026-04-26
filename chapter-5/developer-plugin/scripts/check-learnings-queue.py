@@ -1,16 +1,39 @@
 #!/usr/bin/env python3
-"""PostToolUse hook: remind agent of pending learnings after Write/Edit."""
+"""PostToolUse hook: remind agent of pending learnings after Write/Edit.
 
+Project-agnostic: the hook discovers the workspace via the sibling
+``status_rollup.py`` helper starting from the edited file's directory, then
+reads the learnings queue at ``{workspace_root}/memory/developer/``. If the
+edit is outside any discoverable workspace, the hook fails open and exits 0.
+"""
+
+import importlib.util
 import json
-import os
 import sys
+from pathlib import Path
 
 ROLE = "developer"
-OUTPUT_PATH_MARKERS = (
-    "/patient_360/",
-    "/airflow/dags/",
-    "/_infra/ci/",
-)
+
+
+def _load_discovery_module():
+    here = Path(__file__).resolve()
+    helper = here.parent.parent / "skills" / "validate-stories" / "scripts" / "status_rollup.py"
+    if not helper.exists():
+        return None
+    module_name = "_rdewai_status_rollup"
+    if module_name in sys.modules:
+        return sys.modules[module_name]
+    spec = importlib.util.spec_from_file_location(module_name, helper)
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        sys.modules.pop(module_name, None)
+        return None
+    return module
 
 
 def main():
@@ -21,17 +44,28 @@ def main():
 
     tool_input = input_data.get("tool_input", {})
     file_path = tool_input.get("file_path", "")
-
-    if not any(marker in file_path for marker in OUTPUT_PATH_MARKERS):
+    if not file_path:
         sys.exit(0)
 
-    # chapter-5/developer-plugin/scripts/ → chapter-5/
-    chapter_root = os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    )
-    queue_file = os.path.join(chapter_root, "memory", ROLE, "learnings-queue.jsonl")
+    rollup = _load_discovery_module()
+    if rollup is None:
+        sys.exit(0)
 
-    if not os.path.exists(queue_file):
+    start = Path(file_path).parent
+    try:
+        ws = rollup.discover_workspace(start=start)
+    except Exception:
+        sys.exit(0)
+
+    # Only remind when the edit is inside the discovered project. Edits
+    # outside the project tree (docs, other chapters) should not trigger.
+    try:
+        Path(file_path).resolve().relative_to(ws.project_root)
+    except ValueError:
+        sys.exit(0)
+
+    queue_file = ws.learnings_queue
+    if not queue_file.exists():
         sys.exit(0)
 
     pending_count = 0
@@ -51,12 +85,16 @@ def main():
         sys.exit(0)
 
     if pending_count > 0:
+        try:
+            queue_display = queue_file.relative_to(ws.workspace_root).as_posix()
+        except ValueError:
+            queue_display = str(queue_file)
         output = {
             "hookSpecificOutput": {
                 "hookEventName": "PostToolUse",
                 "additionalContext": (
                     f"LEARNINGS QUEUE: {pending_count} pending correction(s) in "
-                    f"memory/{ROLE}/learnings-queue.jsonl. "
+                    f"{queue_display}. "
                     f"Run /developer-plugin:apply-learnings after completing the current skill."
                 ),
             }

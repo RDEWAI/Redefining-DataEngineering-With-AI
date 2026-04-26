@@ -1,22 +1,22 @@
 ---
 name: create-ingestion
 description: >
-  Generates the Bronze config-driven ingestion framework from the approved LLD
-  or from a specific Scrum story. Can run in two modes:
-  - Full mode: generates the entire framework from an LLD file path.
-  - Story mode: generates only the deliverables for a single story (e.g. STORY-02-002),
-    validates against that story's acceptance criteria, and checks dependencies.
-  Also known as: bronze ingestion scaffolding, ingestion-runner generation,
-  per-table config generation.
-  Input formats: LLD markdown (inputs/lld/v{N}/LLD-*.md) OR story ID (STORY-NN-NNN).
-  Output format: Python modules + YAML configs written under patient_360/.
+  Generates the Bronze config-driven ingestion layer from the approved LLD,
+  DMS, STM, DQS, and a given story. Modes:
+  - Story mode: read a STORY-NN-NNN, extract backtick-quoted deliverables
+    from its Acceptance Criteria, generate only those that fall under this
+    skill's domain of ownership. ROUTE-OUT for others.
+  - Full mode: process every un-Done story classified as `ingestion`,
+    topo-sorted by Depends On.
+  Project-agnostic: the table list, critical-table designation, per-table
+  DQ rule filenames, and runner module names are ALL read from the current
+  run's LLD / DMS / STM / DQS / stories at runtime. No project identifiers
+  or story IDs are hardcoded.
   Use when the user asks to:
-  - Create, generate, or scaffold the Bronze ingestion code
+  - Generate or update Bronze ingestion code for a story
   - Build the ingestion runner / factory / SparkSubmit wrapper
-  - Generate per-table ingestion configs from the LLD
-  - "Write the ingestion framework from the LLD"
-  - "Implement story STORY-02-002" or "implement story 02 of epic 02"
-argument-hint: "[lld-path | STORY-NN-NNN]"
+  - Generate per-table ingestion configs
+argument-hint: "[STORY-NN-NNN | 'full']"
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill
 context: fork
 ---
@@ -29,45 +29,169 @@ SparkSubmitOperator wrapper, and one YAML config per Bronze table.
 
 The LLD is the single source of truth. Never invent paths or tables — every
 module path, config file, and table name must already be named in the LLD.
-Use `mvp/src/patient_360/bronze/ingest.py` as a reference only; the output
-must be config-driven, not hard-coded like the MVP.
+the output must be config-driven, not hard-coded.
 
-## Story → Deliverable Map
+## Workspace Discovery
 
-Use this map in story mode to determine what to generate and what to skip.
+Before any file operation, run the discovery helper and substitute the
+returned tokens into every path this skill reads, writes, or edits:
 
-| Story ID     | Title                              | Deliverables to generate                                                      |
-|--------------|------------------------------------|-------------------------------------------------------------------------------|
-| STORY-02-001 | Per-Table YAML Ingestion Configs   | `airflow/configs/{table}.yml` × 13, `dq_rules/*.yml` sync                    |
-| STORY-02-002 | Generic Ingestion Runner           | `src/patient_360/bronze/ingestion_runner.py`                                  |
-| STORY-02-003 | SparkSubmitOperator Wrapper        | `src/patient_360/bronze/spark_submit_wrapper.py`                              |
-| STORY-02-004 | TaskGroup Factory                  | `src/patient_360/bronze/ingestion_factory.py`                                 |
-| STORY-02-006 | SE Runner + Bronze DQ Rules        | `src/patient_360/utils/se_runner.py`, `dq_rules/*.yml` sync                  |
-| STORY-02-009 | Unit Tests for Bronze              | `tests/bronze/test_ingestion_runner.py`, `tests/bronze/test_per_table_configs.py` |
-| STORY-02-010 | Integration / Validate Tests       | `tests/bronze/test_validate_ingestion.py`                                     |
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py --mode discover
+```
 
-Stories not in this map belong to a different epic or are not implemented by this skill.
+The JSON output supplies `{workspace_root}`, `{project_root}`,
+`{project_name}`, `{stories_dir}`, and `{learnings_queue}`. The plugin is
+project-agnostic — never hardcode project or chapter names in edits.
+
+## Coding Patterns & Libraries Handbook
+
+Before any ingestion code is emitted, load the latest coding-patterns handbook:
+
+```bash
+PATTERNS_DIR=$(ls -d "{workspace_root}/inputs/code/v"* 2>/dev/null | sort -V | tail -1)
+if [ -z "$PATTERNS_DIR" ] || [ ! -d "$PATTERNS_DIR" ]; then
+  echo "CRITICAL: inputs/code/v*/ not found. Run /developer-plugin:refresh-libraries to initialize the library cache."
+  exit 1
+fi
+LIBRARIES_FILE="$PATTERNS_DIR/LIBRARIES.md"
+```
+
+**Required pattern docs for this skill:**
+
+- `$PATTERNS_DIR/bronze-ingestion-pattern.md` — registry → factory → runner shape
+- `$PATTERNS_DIR/spark-expectations-pattern.md` — SE YAML rule shape + runner wrapper
+- `$PATTERNS_DIR/naming-conventions.md` — audit columns, table names
+- `$PATTERNS_DIR/logging-error-handling.md` — module logger + fail-fast
+- `$PATTERNS_DIR/LIBRARIES.md` — pinned PySpark / Delta / SE versions
+
+### Library freshness check
+
+```bash
+LAST_VERIFIED=$(grep '^last_verified:' "$LIBRARIES_FILE" | awk '{print $2}')
+TODAY=$(date -u +%Y-%m-%d)
+AGE_DAYS=$(python3 -c "from datetime import date; print((date.fromisoformat('$TODAY') - date.fromisoformat('$LAST_VERIFIED')).days")
+```
+
+If `AGE_DAYS > 30`, pause and call **AskUserQuestion** with options `Refresh now` / `Proceed with cached versions` / `Cancel`. On Refresh, invoke `/developer-plugin:refresh-libraries` then resume.
+
+### References trailer (in output)
+
+Emit a `### References` section citing consumed pattern docs + LIBRARIES.md vintage. Add a stale-cache warning if the user opted to proceed with cached versions.
+
+## Domain of Ownership
+
+This skill owns the project's **Bronze ingestion layer** — config-driven
+code that reads raw sources and writes versioned Bronze Delta tables.
+Specifically:
+
+| Owned path pattern                                | What lives here                                                      |
+|---------------------------------------------------|----------------------------------------------------------------------|
+| `src/<project_name>/bronze/**`                    | Ingestion runner, factory, SparkSubmit wrapper, reconciliation task, DLQ writer — whatever LLD §2.3 + §5.1 name |
+| `airflow/configs/**`                              | One YAML per Bronze table from LLD §5.1                              |
+| `dq_rules/**`                                     | Synced from latest `{workspace_root}/outputs/dqs/v*/se-rules/*.yaml` |
+| `contracts/dq/**`                                 | Per-table DQ thresholds from DQS §5                                  |
+| `ddl/liquibase/changelogs/**`                     | Bronze DDL from DMS §2                                               |
+| `tests/bronze/**`                                 | Bronze unit + integration tests                                      |
+
+It does **not** own: `src/<project_name>/utils/**` (create-scaffold),
+`src/<project_name>/{silver,gold}/**` (future layer skills),
+`airflow/dags/**` (create-dag), `contracts/*.yml` except `contracts/dq/**`
+(create-scaffold; StructType contracts), `.github/workflows/**` +
+`_infra/{ci,cd}/**` (create-pipeline).
+
+## Deliverable Resolution Protocol
+
+**No Story → Deliverable Map is hardcoded.** The current run's story file
+is the single source of truth for which paths to emit.
+
+1. **Story mode** (`STORY-NN-NNN`): read the story file. Parse Acceptance
+   Criteria. For each backtick-quoted path or identifier:
+   - Path matches an owned pattern above → generate it.
+   - Path matches another skill's domain → print
+     `ROUTE-TO: create-<kind> <path>` and exit cleanly.
+   - Identifier (no path) → resolve via LLD §2.3 interface contracts; if
+     the LLD places it under this skill's domain, generate; else ROUTE-OUT.
+
+2. **Full / auto mode**: enumerate every un-Done story whose classifier
+   kind is `ingestion` (`status_rollup.py --mode classify`), topo-sorted
+   by `Depends On`, and run each through Story mode.
+
+## Source-of-Truth Reads at Runtime
+
+Project-specific facts are read each run — never hardcoded.
+
+| Fact needed                          | Where to read                                                            |
+|--------------------------------------|--------------------------------------------------------------------------|
+| Bronze table list                    | LLD §5.1 (`Source → Bronze` task table)                                  |
+| Source schema/format per table       | STM `Source-to-Bronze` tab                                               |
+| Per-table `empty_input_behavior`     | LLD §5.1 column — the tables flagged `fail` ARE the critical tables     |
+| Per-table SE rule file               | `ls {workspace_root}/outputs/dqs/v*/se-rules/*.yaml` — discover filenames; do NOT assume any prefix like `se-rules-<domain>-<table>.yaml` |
+| Per-table DQ thresholds              | DQS §5                                                                   |
+| Runner/factory/wrapper module names  | LLD §2.3 Module Interface Contracts                                      |
+| Compute knobs (shuffle, cores, mem)  | `config-template.yaml` + LLD §6.1/§6.3                                   |
+| DAG name (for integration tests)     | LLD §4.1                                                                 |
 
 ## Workflow
 
 ### Phase 0: Detect Input Mode and Upstream Gate
 
-**Step 1 — Detect mode from the argument:**
+**FIRST — resolve the effective argument. Do this before any other Phase 0 step.**
+
+The conversational argument is NOT the only source of truth — a parent
+orchestrator (e.g. `implement-stories`) may dispatch this skill via the
+`Skill` tool and the forwarded argument may not reach this fork. Check
+these sources in order; stop at the first non-empty hit:
+
+1. `$SKILL_ARG` environment variable.
+2. `{workspace_root}/.skill-arg` file — read its contents, then delete
+   the file so it is consumed at most once.
+3. The conversational argument supplied to the skill.
+4. **Auto-mode default** — if `$CLAUDE_AUTO_MODE=1` OR
+   `{workspace_root}/.auto-mode` exists → use the skill's full-mode default
+   (**full LLD generation, no story ID**).
+5. Only if ALL four above are empty, ask the user via `AskUserQuestion`.
+
+You MUST NOT ask the user until sources 1–4 have been checked. Auto-mode
+detection is a hard override — if the marker exists, proceed with the
+full-mode default and do not ask.
+
+Mechanical resolver (copy-paste; `$USER_ARG` is the conversational arg):
+
+```bash
+resolve_skill_arg() {
+  if [ -n "$SKILL_ARG" ]; then echo "$SKILL_ARG"; return; fi
+  if [ -f "{workspace_root}/.skill-arg" ]; then
+    cat "{workspace_root}/.skill-arg"; rm -f "{workspace_root}/.skill-arg"; return
+  fi
+  # caller supplies conversational arg as $1
+  if [ -n "$1" ]; then echo "$1"; return; fi
+  if [ "$CLAUDE_AUTO_MODE" = "1" ] || [ -f "{workspace_root}/.auto-mode" ]; then
+    echo "__AUTO__"; return
+  fi
+  echo ""
+}
+RESOLVED_ARG=$(resolve_skill_arg "$USER_ARG")
+```
+
+If `$RESOLVED_ARG` is `__AUTO__` or matches the full-mode pattern (empty or
+an `.md` path), proceed without asking — treat it as **full mode**.
+
+**Step 1 — Detect mode from the resolved argument:**
 
 - If the argument matches the pattern `STORY-NN-NNN` (e.g. `STORY-02-002`) or the user
   says something like "implement story 2 of epic 2" → **Story mode**. Normalize to
   `STORY-{EPIC:02d}-{NUM:03d}` format (e.g. "story 2 of epic 2" → `STORY-02-002`).
 - If the argument is a file path (ends in `.md`) → **Full mode**. Skip to the LLD gate.
-- If no argument is given → ask the user: "Provide an LLD file path for full generation,
-  or a story ID (e.g. STORY-02-002) to implement a single story."
+- If `$RESOLVED_ARG` is `__AUTO__` (auto-mode default) → **Full mode**. Skip to the LLD gate.
 
 **Step 2 — Story mode: resolve and read the story file:**
 
 ```bash
 STORY_ID="STORY-02-002"   # substitute actual ID
 EPIC_NUM=$(echo "$STORY_ID" | cut -d- -f2)
-STORY_FILE=$(ls chapter-5/inputs/stories/v*/EPIC-${EPIC_NUM}-*/STORY-${STORY_ID}*.md \
-             chapter-5/inputs/stories/v*/${STORY_ID}*.md 2>/dev/null | head -1)
+STORY_FILE=$(ls {stories_dir}/v*/EPIC-${EPIC_NUM}-*/STORY-${STORY_ID}*.md \
+             {stories_dir}/v*/${STORY_ID}*.md 2>/dev/null | head -1)
 echo "$STORY_FILE"
 ```
 
@@ -78,27 +202,37 @@ Read the story file and extract:
 - **Dependencies** (`Depends On:` lines)
 
 If the story file is not found, stop and tell the user which path was searched.
-If the story ID is not in the Story → Deliverable Map above, stop and tell the user
-this skill does not implement that story (it may belong to a different skill).
+
+Verify the story classifies to `ingestion` (run
+`status_rollup.py --mode classify --story STORY-NN-NNN`). If the returned
+`skill_kind` is anything other than `ingestion`, emit
+`ROUTE-TO: create-<kind>` and exit cleanly so the orchestrator can dispatch
+the correct skill. Do NOT raise an error.
+
+If the story classifies to `ingestion` but is NOT listed in the Story →
+Deliverable Map above, read its Acceptance Criteria at runtime and generate
+every backtick-quoted deliverable path. The classifier is the gate, not the
+map.
 
 **Step 3 — Story mode: dependency check:**
 
-For each story listed under `Depends On:`, verify its deliverables exist on disk
-using the map above. For example, STORY-02-002 depends on STORY-02-001
-(configs must exist). If any dependency is unmet, stop and list what is missing:
+For each story listed under `Depends On:`, open its story file and verify
+each backtick-quoted deliverable path from **its** ACs exists on disk. If
+any dependency's deliverables are missing, stop and list what is missing:
 
 ```
 Dependency check failed:
-  STORY-02-002 depends on STORY-02-001
-  Missing: chapter-5/patient_360/airflow/configs/ (0 yml files found, 13 required)
-Complete STORY-02-001 first, then re-run.
+  STORY-NN-NNN depends on STORY-NN-MMM
+  Missing (declared in STORY-NN-MMM AC): {project_root}/<path>
+Complete STORY-NN-MMM first, then re-run.
 ```
 
 **Step 4 — Set GENERATION_SCOPE:**
 
-In story mode, set `GENERATION_SCOPE` to only the deliverables for that story ID
-per the map above. All Phase 3/4 generation blocks check this scope and skip
-anything not in it.
+In story mode, set `GENERATION_SCOPE` to the subset of candidate
+deliverables from the current story's AC that match this skill's owned
+path patterns. Phase 3/4 generation blocks check this scope and skip
+anything not in it; anything owned by another skill emits ROUTE-TO.
 
 In full mode, `GENERATION_SCOPE = all`.
 
@@ -108,34 +242,51 @@ Read the latest LLD and verify `Status: Approved` (or `Updated - Pending Review`
 if the user explicitly opts to proceed with a draft).
 
 ```bash
-LATEST_LLD_DIR=$(ls -d chapter-5/inputs/lld/v* | sort -V | tail -1)
+# Prefer pinned versions from the dev-lock (written by implement-stories).
+# Falls through to the legacy `ls … | tail -1` pattern when no lockfile.
+eval "$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/resolve_versions.py --export)"
+LATEST_LLD_DIR="${LATEST_LLD_DIR:-$(ls -d {workspace_root}/outputs/lld/v* | sort -V | tail -1)}"
 ls -t "$LATEST_LLD_DIR"/LLD-*.md | grep -v '\.bak$' | head -1
 ```
 
 If not approved, stop and inform the user.
+
+### Phase 0.5: Path Scoping (optional, set by the orchestrator)
+
+If `{workspace_root}/.skill-paths` exists, read it — each non-empty line
+is a path in scope for THIS invocation. Process ONLY those paths; ignore
+other paths the story AC names (they belong to other skills and the
+orchestrator will dispatch them separately). Delete `.skill-paths` after
+consuming it. When the file is absent (direct human invocation), fall
+through to the standard phases that scan every candidate deliverable
+against the Domain of Ownership.
 
 ### Phase 1: Read Inputs
 
 - **LLD markdown**: read §2.3 (Module Interface Contracts), §5.1 (Bronze task
   table), §3 (storage layout), §7 (configuration schema). The LLD §5.1 task
   table lists every table to generate a config for.
-- **Config template**: `chapter-5/inputs/lld/v{N}/config/config-template.yaml`
+- **Config template**: `{workspace_root}/outputs/lld/v{N}/config/config-template.yaml`
   — source of truth for default storage paths, ingestion knobs (`ingestion_config_dir`,
   `ingestion_dq_rules_dir`, `ingestion_default_empty_input_behavior`,
   `ingestion_spark_submit_class`), and compute defaults.
-- **STM workbook** (reference only): `chapter-5/inputs/stm/v{N}/STM-*.xlsx` →
+- **STM workbook** (reference only): `{workspace_root}/outputs/stm/v{N}/STM-*.xlsx` →
   `Source-to-Bronze` tab. Column lists inform the per-table YAML schema block.
-- **Existing patient_360 tree**: `chapter-5/patient_360/` — confirm target
-  directories (`src/patient_360/bronze/`, `airflow/configs/`, `contracts/`,
+- **Existing project tree**: `{project_root}/` — confirm target
+  directories (`src/{project_name}/bronze/`, `airflow/configs/`, `contracts/`,
   `dq_rules/`) exist before writing. Never create new top-level folders.
-- **MVP reference**: `mvp/src/patient_360/bronze/ingest.py` — use as a coding-style
-  reference only. Do NOT copy its hard-coded `TABLE_REGISTRY`; the chapter-5
-  runner is config-driven.
-- **DQS SE rules** (source of truth for `dq_rules/`): latest
-  `chapter-5/inputs/dqs/v{N}/se-rules/se-rules-synthea-{table}.yaml` files.
-  These are Spark Expectations-formatted rule sets (`product_id`, `dq_env`,
-  `rules[]`) produced by the upstream DQ Engineer plugin. Never hand-write
-  stubs when a matching SE file exists.
+- **Pattern handbook**: the canonical bronze-ingestion coding style lives
+  in `$PATTERNS_DIR/bronze-ingestion-pattern.md`. Follow that; do NOT copy
+  from any other example that might hard-code a `TABLE_REGISTRY` — the
+  generated runner must be config-driven from `airflow/configs/*.yml`.
+- **DQS SE rules** (source of truth for `dq_rules/`): discover files under
+  `{workspace_root}/outputs/dqs/v{N}/se-rules/*.yaml`. Match each file to a
+  Bronze table by reading the file's `product_id` (or by filename stem, as
+  a fallback). Do NOT assume any filename prefix like
+  `se-rules-<domain>-<table>.yaml` — that naming is project-specific.
+  These are Spark Expectations-formatted rule sets (`product_id`,
+  `dq_env`, `rules[]`) produced by the upstream DQ Engineer plugin. Never
+  hand-write stubs when a matching SE file exists.
 
 ### Phase 2: Clarify
 
@@ -143,7 +294,7 @@ If not approved, stop and inform the user.
 
 ```
 Story:       STORY-02-002 — Generic Ingestion Runner (5 pts, Sprint 3)
-Deliverable: chapter-5/patient_360/src/patient_360/bronze/ingestion_runner.py
+Deliverable: {project_root}/src/{project_name}/bronze/ingestion_runner.py
 Depends on:  ✓ STORY-02-001 (13 configs found)
 LLD status:  Approved
 
@@ -171,7 +322,7 @@ Skip any question if the LLD/config-template gives an unambiguous answer.
 > **Scope gate**: In story mode, generate only the module(s) for the active story
 > per the Story → Deliverable Map. Skip all others — do not create empty stubs.
 
-Write Python modules to `chapter-5/patient_360/src/patient_360/bronze/`
+Write Python modules to `{project_root}/src/{project_name}/bronze/`
 (and `utils/` for se_runner). Only write a module if it is in `GENERATION_SCOPE`:
 
 1. **`ingestion_runner.py`** — reads a per-table YAML, enforces `StructType`
@@ -187,7 +338,7 @@ Write Python modules to `chapter-5/patient_360/src/patient_360/bronze/`
    so local `python -m` runs work without `PYSPARK_SUBMIT_ARGS`. SparkSubmit
    production runs will pick up the same JAR via `--packages`.
    **Metadata column names** match the DQS SE rules in
-   `chapter-5/inputs/dqs/v{N}/se-rules/` — underscore prefix is required.
+   `{workspace_root}/outputs/dqs/v{N}/se-rules/` — underscore prefix is required.
    **`TableConfig` dataclass** must include a `quarantine_path_template` field
    (default `warehouse/{env}/quarantine/bronze/{table}/` per LLD §7) with a
    `resolved_quarantine_path(env)` method. Load it from the per-table YAML
@@ -210,7 +361,7 @@ Write Python modules to `chapter-5/patient_360/src/patient_360/bronze/`
    `org.apache.spark.sql.delta.catalog.DeltaCatalog` — same as the runner.
    Do not use `UCSingleCatalog` here; that belongs to Silver/Gold UC-wired tasks.
 
-4. **`src/patient_360/utils/se_runner.py`** — implement `run_dq(df, *, table,
+4. **`src/{project_name}/utils/se_runner.py`** — implement `run_dq(df, *, table,
    env, dq_rules_dir, action_if_failed, quarantine_path)`. This module is the
    implementation of the LLD §2.3 `se_runner.py` interface contract. Pin the
    following wiring details exactly — they are **not** in the LLD but are
@@ -254,61 +405,66 @@ Write Python modules to `chapter-5/patient_360/src/patient_360/bronze/`
 
 ### Phase 4: Generate Per-Table Configs
 
-> **Scope gate**: Skip this phase entirely in story mode unless `GENERATION_SCOPE`
-> includes `configs` (STORY-02-001) or `dq_rules` (STORY-02-006).
+> **Scope gate**: Skip this phase unless a deliverable under
+> `airflow/configs/**`, `dq_rules/**`, `contracts/dq/**`, or
+> `ddl/liquibase/changelogs/**` was extracted from the story's AC.
 
-For every Bronze table named in LLD §5.1, write
-`chapter-5/patient_360/airflow/configs/{table}.yml` with this shape:
+For every Bronze table enumerated in LLD §5.1 (count and names read at
+runtime — never hardcoded), write
+`{project_root}/airflow/configs/<table>.yml` with this shape (substitute
+`<table>` and replace other bracketed placeholders with values read from
+LLD / STM / `config-template.yaml`):
 
 ```yaml
-table: {table}                       # e.g. patients
+table: <table>                       # LLD §5.1 table name
 source:
-  schema: {pipeline_source_schema}   # from config-template §general
-  table:  {source_table}             # e.g. synthea.patients
-  format: csv                         # or jdbc / delta — per STM
-  path: data/raw/{table}.csv          # required for format: csv
-schema_ref: contracts/{table}.yml     # StructType derived from contract
-output_path: warehouse/{env}/bronze/synthea_{table}/   # table ROOT; ds is a Delta partition
+  schema: <pipeline_source_schema>   # from config-template §general
+  table:  <source_table>             # STM Source-to-Bronze tab
+  format: <csv|jdbc|delta>           # STM Source-to-Bronze tab
+  path: <path-if-file-format>        # STM Source-to-Bronze tab
+schema_ref: contracts/<table>.yml
+output_path: warehouse/<env>/bronze/<bronze_table_name>/   # table ROOT — see note
 metadata_columns:
   - ds
-  - _ingested_at            # underscore prefix — matches DQS SE rules
-  - _source_batch_id        # deterministic {table}:{ds}, required by SE rules
-empty_input_behavior: write_empty     # or `fail` for the critical tables
-                                       # (patients, encounters, allergies,
-                                       # organizations, providers, payers)
-dq_rules_table: {table}               # resolves to dq_rules/{table}.yml
-se_action_if_failed: fail|drop|ignore # per LLD §5.1 DQ Check column; fail-closed default
-                                       # for rules without their own action_if_failed
-quarantine_path: warehouse/{env}/quarantine/bronze/{table}/  # LLD §7; SE drop target
-timeout_minutes: 30
-retries: 3
-retry_delay_seconds: 60
+  - _ingested_at
+  - _source_batch_id
+empty_input_behavior: <fail|write_empty>  # from LLD §5.1 Empty Input column
+dq_rules_table: <table>
+se_action_if_failed: <fail|drop|ignore>   # from LLD §5.1 DQ Check column
+quarantine_path: warehouse/<env>/quarantine/bronze/<table>/
+timeout_minutes: <from LLD §4.2>
+retries: <from LLD §4.2>
+retry_delay_seconds: <from LLD §4.2>
 ```
 
-> **Do not include `ds={ds}/` in `output_path`** — the runner writes Delta
-> partitioned by `ds`, so the output directory is the table root. Embedding
-> `ds=` in the path creates a separate Delta table per partition and breaks
-> `replaceWhere`.
+Notes:
+- `<bronze_table_name>` follows the DMS Bronze naming convention (DMS §3
+  or wherever naming is declared). Do NOT hardcode a source-system prefix
+  (e.g. `synthea_`) — read the DMS.
+- `empty_input_behavior` per table comes from LLD §5.1. Tables flagged
+  `fail` are the "critical" tables for this project — there is no
+  hardcoded list.
+- Do NOT include `ds={ds}/` in `output_path` — the runner writes Delta
+  partitioned by `ds`, so the output directory is the table root.
+- Do NOT rewrite `contracts/<table>.yml` here (owned by create-scaffold
+  via DMS). If a contract is missing, flag it as a prerequisite.
 
-Use the exact empty_input_behavior override from LLD §5.1 for the six critical
-tables. Do not change thresholds or task IDs.
-
-Do NOT rewrite `contracts/{table}.yml` here — contracts are owned by the Data
-Modeler. If a contract is missing, flag it as a prerequisite the user must
-resolve (offer to generate it from `docs/ERD.mmd` as a fallback).
-
-For `dq_rules/{table}.yml`, sync from the DQS SE rules:
+For `dq_rules/<table>.yml`, sync from the DQS SE rules by discovery:
 
 ```bash
-LATEST_DQS_DIR=$(ls -d chapter-5/inputs/dqs/v* | sort -V | tail -1)
-cp "$LATEST_DQS_DIR/se-rules/se-rules-synthea-{table}.yaml" \
-   chapter-5/patient_360/dq_rules/{table}.yml
+LATEST_DQS_DIR=$(ls -d {workspace_root}/outputs/dqs/v* | sort -V | tail -1)
+# For each Bronze table from LLD §5.1, locate its SE rule file by reading
+# product_id from each candidate YAML; fall back to filename-stem match.
+for SE_FILE in "$LATEST_DQS_DIR"/se-rules/*.yaml; do
+  PID=$(python3 -c "import yaml,sys; print(yaml.safe_load(open('$SE_FILE')).get('product_id',''))")
+  # match PID (or filename stem) to a Bronze table name from LLD §5.1
+  cp "$SE_FILE" "{project_root}/dq_rules/${TABLE}.yml"
+done
 ```
 
-Do this for every Bronze table in LLD §5.1. If a table has no matching SE
-rule file, stop and ask the DQ Engineer to produce one — do NOT hand-write a
-stub, because runtime loads expect the full SE schema (`product_id`,
-`dq_env`, `rules[]`).
+If a Bronze table has no matching SE rule file, stop and ask the DQ
+Engineer to produce one. Do NOT hand-write stubs — runtime loads expect
+the full SE schema (`product_id`, `dq_env`, `rules[]`).
 
 ### Phase 4.5: Runtime Dependencies
 
@@ -317,7 +473,7 @@ stub, because runtime loads expect the full SE schema (`product_id`,
 
 The ingestion runner imports `pyspark`, writes Delta, and loads Spark
 Expectations rules; the factory uses `SparkSubmitOperator`. Ensure
-`chapter-5/patient_360/pyproject.toml` declares each of these — add any
+`{project_root}/pyproject.toml` declares each of these — add any
 that are missing:
 
 | Section | Required entry |
@@ -334,23 +490,27 @@ next LLD revision.
 
 ### Phase 4.6: Generate Tests
 
-> **Scope gate**: In story mode, generate only the test module(s) for the active story
-> per the Story → Deliverable Map. STORY-02-009 → `test_ingestion_runner.py` +
-> `test_per_table_configs.py`. STORY-02-010 → `test_validate_ingestion.py`.
-> Other stories do not trigger new test files (their code is covered by existing tests).
+> **Scope gate**: In story mode, generate a test module only when a test
+> path under `tests/bronze/**` was extracted from the story's AC (or when
+> the story's AC explicitly calls for "unit tests covering <X>"). Tests
+> for modules emitted by this skill MUST accompany the module; do not
+> ship untested ingestion code.
 
-Write three test modules under `chapter-5/patient_360/tests/bronze/` so the
-generated code is exercised in CI. Use `pytest.importorskip("pyspark")` so
-Spark-dependent tests skip cleanly when pyspark is not installed.
+Write test modules under `{project_root}/tests/bronze/` so the generated
+code is exercised in CI. Use `pytest.importorskip("pyspark")` so Spark-
+dependent tests skip cleanly when pyspark is not installed.
 
-| Test module | Covers |
-|-------------|--------|
-| `test_ingestion_runner.py` | `load_table_config` (happy path + each `IngestionConfigError` branch), `_parse_spark_type` (every primitive + decimal + unsupported), `load_struct_type`, `add_metadata_columns` (asserts `_source_batch_id == "{table}:{ds}"` and that `_ingested_at` is present), the `fail` vs `write_empty` branches of `ingest()`, `resolved_quarantine_path` (default template + YAML override), `_DQ_ENV_MAP` (parametrized: DEV→DEV, STAGING→QA, PROD→PROD; exhaustiveness check for the three runtime envs). Requires pyspark — import-skip otherwise. |
-| `test_per_table_configs.py` | Parametrized sweep over `airflow/configs/*.yml`: required keys present, `table:` matches filename, referenced `contracts/{t}.yml` + `dq_rules/{t}.yml` exist, critical tables use `fail`, SE rules declare `dq_env.{DEV,QA,PROD}`, exactly the 13 tables in LLD §5.1 are present. Pure YAML — no Spark. |
-| `test_validate_ingestion.py` | Shells out to `validate-ingestion/scripts/validate_ingestion.py` against the real project (expect `Result: PASS`) and against a scaffolded project with only pyyaml declared (expect CRITICAL on pyspark / delta-spark / spark-expectations). |
+The exact set of test modules is driven by what this skill just generated,
+not by a hardcoded table. General guidance:
 
-Do not skip this phase — untested ingestion code is a CRITICAL finding in
-`validate-ingestion`.
+| If you generated … | Write tests covering … |
+|--------------------|------------------------|
+| `ingestion_runner.py` | `load_table_config` (happy + each config-error branch), `_parse_spark_type` (every primitive + decimal + unsupported), `load_struct_type`, `add_metadata_columns` (assert `_source_batch_id` is deterministic + `_ingested_at` present), empty-input branches of `ingest()`, `resolved_quarantine_path`, `_DQ_ENV_MAP` (parametrised over runtime envs). Requires pyspark — import-skip otherwise. |
+| `airflow/configs/*.yml` (per-table configs) | Parametrised sweep over `{project_root}/airflow/configs/*.yml`: required keys present, `table:` matches filename, referenced `contracts/<t>.yml` + `dq_rules/<t>.yml` exist, tables flagged `fail` in LLD §5.1 use `fail`, SE rules declare every `dq_env` value, the table count matches LLD §5.1 exactly. Pure YAML — no Spark. |
+| `ingestion_factory.py` / DAG integration | Shells out to `validate-ingestion/scripts/validate_ingestion.py` against the project (expect PASS) and against a minimal scaffold missing runtime deps (expect CRITICAL on the missing libs). |
+
+Read the AC text of the active story verbatim — the story tells you
+*which* behaviour needs test coverage. Do not skip this phase.
 
 ### Phase 5: Validate
 
@@ -389,6 +549,37 @@ Story STORY-02-002 — Acceptance Criteria:
 If any AC fails (code structure is absent), report it as a CRITICAL and fix before
 declaring the story done.
 
+### Phase 5.5: Verification Compliance Self-Check (MANDATORY before reporting OK)
+
+The story's `## Verification` block is the contract. After every prior
+phase has emitted its files, run the AC verifier against the target
+story and refuse to declare OK if any mechanical verifier still fails.
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/../scripts/verify_acs.py STORY-NN-NNN --json
+```
+
+(For batch / multi-story dispatch, run once per story.)
+
+Parse the JSON output. For each AC in `acs[]`:
+
+- `status == "FAIL"` and at least one check has a non-`manual` kind
+  that failed → emit one CRITICAL line per failing check:
+  `CRITICAL STORY-NN-NNN AC<N>: <check.spec> — <check.detail>`
+  Then **stop**. Do NOT mark the plan task `done`. Do NOT print the
+  OK trailer. The orchestrator's Phase 2 Step 3.5 reads this and halts
+  the story.
+- `status == "FAIL"` but every failing check is `manual:` → INFO only
+  (manual checks can't fail mechanically; treat as author note).
+- `status == "PASS"` / `INDETERMINATE` → continue.
+- `has_verification == false` → emit one WARNING line
+  `STORY-NN-NNN: no Verification block — generation completed without
+  AC compliance check.` Then continue.
+
+This phase is the **only** place this skill flips its overall result
+from OK to FAILED. Skills that ignore it leave gaps the orchestrator
+cannot see.
+
 ## Output Summary
 
 At the end, print a table: `Module/Config | Path | Action (created|updated|skipped)`
@@ -399,5 +590,5 @@ In story mode, prefix the table with the story ID and AC result summary:
 Story: STORY-02-002 — Generic Ingestion Runner | Result: 5/5 AC PASS
 
 Module/Config             | Path                                              | Action
-ingestion_runner.py       | src/patient_360/bronze/ingestion_runner.py        | created
+ingestion_runner.py       | src/{project_name}/bronze/ingestion_runner.py     | created
 ```

@@ -21,21 +21,69 @@ edits to the ingestion runner, factory, wrapper, or per-table YAML configs so
 they stay in sync with the latest LLD and STM without breaking existing
 pipeline runs.
 
+## Workspace Discovery
+
+Before any file operation, run the discovery helper and substitute the
+returned tokens into every path this skill reads, writes, or edits:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py --mode discover
+```
+
+The JSON output supplies `{workspace_root}`, `{project_root}`,
+`{project_name}`, `{stories_dir}`, and `{learnings_queue}`. The plugin is
+project-agnostic — never hardcode project or chapter names in edits.
+
+## Coding Patterns & Libraries Handbook
+
+Before editing ingestion code, load the latest coding-patterns handbook:
+
+```bash
+PATTERNS_DIR=$(ls -d "{workspace_root}/inputs/code/v"* 2>/dev/null | sort -V | tail -1)
+if [ -z "$PATTERNS_DIR" ] || [ ! -d "$PATTERNS_DIR" ]; then
+  echo "CRITICAL: inputs/code/v*/ not found. Run /developer-plugin:refresh-libraries to initialize the library cache."
+  exit 1
+fi
+LIBRARIES_FILE="$PATTERNS_DIR/LIBRARIES.md"
+```
+
+**Required pattern docs for this skill:**
+
+- `$PATTERNS_DIR/bronze-ingestion-pattern.md` — registry → factory → runner shape
+- `$PATTERNS_DIR/spark-expectations-pattern.md` — SE YAML rule shape + runner wrapper
+- `$PATTERNS_DIR/naming-conventions.md` — audit columns, table names
+- `$PATTERNS_DIR/logging-error-handling.md` — module logger + fail-fast
+- `$PATTERNS_DIR/LIBRARIES.md` — pinned PySpark / Delta / SE versions
+
+### Library freshness check
+
+```bash
+LAST_VERIFIED=$(grep '^last_verified:' "$LIBRARIES_FILE" | awk '{print $2}')
+TODAY=$(date -u +%Y-%m-%d)
+AGE_DAYS=$(python3 -c "from datetime import date; print((date.fromisoformat('$TODAY') - date.fromisoformat('$LAST_VERIFIED')).days")
+```
+
+If `AGE_DAYS > 30`, pause and call **AskUserQuestion** with options `Refresh now` / `Proceed with cached versions` / `Cancel`. On Refresh, invoke `/developer-plugin:refresh-libraries` then resume.
+
+### References trailer (in output)
+
+Emit a `### References` section citing consumed pattern docs + LIBRARIES.md vintage. Add a stale-cache warning if the user opted to proceed with cached versions.
+
 ## Workflow
 
 ### Phase 0: Read Current State
 
 1. Read the latest LLD:
    ```bash
-   LATEST_LLD_DIR=$(ls -d chapter-5/inputs/lld/v* | sort -V | tail -1)
+   LATEST_LLD_DIR=$(ls -d {workspace_root}/outputs/lld/v* | sort -V | tail -1)
    ls -t "$LATEST_LLD_DIR"/LLD-*.md | grep -v '\.bak$' | head -1
    ```
 2. Read the current ingestion artifacts:
-   - `chapter-5/patient_360/src/patient_360/bronze/ingestion_runner.py`
-   - `chapter-5/patient_360/src/patient_360/bronze/ingestion_factory.py`
-   - `chapter-5/patient_360/src/patient_360/bronze/spark_submit_wrapper.py`
-   - `chapter-5/patient_360/src/patient_360/utils/se_runner.py`
-   - `chapter-5/patient_360/airflow/configs/*.yml`
+   - `{project_root}/src/{project_name}/bronze/ingestion_runner.py`
+   - `{project_root}/src/{project_name}/bronze/ingestion_factory.py`
+   - `{project_root}/src/{project_name}/bronze/spark_submit_wrapper.py`
+   - `{project_root}/src/{project_name}/utils/se_runner.py`
+   - `{project_root}/airflow/configs/*.yml`
 3. Diff LLD §2.3, §5.1, §7 against the generated files to compute the
    minimum set of edits. Produce a short change-set plan before editing.
 
@@ -50,8 +98,8 @@ Map the request to exactly one scenario:
 | C. Rename a Bronze table | Table name changed in LLD §5.1 | Rename the YAML file; update references in contracts/dq_rules/DAG if needed (ask user first). |
 | D. Change per-table knob | Retry, timeout, empty-input behavior, SE action, or quarantine path changed | Edit only the affected keys in `airflow/configs/{table}.yml`. |
 | E. Runner/factory logic change | LLD §2.3 interface contract changed | Edit `ingestion_runner.py` / `ingestion_factory.py` / `spark_submit_wrapper.py` in place; preserve public function signatures unless the LLD explicitly renames them. |
-| F. DQ rules refresh | New DQS version published under `chapter-5/inputs/dqs/v{N}/se-rules/` | Re-sync `dq_rules/{table}.yml` from `se-rules-synthea-{table}.yaml` for each changed table. Runner/configs stay untouched. |
-| G. SE runner change | LLD §2.3 `se_runner.py` interface updated (new parameter, dq_env mapping change, quarantine routing change) | Edit `src/patient_360/utils/se_runner.py`. Re-verify `_DQ_ENV_MAP`, `user_conf` wiring keys, and `_ensure_stats_table` logic. Update `run_inline_dq` call site in `ingestion_runner.py` if the `run_dq` signature changed. |
+| F. DQ rules refresh | New DQS version published under `{workspace_root}/outputs/dqs/v{N}/se-rules/` | Re-sync `dq_rules/{table}.yml` from the matching SE YAML. Discover files via `ls {workspace_root}/outputs/dqs/v*/se-rules/*.yaml` and match to tables by `product_id` (or filename stem) — do NOT assume any filename prefix. Runner/configs stay untouched. |
+| G. SE runner change | LLD §2.3 `se_runner.py` interface updated (new parameter, dq_env mapping change, quarantine routing change) | Edit `src/{project_name}/utils/se_runner.py`. Re-verify `_DQ_ENV_MAP`, `user_conf` wiring keys, and `_ensure_stats_table` logic. Update `run_inline_dq` call site in `ingestion_runner.py` if the `run_dq` signature changed. |
 
 Ambiguous request? Call `AskUserQuestion` with the candidate scenarios as
 options before editing.
@@ -63,8 +111,8 @@ options before editing.
   when editing a file, so reviewers can trace the change.
 - Preserve task IDs and config keys unless the LLD explicitly renames them.
 - Never change a table's `empty_input_behavior` from `fail` to a weaker value
-  without user confirmation — the six critical tables (patients, encounters,
-  allergies, organizations, providers, payers) must stay `fail` per LLD §5.1.
+  without user confirmation — the tables LLD §5.1 flags with `fail` are the
+  project's critical tables (read the LLD; do not rely on a hardcoded list).
 - Do not reintroduce the legacy config shape: `output_path` must be the Delta
   table root (no `ds={ds}/` suffix — the runner partitions by `ds`), and
   `metadata_columns` must contain `ds`, `_ingested_at`, and `_source_batch_id`

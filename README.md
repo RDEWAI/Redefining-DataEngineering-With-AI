@@ -249,12 +249,12 @@ A single Claude Code plugin that acts as a **Business Analyst Agent**, generatin
 
 See [chapter-3/README.md](chapter-3/README.md) for full details.
 
-### Chapter 4: Multi-Agent Artifact Chain
+### Chapter 4: Multi-Agent Artifact Chain — Reference Implementation
 
-Seven Claude Code plugins forming a **multi-agent artifact chain** where each role produces a structured artifact that feeds the next:
+Six Claude Code plugins forming a **multi-agent artifact chain** where each role produces a structured artifact that feeds the next:
 
 ```
-DRD → HLD → DMS → STM → DQS → LLD → Stories
+DRD → HLD → DMS → STM → DQS → LLD
 ```
 
 | Plugin | Role | Artifact | Format |
@@ -265,7 +265,10 @@ DRD → HLD → DMS → STM → DQS → LLD → Stories
 | mapping-analyst-plugin | Mapping Analyst | STM (Source-to-Target Mapping) | Excel (.xlsx) |
 | dq-engineer-plugin | DQ Engineer | DQS (Data Quality Specification) | Markdown + SE YAML |
 | technical-lead-plugin | Technical Lead | LLD (Low-Level Design) | Markdown + Config + DAG |
-| scrum-master-plugin | Scrum Master | Sprint Backlog (Epics & Stories) | Markdown (multi-file) |
+
+Chapter-4 is the **canonical reference implementation** for the six planning
+plugins. Sprint-backlog generation and code implementation continue in
+Chapter 5.
 
 See [chapter-4/README.md](chapter-4/README.md) for full details.
 
@@ -278,13 +281,31 @@ See [chapter-4/README.md](chapter-4/README.md) for full details.
 # 2. Follow the step-by-step walkthrough
 ```
 
-See the [Hands-On Guide](chapter-4/HANDS-ON-GUIDE.md) for the full walkthrough — from plugin installation through generating all 7 artifacts.
+See the [Hands-On Guide](chapter-4/HANDS-ON-GUIDE.md) for the full walkthrough — from plugin installation through generating all 6 artifacts.
 
-### Chapter 5: From Artifacts to Development — Scaffold Your Project
+### Chapter 5: Full-Chain Workspace — Planning + Story-Driven Implementation
 
-Chapter 5 moves from AI-generated planning artifacts to **actual data engineering development**. The approved artifacts from Chapter 4 (DRD, HLD, DMS, LLD, etc.) become the inputs for a medallion pipeline built with Airflow, Liquibase, and a contracts-driven DQ layer.
+Chapter 5 is a **self-contained workspace** that runs the entire pipeline
+end-to-end — from business request through generated code. It ships working
+copies of the six Chapter-4 planning plugins plus two implementation-phase
+plugins, eight in total:
 
-A **cookiecutter template** is provided so every reader starts from the same project scaffold.
+```
+DRD → HLD → DMS → STM → DQS → LLD → Stories → Code
+```
+
+| Plugin | Role | Output |
+|--------|------|--------|
+| ba-plugin, architect-plugin, data-modeler-plugin, mapping-analyst-plugin, dq-engineer-plugin, technical-lead-plugin | Planning chain | DRD → LLD (working copies of chapter-4) |
+| scrum-master-plugin | Scrum Master | Sprint Backlog (Epics & Stories, multi-file markdown) |
+| developer-plugin | Developer | Airflow DAGs, CI/CD pipelines, Bronze ingestion framework |
+
+All plugins are registered under the `rdewai-chapter5-plugins` marketplace.
+Run the full pipeline without leaving the chapter.
+
+See [chapter-5/README.md](chapter-5/README.md) for full details.
+
+A **cookiecutter template** is also provided (`templates/cookiecutter-chapter/`) so readers can scaffold their own equivalent chapter project.
 
 #### Prerequisites
 
@@ -318,10 +339,15 @@ This generates the following structure:
 chapter-5/
 ├── inputs/                      # drop Chapter 4 approved artifacts here
 ├── outputs/                     # chapter-5 generated outputs
-├── developer-plugin/            # AI developer agent (DAG + CI/CD skills)
+├── developer-plugin/            # AI developer agent (code + story orchestration)
 │   └── skills/
-│       ├── airflow/             # create-dag / update-dag / validate-dag
-│       └── cicd/                # create-pipeline / update-pipeline / validate-pipeline
+│       ├── create-dag/ update-dag/ validate-dag/                 # Airflow DAGs
+│       ├── create-ingestion/ update-ingestion/ validate-ingestion/  # Bronze ingestion
+│       ├── create-pipeline/ update-pipeline/ validate-pipeline/  # CI/CD pipeline
+│       ├── implement-stories/   # dispatch create-/update- per story or epic
+│       ├── validate-stories/    # verify story ACs (read-only)
+│       ├── complete-stories/    # atomic gate — close stories/epics when all ACs pass
+│       └── apply-learnings/     # apply corrections from learnings queue
 └── patient_360/                 # main Python project
     ├── src/patient_360/         # bronze / silver / gold / utils packages
     ├── tests/                   # mirrors src/ — bronze / silver / gold
@@ -351,6 +377,11 @@ make test
 
 # Start generating DAGs from your approved LLD
 /developer-plugin:create-dag
+
+# Or drive it from the Scrum backlog (story/epic/sprint)
+/developer-plugin:implement-stories EPIC-02
+/developer-plugin:validate-stories  EPIC-02
+/developer-plugin:complete-stories  EPIC-02   # blocks unless every child story + AC passes
 ```
 
 ---

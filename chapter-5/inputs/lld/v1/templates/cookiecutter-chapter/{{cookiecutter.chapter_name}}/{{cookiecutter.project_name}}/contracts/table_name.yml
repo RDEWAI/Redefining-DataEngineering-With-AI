@@ -1,0 +1,29 @@
+# Contract file for a single table.
+# Rename this file to match the table name (e.g., patients.yml).
+# One contract file per table.
+
+table: table_name
+layer: bronze        # bronze | silver | gold
+schema: synthea      # source or target schema
+
+# Pointer to the DDL definition for this table.
+ddl_path: ddl/liquibase/changelogs/table_name.xml
+
+# Pointer to the DQ rules file for this table.
+dq_path: dq_rules/table_name.yml
+
+# Table-level metadata
+owner: "{{cookiecutter.author_name}}"
+description: "Short description of what this table contains."
+tags: []
+
+# Column-level annotations (informational — DDL is the source of truth).
+columns:
+  - name: id
+    type: VARCHAR
+    nullable: false
+    description: "Primary key"
+  - name: created_at
+    type: TIMESTAMP
+    nullable: false
+    description: "Record creation timestamp"

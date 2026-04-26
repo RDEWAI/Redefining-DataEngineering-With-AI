@@ -1,0 +1,50 @@
+# Illustrative bronze ingestion factory — see bronze-ingestion-pattern.md.
+# Generic placeholders: {project}, {table}.
+
+from pathlib import Path
+import logging
+import yaml
+
+from pyspark.sql import DataFrame, functions as F
+from {project}.bronze.schemas import REGISTRY
+
+logger = logging.getLogger(__name__)
+
+
+def load_config(config_path: Path) -> dict:
+    with config_path.open() as f:
+        return yaml.safe_load(f)
+
+
+def resolve_schema(module_spec: str, table: str):
+    if table not in REGISTRY:
+        raise KeyError(f"Schema not registered for table: {table}")
+    return REGISTRY[table]
+
+
+def ingest(spark, config: dict, ds: str) -> DataFrame:
+    table = config["table"]
+    schema = resolve_schema(config["schema_module"], table)
+
+    src = Path(config["source"]["path"])
+    if not src.exists():
+        raise FileNotFoundError(f"Source not found: {src}")
+
+    logger.info("Ingesting %s from %s (ds=%s)", table, src, ds)
+    df = (spark.read.format(config["source"]["type"])
+          .option("header", config["source"].get("header", False))
+          .schema(schema)
+          .load(str(src))
+          .withColumn("ds", F.lit(ds))
+          .withColumn("ingested_at", F.current_timestamp()))
+
+    replace_where = config["write"]["replace_where_template"].format(ds=ds)
+    target = f'{config["write"]["database"]}.{table}'
+
+    (df.write.format("delta").mode(config["write"]["mode"])
+       .partitionBy(*config["write"]["partition_by"])
+       .option("replaceWhere", replace_where)
+       .saveAsTable(target))
+
+    logger.info("Wrote %d rows to %s (ds=%s)", df.count(), target, ds)
+    return df
