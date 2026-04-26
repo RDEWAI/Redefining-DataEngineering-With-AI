@@ -45,19 +45,72 @@ PATH_TOKEN_RE = re.compile(r"`([A-Za-z0-9_./{}-]+\.(?:py|yml|yaml|md|xml|toml|js
 VALID_STORY_STATUSES = {"To Do", "In Progress", "Done"}
 VALID_EPIC_STATUSES = {"To Do", "Updated - Pending Review", "Done"}
 
-# Content-based classifier rules. Tally distinct ACs that match each kind;
-# the kind with the most distinct-AC matches wins. Rule order is only a
-# tiebreaker (earlier = more specific → wins on equal-count ties). Patterns
-# match path fragments, filenames, and identifiers that appear in the
-# cookiecutter-chapter template.
+# Slug-based classifier rules. The scrum-master-plugin emits story files at
+# `EPIC-{NN}-{epic-slug}/STORY-{NN}-{NNN}-{story-slug}.md`. Both slugs are
+# hand-authored and far more reliable than pattern-matching free-form AC
+# text, so they're the primary routing signal. Content-based AC rules stay
+# as a last-resort fallback for stories whose slugs don't match any kind.
 #
-# Rule shapes:
-#   * Path-file patterns (e.g. `airflow/dags/<name>.py`) — match a specific
-#     file, NOT bare directory references. This stops a scaffold story that
-#     creates the empty `airflow/dags/` directory from being misclassified
-#     as a DAG story.
-#   * Identifier patterns (e.g. `StructType`, `ingestion_runner`) — match
-#     domain concepts that uniquely belong to one kind.
+# Order within each list is priority (first match wins). The STORY slug
+# rules run before the EPIC slug rules because a story-level signal
+# (e.g. a foundation epic's DAG-skeleton story) must override the epic-level
+# default.
+STORY_SLUG_RULES: list[tuple[str, re.Pattern[str]]] = [
+    (
+        "dag",
+        re.compile(
+            r"\bdag[-_](?:skeleton|factory|builder|template)\b|" r"\b(?:airflow[-_])?dag[-_]file\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "ingestion",
+        re.compile(
+            r"\b(?:ingestion[-_]runner|ingestion[-_]factory|sparksubmit|"
+            r"spark[-_]submit|per[-_]table[-_]config|reconciliation[-_]bronze|"
+            r"bronze[-_]dlq|perf[-_]partition|partition[-_]shuffle|"
+            r"integration[-_]test[-_]bronze|bronze[-_]ingestion)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "pipeline",
+        re.compile(
+            r"\b(?:github[-_]actions|gitlab[-_]ci|cicd|ci[-_]cd|"
+            r"release[-_]deploy|deploy[-_]pipeline|workflow[-_]ci)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "scaffold",
+        re.compile(
+            r"\b(?:scaffold|cookiecutter|config[-_]loader|pipeline[-_]config|"
+            r"logging|metrics|delta[-_]helpers|scd2|derived[-_]fields|"
+            r"code[-_]systems|docker[-_]compose|se[-_]runner|reconciliation|"
+            r"helper|test[-_]infrastructure|contracts[-_]schemas)\b",
+            re.IGNORECASE,
+        ),
+    ),
+]
+
+EPIC_SLUG_RULES: list[tuple[str, re.Pattern[str]]] = [
+    (
+        "scaffold",
+        re.compile(r"\b(?:foundation|scaffold|bootstrap|setup|utilities)\b", re.IGNORECASE),
+    ),
+    (
+        "ingestion",
+        re.compile(r"\b(?:bronze|ingestion|silver|gold|consumer)\b", re.IGNORECASE),
+    ),
+    (
+        "pipeline",
+        re.compile(r"\b(?:release|deploy|cicd|ci[-_]cd)\b", re.IGNORECASE),
+    ),
+]
+
+# Content-based classifier rules (fallback). Tally distinct ACs that match
+# each kind; the kind with the most distinct-AC matches wins. Rule order is
+# the tiebreaker (earlier = more specific → wins on equal-count ties).
 CLASSIFIER_RULES: list[tuple[str, re.Pattern[str]]] = [
     (
         "pipeline",
@@ -153,23 +206,29 @@ class Workspace:
             pyproject.toml
             src/{project_name}/...
           memory/developer/learnings-queue.jsonl   (may not exist yet)
+
+    When the cookiecutter project has not yet been bootstrapped, ``project_root``
+    and ``project_name`` may be ``None`` and ``needs_bootstrap`` is ``True`` —
+    callers should dispatch ``create-scaffold`` before any other generator.
     """
 
     workspace_root: Path
-    project_root: Path
-    project_name: str
+    project_root: Path | None
+    project_name: str | None
     stories_dir: Path
     learnings_queue: Path
     backlog_glob: str = "BACKLOG-*.md"
+    needs_bootstrap: bool = False
 
     def as_dict(self) -> dict:
         return {
             "workspace_root": str(self.workspace_root),
-            "project_root": str(self.project_root),
+            "project_root": str(self.project_root) if self.project_root else None,
             "project_name": self.project_name,
             "stories_dir": str(self.stories_dir),
             "learnings_queue": str(self.learnings_queue),
             "backlog_glob": self.backlog_glob,
+            "needs_bootstrap": self.needs_bootstrap,
         }
 
 
@@ -201,6 +260,37 @@ def _find_project_children(parent: Path) -> list[tuple[Path, str]]:
     return results
 
 
+def _read_workspace_marker(ws_root: Path) -> dict[str, str]:
+    """Read ``.workspace.yaml`` at ws_root if present.
+
+    Supports keys ``project_dir:`` and ``stories_dir:`` (both relative to
+    ``ws_root``). Minimal parser — flat ``key: value`` lines only.
+    """
+    marker = ws_root / ".workspace.yaml"
+    if not marker.is_file():
+        return {}
+    data: dict[str, str] = {}
+    for line in marker.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or ":" not in line:
+            continue
+        key, _, value = line.partition(":")
+        data[key.strip()] = value.strip().strip("'\"")
+    return data
+
+
+def _build_unbootstrapped(ws_root: Path, stories_dir: Path) -> Workspace:
+    """Build a Workspace for a workspace whose cookiecutter project is missing."""
+    return Workspace(
+        workspace_root=ws_root,
+        project_root=None,
+        project_name=None,
+        stories_dir=stories_dir,
+        learnings_queue=ws_root / "memory" / "developer" / "learnings-queue.jsonl",
+        needs_bootstrap=True,
+    )
+
+
 def discover_workspace(
     start: Path,
     workspace_root_override: Path | None = None,
@@ -208,34 +298,84 @@ def discover_workspace(
 ) -> Workspace:
     """Walk upward from ``start`` to find the workspace anchor.
 
-    Raises ``DiscoveryError`` with a clear remediation hint if no ancestor
-    contains both ``outputs/stories/`` and a cookiecutter-style project. When
-    multiple projects qualify (e.g. two cookiecutter projects side-by-side),
-    ``project_name_override`` disambiguates.
+    Resolution order:
+      1. ``--workspace-root`` override.
+      2. Any ancestor containing ``.workspace.yaml`` (explicit marker).
+      3. Co-location heuristic: ancestor with ``outputs/stories/`` AND at
+         least one cookiecutter-style project as an immediate subdirectory.
+      4. Ancestor with ``outputs/stories/`` but no project yet → returns a
+         workspace record with ``needs_bootstrap=True`` (lets EPIC-01 run).
+
+    Raises ``DiscoveryError`` only when none of the above resolve.
     """
     if workspace_root_override is not None:
         ws_root = workspace_root_override.resolve()
         return _build_workspace(ws_root, project_name_override)
 
     start = start.resolve()
+
+    # Tier 2: explicit marker file.
+    for candidate in (start, *start.parents):
+        marker = _read_workspace_marker(candidate)
+        if not marker:
+            continue
+        stories_rel = marker.get("stories_dir", "outputs/stories")
+        project_rel = marker.get("project_dir")
+        stories_dir = (candidate / stories_rel).resolve()
+        if not stories_dir.is_dir():
+            raise DiscoveryError(
+                f".workspace.yaml at {candidate} points at {stories_dir} which does not exist"
+            )
+        if project_rel:
+            project_root = (candidate / project_rel).resolve()
+            if (project_root / "pyproject.toml").is_file() and (project_root / "src").is_dir():
+                # Resolve project_name from src/<name>/.
+                pkgs = [
+                    p
+                    for p in sorted((project_root / "src").iterdir())
+                    if p.is_dir() and not p.name.startswith(".")
+                ]
+                if pkgs:
+                    matching = [p for p in pkgs if p.name == project_root.name]
+                    pkg = matching[0] if matching else pkgs[0]
+                    return Workspace(
+                        workspace_root=candidate,
+                        project_root=project_root,
+                        project_name=pkg.name,
+                        stories_dir=stories_dir,
+                        learnings_queue=candidate
+                        / "memory"
+                        / "developer"
+                        / "learnings-queue.jsonl",
+                    )
+            # Project declared but not yet bootstrapped.
+            return _build_unbootstrapped(candidate, stories_dir)
+        # No project_dir declared — treat as unbootstrapped workspace.
+        return _build_unbootstrapped(candidate, stories_dir)
+
+    # Tier 3/4: walk up looking for outputs/stories/.
+    first_stories_ancestor: Path | None = None
     for candidate in (start, *start.parents):
         stories_dir = candidate / "outputs" / "stories"
         if not stories_dir.is_dir():
             continue
+        if first_stories_ancestor is None:
+            first_stories_ancestor = candidate
         children = _find_project_children(candidate)
         if not children:
             continue
         return _pick_project(candidate, children, project_name_override)
 
-    # Fallback: CWD itself may BE the cookiecutter project root (nested CWD,
-    # no outputs/stories/ in the tree). In that case the caller should invoke
-    # from the workspace root. Surface a clear error either way.
+    # Tier 4: workspace exists but project not bootstrapped yet.
+    if first_stories_ancestor is not None:
+        return _build_unbootstrapped(
+            first_stories_ancestor, first_stories_ancestor / "outputs" / "stories"
+        )
+
     raise DiscoveryError(
-        f"no workspace found at or above {start}: need a directory with both "
-        f"`outputs/stories/` and a cookiecutter-style project "
-        f"(pyproject.toml + src/<name>/). Generate one from "
-        f"the cookiecutter-chapter template or pass "
-        f"--workspace-root."
+        f"no workspace found at or above {start}: need a directory with "
+        f"`outputs/stories/`. Generate the backlog via scrum-master-plugin "
+        f"or pass --workspace-root."
     )
 
 
@@ -496,19 +636,52 @@ def rollup(ws: Workspace, epic_id: str) -> dict:
 
 
 def classify_story(ws: Workspace, story_id: str) -> dict:
-    """Return the downstream skill kind for a story based on its AC content.
+    """Return the downstream skill kind for a story.
 
-    Count distinct ACs that match each kind; the kind with the most matches
-    wins. Rule order in ``CLASSIFIER_RULES`` is the tiebreaker (earlier rule =
-    more specific = wins at a tie). If no AC matches any rule, fall back to
-    scanning the whole story body (Description, Technical Notes) before
-    returning ``unknown``.
+    Resolution order:
+      1. **Story filename slug** (e.g. ``STORY-02-001-ingestion-runner``) —
+         the scrum-master-plugin's hand-authored slug is the single most
+         reliable signal for kind.
+      2. **Epic folder slug** (e.g. ``EPIC-01-foundation``) — disambiguates
+         stories whose own slug is ambiguous ("reconciliation" could be
+         either a foundation util or a bronze pipeline task).
+      3. **AC content rules** — last-resort text match. Used only when the
+         slugs say nothing.
 
     ``unknown`` means the caller must ask the user which kind applies.
     """
     story_path = resolve_story_path(ws, story_id)
     story = parse_story(story_path)
 
+    # Signal 1: story filename slug.
+    story_slug = story_path.stem  # e.g. STORY-02-001-ingestion-runner
+    for kind, pattern in STORY_SLUG_RULES:
+        m = pattern.search(story_slug)
+        if m:
+            return {
+                "story_id": story["story_id"],
+                "skill_kind": kind,
+                "confidence": "high",
+                "reasons": [f"story slug {story_slug!r} matched /{m.group(0)}/ → {kind}"],
+                "matched_rule_count": 1,
+                "all_matches": {kind: [0]},
+            }
+
+    # Signal 2: epic folder slug.
+    epic_slug = story_path.parent.name  # e.g. EPIC-01-foundation
+    for kind, pattern in EPIC_SLUG_RULES:
+        m = pattern.search(epic_slug)
+        if m:
+            return {
+                "story_id": story["story_id"],
+                "skill_kind": kind,
+                "confidence": "high",
+                "reasons": [f"epic slug {epic_slug!r} matched /{m.group(0)}/ → {kind}"],
+                "matched_rule_count": 1,
+                "all_matches": {kind: [0]},
+            }
+
+    # Signal 3: fall back to AC content rules.
     # {kind: [reason_string, ...]} — one reason per AC that matched.
     per_kind_reasons: dict[str, list[str]] = {}
     matched_ac_indices: dict[str, set[int]] = {}
@@ -567,6 +740,363 @@ def classify_story(ws: Workspace, story_id: str) -> dict:
         "matched_rule_count": n_matches,
         "all_matches": {k: sorted(v) for k, v in matched_ac_indices.items()},
     }
+
+
+def load_deliverable_owners(ws: Workspace) -> dict:
+    """Load the DELIVERABLE-OWNERS.yaml routing registry.
+
+    Resolution: latest ``inputs/code/v*/DELIVERABLE-OWNERS.yaml`` under
+    the workspace root. The registry lists ``owners`` (glob → skill),
+    ``dispatch_order``, and an optional ``fallback_skill``. Globs are
+    sorted at load time by length descending so that the most-specific
+    match wins when the orchestrator scans them.
+
+    Returns ``{"owners": [], "dispatch_order": [], "fallback_skill": None}``
+    when the file is absent, so callers can fall back gracefully to the
+    classifier-based routing.
+    """
+    patterns_dirs = sorted(
+        (ws.workspace_root / "inputs" / "code").glob("v*"),
+        key=lambda p: p.name,
+    )
+    if not patterns_dirs:
+        return {"owners": [], "dispatch_order": [], "fallback_skill": None}
+    owners_file = patterns_dirs[-1] / "DELIVERABLE-OWNERS.yaml"
+    if not owners_file.is_file():
+        return {"owners": [], "dispatch_order": [], "fallback_skill": None}
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        return {"owners": [], "dispatch_order": [], "fallback_skill": None}
+    data = yaml.safe_load(owners_file.read_text(encoding="utf-8")) or {}
+    owners = [o for o in data.get("owners", []) if o.get("glob") and o.get("skill")]
+    # Longest-glob-wins: sort descending by length, preserving file order on ties.
+    owners.sort(key=lambda o: len(o["glob"]), reverse=True)
+    return {
+        "owners": owners,
+        "dispatch_order": list(data.get("dispatch_order") or []),
+        "fallback_skill": data.get("fallback_skill"),
+    }
+
+
+def _glob_to_regex(glob: str) -> re.Pattern[str]:
+    """Translate a shell-style glob (with ``**`` support) to a regex.
+
+    - ``**/`` matches zero or more path segments (e.g. ``a/**/b`` matches
+      ``a/b``, ``a/x/b``, ``a/x/y/b``).
+    - ``**`` at tail matches any suffix including slashes.
+    - ``*`` matches any run of non-slash characters.
+    - ``?`` matches any single non-slash character.
+    - All other regex metacharacters are escaped literally.
+    """
+    out: list[str] = []
+    i = 0
+    while i < len(glob):
+        c = glob[i]
+        if c == "*" and i + 1 < len(glob) and glob[i + 1] == "*":
+            if i + 2 < len(glob) and glob[i + 2] == "/":
+                out.append(r"(?:.*/)?")
+                i += 3
+            else:
+                out.append(r".*")
+                i += 2
+        elif c == "*":
+            out.append(r"[^/]*")
+            i += 1
+        elif c == "?":
+            out.append(r"[^/]")
+            i += 1
+        elif c in r".+^$()|[]{}\\":
+            out.append(re.escape(c))
+            i += 1
+        else:
+            out.append(c)
+            i += 1
+    return re.compile(r"\A" + "".join(out) + r"\Z")
+
+
+def _candidate_path_variants(path: str, project_name: str | None) -> list[str]:
+    """Return path variants to try against owner globs.
+
+    Stories sometimes write deliverables workspace-relative
+    (``patient_360/pyproject.toml``) and sometimes project-relative
+    (``pyproject.toml``). Try both so the registry only needs the
+    project-relative form.
+    """
+    variants = [path]
+    if project_name and path.startswith(f"{project_name}/"):
+        variants.append(path[len(project_name) + 1 :])
+    return variants
+
+
+def _skill_for_path(
+    path: str,
+    owners: list[dict],
+    project_name: str | None = None,
+    _regex_cache: dict[str, re.Pattern[str]] | None = None,
+) -> str | None:
+    """Return the owning skill for a path, or None if no glob matches."""
+    cache = _regex_cache if _regex_cache is not None else {}
+    variants = _candidate_path_variants(path, project_name)
+    for owner in owners:
+        g = owner["glob"]
+        pattern = cache.get(g)
+        if pattern is None:
+            pattern = _glob_to_regex(g)
+            cache[g] = pattern
+        for v in variants:
+            if pattern.match(v):
+                return owner["skill"]
+    return None
+
+
+def _strip_placeholder_segments(path: str) -> str:
+    """Strip ``{placeholder}`` segments so glob matching works on template paths.
+
+    ``warehouse/{env}/dead-letter/{table}/{ds}/`` has no literal slashes for
+    fnmatch to align against. We collapse placeholder segments into ``*`` so
+    the glob can still match on the stable fragments.
+    """
+    return re.sub(r"\{[^}/]+\}", "*", path)
+
+
+def extract_deliverables(ws: Workspace, story_id: str) -> dict:
+    """Extract deliverable paths from a story's AC and group by owning skill.
+
+    Output shape::
+
+        {
+          "story_id": "STORY-NN-NNN",
+          "paths": ["...", ...],             # preserves discovery order
+          "by_skill": {"ingestion": [...], "dag": [...]},
+          "dispatch_order": ["ingestion", "dag"],  # subset of registry order
+          "unmatched": [...],                # paths not hit by any glob
+          "fallback_kind": "ingestion",      # classifier's kind (for fallback)
+        }
+
+    When the story's ACs have no backtick-quoted paths at all (pure-
+    behaviour story), ``paths`` is empty and the caller falls back to
+    single classify+dispatch.
+    """
+    story = parse_story(resolve_story_path(ws, story_id))
+    registry = load_deliverable_owners(ws)
+    owners = registry["owners"]
+
+    seen: set[str] = set()
+    paths: list[str] = []
+    for ac in story["ac_lines"]:
+        for token in extract_deliverable_paths(ac["text"]):
+            normalised = _strip_placeholder_segments(token)
+            if normalised in seen:
+                continue
+            seen.add(normalised)
+            paths.append(normalised)
+
+    by_skill: dict[str, list[str]] = {}
+    unmatched: list[str] = []
+    regex_cache: dict[str, re.Pattern[str]] = {}
+    for path in paths:
+        skill = _skill_for_path(path, owners, ws.project_name, regex_cache)
+        if skill:
+            by_skill.setdefault(skill, []).append(path)
+        else:
+            unmatched.append(path)
+
+    # Classifier fallback for unmatched paths and for empty extraction.
+    fallback_kind: str | None = None
+    if unmatched or not by_skill:
+        classified = classify_story(ws, story_id)
+        fk = classified.get("skill_kind")
+        if fk and fk != "unknown":
+            fallback_kind = fk
+    explicit_fallback = registry.get("fallback_skill")
+    fb = explicit_fallback or fallback_kind
+    if fb and unmatched:
+        by_skill.setdefault(fb, []).extend(unmatched)
+
+    configured_order = registry["dispatch_order"] or [
+        "scaffold",
+        "ingestion",
+        "dag",
+        "pipeline",
+    ]
+    ordered_skills: list[str] = [s for s in configured_order if s in by_skill]
+    # Any skills present in by_skill but missing from dispatch_order go last,
+    # in the order they were first seen. This preserves determinism without
+    # hiding an accidentally-misnamed skill.
+    for s in by_skill:
+        if s not in ordered_skills:
+            ordered_skills.append(s)
+
+    return {
+        "story_id": story["story_id"],
+        "paths": paths,
+        "by_skill": {s: by_skill[s] for s in ordered_skills},
+        "dispatch_order": ordered_skills,
+        "unmatched": unmatched,
+        "fallback_kind": fallback_kind,
+    }
+
+
+def _ac_path_tokens(ac_text: str) -> list[str]:
+    return [_strip_placeholder_segments(t) for t in extract_deliverable_paths(ac_text)]
+
+
+def build_plan(ws: Workspace, story_id: str) -> dict:
+    """Construct a story execution plan (the persistent ledger).
+
+    Plan lifecycle:
+      - ``planned``     — just built, no task started
+      - ``in_progress`` — at least one task started
+      - ``implemented`` — every task done (awaits validation)
+      - ``validated``   — every AC passed validation
+      - ``done``        — complete-stories has marked the story Done
+      - ``failed``      — a task failed or validation found a failing AC
+
+    The plan is regenerated from scratch every time this function runs,
+    so re-running ``build_plan`` after a scrum-master re-run picks up AC
+    changes. ``save_plan`` bumps ``plan_version`` and preserves prior task
+    outcomes when the task set is unchanged; callers decide when to
+    persist.
+    """
+    story = parse_story(resolve_story_path(ws, story_id))
+    deliverables = extract_deliverables(ws, story_id)
+    classified = classify_story(ws, story_id)
+
+    # Build tasks: one per (skill, paths) group in dispatch order.
+    tasks: list[dict] = []
+    if deliverables["by_skill"]:
+        prev_ids: list[str] = []
+        for idx, skill in enumerate(deliverables["dispatch_order"], start=1):
+            paths = deliverables["by_skill"][skill]
+            # Decide create vs update based on whether any path exists.
+            project_root = ws.project_root or ws.workspace_root
+            any_present = any((project_root / p).exists() for p in paths)
+            mode = "update" if any_present else "create"
+            tid = f"T{idx}"
+            tasks.append(
+                {
+                    "id": tid,
+                    "skill": f"{mode}-{skill}",
+                    "kind": skill,
+                    "mode": mode,
+                    "paths": paths,
+                    "depends_on": list(prev_ids),
+                    "status": "todo",
+                    "started_at": None,
+                    "finished_at": None,
+                    "artifacts": [],
+                    "files_created": 0,
+                    "files_updated": 0,
+                    "critical_findings": [],
+                    "validator": f"validate-{skill}",
+                    "validator_status": "pending",
+                    "notes": "",
+                }
+            )
+            prev_ids.append(tid)
+    else:
+        # Behavioural story — single task dispatched to classifier's kind.
+        fb = deliverables.get("fallback_kind") or classified.get("skill_kind")
+        if fb and fb != "unknown":
+            tasks.append(
+                {
+                    "id": "T1",
+                    "skill": f"create-{fb}",
+                    "kind": fb,
+                    "mode": "create",
+                    "paths": [],
+                    "depends_on": [],
+                    "status": "todo",
+                    "started_at": None,
+                    "finished_at": None,
+                    "artifacts": [],
+                    "files_created": 0,
+                    "files_updated": 0,
+                    "critical_findings": [],
+                    "validator": f"validate-{fb}",
+                    "validator_status": "pending",
+                    "notes": "behavioural story — no path tokens; sub-skill handles AC scope",
+                }
+            )
+
+    # Map ACs to the task(s) that cover their paths.
+    acs: list[dict] = []
+    for ac in story["ac_lines"]:
+        tokens = _ac_path_tokens(ac["text"])
+        task_ids: list[str] = []
+        for task in tasks:
+            if not tokens:
+                task_ids.append(task["id"])
+                continue
+            if any(tok in task["paths"] for tok in tokens):
+                task_ids.append(task["id"])
+        # If tokens exist but no task covers them, attach to ALL tasks as a
+        # soft link so validators still attempt coverage.
+        if tokens and not task_ids:
+            task_ids = [t["id"] for t in tasks]
+        acs.append(
+            {
+                "index": ac["index"],
+                "text": ac["text"],
+                "line": ac["line"],
+                "task_ids": task_ids,
+                "validation": {"status": "pending", "evidence": ""},
+            }
+        )
+
+    return {
+        "story_id": story["story_id"],
+        "story_file": story["file"],
+        "epic_id": story["epic_id"],
+        "plan_version": 1,
+        "status": "planned",
+        "generated_at": None,  # caller fills on save
+        "summary": (
+            f"{len(tasks)} task(s) across "
+            f"{sorted({t['kind'] for t in tasks})} — "
+            f"{len(acs)} AC(s)."
+        ),
+        "classifier": {
+            "kind": classified.get("skill_kind"),
+            "confidence": classified.get("confidence"),
+        },
+        "deliverables": deliverables,
+        "tasks": tasks,
+        "acceptance_criteria": acs,
+        "completion": {"status": "pending", "completed_at": None, "blocking_reasons": []},
+    }
+
+
+def plan_path(ws: Workspace, story_id: str) -> Path:
+    """Return the on-disk path for a story's plan JSON."""
+    latest = find_latest_stories_dir(ws)
+    plans_dir = latest / "plans"
+    return plans_dir / f"{story_id.upper()}.plan.json"
+
+
+def load_plan(ws: Workspace, story_id: str) -> dict | None:
+    """Load a story's plan from disk, or None if it does not exist."""
+    path = plan_path(ws, story_id)
+    if not path.is_file():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def save_plan(ws: Workspace, plan: dict) -> Path:
+    """Persist a story's plan. Increments plan_version on re-save."""
+    from datetime import datetime, timezone
+
+    path = plan_path(ws, plan["story_id"])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    prior = None
+    if path.is_file():
+        prior = json.loads(path.read_text(encoding="utf-8"))
+    if prior and prior.get("plan_version"):
+        plan["plan_version"] = int(prior["plan_version"]) + 1
+    plan["generated_at"] = datetime.now(timezone.utc).isoformat()
+    path.write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")
+    return path
 
 
 def gate(ws: Workspace, target: str) -> GateResult:
@@ -733,7 +1263,15 @@ def main() -> int:
             "find",
             "discover",
             "classify",
+            "extract-deliverables",
+            "build-plan",
+            "load-plan",
         ],
+    )
+    parser.add_argument(
+        "--save",
+        action="store_true",
+        help="For --mode build-plan: persist the plan to disk",
     )
     parser.add_argument("--story", help="Story ID (STORY-NN-NNN)")
     parser.add_argument("--epic", help="Epic ID (EPIC-NN)")
@@ -789,6 +1327,25 @@ def main() -> int:
             if not args.story:
                 parser.error("--story is required for --mode classify")
             payload = classify_story(ws, args.story)
+        elif args.mode == "extract-deliverables":
+            if not args.story:
+                parser.error("--story is required for --mode extract-deliverables")
+            payload = extract_deliverables(ws, args.story)
+        elif args.mode == "build-plan":
+            if not args.story:
+                parser.error("--story is required for --mode build-plan")
+            payload = build_plan(ws, args.story)
+            if args.save:
+                saved = save_plan(ws, payload)
+                payload["_saved_to"] = str(saved)
+        elif args.mode == "load-plan":
+            if not args.story:
+                parser.error("--story is required for --mode load-plan")
+            loaded = load_plan(ws, args.story)
+            if loaded is None:
+                print(f"error: no plan found for {args.story}", file=sys.stderr)
+                return 2
+            payload = loaded
         elif args.mode == "gate":
             if not args.target:
                 parser.error("--target is required for --mode gate")

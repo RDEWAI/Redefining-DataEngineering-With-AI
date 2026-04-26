@@ -290,6 +290,9 @@ def check_backlog_sections(content: str) -> list[ValidationResult]:
 
 
 VALID_STATUSES = {"Draft", "Updated - Pending Review", "Approved"}
+# Story-level lifecycle (distinct from artifact-level VALID_STATUSES above).
+# `developer-plugin:complete-stories` rejects anything outside this set.
+VALID_STORY_STATUSES = {"To Do", "In Progress", "Done"}
 
 
 def check_backlog_metadata(content: str) -> list[ValidationResult]:
@@ -417,6 +420,125 @@ def check_story_sections(story_file: Path) -> list[ValidationResult]:
 
 
 # --- WARNING checks ---
+
+
+def check_story_status_value(story_file: Path) -> list[ValidationResult]:
+    """Reject artifact-level statuses (Draft / Approved / etc.) on story files.
+
+    Stories have their own lifecycle: To Do → In Progress → Done.
+    `developer-plugin:complete-stories` halts on anything else, so a
+    "Draft" status leaking from the backlog template is a CRITICAL gate
+    failure — catch it here.
+    """
+    results: list[ValidationResult] = []
+    section = f"{story_file.parent.name}/{story_file.name}"
+    content = story_file.read_text(encoding="utf-8")
+    m = re.search(r"\|\s*\*\*Status\*\*\s*\|\s*([^|\n]+?)\s*\|", content)
+    if not m:
+        return results
+    value = m.group(1).strip()
+    if value not in VALID_STORY_STATUSES:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section=section,
+                message=f'Story Status="{value}" is not a valid story-lifecycle value.',
+                suggestion=(
+                    "Stories use {" + ", ".join(sorted(VALID_STORY_STATUSES)) + "}. "
+                    "Set Status to 'To Do' for newly-generated stories. 'Draft' is an "
+                    "artifact-level status (used on the BACKLOG metadata table) and is "
+                    "rejected by developer-plugin:complete-stories."
+                ),
+            )
+        )
+    return results
+
+
+def check_verification_block(story_file: Path) -> list[ValidationResult]:
+    """Validate the ``## Verification`` YAML block (presence + parseability + shape).
+
+    Three findings, in increasing severity:
+
+    1. Block missing  → WARNING (heuristic fallback still works).
+    2. Block present but YAML parse fails  → CRITICAL (the runner will crash;
+       common cause: unescaped regex metacharacters like ``\\s`` inside
+       double-quoted YAML strings — use single quotes or ``\\\\s``).
+    3. Block parses but is not a mapping of ``ACn`` → list  → CRITICAL (the
+       runner expects ``{"AC1": [...], "AC2": [...]}``).
+
+    Authoritative schema lives in ``developer-plugin/scripts/verify_acs.py``.
+    """
+    import yaml
+
+    results: list[ValidationResult] = []
+    section = f"{story_file.parent.name}/{story_file.name}"
+    content = story_file.read_text(encoding="utf-8")
+
+    block_match = re.search(
+        r"^##\s+Verification\s*\n(.*?)(?=^##\s|\Z)",
+        content,
+        re.MULTILINE | re.DOTALL,
+    )
+    if not block_match:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section=section,
+                message="Story has no `## Verification` block; AC verdicts will be heuristic-only.",
+                suggestion=(
+                    "Add a `## Verification` YAML block mapping each AC to verifier "
+                    "specs (file_exists / file_count / grep / grep_count / pytest / manual). "
+                    "See developer-plugin/scripts/verify_acs.py module docstring for schema."
+                ),
+            )
+        )
+        return results
+
+    body = block_match.group(1)
+    fence = re.search(r"```ya?ml\s*\n(.*?)\n```", body, re.DOTALL)
+    payload = fence.group(1) if fence else body
+
+    try:
+        data = yaml.safe_load(payload)
+    except yaml.YAMLError as e:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section=section,
+                message=f"`## Verification` YAML failed to parse: {e}",
+                suggestion=(
+                    "Common cause: regex metacharacters like `\\s`, `\\d`, `\\b` inside "
+                    "double-quoted YAML strings are invalid escapes. Use single quotes "
+                    "(`'foo:\\s*bar'`) or double-escape (`\"foo:\\\\s*bar\"`). "
+                    "verify_acs.py will crash on a malformed block."
+                ),
+            )
+        )
+        return results
+
+    if not isinstance(data, dict) or not data:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section=section,
+                message="`## Verification` block parsed but is not a non-empty AC→specs mapping.",
+                suggestion="Top-level keys must be `AC1`, `AC2`, ... each mapped to specs.",
+            )
+        )
+        return results
+
+    bad_keys = [k for k in data if not re.fullmatch(r"AC\d+", str(k))]
+    if bad_keys:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section=section,
+                message=f"`## Verification` keys must match `ACn`; bad keys: {bad_keys}",
+                suggestion="Rename keys to AC1, AC2, ... matching AC checkbox order.",
+            )
+        )
+
+    return results
 
 
 def check_upstream_traceability(story_file: Path) -> list[ValidationResult]:
@@ -817,6 +939,8 @@ def validate_stories_dir(directory: Path) -> ValidationReport:
         for story_file in story_files:
             report.results.extend(check_story_sections(story_file))
             report.results.extend(check_upstream_traceability(story_file))
+            report.results.extend(check_verification_block(story_file))
+            report.results.extend(check_story_status_value(story_file))
             report.results.extend(check_dependency_consistency(story_file, all_story_ids))
             report.results.extend(check_sprint_allocation(story_file))
             report.results.extend(check_story_points(story_file))

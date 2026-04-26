@@ -451,6 +451,13 @@ NNN = 3-digit story number. This gives globally unique IDs (e.g., STORY-02-001).
 
 Each story file MUST include:
 - **Story Type** field (build / performance-optimization / integration-test / deploy-validation / observability / release / hardening)
+- **Status** field — set to `To Do` for every newly-generated story.
+  Allowed values across the lifecycle: `To Do` → `In Progress` → `Done`.
+  **Never** emit `Draft` or `Not Started` for stories — `Draft` is the
+  artifact-level status used on backlog metadata tables, not stories;
+  `developer-plugin:complete-stories` rejects any value outside
+  {`To Do`, `In Progress`, `Done`} and the run halts with a Status-gate
+  failure. Set `story.status = "To Do"` when calling the renderer.
 - **User story** in "As a / I want / So that" format
 - **Detailed description** of the technical work (not just a one-liner)
 - **Acceptance criteria** with upstream artifact references (`[LLD §X.Y]`, `[DQS §X.Y]`)
@@ -524,6 +531,91 @@ do NOT need the closure sequence. Set `Epic Scope` to `foundation` or `crosscut`
 - **Self-contained**: A developer should understand the story without reading all upstream docs
 - **Consistently sized**: Stories within an epic should be roughly similar in scope
 - **Complete**: No empty sections — use `[TBD - requires input from {source}]` with owner
+
+#### Phase 3.5: Derive Verification Block (MANDATORY for every story)
+
+Every story rendered by `STORY_template.j2` MUST populate `story.verifiers`
+so the template appends a `## Verification` YAML block. The block is
+consumed by `developer-plugin/scripts/verify_acs.py` — the authoritative
+schema lives in that script's module docstring. Read it before inferring.
+
+`story.verifiers` is a dict keyed by `"AC1"`, `"AC2"`, ... (matching the
+order of the AC checkboxes). Each value is a list of one or more
+pre-rendered YAML one-liners (the template emits them verbatim after a
+`- ` bullet). Examples of well-formed verifier strings:
+
+- `file_exists: "patient_360/src/patient_360/utils/pipeline_config.py"`
+- `file_count: {glob: "patient_360/airflow/configs/*.yml", equals: 13}`
+- `grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "action_if_failed"}`
+- `grep_count: {glob: "patient_360/airflow/configs/*.yml", pattern: "empty_input_behavior:\\s*fail", equals: 6}`
+- `pytest: {node: "patient_360/tests/utils/test_scd2_unit.py"}`
+- `manual: "runtime check — requires docker-compose stack"`
+
+**Inference rules (apply in order, stop at first match):**
+
+1. **Test-authoring AC** — AC mentions a path under `tests/` (`patient_360/tests/...py`).
+   Emit `pytest: {node: "<that path>"}`. Even if the story *creates* the
+   test, the verifier must pass once implementation is done.
+2. **Explicit count + directory** — phrases like "13 YAML files",
+   "all 18 tables", "one per Bronze table". Emit
+   `file_count: {glob: "<dir>/*.<ext>", equals: <N>}`. Derive `<N>` from
+   upstream (DMS §2 Bronze table count, LLD §4.2 task list, etc.).
+3. **Key:value in code fence** — e.g. `` `empty_input_behavior: fail` ``
+   next to a `.yml` path. Emit
+   `grep: {file: "<yml>", pattern: "<key>:\\s*<value>"}` or, if the AC
+   asserts a count across many files, `grep_count` with `glob`.
+4. **Backtick-quoted file path** — emit `file_exists: "<path>"` plus a
+   `grep` for the most distinctive identifier named in the AC (function
+   name, class name, config key, DAG task id).
+5. **Runtime-only keywords** — any of: `Airflow UI`, `Airflow REST`,
+   `UC OSS /catalogs`, `PagerDuty`, `Grafana`, `docker compose up`,
+   `row count match`, `partition pruning measured`, `/health`,
+   `spark-submit on a real cluster`. Emit
+   `manual: "<one-line reason>"` — these cannot be statically verified.
+6. **No mechanical anchor identifiable** — emit
+   `manual: "author verifier after first implementation run"`. Use this
+   sparingly; if >40% of a story's ACs fall into this bucket, the AC text
+   is too vague — rewrite the AC to be concrete.
+
+**Paths resolve relative to chapter-5 workspace root.** Use project path
+prefixes from the LLD (e.g. `patient_360/...`) — never hardcode
+`outputs/` paths.
+
+**YAML escape gotcha.** Regex metacharacters (`\s`, `\d`, `\b`, `\.`)
+are NOT valid escape sequences inside double-quoted YAML strings —
+`yaml.safe_load` will raise and the runner will crash. Always wrap
+patterns containing backslashes in **single quotes**:
+
+- ✅ `pattern: 'empty_input_behavior:\s*fail'`
+- ✅ `pattern: "empty_input_behavior:\\s*fail"` (double-escape works too)
+- ❌ `pattern: "empty_input_behavior:\s*fail"` (CRASHES — invalid escape)
+
+This rule applies to every verifier kind that takes a `pattern` field
+(`grep`, `grep_count`).
+
+**Target ratio**: aim for ≥60% mechanical verifiers (non-`manual`) per
+story. Pure integration-test and observability stories may legitimately
+be 100% `manual` — that's acceptable when every AC depends on a running
+stack.
+
+**Example — a fully-derived block:**
+
+```yaml
+AC1:
+  - file_exists: "patient_360/src/patient_360/bronze/ingestion_runner.py"
+  - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "--config-path"}
+AC2:
+  - file_count: {glob: "patient_360/airflow/configs/*.yml", equals: 13}
+AC5:
+  - pytest: {node: "patient_360/tests/bronze/test_ingestion_runner_unit.py"}
+AC6:
+  - manual: "Airflow UI — DAG graph render check"
+```
+
+After rendering, run `python3 developer-plugin/scripts/verify_acs.py <new-story>`
+locally; a 0-FAIL outcome means every mechanical verifier at least parses
+and executes, which proves the block is well-formed (real implementation
+FAILs are expected and desired — that is the whole point).
 
 ### Backlog Validation (Pre-Generation Check)
 

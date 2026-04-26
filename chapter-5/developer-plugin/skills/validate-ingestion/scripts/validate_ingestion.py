@@ -431,18 +431,26 @@ def check_pyproject_deps(project_root: Path, findings: Findings) -> None:
 
 def check_test_modules(project_root: Path, findings: Findings) -> None:
     """Every generated bronze module must have a test module shipped alongside
-    it. We check presence (not coverage) to keep this step static and cheap."""
+    it. We check presence (not coverage) to keep this step static and cheap.
+
+    Accepts either ``test_<name>.py`` or ``test_<name>_unit.py`` — both are
+    in active use across the codebase. We match by stem prefix so a project
+    can pick either convention without tripping the validator.
+    """
     tests_dir = project_root / "tests" / "bronze"
     if not tests_dir.is_dir():
         findings.critical.append(f"{tests_dir}: tests/bronze directory missing")
         return
+    present_stems = {p.stem for p in tests_dir.glob("test_*.py")}
     for test_module in REQUIRED_TEST_MODULES:
-        test_path = tests_dir / test_module
-        if not test_path.exists():
-            findings.critical.append(
-                f"{test_path}: required test module missing — ingestion code must "
-                f"ship with unit tests"
-            )
+        base = Path(test_module).stem  # e.g. "test_ingestion_runner"
+        if base in present_stems or f"{base}_unit" in present_stems:
+            continue
+        findings.critical.append(
+            f"{tests_dir / test_module}: required test module missing — "
+            f"ingestion code must ship with unit tests "
+            f"(also accepted: {base}_unit.py)"
+        )
 
 
 def resolve_lld_path(workspace_root: Path) -> Path | None:

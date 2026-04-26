@@ -18,10 +18,51 @@ context: fork
 
 # Validate Scrum Stories
 
-You are a static verifier. Your job is to confirm that every acceptance
-criterion on each target story is met by the code under the project's
-configured `code_root`. You never modify story files. You produce an
-advisory report that `complete-stories` consumes as one of its gate inputs.
+You are a plan-driven verifier. For each target story, you load its
+**execution plan** (written by `implement-stories`), run the per-task
+validator declared in the plan, annotate the plan with per-AC pass/fail
+and evidence, and produce an advisory report. You never modify story
+markdown files. You DO update the plan JSON.
+
+## Plan-first workflow
+
+Every action this skill takes is sourced from
+`{stories_dir}/v{N}/plans/STORY-NN-NNN.plan.json`:
+
+```bash
+PLAN=$(python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py \
+         --mode load-plan --story STORY-NN-NNN)
+```
+
+- **No plan on disk** → the story was never implemented via the new
+  orchestrator. Fall back to the legacy path: build an in-memory plan
+  (`--mode build-plan`, no `--save`) and validate off that. Warn in the
+  output trailer so the user knows the plan was ephemeral.
+- **Plan exists** → read `tasks[]` and `acceptance_criteria[]`.
+
+For each task in the plan:
+
+1. Run the task's `validator` (e.g. `validate-ingestion`, `validate-dag`,
+   `validate-scaffold`, `validate-pipeline`) against the task's
+   `paths` / `artifacts` only. Use the `Skill` tool.
+2. Parse the validator output. Set `tasks[i].validator_status` to
+   `pass` / `fail` / `indeterminate`.
+
+For each AC in `acceptance_criteria[]`:
+
+1. Read its `task_ids`. The AC is covered if EVERY task it references
+   reports `validator_status == "pass"` AND a structural/grep check of
+   the AC text against the generated code succeeds. Set
+   `ac.validation.status` accordingly and fill `ac.validation.evidence`
+   with a short citation (file:line or validator output excerpt).
+2. For behavioural ACs with no paths, pass if ANY task covers them
+   (OR-logic).
+
+Overall plan status after this phase:
+- all ACs `pass` + all tasks `pass` → plan `status = "validated"`.
+- any AC `fail` or task `fail` → plan `status = "failed"`.
+
+Persist the plan after updating.
 
 ## Workspace Discovery
 
@@ -103,9 +144,26 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py \
 Capture from the JSON: `status`, `epic_id`, `depends_on`, and `ac_lines[]`
 (each line has `index`, `checked`, `text`, `line`).
 
-### Phase 2: Heuristic AC Verification
+### Phase 2: AC Verification — verifier block preferred, heuristics fallback
 
-For each AC in a story, run one or more of these static checks — no code
+**Preferred path — explicit `## Verification` block.** If the story file
+contains a `## Verification` YAML block (declared by the author, the
+scrum-master skill, or a retrofit pass), run the mechanical verifier:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/../scripts/verify_acs.py STORY-NN-NNN --json
+```
+
+(The script lives at `developer-plugin/scripts/verify_acs.py`; its module
+docstring is the authoritative schema spec.) The JSON output gives per-AC
+`status: PASS|FAIL|INDETERMINATE` plus each check's detail. Use those
+verdicts verbatim — do NOT re-run the heuristics below for that story.
+
+Verifier types: `file_exists`, `file_count`, `grep`, `grep_count`, `pytest`,
+`validator`, `manual` (explicit INDETERMINATE for runtime-only ACs).
+
+**Fallback path — heuristic AC verification.** Only when no Verification
+block is present, run one or more of these static checks — no code
 execution. Every AC must receive exactly one verdict: **PASS**, **FAIL**, or
 **INDETERMINATE**.
 

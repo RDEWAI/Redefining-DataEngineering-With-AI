@@ -48,3 +48,12 @@ As a {{ story.persona }}, I want {{ story.goal }} so that {{ story.benefit }}.
 {% for row in story.estimation_support %}
 | {{ row.artifact }} | {{ row.sections }} |
 {% endfor %}
+{% if story.verifiers %}
+
+## Verification
+
+```yaml
+{% for ac_id, specs in story.verifiers.items() %}{{ ac_id }}:
+{% for spec in specs %}  - {{ spec }}
+{% endfor %}{% endfor %}```
+{% endif %}

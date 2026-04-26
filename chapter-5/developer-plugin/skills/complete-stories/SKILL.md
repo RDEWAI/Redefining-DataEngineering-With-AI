@@ -19,14 +19,38 @@ context: fork
 # Complete Scrum Stories
 
 You are the hard gate between "code looks right" and "story is Done." You
-edit story and epic markdown files ONLY when every gate rule passes. A single
-unchecked AC, missing dependency, or absent deliverable aborts the whole run
-— the agent cannot mark anything complete while any task or story in the
-target epic is unfinished.
+edit story, epic, and backlog markdown files ONLY when every gate rule
+passes. A single unchecked AC, missing dependency, absent deliverable, or
+failing validator aborts the whole run — nothing is marked complete while
+any task or story in the target epic is still open.
 
-This matches the user's explicit requirement: the status of the epic only
-updates when everything is done, and the agent cannot complete when any task
-(AC checkbox) or story in the epic is still open.
+Plan-driven: when a story has a plan at
+`{stories_dir}/v{N}/plans/STORY-NN-NNN.plan.json` (written by
+implement-stories, annotated by validate-stories), this skill gates on the
+plan. When no plan exists (legacy stories), it falls back to the original
+AC-checkbox + deliverable-presence gate.
+
+## Rollup rules
+
+Three nested rollups, each atomic:
+
+1. **Story → Done**: plan `status == "validated"` AND every AC
+   `validation.status == "pass"` AND every dependency story is `Done` AND
+   every deliverable path exists on disk. On success, tick the story's AC
+   checkboxes, flip its Status cell to `Done`, set plan `status = "done"`
+   and `completion.status = "done"`.
+2. **Epic → Done**: every story in the epic file's `## Stories` table is
+   `Done` AND every epic-level AC checkbox is ticked. On success, flip
+   the epic's Status cell to `Done`.
+3. **Backlog → Done**: every epic in the latest `BACKLOG-*.md` is `Done`.
+   On success, flip the backlog's Status cell to `Done` and add a version
+   history entry.
+
+Each rollup runs after the preceding one succeeds. Rollup 2 only fires
+after a story flips to Done (not on every `complete-stories` call).
+Rollup 3 only fires after an epic flips to Done. So a reader running
+`/developer-plugin:complete-stories STORY-02-004` gets the full cascade
+automatically when that story is the last missing piece.
 
 ## Workflow
 
@@ -37,9 +61,26 @@ Same argument grammar as `implement-stories` and `validate-stories`
 
 ### Phase 1: Hard Gate (atomic)
 
-**Step 1 — Run the gate helper for every target.**
+**Step 0 — Plan gate (new; runs before the legacy gate).**
 
-For each target ID (or for each story in an epic/sprint expansion), run:
+For each target story, load its plan:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py \
+  --mode load-plan --story STORY-NN-NNN
+```
+
+- **Plan exists** and `plan.status != "validated"` → BLOCK with
+  `plan_not_validated`. Message: "run /developer-plugin:validate-stories
+  STORY-NN-NNN first (plan is at `{plan_path}`)".
+- **Plan exists** and any `acceptance_criteria[*].validation.status !=
+  "pass"` → BLOCK with `ac_validation_fail`, citing failing ACs.
+- **Plan exists** and any `tasks[*].status != "done"` → BLOCK with
+  `task_not_done`.
+- **Plan missing** → fall through to the legacy gate below (back-compat
+  for stories implemented before the plan system landed).
+
+**Step 1 — Run the legacy gate helper for every target.**
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py \
@@ -135,6 +176,26 @@ safe.
 
 Use a single `Edit` call per AC line (the `- [ ]` + AC text is a unique
 substring in the file).
+
+**Step 2.5 — Update the story plan (if it exists).**
+
+After ticking AC checkboxes and flipping the story's Status to Done, also
+update the plan file to match:
+
+```bash
+python3 -c "
+import json
+from datetime import datetime, timezone
+p = json.load(open('$PLAN_PATH'))
+p['status'] = 'done'
+p['completion']['status'] = 'done'
+p['completion']['completed_at'] = datetime.now(timezone.utc).isoformat()
+p['completion']['blocking_reasons'] = []
+json.dump(p, open('$PLAN_PATH','w'), indent=2)
+"
+```
+
+Skip if no plan exists (legacy story).
 
 **Step 3 — Roll up the epic (only if every child is now Done).**
 

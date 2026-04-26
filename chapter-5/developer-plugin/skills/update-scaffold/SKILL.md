@@ -8,7 +8,7 @@ description: >
   - Refresh scaffold after LLD revision
   - Sync contracts/ against a new DMS version
   - Add a new foundation module to an existing project
-argument-hint: "[STORY-01-NNN | 'sync-contracts' | 'sync-infra']"
+argument-hint: "[STORY-NN-NNN | 'sync-contracts' | 'sync-infra' | 'sync-template' | 'sync-env']"
 allowed-tools: Read, Edit, Write, Grep, Glob, Bash, AskUserQuestion
 context: fork
 ---
@@ -77,15 +77,58 @@ Emit a `### References` section citing the consumed pattern docs + LIBRARIES.md 
 | Everything present, need to add one module      | `update-scaffold` |
 | DMS revised → need to regenerate schema YAMLs   | `update-scaffold` (`sync-contracts`) |
 | LLD §9.1 changed infra layout                   | `update-scaffold` (`sync-infra`)     |
+| Cookiecutter template updated upstream          | `update-scaffold` (`sync-template`)  |
+| Runtime prerequisites drifted (Java, uv, docker)| `update-scaffold` (`sync-env`)       |
 
 ## Workflow
 
 ### Phase 0: Resolve Target
 
-- `STORY-01-NNN` — update the deliverables for that one story.
+- `STORY-NN-NNN` — read the story's AC; for each backtick-quoted path that
+  falls under create-scaffold's *Domain of Ownership*, update it in place.
+  Route ROUTE-TO for paths owned by other skills.
 - `sync-contracts` — rewrite every `contracts/{table}.yml` from the latest DMS.
 - `sync-infra` — reconcile `_infra/docker/`, `pyproject.toml`, and `Makefile` against the latest LLD §9.
-- No arg — ask via `AskUserQuestion` which of the three.
+- `sync-template` — reconcile against an updated cookiecutter-chapter
+  template. See Phase 0.5 below.
+- `sync-env` — re-run the environment preflight (Java/Python/uv/docker
+  versions) from `create-scaffold` Phase 1.5 and offer install prompts
+  if prerequisites drifted (e.g. `LIBRARIES.md` bumped Spark major →
+  JDK bump needed). No code files are touched in this mode.
+- No arg — ask via `AskUserQuestion` which target applies.
+
+### Phase 0.5: `sync-template` mode
+
+Upstream cookiecutter-chapter releases new layers, new Makefile targets,
+or renames directories. This mode reconciles an **existing** project
+against the current template without destroying user edits.
+
+1. **Locate the template**: `{workspace_root}/outputs/lld/v*/templates/cookiecutter-chapter/`
+   or repo-root `templates/cookiecutter-chapter/`. Capture its version
+   (prefer a `VERSION` file inside the template or the git SHA of its
+   directory).
+2. **Render into a throwaway directory** with the same cookiecutter
+   variables the original project was rendered with (read from
+   `{project_root}/.cookiecutter.json` if present, else prompt).
+3. **Three-way diff**:
+   - `NEW_ONLY` — paths in the new render but not in the current project
+     → offer to add (AskUserQuestion: Add all / Pick individually / Skip).
+   - `MISSING_FROM_NEW` — paths present locally but dropped upstream →
+     flag for the user; never delete (Hard Rule 1).
+   - `DIFFERS` — path exists in both but content differs → show a diff.
+     If the local file has no human edits per `git blame`, offer to patch;
+     otherwise require explicit AskUserQuestion confirmation per file.
+4. **Non-code assets** (`Makefile`, `pyproject.toml`, `.gitignore`,
+   `docker-compose.yml`, `README.md`, `CLAUDE.md`): attempt a **key-merge**
+   rather than a full overwrite. For Makefile, add missing targets without
+   touching existing ones; for `pyproject.toml`, add missing `[project]` /
+   `[tool.*]` sections and dependencies; for `.gitignore`, append missing
+   lines. For `README.md` / `CLAUDE.md`, if the file is missing write it
+   from the template; if it exists, diff against the template and prompt
+   via AskUserQuestion before overwriting (users commonly personalize
+   these).
+5. **Record** the template version that was applied so the next
+   `sync-template` run can detect no-op cases.
 
 ### Phase 1: Diff
 

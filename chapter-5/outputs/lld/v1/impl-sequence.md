@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Derived From** | LLD-2026-04-17-patient-360.md |
-| **Generated** | 2026-04-17 |
+| **Derived From** | LLD-2026-04-23-patient-360.md |
+| **Generated** | 2026-04-24 |
 | **Generator** | generate_impl_sequence.py |
 
 ---
@@ -84,7 +84,7 @@ Requirements mapped to build phases (from LLD §12):
 | FR-5: Track demographic changes (SCD2) | DRD §1.2 | `transform_patients_silver` with SCD Type 2 via Delta MERGE INTO | §5.2 |
 | FR-6: Derived fields | DRD §5.2 | `src/patient_360/utils/derived_fields.py` in Silver tasks | §2.1 |
 | FR-7: Referential integrity | DRD §3.3 | `dq_gate_silver` with FK checks from DQS §3 | §5.4 |
-| FR-8: Allergy never suppressed | DRD §5.4 | Gold DQ assertion DQ-FLD-138 (cross-field), allergy elevated alerting | §5.3, §8.3 |
+| FR-8: Allergy never suppressed | DRD §5.4 | Gold DQ assertion DQ-FLD-138 (cross-field), allergy elevated alerting | §5.3, §8.5 |
 | FR-9: Default values (NULL costs=0) | DRD §5.1 | Silver transformations per STM Tab:Null Handling | §5.2 |
 | FR-10: Data lineage | DRD §7.5 | `emit_lineage` task; OpenLineage events to Marquez | §4.2 |
 | NFR-1: < 2s query response |  | Gold denormalization with ARRAY<STRUCT>; Delta columnar reads | §5.3, §6.2 |
@@ -96,4 +96,4 @@ Requirements mapped to build phases (from LLD §12):
 | NFR-7: HIPAA audit trail |  | OpenLineage job-level lineage to Marquez | §4.2 |
 | NFR-8: 6-year patient retention |  | Gold retention = 7 years | §3.4 |
 | NFR-9: 7-year claims retention |  | Gold retention = 7 years | §3.4 |
-| NFR-10: RTO <= 4 hours |  | Delta RESTORE (instant) + pipeline re-run | §9.3 |
+| NFR-10: RTO <= 4 hours |  | Delta RESTORE (instant) + pipeline re-run | §9.4 |

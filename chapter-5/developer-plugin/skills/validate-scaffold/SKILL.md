@@ -8,18 +8,25 @@ description: >
   surfaces each failure with the exact command to reproduce.
   Use when the user asks to:
   - Validate the scaffold / foundation
-  - Check STORY-01-NNN implementation
+  - Check a foundation-layer story's implementation
   - Confirm scaffold is ready before running create-dag / create-ingestion
-argument-hint: "[STORY-01-NNN | 'full']"
+argument-hint: "[STORY-NN-NNN | 'full']"
 allowed-tools: Read, Grep, Glob, Bash
 context: fork
 ---
 
 # Validate Project Scaffold
 
-Read-only verifier for EPIC-01 deliverables. Produces the same
-`PASS / FAIL / INDETERMINATE` verdict per check that `validate-stories`
-consumes as a heuristic input.
+Read-only verifier for the project's foundation layer (everything
+create-scaffold owns, per that skill's *Domain of Ownership* section).
+Produces `PASS / FAIL / INDETERMINATE` per check; `validate-stories`
+consumes the verdicts as a heuristic input.
+
+The checks below are grouped by **domain area**, not by story number —
+any foundation-layer story, in any epic, under any project, will land in
+one of these areas. When invoked with a specific `STORY-NN-NNN`, the skill
+reads the story's AC at runtime and runs only the checks relevant to the
+backtick-quoted paths it names.
 
 ## Workspace Discovery
 
@@ -57,75 +64,116 @@ Cite each pattern doc consulted, e.g. `Checked against inputs/code/v1/project-st
 
 ## Checks
 
-### Directory tree (STORY-01-001)
+### Area 1 — Directory tree
 
-For each path in LLD §2.1, `Glob` its existence under `{project_root}/`:
+For each path enumerated in LLD §2.1, `Glob` its existence under
+`{project_root}/`. The expected paths are read from the LLD at runtime,
+not hardcoded. Typical cookiecutter-chapter projects include:
 
-- `src/{project_name}/{bronze,silver,gold,utils}/__init__.py`
-- `airflow/dags/`, `airflow/configs/`
+- `src/{project_name}/<layer>/__init__.py` for each layer LLD §2.1 declares
 - `contracts/`, `contracts/dq/`, `dq_rules/`
-- `ddl/liquibase/changelogs/`
-- `tests/{bronze,silver,gold}/`
+- `ddl/liquibase/changelogs/` (or whatever migration tool LLD §9 names)
+- `tests/<layer>/` per layer
 - `_infra/{docker,ci,cd}/`
 - `pyproject.toml`, `Makefile`, `CLAUDE.md`
 
-### Config loader (STORY-01-002)
+### Area 2 — Utility modules (`src/{project_name}/utils/**`)
 
-- `src/{project_name}/utils/config_loader.py` exists
-- `Grep("def load_config", config_loader.py)` returns ≥1 match
-- `Grep("yaml", config_loader.py)` (loader imports pyyaml)
+Enumerate every `.py` file under `src/{project_name}/utils/` and, for each:
 
-### Template config (STORY-01-003)
+- Module imports without error:
+  `uv run python -c "import {project_name}.utils.<name>"` exits 0.
+- Each public symbol named in the LLD §2.3 interface contract for that
+  module is defined (`Grep` for `def <symbol>` / `class <symbol>`).
 
-- `airflow/configs/_template.yml` exists
-- Contains keys: `source`, `schema_ref`, `output`, `empty_input_behavior`, `metadata_columns`
+The module list is discovered at runtime — NEVER hardcoded. Any story that
+declares a `utils/<name>.py` deliverable gets its module checked here.
 
-### Logging framework (STORY-01-004)
+### Area 3 — Test harness
 
-- `src/{project_name}/utils/logging.py` exists
-- `Grep("def get_logger", logging.py)` returns ≥1 match
+- `tests/conftest.py` exists.
+- Each `tests/<layer>/conftest.py` exists for each layer in LLD §2.1.
+- `uv run pytest tests/ --collect-only -q` exits 0.
+- `tests/utils/test_<name>.py` exists for each `utils/<name>.py` (if the
+  story's AC calls for unit tests).
 
-### Test infrastructure (STORY-01-005)
+### Area 4 — StructType schema contracts
 
-- `tests/conftest.py` exists
-- Each of `tests/{bronze,silver,gold}/conftest.py` exists
-- `uv run pytest tests/ --collect-only -q` exits 0
+- One `contracts/<table>.yml` per table declared in DMS §2 (count and
+  table names are read from the DMS — NEVER hardcoded).
+- Each YAML references columns present in the corresponding DMS table.
+- For each table: all column names from DMS appear in the YAML
+  (case-insensitive comparison).
 
-### Docker compose (STORY-01-006)
+### Area 5 — Infra (`_infra/docker/**`, `docker-compose.yml`)
 
-- `_infra/docker/docker-compose.yml` exists and parses (run `docker compose config -q` if docker is available; else skip with INDETERMINATE)
-- `_infra/docker/Dockerfile.airflow` exists
+- The infra files named in LLD §9.1 exist — NOT `.gitkeep` placeholders.
+  `_infra/docker/docker-compose.yml` must contain a `services:` block and
+  every service name the LLD §9.1 table calls out (e.g. airflow-webserver,
+  airflow-scheduler, unity-catalog / unitycatalog, marquez, grafana,
+  prometheus, loki — read the list from LLD §9.1 at runtime, not hardcoded).
+- `docker compose config -q` succeeds if docker is available; else mark
+  the parse check as INDETERMINATE.
 
-### StructType schemas (STORY-01-008)
+### Area 5a — CI workflow skeletons (`_infra/ci/.github/workflows/**`)
 
-- 13 YAML files exist in `contracts/` (one per table)
-- Each references columns present in the corresponding DMS table
-- For each table: all column names from DMS appear in the YAML (compared case-insensitively)
+- `_infra/ci/.github/workflows/lint.yml` exists and calls `make lint`.
+- `_infra/ci/.github/workflows/unit-test.yml` exists and calls `make test`.
+- `_infra/ci/.github/workflows/integration-test.yml` exists and calls
+  `make dev-up` / `make integration-test` / `make dev-down`.
 
-### Smoke tests
+### Area 5b — Liquibase changelogs (`ddl/liquibase/**`)
+
+- `ddl/liquibase/master-changelog.xml` exists and contains at least one
+  `<include file="changelogs/..." .../>` entry (i.e. is not the empty
+  template skeleton).
+- `ddl/liquibase/changelogs/` contains exactly N `*.xml` files where N is
+  the number of Bronze tables declared in DMS §2 (read at runtime).
+- Each changelog's filename matches a Bronze table name from DMS §2.
+
+### Area 5c — Contract graph test (`tests/test_contracts.py`)
+
+- `tests/test_contracts.py` exists.
+- `pytest tests/test_contracts.py --collect-only -q` reports at least one
+  collected test and no collection errors.
+
+### Area 6 — Environment prerequisites
+
+Re-run the same probes that `create-scaffold`'s Phase 1.5 preflight ran
+(Python, Java major version vs Spark major in `LIBRARIES.md`, `uv`,
+docker/compose if the project uses `_infra/docker/**`). Failures here are
+reported as **FAIL** (not INDETERMINATE) — they explain why smoke tests
+will fail. Tell the user to re-run `/developer-plugin:create-scaffold` to
+re-trigger the install prompt, or to install manually.
+
+### Area 7 — Smoke tests
 
 ```bash
 cd {project_root}
 uv sync --all-extras           # PASS only if exit 0
-uv run python -c "import {project_name}.utils.config_loader; import {project_name}.utils.logging"
+# Import smoke: discover util modules at runtime, import each.
+for m in $(ls src/{project_name}/utils/*.py 2>/dev/null | \
+           xargs -n1 basename | sed 's/\.py$//' | grep -v '^__'); do
+  uv run python -c "import {project_name}.utils.$m" || echo "FAIL: $m"
+done
 uv run pytest tests/ --collect-only -q
 ```
 
 ## Output Format
 
 ```
-Scaffold validation — target: STORY-01-001
+Scaffold validation — target: <STORY-NN-NNN | full>
 
 Checks:
-  src/{project_name}/bronze/__init__.py ........... PASS
-  src/{project_name}/silver/__init__.py ........... PASS
-  ...
-  tests/bronze/conftest.py ..................... PASS
-  Makefile .................................... PASS
-  uv sync --all-extras ........................ PASS
-  pytest --collect-only ....................... PASS
+  [tree]    src/<project>/<layer>/__init__.py ...... PASS  (per LLD §2.1)
+  [utils]   utils/<name>.py imports ................ PASS  (per LLD §2.3)
+  [tests]   tests/conftest.py ...................... PASS
+  [tests]   pytest --collect-only .................. PASS
+  [contracts] <N> YAML files vs DMS §2 ............. PASS
+  [infra]   docker compose config -q ............... INDETERMINATE (docker unavailable)
+  [smoke]   uv sync --all-extras .................... PASS
 
-Summary: 18/18 PASS, 0 FAIL, 0 INDETERMINATE
+Summary: N/M PASS, 0 FAIL, 1 INDETERMINATE
 Overall: PASS
 ```
 

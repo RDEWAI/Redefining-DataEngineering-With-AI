@@ -328,7 +328,7 @@ invoke `/dq-engineer-plugin:apply-learnings` before finishing.
 
 ### Active Learnings
 
-_No learnings recorded yet. Learnings are added when corrections occur during skill execution._
+- **L-001** (2026-04-24): Always require fully-qualified `schema.table` references in `query_dq` expressions. Never accept unqualified table names (e.g., `clinical_patients`) — they must read as `clinical.clinical_patients`. When the SE validator flags unqualified tables in the generated YAML, surface the full list of offending DQ-REF rules and recommend running `/dq-engineer-plugin:update-dqs` to fix the DQS source before re-running generate-se-rules; do not silently rewrite expressions in the YAML.
 
 <!-- Example format:
 - **L-001** (2026-03-20): Always use CAST(col AS DATE) not TO_DATE(col) for date conversions.

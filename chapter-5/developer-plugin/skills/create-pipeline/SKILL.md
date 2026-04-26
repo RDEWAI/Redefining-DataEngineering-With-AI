@@ -67,7 +67,16 @@ Emit a `### References` section citing consumed pattern docs + LIBRARIES.md vint
 ## Workflow
 
 ### Phase 0: Upstream Gate
-Confirm the LLD in `{workspace_root}/outputs/lld/v*/` has `Status: Approved`.
+
+Resolve upstream versions via the shared helper (uses `outputs/dev-lock.yaml`
+when present, otherwise falls back to latest `v{N}`):
+
+```bash
+eval "$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/resolve_versions.py --export)"
+LATEST_LLD_DIR="${LATEST_LLD_DIR:-$(ls -d {workspace_root}/outputs/lld/v* | sort -V | tail -1)}"
+```
+
+Confirm the LLD in `$LATEST_LLD_DIR/` has `Status: Approved`.
 
 ### Phase 1: Clarify Platform & Stages
 Use `AskUserQuestion` to confirm:
@@ -76,12 +85,58 @@ Use `AskUserQuestion` to confirm:
 - Required stages: lint → unit-test → integration-test → deploy
 
 ### Phase 2: Generate Pipeline Config
-- **GitHub Actions**: write to `{project_root}/_infra/ci/.github/workflows/`
-- **GitLab CI**: write to `{project_root}/_infra/ci/.gitlab-ci.yml`
-- Include caching for `uv` dependencies
-- Run `uv run pytest tests/` in the test stage
-- Run `uv run ruff check src/` in the lint stage
-- Deploy stage only runs on `main` branch
+
+**Ownership split with create-scaffold.** The cookiecutter template
+already ships three skeleton workflow files — `lint.yml`, `unit-test.yml`,
+`integration-test.yml` — each calling the corresponding `make` target.
+Those are create-scaffold's domain. This skill:
+
+- May **edit** the three skeletons to add deploy steps, env matrices, or
+  caching — never re-create them from scratch.
+- **Creates** every other pipeline file: `deploy-*.yml`, `release-*.yml`,
+  `promote-*.yml`, `_infra/ci/.gitlab-ci.yml` (if GitLab), and any
+  platform-specific config (Astronomer, MWAA).
+
+Write targets:
+- **GitHub Actions**: new files under `{project_root}/_infra/ci/.github/workflows/` (but not the three skeleton names listed above — edit those, don't overwrite).
+- **GitLab CI**: `{project_root}/_infra/ci/.gitlab-ci.yml`.
+
+Guidelines:
+- Include caching for `uv` dependencies.
+- Run `uv run pytest tests/` in the test stage (or invoke `make test`).
+- Run `uv run ruff check src/` in the lint stage (or invoke `make lint`).
+- Deploy stage only runs on `main` branch.
 
 ### Phase 3: Validate
 Invoke `/developer-plugin:validate-pipeline` on the generated files.
+
+### Phase 4: Verification Compliance Self-Check (MANDATORY before reporting OK)
+
+The story's `## Verification` block is the contract. After every prior
+phase has emitted its files, run the AC verifier against the target
+story and refuse to declare OK if any mechanical verifier still fails.
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/../scripts/verify_acs.py STORY-NN-NNN --json
+```
+
+(For batch / multi-story dispatch, run once per story.)
+
+Parse the JSON output. For each AC in `acs[]`:
+
+- `status == "FAIL"` and at least one check has a non-`manual` kind
+  that failed → emit one CRITICAL line per failing check:
+  `CRITICAL STORY-NN-NNN AC<N>: <check.spec> — <check.detail>`
+  Then **stop**. Do NOT mark the plan task `done`. Do NOT print the
+  OK trailer. The orchestrator's Phase 2 Step 3.5 reads this and halts
+  the story.
+- `status == "FAIL"` but every failing check is `manual:` → INFO only
+  (manual checks can't fail mechanically; treat as author note).
+- `status == "PASS"` / `INDETERMINATE` → continue.
+- `has_verification == false` → emit one WARNING line
+  `STORY-NN-NNN: no Verification block — generation completed without
+  AC compliance check.` Then continue.
+
+This phase is the **only** place this skill flips its overall result
+from OK to FAILED. Skills that ignore it leave gaps the orchestrator
+cannot see.

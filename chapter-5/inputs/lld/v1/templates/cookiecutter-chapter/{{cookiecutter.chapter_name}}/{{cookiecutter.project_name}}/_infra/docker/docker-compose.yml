@@ -1,0 +1,106 @@
+# {{cookiecutter.project_name}} local dev stack (LLD §9.1)
+# Services: Airflow (webserver + scheduler), Unity Catalog OSS, Marquez,
+# Grafana, Prometheus, Loki.
+version: "3.9"
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.10.3
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db:5432/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+  volumes:
+    - ../../airflow/dags:/opt/airflow/dags
+    - ../../airflow/configs:/opt/airflow/configs
+  depends_on:
+    - airflow-db
+
+services:
+  airflow-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-db-data:/var/lib/postgresql/data
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+
+  unity-catalog:
+    image: unitycatalog/unitycatalog:0.2.1
+    ports:
+      - "8080:8080"
+    environment:
+      UC_SERVER_PORT: "8080"
+    volumes:
+      - uc-data:/opt/unitycatalog/etc/data
+
+  marquez:
+    image: marquezproject/marquez:0.49.0
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+    environment:
+      MARQUEZ_PORT: "5000"
+      MARQUEZ_ADMIN_PORT: "5001"
+      POSTGRES_HOST: marquez-db
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
+      POSTGRES_DB: marquez
+    depends_on:
+      - marquez-db
+
+  marquez-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
+      POSTGRES_DB: marquez
+    volumes:
+      - marquez-db-data:/var/lib/postgresql/data
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  loki:
+    image: grafana/loki:3.2.0
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    depends_on:
+      - prometheus
+      - loki
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  airflow-db-data:
+  marquez-db-data:
+  uc-data:
+  grafana-data:

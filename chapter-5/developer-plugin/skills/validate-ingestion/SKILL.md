@@ -74,8 +74,9 @@ The script returns a non-zero exit code if any CRITICAL issues are found.
 - A YAML config references a `contracts/{table}.yml` that does not exist
 - Per-table YAML missing required keys: `table`, `source`, `schema_ref`,
   `output_path`, `empty_input_behavior`, `dq_rules_table`
-- Critical table (patients, encounters, allergies, organizations, providers,
-  payers) has `empty_input_behavior` other than `fail`
+- A table that LLD §5.1 flags with `empty_input_behavior: fail` has a
+  YAML config declaring a different behaviour (read the LLD §5.1 table at
+  validation time — no critical-table list is hardcoded)
 - Per-table YAML `output_path` embeds `ds=` (runner partitions by `ds`; the
   path must be the Delta table root, not a partition directory)
 - Per-table YAML `metadata_columns` missing any of `ds`, `_ingested_at`,
