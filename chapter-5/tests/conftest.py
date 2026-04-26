@@ -2371,7 +2371,7 @@ VALID_STORY = """\
 | **Story Points** | 5 |
 | **Sprint** | 1 |
 | **Dependencies** | None |
-| **Status** | Draft |
+| **Status** | To Do |
 
 ## User Story
 
