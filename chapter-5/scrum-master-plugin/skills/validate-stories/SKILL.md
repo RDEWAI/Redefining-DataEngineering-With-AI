@@ -55,6 +55,11 @@ The validator checks rules across three severity levels:
 - `STORIES-CLOSURE-002`: Layer epic has no `integration-test` story
 - `STORIES-CLOSURE-003`: Integration-test story AC is missing "Airflow DAG" or "Unity Catalog" wording — local integration testing means triggering the layer DAG on local Airflow against UC OSS local and validating data in UC local
 - `STORIES-CLOSURE-004`: Integration-test story does not depend on a `performance-optimization` story from the same epic — closure order is perf BEFORE integration-test
+- `STORIES-BOOTSTRAP-001`: Backlog has no `runtime-bootstrap` story — every backlog must include ≥1 such story (typically EPIC-01) covering JDK 17 verification, `docker compose up`, UC OSS catalog/schemas creation, source-data seeding, and a smoke curl against the UC API
+- `STORIES-INTEGRATION-AUTOMATED-001`: An `integration-test` story has 0 automated verifiers (every spec in `## Verification` is `manual:` or the block is missing) — without an automated verifier, the test is a checklist, not a gate. Add at least one `pytest:` (or `validator:` / `grep:`) verifier so `verify_acs.py` and `complete-stories` can prove the layer DAG actually ran and data landed in UC OSS local
+- `STORIES-TESTING-001`: Story is missing a populated `## Testing` section. Every story must declare what coverage exists (Unit / Contract / Integration / Smoke / DQ / Benchmark) so the developer-plugin can wire verifiers and the user can see the test posture at a glance
+- `STORIES-USER-TEST-001`: Story of type `build`, `integration-test`, or `runtime-bootstrap` is missing a populated `## How to Test (User)` section. The user must be able to verify Done independently with prerequisites + exact commands + expected output
+- `STORIES-DOCS-001` (CRITICAL for `runtime-bootstrap`/`integration-test`/`release`): Story is missing a `## Documentation Updates` AC list. Stories that change how the project runs must enumerate which README/runbook sections must be updated
 
 ### WARNING (needs attention)
 - `STORIES-TRACE-001`: Story lacks upstream artifact reference — citations must match
@@ -66,6 +71,8 @@ The validator checks rules across three severity levels:
 - Dependency graph present in backlog (Mermaid diagram)
 - `STORIES-CLOSURE-005`: Layer epic has no `deploy-validation` story and its Objective is missing the explicit "Deploy: N/A — layer completes at integration-test" note — closure intent unclear
 - `STORIES-CLOSURE-006`: Trailing epic (Release / Hardening) contains a layer-specific `performance-optimization` or `integration-test` story — closure work leaked out of its layer epic
+- `STORIES-USER-TEST-001` (WARNING for non-required types): Story type other than build/integration-test/runtime-bootstrap is missing a `## How to Test (User)` section — non-blocking but recommended
+- `STORIES-DOCS-001` (WARNING for `build` stories that create files under `src/`/`airflow/`/`_infra/`): A build story creating runtime files lists no documentation updates — runbook drift is likely
 
 ### INFO (suggestions for improvement)
 - Placeholder text remaining ([TBD], [TODO])
@@ -86,6 +93,9 @@ A complete backlog contains:
 
 **Each STORY file**:
 - User Story, Description, Acceptance Criteria, Technical Notes, Estimation Support
+- **Testing** — table of automated coverage rows (Unit / Integration / Smoke / DQ / Benchmark) per story type, each row mapping to a verifier in `## Verification`
+- **How to Test (User)** — prerequisites + exact commands + expected output a human can run on their own machine (CRITICAL for build / integration-test / runtime-bootstrap)
+- **Documentation Updates** — list of specific README / runbook sections this story must change (CRITICAL for runtime-bootstrap / integration-test / release)
 
 ## Step 2.5: Fix CRITICAL issues before presenting
 

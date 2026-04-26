@@ -119,6 +119,7 @@ VALID_STORY_TYPES = {
     "observability",
     "release",
     "hardening",
+    "runtime-bootstrap",
 }
 
 LAYER_REQUIRED_STORY_TYPES = {"performance-optimization", "integration-test"}
@@ -127,6 +128,14 @@ TRAILING_FORBIDDEN_STORY_TYPES = {
     "integration-test",
     "deploy-validation",
 }
+
+# Story types whose ACs are expected to land changes a developer will run end-to-end.
+# These types REQUIRE a populated ## How to Test (User) section so a human can verify.
+USER_TEST_REQUIRED_TYPES = {"build", "integration-test", "runtime-bootstrap"}
+
+# Story types whose closure intrinsically changes how the project runs.
+# These types REQUIRE a ## Documentation Updates AC list (≥1 README update).
+DOCS_UPDATE_REQUIRED_TYPES = {"runtime-bootstrap", "integration-test", "release"}
 
 
 def parse_sections(content: str) -> dict[str, str]:
@@ -394,7 +403,7 @@ def check_stories_exist(epic_dir: Path) -> list[ValidationResult]:
                 section=epic_dir.name,
                 message=f"No STORY-*.md files found in {epic_dir.name}/.",
                 suggestion=(
-                    f"Create at least one STORY-NN-NNN-{{slug}}.md file " f"in {epic_dir.name}/."
+                    f"Create at least one STORY-NN-NNN-{{slug}}.md file in {epic_dir.name}/."
                 ),
             )
         )
@@ -868,6 +877,282 @@ def check_layer_closure(
     return results
 
 
+# --- Backlog-level: runtime-bootstrap presence (BOOTSTRAP-001) ---
+
+
+def check_backlog_has_bootstrap(
+    story_type_by_id: dict[str, str],
+    directory: Path,
+) -> list[ValidationResult]:
+    """BOOTSTRAP-001: every backlog must contain ≥1 runtime-bootstrap story."""
+    results: list[ValidationResult] = []
+    if "runtime-bootstrap" not in set(story_type_by_id.values()):
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section=directory.name,
+                message=(
+                    "Backlog has no runtime-bootstrap story. Every backlog must include "
+                    "≥1 story (typically in EPIC-01) whose ACs cover the dev runtime: "
+                    "JDK 17 verified, docker compose up succeeds, UC catalog/schemas created, "
+                    "source data seeded, smoke curl against UC OSS API returns 200."
+                ),
+                suggestion=(
+                    "Add a STORY-NN-NNN with `Story Type: runtime-bootstrap` to the "
+                    "foundation epic. Its ACs must include the runtime prerequisites "
+                    "from LLD §1 (JDK/Spark/UC OSS/Airflow versions) and §6.1 (compute)."
+                ),
+            )
+        )
+    return results
+
+
+# --- Per-story: ## Testing / ## How to Test (User) / ## Documentation Updates ---
+
+
+def _has_section_with_content(content: str, heading: str) -> bool:
+    """Return True if a `## heading` section exists AND contains non-whitespace content."""
+    body = _get_section_content(content, heading)
+    return bool(body and body.strip())
+
+
+def _list_item_count(text: str) -> int:
+    """Count markdown list items (bulleted or checkbox) in a section body."""
+    return len(re.findall(r"^\s*-\s+(?:\[[ xX]\]\s+)?\S", text, re.MULTILINE))
+
+
+def _numbered_step_count(text: str) -> int:
+    """Count `1.` / `2.` numbered list steps in a section body."""
+    return len(re.findall(r"^\s*\d+\.\s+\S", text, re.MULTILINE))
+
+
+def _table_row_count(text: str) -> int:
+    """Count data rows (post-header, post-separator) in a markdown pipe table.
+
+    Header + separator are the first two `|...|` lines; remaining `|...|` lines
+    are data rows. Returns 0 if there's no recognizable table.
+    """
+    pipe_lines = [
+        ln for ln in text.splitlines() if ln.strip().startswith("|") and ln.count("|") >= 2
+    ]
+    return max(0, len(pipe_lines) - 2)
+
+
+def check_testing_section(story_file: Path) -> list[ValidationResult]:
+    """TESTING-001: every story must have a populated `## Testing` section with ≥1 row."""
+    results: list[ValidationResult] = []
+    section = f"{story_file.parent.name}/{story_file.name}"
+    content = story_file.read_text(encoding="utf-8")
+    body = _get_section_content(content, "Testing")
+    rows = _table_row_count(body) if body else 0
+    if rows < 1:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section=section,
+                message=(
+                    "Story has no `## Testing` section with ≥1 coverage row. Every story "
+                    "must declare what automated coverage exists: Unit, Contract, Integration, "
+                    "Smoke, DQ, or Benchmark, with each row mapping to a verifier in the "
+                    "`## Verification` block."
+                ),
+                suggestion=(
+                    "Add a `## Testing` table with rows appropriate to the story type. "
+                    "build → Unit (required), Contract (if creates contracts/*.yml). "
+                    "integration-test → Unit + Integration + Smoke + DQ (all required). "
+                    "runtime-bootstrap → Smoke (required). performance-optimization → Benchmark. "
+                    "Format: | Coverage | What | How |"
+                ),
+            )
+        )
+    return results
+
+
+def check_user_test_section(story_file: Path, story_type: str) -> list[ValidationResult]:
+    """USER-TEST-001: build/integration-test/runtime-bootstrap need user-runnable test steps.
+
+    Requires the section to exist AND contain ≥1 numbered step under "Steps".
+    A bare heading skeleton with empty subsections fails the rule — the user
+    must be able to act on the section, not just see that it was rendered.
+    """
+    results: list[ValidationResult] = []
+    section = f"{story_file.parent.name}/{story_file.name}"
+    content = story_file.read_text(encoding="utf-8")
+    body = _get_section_content(content, "How to Test (User)")
+    step_count = _numbered_step_count(body) if body else 0
+    if step_count >= 1:
+        return results
+
+    is_required = story_type in USER_TEST_REQUIRED_TYPES
+    level = ValidationLevel.CRITICAL if is_required else ValidationLevel.WARNING
+    qualifier = "must" if is_required else "should"
+    results.append(
+        ValidationResult(
+            level=level,
+            section=section,
+            message=(
+                f"Story (type={story_type}) {qualifier} have a `## How to Test (User)` "
+                "section with ≥1 numbered step (prerequisites + exact commands + expected "
+                "output a human can run on their own machine)."
+            ),
+            suggestion=(
+                "Populate `## How to Test (User)` with: ### Prerequisites "
+                "(deps the user must have), ### Steps (numbered shell commands the user "
+                "runs — `1. cmd`, `2. cmd`), ### Expected outcome. Independent verification "
+                "should not require reading the developer's mind."
+            ),
+        )
+    )
+    return results
+
+
+def check_documentation_updates(story_file: Path, story_type: str) -> list[ValidationResult]:
+    """DOCS-001: runtime-bootstrap/integration-test/release must list ≥1 README update.
+
+    Build stories get a WARNING when they create new files under src/, airflow/, or
+    _infra/ (detected via ``file_exists``/``file_count`` paths in the Verification block)
+    but list no documentation updates — runbook drift is a real cost.
+    """
+    results: list[ValidationResult] = []
+    section = f"{story_file.parent.name}/{story_file.name}"
+    content = story_file.read_text(encoding="utf-8")
+    body = _get_section_content(content, "Documentation Updates")
+    item_count = _list_item_count(body) if body else 0
+
+    is_required = story_type in DOCS_UPDATE_REQUIRED_TYPES
+    if is_required and item_count < 1:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section=section,
+                message=(
+                    f"Story (type={story_type}) is missing a populated `## Documentation "
+                    "Updates` section with ≥1 README/runbook update item."
+                ),
+                suggestion=(
+                    "Add a `## Documentation Updates` section listing specific README "
+                    "sections that must change for this story, e.g. "
+                    '`- [ ] Update <project>/README.md § "Run pipeline" with the new '
+                    "DAG trigger command`. Runbook drift breaks future operators."
+                ),
+            )
+        )
+        return results
+
+    if story_type == "build" and item_count < 1:
+        creates_runtime_files = _verification_creates_runtime_files(content)
+        if creates_runtime_files:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    section=section,
+                    message=(
+                        "Build story creates files under src/, airflow/, or _infra/ but "
+                        "lists no documentation updates. New code typically needs a "
+                        "README/runbook hook so future operators can find it."
+                    ),
+                    suggestion=(
+                        "Either add a `## Documentation Updates` item naming the README "
+                        "section to update, or explicitly state `- N/A — internal-only "
+                        "module, not user-facing` to record the conscious choice."
+                    ),
+                )
+            )
+    return results
+
+
+_RUNTIME_PATH_PATTERN = re.compile(
+    r'(?:^|["\'/])(?:src|airflow|_infra)/',
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _verification_creates_runtime_files(content: str) -> bool:
+    """Heuristic: does the story's Verification block reference src/, airflow/, or _infra/?
+
+    Looks for any path in the Verification YAML body whose head component is
+    `src/`, `airflow/`, or `_infra/` — anchored to start-of-line, a quote, or
+    a path separator so we don't false-positive on `mysrc/` or similar.
+    """
+    block = _get_section_content(content, "Verification")
+    if not block:
+        return False
+    return bool(_RUNTIME_PATH_PATTERN.search(block))
+
+
+# --- Per-integration-test: automated verifier required (INTEGRATION-AUTOMATED-001) ---
+
+
+def _count_non_manual_verifiers(content: str) -> int:
+    """Count verifier specs in the ## Verification block whose kind is NOT 'manual'.
+
+    Returns 0 if the block is missing or unparseable. Used to enforce that
+    integration-test stories carry at least one automated verifier — the
+    closure pattern previously allowed 100% manual, which meant an integration
+    test could close without ever actually running.
+    """
+    import yaml
+
+    block = _get_section_content(content, "Verification")
+    if not block:
+        return 0
+    fence = re.search(r"```ya?ml\s*\n(.*?)\n```", block, re.DOTALL)
+    payload = fence.group(1) if fence else block
+    try:
+        data = yaml.safe_load(payload)
+    except yaml.YAMLError:
+        return 0
+    if not isinstance(data, dict):
+        return 0
+
+    n = 0
+    for specs in data.values():
+        items = specs if isinstance(specs, list) else [specs]
+        for spec in items:
+            if isinstance(spec, str):
+                # Bare strings resolve to file_exists in verify_acs.py — automated.
+                n += 1
+                continue
+            if isinstance(spec, dict) and len(spec) == 1:
+                kind = next(iter(spec.keys()))
+                if str(kind).strip().lower() != "manual":
+                    n += 1
+    return n
+
+
+def check_integration_test_automated(story_file: Path, story_type: str) -> list[ValidationResult]:
+    """INTEGRATION-AUTOMATED-001: integration-test stories need ≥1 non-manual verifier.
+
+    Closes the loophole where 100% manual verifiers let an integration-test story
+    pass closure validation without any test actually running. The DAG-trigger and
+    UC assertion must be expressed as a `pytest:` (or `validator:`) verifier so
+    `verify_acs.py` and `complete-stories` can gate Done on a real run.
+    """
+    if story_type != "integration-test":
+        return []
+    content = story_file.read_text(encoding="utf-8")
+    if _count_non_manual_verifiers(content) >= 1:
+        return []
+    section = f"{story_file.parent.name}/{story_file.name}"
+    return [
+        ValidationResult(
+            level=ValidationLevel.CRITICAL,
+            section=section,
+            message=(
+                "Integration-test story has 0 automated verifiers (all `manual:` or "
+                "missing `## Verification`). Local integration testing is the gate that "
+                "proves data actually landed in UC — it must run, not be eyeballed."
+            ),
+            suggestion=(
+                "Add at least one non-manual verifier to the `## Verification` block, e.g. "
+                '`pytest: {node: "<project>/tests/integration/test_<layer>_uc.py", '
+                'marker: "integration"}` — the test should trigger the layer DAG, wait '
+                "for completion, and assert ≥1 expected table is registered in UC OSS local."
+            ),
+        )
+    ]
+
+
 # --- Main validation ---
 
 
@@ -923,6 +1208,9 @@ def validate_stories_dir(directory: Path) -> ValidationReport:
                 story_type_by_id[sid] = get_story_type(sf)
                 story_file_by_id[sid] = sf
 
+    # Backlog-level: BOOTSTRAP-001
+    report.results.extend(check_backlog_has_bootstrap(story_type_by_id, directory))
+
     # Check each epic
     for epic_dir in epic_dirs:
         report.results.extend(check_epic_has_file(epic_dir))
@@ -937,6 +1225,8 @@ def validate_stories_dir(directory: Path) -> ValidationReport:
 
         story_files = find_story_files(epic_dir)
         for story_file in story_files:
+            sid = _extract_story_id(story_file)
+            stype = story_type_by_id.get(sid, "build") if sid else "build"
             report.results.extend(check_story_sections(story_file))
             report.results.extend(check_upstream_traceability(story_file))
             report.results.extend(check_verification_block(story_file))
@@ -945,6 +1235,10 @@ def validate_stories_dir(directory: Path) -> ValidationReport:
             report.results.extend(check_sprint_allocation(story_file))
             report.results.extend(check_story_points(story_file))
             report.results.extend(check_estimation_support(story_file))
+            report.results.extend(check_testing_section(story_file))
+            report.results.extend(check_user_test_section(story_file, stype))
+            report.results.extend(check_documentation_updates(story_file, stype))
+            report.results.extend(check_integration_test_automated(story_file, stype))
             story_content = story_file.read_text(encoding="utf-8")
             report.results.extend(
                 check_placeholders(

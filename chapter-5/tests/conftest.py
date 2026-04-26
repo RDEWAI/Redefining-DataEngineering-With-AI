@@ -2367,6 +2367,7 @@ VALID_STORY = """\
 | Field | Value |
 |-------|-------|
 | **Epic** | EPIC-01: Infrastructure Setup |
+| **Story Type** | build |
 | **Priority** | P1 |
 | **Story Points** | 5 |
 | **Sprint** | 1 |
@@ -2376,7 +2377,7 @@ VALID_STORY = """\
 ## User Story
 
 As a data engineer, I want a configured DuckDB environment so that I can begin
-building the Patient 360 data pipeline.
+building the data pipeline.
 
 ## Description
 
@@ -2403,6 +2404,108 @@ configuring the database file location, and verifying connectivity.
 | LLD | §2.1 Environment Setup, §2.2 Database Configuration, §2.3 Extensions |
 | HLD | §5.1 Technology Decisions (DuckDB) |
 | DMS | §4.1 Bronze Layer Schema Overview |
+
+## Testing
+
+| Coverage | What | How |
+|----------|------|-----|
+| Unit | DuckDB connection helper | pytest tests/utils/test_duckdb_conn.py |
+
+## How to Test (User)
+
+### Prerequisites
+- Python 3.12 + UV installed
+- `make dev-setup` completed
+
+### Steps
+1. `duckdb /tmp/test.db -c "SELECT 1"` → expect `1`.
+2. `python -c "import duckdb; print(duckdb.__version__)"` → expect 1.1.3.
+
+### Expected outcome
+- DuckDB CLI returns scalar `1`.
+- Python module imports without error.
+
+## Documentation Updates
+
+- N/A — internal-only DuckDB connection helper, not user-facing.
+"""
+
+VALID_RUNTIME_BOOTSTRAP_STORY = """\
+# STORY-01-002: Bootstrap local dev runtime
+
+| Field | Value |
+|-------|-------|
+| **Epic** | EPIC-01: Infrastructure Setup |
+| **Story Type** | runtime-bootstrap |
+| **Priority** | P1 |
+| **Story Points** | 5 |
+| **Sprint** | 1 |
+| **Dependencies** | STORY-01-001 |
+| **Status** | To Do |
+
+## User Story
+
+As a data engineer, I want a one-command local dev runtime so that I can verify
+the pipeline end-to-end on my laptop without tribal knowledge.
+
+## Description
+
+Bring up the local docker-compose stack (Airflow + Unity Catalog OSS local +
+Marquez), create the medallion catalog/schemas, seed source data, and prove
+the stack is healthy with smoke checks.
+
+## Acceptance Criteria
+
+- [ ] JDK 17 verified via `java -version` [LLD §6.1]
+- [ ] `docker compose up -d` brings up Airflow + UC OSS + Marquez [LLD §1]
+- [ ] Unity Catalog `unity` and schemas `bronze`, `silver`, `gold` created [LLD §1]
+- [ ] Source data seeded into local DB [LLD §5.1]
+- [ ] Smoke curl `localhost:8080/api/2.1/unity-catalog/catalogs` returns 200 [LLD §1]
+
+## Technical Notes
+
+- Upstream references: LLD §1, §6.1, §9
+- Implementation hints: `make dev-up` wraps the full bootstrap.
+
+## Estimation Support
+
+| Artifact | Sections Covered |
+|----------|-----------------|
+| LLD | §1 Overview, §6.1 Compute, §9 Deployment |
+
+## Testing
+
+| Coverage | What | How |
+|----------|------|-----|
+| Smoke | UC OSS health + catalog/schemas | curl + jq exit 0 |
+
+## Verification
+
+```yaml
+AC2:
+  - manual: "docker compose up — requires Docker Desktop"
+AC5:
+  - pytest: {node: "tests/bootstrap/test_uc_health.py"}
+```
+
+## How to Test (User)
+
+### Prerequisites
+- Docker Desktop running
+- JDK 17 installed (`java -version` shows 17.x)
+
+### Steps
+1. `make dev-up`
+2. `curl -s http://localhost:8080/api/2.1/unity-catalog/catalogs | jq '.catalogs[].name'`
+3. Expect `unity` listed; expect `bronze`, `silver`, `gold` schemas under it.
+
+### Expected outcome
+- Five containers running (`docker compose ps`).
+- UC API returns 200 with catalog `unity` present.
+
+## Documentation Updates
+
+- [ ] Update `<project>/README.md` § "Bootstrap" with the `make dev-up` command and expected ports.
 """
 
 MINIMAL_INVALID_BACKLOG = """\
@@ -2533,5 +2636,8 @@ def valid_stories_dir(tmp_path: Path) -> Path:
     epic_dir.mkdir()
     (epic_dir / "EPIC-01.md").write_text(VALID_EPIC, encoding="utf-8")
     (epic_dir / "STORY-01-001-setup-duckdb.md").write_text(VALID_STORY, encoding="utf-8")
+    (epic_dir / "STORY-01-002-bootstrap-runtime.md").write_text(
+        VALID_RUNTIME_BOOTSTRAP_STORY, encoding="utf-8"
+    )
 
     return stories_dir
