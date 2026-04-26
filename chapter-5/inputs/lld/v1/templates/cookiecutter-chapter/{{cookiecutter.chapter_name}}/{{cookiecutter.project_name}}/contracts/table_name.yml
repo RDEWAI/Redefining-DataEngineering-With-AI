@@ -3,8 +3,8 @@
 # One contract file per table.
 
 table: table_name
-layer: bronze        # bronze | silver | gold
-schema: synthea      # source or target schema
+layer: bronze              # bronze | silver | gold
+schema: source_schema      # replace with your source/target schema name
 
 # Pointer to the DDL definition for this table.
 ddl_path: ddl/liquibase/changelogs/table_name.xml

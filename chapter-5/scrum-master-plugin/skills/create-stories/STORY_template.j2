@@ -19,6 +19,7 @@
     - observability            → layer-scoped lineage/metrics/dashboard wiring
     - release                  → cross-layer promotion/rollback (trailing epic only)
     - hardening                → cross-layer security/docs/maintenance (trailing epic only)
+    - runtime-bootstrap        → JDK/Docker/UC catalog/source-data prerequisites (≥1 per backlog, typically EPIC-01)
 -->
 
 
@@ -48,6 +49,14 @@ As a {{ story.persona }}, I want {{ story.goal }} so that {{ story.benefit }}.
 {% for row in story.estimation_support %}
 | {{ row.artifact }} | {{ row.sections }} |
 {% endfor %}
+
+## Testing
+
+| Coverage | What | How |
+|----------|------|-----|
+{% for row in story.testing %}
+| {{ row.coverage }} | {{ row.what }} | {{ row.how }} |
+{% endfor %}
 {% if story.verifiers %}
 
 ## Verification
@@ -57,3 +66,29 @@ As a {{ story.persona }}, I want {{ story.goal }} so that {{ story.benefit }}.
 {% for spec in specs %}  - {{ spec }}
 {% endfor %}{% endfor %}```
 {% endif %}
+
+## How to Test (User)
+
+### Prerequisites
+
+{% for item in story.user_test_prerequisites %}
+- {{ item }}
+{% endfor %}
+
+### Steps
+
+{% for step in story.user_test_steps %}
+{{ loop.index }}. {{ step }}
+{% endfor %}
+
+### Expected outcome
+
+{% for item in story.user_test_expected %}
+- {{ item }}
+{% endfor %}
+
+## Documentation Updates
+
+{% for item in story.documentation_updates %}
+- [ ] {{ item }}
+{% endfor %}

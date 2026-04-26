@@ -450,7 +450,7 @@ NNN = 3-digit story number. This gives globally unique IDs (e.g., STORY-02-001).
 #### Story content requirements
 
 Each story file MUST include:
-- **Story Type** field (build / performance-optimization / integration-test / deploy-validation / observability / release / hardening)
+- **Story Type** field (build / performance-optimization / integration-test / deploy-validation / observability / release / hardening / runtime-bootstrap)
 - **Status** field — set to `To Do` for every newly-generated story.
   Allowed values across the lifecycle: `To Do` → `In Progress` → `Done`.
   **Never** emit `Draft` or `Not Started` for stories — `Draft` is the
@@ -464,6 +464,9 @@ Each story file MUST include:
 - **Dependencies** listing prerequisite STORY IDs
 - **Estimation support** table mapping to DMS tables, STM sheets, DQS rules, LLD tasks
 - **Technical notes** with implementation hints from the LLD
+- **Testing** table — declares automated coverage rows (Unit / Contract / Integration / Smoke / DQ / Benchmark) per story type. Each row maps to a verifier in the `## Verification` block. Required minimums by story type are listed in Phase 3.6.
+- **How to Test (User)** section — Prerequisites + ≥1 numbered Step + Expected outcome a human can run on their own machine. Required CRITICAL for `build`, `integration-test`, and `runtime-bootstrap` types; recommended for others.
+- **Documentation Updates** list — specific README / runbook sections this story must change. Required CRITICAL for `runtime-bootstrap`, `integration-test`, `release` types. Build stories that create files under `src/`, `airflow/`, or `_infra/` should list ≥1 update or explicitly state `N/A — internal-only` (WARNING otherwise).
 
 #### Layer Epic Closure Sequence (MANDATORY for medallion-layer epics)
 
@@ -512,6 +515,33 @@ EPIC-02 Bronze Ingestion (LLD §5.1)
 
 **Non-layer epics** (Foundation, Observability, trailing Release, trailing Hardening)
 do NOT need the closure sequence. Set `Epic Scope` to `foundation` or `crosscut`.
+
+#### Runtime Bootstrap Story (MANDATORY — ≥1 per backlog)
+
+Every backlog MUST include at least one `runtime-bootstrap` story (typically
+in EPIC-01, the foundation epic). This story decomposes the **dev-laptop
+runtime prerequisites** that the LLD §1 / §6.1 prescribes but that no
+build / perf / integration-test story covers:
+
+- JDK 17 installed and verified (`java -version`)
+- Docker compose stack up (Airflow + Unity Catalog OSS local + Marquez)
+- Unity Catalog `unity` catalog + `bronze` / `silver` / `gold` schemas created
+- Source data seeded (per the LLD's source system — DuckDB, Postgres, S3, etc.)
+- Smoke curl against UC OSS API returns 200
+
+The validator (`STORIES-BOOTSTRAP-001`) rejects backlogs without this
+story type. Without it, every other story can be "Done" while the dev
+laptop has no working stack — the gap that motivated this rule.
+
+**Example bootstrap-story acceptance criteria (illustrative):**
+
+```
+- [ ] `java -version` reports 17.x.x [LLD §6.1]
+- [ ] `docker compose -f _infra/docker/docker-compose.yml up -d` succeeds [LLD §1]
+- [ ] UC catalog `unity` and schemas `bronze`/`silver`/`gold` created via uc_init.py [LLD §1]
+- [ ] Source DB seeded with N source tables [LLD §5.1]
+- [ ] `curl http://localhost:8080/api/2.1/unity-catalog/catalogs` returns 200 with `unity` listed [LLD §1]
+```
 
 #### Trailing Epic Scope (Release & Hardening)
 
@@ -594,9 +624,31 @@ This rule applies to every verifier kind that takes a `pattern` field
 (`grep`, `grep_count`).
 
 **Target ratio**: aim for ≥60% mechanical verifiers (non-`manual`) per
-story. Pure integration-test and observability stories may legitimately
-be 100% `manual` — that's acceptable when every AC depends on a running
-stack.
+story. **Observability** stories may legitimately be 100% `manual` —
+many of their ACs are dashboard / lineage UI checks that can't be
+asserted statically.
+
+**Integration-test stories MUST have ≥1 non-manual verifier.** The
+validator (`STORIES-INTEGRATION-AUTOMATED-001`) rejects integration-test
+stories whose `## Verification` block is all-`manual:` — the closure
+pattern previously allowed this and the result was integration tests
+that closed without ever actually running. The minimum is one
+`pytest:` (or `validator:` / `grep:`) verifier proving the layer DAG
+was triggered and ≥1 expected table appeared in UC OSS local. Worked
+example for an integration-test story:
+
+```yaml
+AC1:
+  - pytest: {node: "<project>/tests/integration/test_bronze_uc.py", marker: "integration"}
+  - manual: "Marquez UI — visually confirm bronze_* lineage edges"
+```
+
+The pytest body should: `airflow dags trigger <dag-id>` (id from
+LLD §4.2), poll `airflow dags list-runs` until the run completes,
+then `curl http://localhost:8080/api/2.1/unity-catalog/tables?...`
+and assert ≥1 expected table is registered. `verify_acs.py` runs
+this; `developer-plugin:complete-stories` gates Done on its exit
+code.
 
 **Example — a fully-derived block:**
 
@@ -616,6 +668,83 @@ After rendering, run `python3 developer-plugin/scripts/verify_acs.py <new-story>
 locally; a 0-FAIL outcome means every mechanical verifier at least parses
 and executes, which proves the block is well-formed (real implementation
 FAILs are expected and desired — that is the whole point).
+
+#### Phase 3.6: Populate Testing / How to Test (User) / Documentation Updates
+
+The `STORY_template.j2` template renders three additional MANDATORY sections
+after `## Verification`. Each is fed by a structured field on the `story`
+dict the renderer is called with:
+
+##### `story.testing` — automated coverage table (MANDATORY ≥1 row)
+
+A list of dicts: `{coverage, what, how}`. Required minimum rows by story type:
+
+| Story type | Required rows |
+|------------|---------------|
+| `build` | Unit (always); Contract (if the story creates `contracts/*.yml` or `dq_rules/*.yml`) |
+| `performance-optimization` | Benchmark (always) |
+| `integration-test` | Unit + Integration + Smoke + DQ (all four) |
+| `runtime-bootstrap` | Smoke (always) |
+| `deploy-validation` | Deploy smoke (always) |
+| `observability` | Manual UI check (always); automated metric scrape if available |
+| `release` / `hardening` | Whatever is appropriate; ≥1 row |
+
+Each row's `how` cell should reference a verifier in the `## Verification`
+YAML block (e.g., `pytest tests/utils/test_scd2.py`, `curl localhost:8080/...`).
+The validator (`STORIES-TESTING-001`) rejects stories with 0 rows.
+
+##### `story.user_test_prerequisites`, `story.user_test_steps`, `story.user_test_expected` — human runbook (MANDATORY ≥1 step for build/integration-test/runtime-bootstrap)
+
+Three lists of strings:
+- **prerequisites**: deps the user must have before running the steps (Docker
+  Desktop running, JDK installed, `make dev-setup` completed, etc.).
+- **steps**: numbered shell commands the user runs verbatim. The renderer
+  emits them as `1. cmd`, `2. cmd`, ... — write each as a complete command
+  with paths and flags, not pseudo-code.
+- **expected**: what the user should see — exact stdout, returned status,
+  rows in a UI, etc.
+
+The validator (`STORIES-USER-TEST-001`) rejects build/integration-test/
+runtime-bootstrap stories with 0 numbered steps. For other story types it
+fires WARNING. Independent verification is the goal — don't make the user
+read the developer's mind.
+
+##### `story.documentation_updates` — README change list (MANDATORY ≥1 item for runtime-bootstrap/integration-test/release)
+
+A list of strings, each describing one README/runbook change this story
+must make. Format: `Update <path>/README.md § "<section name>" with <what>`.
+
+The validator (`STORIES-DOCS-001`):
+- CRITICAL when a `runtime-bootstrap`, `integration-test`, or `release` story
+  has 0 documentation-update items.
+- WARNING when a `build` story creates files under `src/`, `airflow/`, or
+  `_infra/` (detected from its `## Verification` paths) but has 0 items.
+  If the build truly doesn't need a README hook, write one item explicitly:
+  `N/A — internal-only module, not user-facing`.
+
+##### Worked example for a `build` story (filled-in)
+
+```python
+story.testing = [
+    {"coverage": "Unit", "what": "ingestion_runner argparse + config load",
+     "how": "pytest tests/bronze/test_ingestion_runner_unit.py"},
+]
+story.user_test_prerequisites = [
+    "`make dev-setup` completed",
+    "Source DB seeded (per runtime-bootstrap story)",
+]
+story.user_test_steps = [
+    "`uv run python src/<project>/bronze/ingestion_runner.py --config airflow/configs/<table>.yml`",
+    "Inspect log line `wrote N rows to bronze.<table>`",
+]
+story.user_test_expected = [
+    "Process exits 0",
+    "≥1 row visible via `SELECT count(*) FROM bronze.<table>`",
+]
+story.documentation_updates = [
+    'Update <project>/README.md § "Run Bronze ingestion" with the runner command',
+]
+```
 
 ### Backlog Validation (Pre-Generation Check)
 

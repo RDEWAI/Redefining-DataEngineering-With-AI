@@ -110,15 +110,101 @@ Blocker codes the helper can emit:
 | `child:<code>`            | A child story's blocker (epic gates recurse)                     |
 | `story_file_missing`      | Story file could not be resolved                                 |
 | `epic_file_missing`       | Epic file could not be resolved                                  |
+| `verifier_failure`        | `verify_acs.py` exited non-zero — at least one verifier FAILed   |
+| `user_verification_missing` | Story has manual verifiers but no `User-Verified-By:` line     |
+| `stack_unhealthy`         | Integration-test gate: Airflow `/health` or UC OSS API not 200   |
+| `dag_trigger_failed`      | Integration-test gate: `airflow dags trigger <id>` returned non-zero |
+| `dag_run_timeout`         | Integration-test gate: DAG did not reach `success` state in 10 min |
+
+**Step 1.5 — Run automated verifiers via `verify_acs.py`.**
+
+For each target story, run:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/verify_acs.py STORY-NN-NNN
+```
+
+`verify_acs.py` is project-agnostic — it auto-detects the chapter-5 root
+and reads each story's `## Verification` YAML to dispatch verifiers
+(`pytest:`, `file_exists:`, `grep:`, `validator:`, `manual:`). Exit code
+contract:
+
+- `0` — every non-`manual:` verifier returned PASS (`manual:` are
+  INDETERMINATE by design and require human sign-off — see Step 1.6).
+- `1` — at least one verifier returned FAIL.
+- `2` — runner error (malformed YAML, missing target, etc.).
+
+A non-zero exit BLOCKS with code `verifier_failure`. Print the failing AC
+and its verifier output. **The verifier is the gate** — without this step
+"Done" means "checkbox is checked", not "the test actually passed". This
+step is what makes the developer-plugin actually test+validate as part of
+story completion.
+
+**Step 1.6 — Require `User-Verified-By:` for stories with manual verifiers.**
+
+Manual verifiers (`manual: <reason>`) are an explicit acknowledgment that
+no machine can prove the AC. They MUST be signed off by a human before
+Done. For each story whose `## Verification` block contains ≥1 `manual:`
+spec, require a line like the following anywhere in the story (typically
+at the bottom):
+
+```
+User-Verified-By: <name> <YYYY-MM-DD>
+```
+
+If the story has any `manual:` verifiers and the line is absent (or empty),
+BLOCK with `user_verification_missing`. Message: "Story has N manual ACs
+that need human sign-off. Add `User-Verified-By: <name> <date>` to the
+story file once you have run the manual checks listed in `## How to Test
+(User)`." Do NOT auto-add this line — it must come from the human.
+
+**Step 1.7 — Integration-test stories: run the runtime gate.**
+
+For each target story whose `Story Type` metadata is `integration-test`,
+the gate additionally must prove the runtime is alive AND the named DAG
+runs to success against UC OSS local. The skill operates entirely from
+what the story declares — no project-specific names hardcoded.
+
+1. **Stack health.** Read the story's `## How to Test (User)` Prerequisites
+   to learn the expected ports (default `8081` for Airflow webserver,
+   `8080` for UC OSS). Run:
+   ```bash
+   curl -fsS http://localhost:8081/health        # Airflow
+   curl -fsS http://localhost:8080/api/2.1/unity-catalog/catalogs  # UC OSS
+   ```
+   If either fails, BLOCK with `stack_unhealthy`. Suggest the user run
+   their `runtime-bootstrap` story's `## How to Test (User)` Steps first
+   (typically `make dev-up`).
+2. **DAG trigger.** Parse the DAG id from the story's `## Acceptance
+   Criteria`. The validator's `STORIES-CLOSURE-003` rule already enforces
+   "Airflow DAG" wording, so the AC text contains either a literal
+   `airflow dags trigger <id>` or a backticked DAG id. Take the first
+   match for `airflow\s+dags\s+trigger\s+(\S+)` or, failing that,
+   ``\b([a-z0-9_]+_(?:hourly|daily|v\d+))\b`` from the AC body. Then run:
+   ```bash
+   airflow dags trigger "$DAG_ID"
+   ```
+   If trigger fails (non-zero exit), BLOCK with `dag_trigger_failed`.
+3. **Wait for completion.** Poll up to 10 minutes:
+   ```bash
+   airflow dags list-runs -d "$DAG_ID" --state success
+   ```
+   If no success run appears within the timeout, BLOCK with
+   `dag_run_timeout`. Print the most recent run's state.
+4. **Re-run `verify_acs.py STORY-NN-NNN`.** This is the second pass —
+   pytest verifiers that depend on landed UC tables will only PASS now
+   that the DAG has finished. Same exit-code contract as Step 1.5.
+
+This entire step is project-agnostic: DAG id, ports, table counts all
+come from what the story declares, never from hardcoded project names.
 
 **Step 2 — Optional: run `/developer-plugin:validate-stories` for evidence.**
 
 If the user asks for it, dispatch `validate-stories <target>` and include
 its report in the output. The gate does NOT require a fresh
-`validate-stories` run — the helper's file-existence and AC-checkbox checks
-are the hard rules. A downstream validator failure is a strong signal but
-it is not part of the gate payload to keep the gate deterministic and
-side-effect-free.
+`validate-stories` run — Steps 1, 1.5, 1.6, 1.7 are the hard rules. A
+downstream validator failure is a strong signal but it is not part of the
+gate payload to keep the gate deterministic and side-effect-free.
 
 **Step 3 — Atomic abort.**
 

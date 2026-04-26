@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from conftest import VALID_BACKLOG, VALID_EPIC, VALID_STORY
+from conftest import VALID_BACKLOG, VALID_EPIC, VALID_RUNTIME_BOOTSTRAP_STORY, VALID_STORY
 
 HOOK_SCRIPT = (
     Path(__file__).resolve().parent.parent
@@ -75,6 +75,9 @@ class TestHookValidatesBacklogFiles:
         epic_dir.mkdir()
         (epic_dir / "EPIC-01.md").write_text(VALID_EPIC, encoding="utf-8")
         (epic_dir / "STORY-01-001-test.md").write_text(VALID_STORY, encoding="utf-8")
+        (epic_dir / "STORY-01-002-bootstrap.md").write_text(
+            VALID_RUNTIME_BOOTSTRAP_STORY, encoding="utf-8"
+        )
 
         result = _run_hook(_write_input(str(stories_dir / "BACKLOG-2026-03-23-test.md")))
         assert result.returncode == 0

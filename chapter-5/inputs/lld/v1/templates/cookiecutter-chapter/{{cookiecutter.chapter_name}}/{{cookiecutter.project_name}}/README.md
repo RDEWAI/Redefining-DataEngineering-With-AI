@@ -10,28 +10,69 @@ chapter-5 cookiecutter template by the `developer-plugin` skills.
 - JDK 17+ (required by Spark 4.x)
 - Docker + Docker Compose (for the local Airflow / Unity Catalog stack)
 
-## Quick Start
+## Bootstrap
+
+One command brings up Docker, creates the Unity Catalog catalog/schemas, and
+runs the project-specific source loader:
 
 ```bash
-# 1. Install dependencies into a uv-managed venv
-make dev-setup
-
-# 2. Run the test suite
-make test
-
-# 3. Lint + format
-make lint
-make format
-
-# 4. Validate contracts and DQ rules
-make validate
-
-# 5. Bring up the local stack (Airflow + Unity Catalog + Marquez)
-docker compose -f _infra/docker/docker-compose.yml up -d
+make dev-up
 ```
 
-Once the stack is up, the Airflow UI is at <http://localhost:8080> and the
-DAG `patient360_hourly_v1` is loaded from `airflow/dags/`.
+This wraps:
+
+1. `docker compose -f _infra/docker/docker-compose.yml up -d` (Airflow + UC OSS + Marquez + Postgres + Grafana)
+2. Wait for UC OSS REST API to return `200` on `localhost:8080/api/2.1/unity-catalog`
+3. `python scripts/uc_init.py` — creates `unity` catalog + `bronze`/`silver`/`gold` schemas
+4. `make seed-source-data` — **project-specific**; you implement this against your source system (DuckDB / Postgres / S3 / etc.). The generated `runtime-bootstrap` story (typically `STORY-01-NNN`) tells you exactly what to populate.
+
+After `make dev-up` completes, see **Verify** below.
+
+## Run
+
+The DAG id, schedule, and trigger semantics are defined by your LLD §4.2 and
+materialized by `/developer-plugin:create-dag`. Once the DAG file lands in
+`airflow/dags/`, trigger a run with:
+
+```bash
+airflow dags trigger <your-dag-id>          # see LLD §4.2 for the id
+airflow dags list-runs -d <your-dag-id>     # poll until 'success'
+```
+
+The Airflow webserver is at <http://localhost:8081> (the host port maps to
+the container's 8080 internally).
+
+## Verify
+
+```bash
+# 1. Airflow webserver health
+curl -fsS http://localhost:8081/health
+
+# 2. Unity Catalog OSS API + catalogs
+curl -fsS http://localhost:8080/api/2.1/unity-catalog/catalogs | jq '.catalogs[].name'
+
+# 3. Bronze tables registered
+curl -fsS 'http://localhost:8080/api/2.1/unity-catalog/tables?catalog_name=unity&schema_name=bronze' | jq '.tables | length'
+
+# 4. Marquez lineage UI
+open http://localhost:5001
+```
+
+Expected:
+
+- Airflow `/health` → `200 OK` with `metadatabase: healthy`.
+- UC API returns `["unity"]`; schemas `["bronze","silver","gold"]` exist.
+- Tables count > 0 once the DAG has run.
+
+## Quick Start (without the docker stack)
+
+```bash
+make dev-setup    # uv sync --all-extras
+make test         # pytest tests/ -v
+make lint         # ruff check
+make format       # ruff format
+make validate     # contracts + DQ rules
+```
 
 ## Project Layout
 
@@ -54,7 +95,7 @@ DAG `patient360_hourly_v1` is loaded from `airflow/dags/`.
 │   ├── docker/           # local dev stack
 │   ├── ci/               # CI workflow templates
 │   └── cd/               # environment configs (dev/stage/prod)
-└── scripts/              # one-off utilities
+└── scripts/              # one-off utilities (uc_init.py, etc.)
 ```
 
 ## Using the Developer Plugin
@@ -89,7 +130,14 @@ See `CLAUDE.md` for the full skill catalogue and chapter conventions.
 
 ## Troubleshooting
 
-- **`uv sync` fails on JDK** — ensure `JAVA_HOME` points at JDK 17+.
+- **`make dev-up` fails on UC health-check** — UC OSS startup can take
+  ~30s. Check `docker compose logs unity-catalog`. If the port `8080` is
+  already in use, stop the conflicting process or remap.
+- **`java -version` shows JDK 8/11** — Spark 4.x requires JDK 17+. Set
+  `JAVA_HOME` to a JDK 17 install (`brew install openjdk@17` on macOS).
+- **`make seed-source-data` fails with "TODO"** — the template ships only a
+  stub. The runtime-bootstrap story (`STORY-01-NNN`) defines what your source
+  loader does; implement `scripts/seed_source_data.py` per its ACs.
 - **Airflow DAG not loading** — check `airflow/configs/*.yml` exists and
   `AIRFLOW__CORE__DAGS_FOLDER` points at `airflow/dags/`.
 - **Contracts out of sync with DMS** —

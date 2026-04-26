@@ -19,6 +19,10 @@ Every story MUST follow this structure:
 3. **Acceptance Criteria** — Checkboxes with upstream artifact references
 4. **Technical Notes** — Implementation hints, upstream references
 5. **Estimation Support** — Table mapping to DMS/STM/DQS/LLD sections
+6. **Verification** — YAML mapping each AC to one or more verifier specs (parsed by `developer-plugin/scripts/verify_acs.py`)
+7. **Testing** — Table of automated coverage rows (Unit / Contract / Integration / Smoke / DQ / Benchmark) per story type. Required minimums per type below. Maps DoD criterion #2 / #3 / #4 onto concrete tests.
+8. **How to Test (User)** — Prerequisites + ≥1 numbered Step + Expected outcome that a human can run on their own machine. Required for `build`, `integration-test`, `runtime-bootstrap`. Maps DoD criterion #2 / #3 onto a runnable runbook.
+9. **Documentation Updates** — List of specific README/runbook sections that must change. Required for `runtime-bootstrap`, `integration-test`, `release`. Maps DoD criterion #6 onto a concrete edit list.
 
 ### Optional Sections
 - **Mockup / Diagram** — Visual aid if applicable
@@ -30,15 +34,21 @@ Every story MUST follow this structure:
 
 A story is "Done" when ALL of the following are met:
 
-| # | Criterion | Verifier |
-|---|-----------|----------|
-| 1 | Code committed to feature branch | Developer |
-| 2 | Unit tests written and passing | Developer |
-| 3 | Integration test passing (if applicable) | Developer |
-| 4 | DQ rules implemented per DQS reference | QA |
-| 5 | Code reviewed by at least 1 peer | Reviewer |
-| 6 | Documentation updated (if applicable) | Developer |
-| 7 | Deployed to staging environment | CI/CD |
+| # | Criterion | Verifier | Story-section that maps to it |
+|---|-----------|----------|-------------------------------|
+| 1 | Code committed to feature branch | Developer | (git) |
+| 2 | Unit tests written and passing | Developer | `## Testing` (Unit row) → `## Verification` (`pytest:`) |
+| 3 | Integration test passing (if applicable) | Developer | `## Testing` (Integration row) → `## Verification` (`pytest: marker: integration`) |
+| 4 | DQ rules implemented per DQS reference | QA | `## Testing` (DQ row) → `## Verification` (Spark Expectations runner output) |
+| 5 | Code reviewed by at least 1 peer | Reviewer | (PR) |
+| 6 | Documentation updated (if applicable) | Developer | `## Documentation Updates` (≥1 README change) |
+| 7 | Deployed to staging environment | CI/CD | `## Testing` (Deploy smoke for `deploy-validation` stories) |
+
+`developer-plugin:complete-stories` enforces the testing rows by running
+`verify_acs.py` and refusing to flip Status to `Done` on any FAIL exit.
+Manual verifiers stay INDETERMINATE and require an explicit
+`User-Verified-By:` line at the bottom of the story before they're
+treated as PASS.
 
 ---
 
