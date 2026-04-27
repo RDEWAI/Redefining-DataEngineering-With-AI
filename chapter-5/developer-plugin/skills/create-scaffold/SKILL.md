@@ -102,7 +102,9 @@ the data domain:
 
 It does **not** own: `src/<project_name>/{bronze,silver,gold}/*.py`
 (create-ingestion / future silver/gold skills), `airflow/dags/**`
-(create-dag), `airflow/configs/**` + `dq_rules/**`
+(create-dag), `airflow/jobs/**` (create-dag — per-task entry-script
+wrappers auto-generated from LLD §4.2; the directory itself ships from
+the cookiecutter as `.gitkeep`), `airflow/configs/**` + `dq_rules/**`
 (create-ingestion), advanced `.github/workflows/**` (deploy/release) +
 `_infra/cd/**` (create-pipeline), `contracts/dq/**`
 (create-ingestion, synced from DQS).

@@ -1,4 +1,5 @@
 """Tests for the stories validator script."""
+# ruff: noqa: E501  # test fixtures embed long markdown literals verbatim
 
 from __future__ import annotations
 
@@ -465,3 +466,582 @@ class TestRuntimeBootstrapTypeAccepted:
             encoding="utf-8",
         )
         assert get_story_type(story) == "runtime-bootstrap"
+
+
+class TestBootstrapExecutorCoverageRule:
+    """STORIES-BOOTSTRAP-COVERAGE-001 — bootstrap must verify executors build stories invoke."""
+
+    BUILD_WITH_SPARK = """\
+# STORY-02-001: Bronze ingestion runner
+
+| Field | Value |
+|-------|-------|
+| **Story Type** | build |
+
+## Acceptance Criteria
+- [ ] `ingestion_runner.py` invoked via SparkSubmitOperator [LLD §2.3]
+"""
+
+    BUILD_WITHOUT_SPARK = """\
+# STORY-02-001: Contract files
+
+| Field | Value |
+|-------|-------|
+| **Story Type** | build |
+
+## Acceptance Criteria
+- [ ] One YAML contract per Bronze table [DMS §3]
+"""
+
+    BOOTSTRAP_WITHOUT_SPARK = """\
+# STORY-01-006: Bootstrap
+
+| Field | Value |
+|-------|-------|
+| **Story Type** | runtime-bootstrap |
+
+## Acceptance Criteria
+- [ ] `java -version` reports 17.x [LLD §6.1]
+- [ ] `docker compose up` succeeds [LLD §1]
+- [ ] UC catalog `unity` and schemas `bronze`/`silver`/`gold` created [LLD §1]
+- [ ] `curl localhost:8080/api/2.1/unity-catalog/catalogs` returns 200 [LLD §1]
+"""
+
+    BOOTSTRAP_WITH_SPARK = """\
+# STORY-01-006: Bootstrap
+
+| Field | Value |
+|-------|-------|
+| **Story Type** | runtime-bootstrap |
+
+## Acceptance Criteria
+- [ ] `java -version` reports 17.x [LLD §6.1]
+- [ ] `docker compose exec airflow-scheduler spark-submit --master spark://spark-master:7077 --version` exits 0 [LLD §6.1]
+"""
+
+    def _build_dir(self, tmp_path, build_body, bootstrap_body):
+        from conftest import VALID_BACKLOG, VALID_EPIC
+
+        stories_dir = tmp_path / "stories"
+        stories_dir.mkdir()
+        (stories_dir / "BACKLOG-2026-04-26-test.md").write_text(VALID_BACKLOG, encoding="utf-8")
+        epic_dir = stories_dir / "EPIC-01-test"
+        epic_dir.mkdir()
+        (epic_dir / "EPIC-01.md").write_text(VALID_EPIC, encoding="utf-8")
+        (epic_dir / "STORY-01-006-bootstrap.md").write_text(bootstrap_body, encoding="utf-8")
+        (epic_dir / "STORY-02-001-build.md").write_text(build_body, encoding="utf-8")
+        return stories_dir
+
+    def test_spark_build_without_spark_bootstrap_fires_critical(self, tmp_path):
+        stories_dir = self._build_dir(tmp_path, self.BUILD_WITH_SPARK, self.BOOTSTRAP_WITHOUT_SPARK)
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert any("spark-submit reachability" in m for m in msgs), msgs
+
+    def test_spark_build_with_spark_bootstrap_does_not_fire(self, tmp_path):
+        stories_dir = self._build_dir(tmp_path, self.BUILD_WITH_SPARK, self.BOOTSTRAP_WITH_SPARK)
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert not any("spark-submit reachability" in m for m in msgs), msgs
+
+    def test_no_spark_build_does_not_require_spark_bootstrap(self, tmp_path):
+        stories_dir = self._build_dir(
+            tmp_path, self.BUILD_WITHOUT_SPARK, self.BOOTSTRAP_WITHOUT_SPARK
+        )
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert not any("spark-submit reachability" in m for m in msgs), msgs
+
+    def test_pyspark_import_in_build_triggers_rule(self, tmp_path):
+        body = (
+            "# STORY-02-001\n\n| Field | Value |\n|---|---|\n| **Story Type** | build |\n\n"
+            "## Acceptance Criteria\n- [ ] Worker `import pyspark` succeeds [LLD §6.1]\n"
+        )
+        stories_dir = self._build_dir(tmp_path, body, self.BOOTSTRAP_WITHOUT_SPARK)
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert any("spark-submit reachability" in m for m in msgs), msgs
+
+
+class TestAcContradictionRule:
+    """STORIES-AC-CONTRADICTION-001 — grep vs grep_absent on same file/pattern, same LLD §, no Depends-On."""
+
+    def _bootstrap_story(self, dependencies: str = "STORY-01-006") -> str:
+        return f"""# STORY-02-001: bootstrap soft-import
+
+| Field | Value |
+|-------|-------|
+| **Epic** | EPIC-02 |
+| **Story Type** | build |
+| **Dependencies** | {dependencies} |
+| **Status** | To Do |
+
+## Acceptance Criteria
+- [ ] Runner soft-imports `se_runner` and logs `WARNING: se_runner not available` [LLD §8.6]
+
+## Verification
+
+```yaml
+AC1:
+  - grep: {{file: "src/p/bronze/runner.py", pattern: "WARNING: se_runner not available"}}
+```
+"""
+
+    def _fail_closed_story(self, dependencies: str = "None") -> str:
+        return f"""# STORY-02-004: fail-closed se_runner
+
+| Field | Value |
+|-------|-------|
+| **Epic** | EPIC-02 |
+| **Story Type** | build |
+| **Dependencies** | {dependencies} |
+| **Status** | To Do |
+
+## Acceptance Criteria
+- [ ] No soft-import; fail-closed if se_runner missing [LLD §8.6]
+
+## Verification
+
+```yaml
+AC1:
+  - grep_absent: {{file: "src/p/bronze/runner.py", pattern: "WARNING: se_runner not available"}}
+```
+"""
+
+    _RUNTIME_BOOTSTRAP_STUB = """# STORY-01-006: runtime bootstrap
+
+| Field | Value |
+|-------|-------|
+| **Story Type** | runtime-bootstrap |
+| **Dependencies** | None |
+| **Status** | To Do |
+
+## Acceptance Criteria
+- [ ] `make dev-up` succeeds [LLD §1]
+"""
+
+    def _build_dir(self, tmp_path, *, fail_closed_deps: str) -> Path:
+        from conftest import VALID_BACKLOG, VALID_EPIC
+
+        stories_dir = tmp_path / "stories"
+        stories_dir.mkdir()
+        (stories_dir / "BACKLOG-2026-04-26-test.md").write_text(VALID_BACKLOG, encoding="utf-8")
+        epic_dir = stories_dir / "EPIC-02-bronze-ingestion"
+        epic_dir.mkdir()
+        (epic_dir / "EPIC-02.md").write_text(VALID_EPIC, encoding="utf-8")
+        # Runtime-bootstrap stub satisfies BOOTSTRAP-001 without any grep
+        # that could collide with STORY-02-004's grep_absent.
+        (epic_dir / "STORY-01-006-runtime-bootstrap.md").write_text(
+            self._RUNTIME_BOOTSTRAP_STUB, encoding="utf-8"
+        )
+        (epic_dir / "STORY-02-001-bootstrap-runner.md").write_text(
+            self._bootstrap_story(), encoding="utf-8"
+        )
+        (epic_dir / "STORY-02-004-fail-closed.md").write_text(
+            self._fail_closed_story(dependencies=fail_closed_deps), encoding="utf-8"
+        )
+        return stories_dir
+
+    def test_grep_vs_grep_absent_same_section_no_depends_fires_critical(self, tmp_path):
+        # fail-closed story has Dependencies = "None" — no edge to bootstrap.
+        stories_dir = self._build_dir(tmp_path, fail_closed_deps="None")
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert any("AC contradiction" in m for m in msgs), msgs
+
+    def test_grep_vs_grep_absent_with_depends_on_passes(self, tmp_path):
+        stories_dir = self._build_dir(tmp_path, fail_closed_deps="STORY-02-001")
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert not any("AC contradiction" in m for m in msgs), msgs
+
+    def test_different_lld_sections_does_not_fire(self, tmp_path):
+        from conftest import VALID_BACKLOG, VALID_EPIC
+
+        bootstrap = """# STORY-02-001
+| Field | Value |
+|---|---|
+| **Story Type** | build |
+| **Dependencies** | None |
+| **Status** | To Do |
+## Acceptance Criteria
+- [ ] grep WARNING [LLD §8.6]
+## Verification
+```yaml
+AC1:
+  - grep: {file: "src/p/bronze/runner.py", pattern: "WARNING: se_runner not available"}
+```
+"""
+        # fail-closed cites a DIFFERENT LLD section (§5.4 instead of §8.6)
+        fail_closed = """# STORY-02-004
+| Field | Value |
+|---|---|
+| **Story Type** | build |
+| **Dependencies** | None |
+| **Status** | To Do |
+## Acceptance Criteria
+- [ ] grep_absent WARNING [LLD §5.4]
+## Verification
+```yaml
+AC1:
+  - grep_absent: {file: "src/p/bronze/runner.py", pattern: "WARNING: se_runner not available"}
+```
+"""
+        stories_dir = tmp_path / "stories"
+        stories_dir.mkdir()
+        (stories_dir / "BACKLOG-2026-04-26-test.md").write_text(VALID_BACKLOG, encoding="utf-8")
+        epic_dir = stories_dir / "EPIC-02-test"
+        epic_dir.mkdir()
+        (epic_dir / "EPIC-02.md").write_text(VALID_EPIC, encoding="utf-8")
+        (epic_dir / "STORY-01-006-bootstrap.md").write_text(bootstrap, encoding="utf-8")
+        (epic_dir / "STORY-02-001-build.md").write_text(bootstrap, encoding="utf-8")
+        (epic_dir / "STORY-02-004-fail-closed.md").write_text(fail_closed, encoding="utf-8")
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert not any("AC contradiction" in m for m in msgs), msgs
+
+    def test_different_target_files_does_not_fire(self, tmp_path):
+        """Same pattern, but on different files — not a contradiction."""
+        from conftest import VALID_BACKLOG, VALID_EPIC
+
+        bootstrap = """# STORY-02-001
+| Field | Value |
+|---|---|
+| **Story Type** | build |
+| **Dependencies** | None |
+| **Status** | To Do |
+## Acceptance Criteria
+- [ ] grep [LLD §8.6]
+## Verification
+```yaml
+AC1:
+  - grep: {file: "src/p/bronze/runner.py", pattern: "WARNING"}
+```
+"""
+        fail_closed = """# STORY-02-004
+| Field | Value |
+|---|---|
+| **Story Type** | build |
+| **Dependencies** | None |
+| **Status** | To Do |
+## Acceptance Criteria
+- [ ] grep_absent [LLD §8.6]
+## Verification
+```yaml
+AC1:
+  - grep_absent: {file: "src/p/silver/transform.py", pattern: "WARNING"}
+```
+"""
+        stories_dir = tmp_path / "stories"
+        stories_dir.mkdir()
+        (stories_dir / "BACKLOG-2026-04-26-test.md").write_text(VALID_BACKLOG, encoding="utf-8")
+        epic_dir = stories_dir / "EPIC-02-test"
+        epic_dir.mkdir()
+        (epic_dir / "EPIC-02.md").write_text(VALID_EPIC, encoding="utf-8")
+        (epic_dir / "STORY-01-006-bootstrap.md").write_text(bootstrap, encoding="utf-8")
+        (epic_dir / "STORY-02-001-build.md").write_text(bootstrap, encoding="utf-8")
+        (epic_dir / "STORY-02-004-fail-closed.md").write_text(fail_closed, encoding="utf-8")
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert not any("AC contradiction" in m for m in msgs), msgs
+
+    def test_pattern_substring_only_does_not_false_positive(self, tmp_path):
+        """grep 'WARNING' vs grep_absent 'WARNING: se_runner not available' — different patterns."""
+        from conftest import VALID_BACKLOG, VALID_EPIC
+
+        bootstrap = """# STORY-02-001
+| Field | Value |
+|---|---|
+| **Story Type** | build |
+| **Dependencies** | None |
+| **Status** | To Do |
+## Acceptance Criteria
+- [ ] grep [LLD §8.6]
+## Verification
+```yaml
+AC1:
+  - grep: {file: "src/p/bronze/runner.py", pattern: "WARNING"}
+```
+"""
+        fail_closed = """# STORY-02-004
+| Field | Value |
+|---|---|
+| **Story Type** | build |
+| **Dependencies** | None |
+| **Status** | To Do |
+## Acceptance Criteria
+- [ ] grep_absent [LLD §8.6]
+## Verification
+```yaml
+AC1:
+  - grep_absent: {file: "src/p/bronze/runner.py", pattern: "WARNING: se_runner not available"}
+```
+"""
+        stories_dir = tmp_path / "stories"
+        stories_dir.mkdir()
+        (stories_dir / "BACKLOG-2026-04-26-test.md").write_text(VALID_BACKLOG, encoding="utf-8")
+        epic_dir = stories_dir / "EPIC-02-test"
+        epic_dir.mkdir()
+        (epic_dir / "EPIC-02.md").write_text(VALID_EPIC, encoding="utf-8")
+        (epic_dir / "STORY-01-006-bootstrap.md").write_text(bootstrap, encoding="utf-8")
+        (epic_dir / "STORY-02-001-build.md").write_text(bootstrap, encoding="utf-8")
+        (epic_dir / "STORY-02-004-fail-closed.md").write_text(fail_closed, encoding="utf-8")
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert not any("AC contradiction" in m for m in msgs), msgs
+
+
+class TestSeCoverageRule:
+    """STORIES-SE-COVERAGE-001 — bootstrap must verify SE runs end-to-end."""
+
+    BUILD_USING_SE = """\
+# STORY-02-001: SE-using build
+
+| Field | Value |
+|-------|-------|
+| **Story Type** | build |
+
+## Acceptance Criteria
+- [ ] Runner uses `WrappedDataFrameWriter().with_expectations(...)` per LLD §8.6
+"""
+
+    BUILD_NO_SE = """\
+# STORY-02-001: contract-only build
+
+| Field | Value |
+|-------|-------|
+| **Story Type** | build |
+
+## Acceptance Criteria
+- [ ] One YAML contract per Bronze table [DMS §3]
+"""
+
+    BOOTSTRAP_IMPORT_ONLY = """\
+# STORY-01-006: Bootstrap
+
+| Field | Value |
+|-------|-------|
+| **Story Type** | runtime-bootstrap |
+
+## Acceptance Criteria
+- [ ] `python -c "from spark_expectations.core.expectations import SparkExpectations"` exits 0 [LLD §6.1]
+"""
+
+    BOOTSTRAP_END_TO_END = """\
+# STORY-01-006: Bootstrap
+
+| Field | Value |
+|-------|-------|
+| **Story Type** | runtime-bootstrap |
+
+## Acceptance Criteria
+- [ ] `python -c "from spark_expectations.core.expectations import SparkExpectations"` exits 0 [LLD §6.1]
+- [ ] SE end-to-end smoke: pytest -m integration runs `with_expectations(...)` and `bronze_se_stats` has >=1 row [LLD §8.6]
+"""
+
+    def _build_dir(self, tmp_path, build_body, bootstrap_body):
+        from conftest import VALID_BACKLOG, VALID_EPIC
+
+        stories_dir = tmp_path / "stories"
+        stories_dir.mkdir()
+        (stories_dir / "BACKLOG-2026-04-26-test.md").write_text(VALID_BACKLOG, encoding="utf-8")
+        epic_dir = stories_dir / "EPIC-01-test"
+        epic_dir.mkdir()
+        (epic_dir / "EPIC-01.md").write_text(VALID_EPIC, encoding="utf-8")
+        (epic_dir / "STORY-01-006-bootstrap.md").write_text(bootstrap_body, encoding="utf-8")
+        (epic_dir / "STORY-02-001-build.md").write_text(build_body, encoding="utf-8")
+        return stories_dir
+
+    def test_se_using_build_with_import_only_bootstrap_fires_critical(self, tmp_path):
+        stories_dir = self._build_dir(tmp_path, self.BUILD_USING_SE, self.BOOTSTRAP_IMPORT_ONLY)
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert any("SE actually runs end-to-end" in m for m in msgs), msgs
+
+    def test_se_using_build_with_end_to_end_bootstrap_passes(self, tmp_path):
+        stories_dir = self._build_dir(tmp_path, self.BUILD_USING_SE, self.BOOTSTRAP_END_TO_END)
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert not any("SE actually runs end-to-end" in m for m in msgs), msgs
+
+    def test_no_se_build_does_not_require_se_bootstrap(self, tmp_path):
+        stories_dir = self._build_dir(tmp_path, self.BUILD_NO_SE, self.BOOTSTRAP_IMPORT_ONLY)
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert not any("SE actually runs end-to-end" in m for m in msgs), msgs
+
+    def test_se_runner_reference_triggers_rule(self, tmp_path):
+        body = (
+            "# STORY-02-001\n\n| Field | Value |\n|---|---|\n| **Story Type** | build |\n\n"
+            "## Acceptance Criteria\n- [ ] Calls `se_runner.run_dq(df, ...)` for inline DQ [LLD §2.3]\n"
+        )
+        stories_dir = self._build_dir(tmp_path, body, self.BOOTSTRAP_IMPORT_ONLY)
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert any("SE actually runs end-to-end" in m for m in msgs), msgs
+
+
+class TestIntegrationSeEvidenceRule:
+    """STORIES-INTEGRATION-SE-001 — integration-test stories on layer epics must assert SE artifacts."""
+
+    LAYER_EPIC_LLD51 = """\
+# EPIC-02: Bronze Ingestion
+
+| Field | Value |
+|-------|-------|
+| **LLD Section** | §5.1 Bronze Tasks |
+
+## Objective
+
+Ingest 13 Synthea tables.
+
+## Stories
+
+| ID |
+|---|
+| STORY-02-007 |
+"""
+
+    INTEGRATION_NO_SE_EVIDENCE = """\
+# STORY-02-007: Bronze integration test
+
+| Field | Value |
+|-------|-------|
+| **Story Type** | integration-test |
+| **Dependencies** | STORY-02-006 |
+
+## Acceptance Criteria
+- [ ] Airflow DAG `bronze_ingestion_v1` triggered against Unity Catalog OSS local [LLD §4.2]
+- [ ] All 13 Bronze tables registered in `unity.bronze` [LLD §5.1]
+
+## Verification
+
+```yaml
+AC1:
+  - pytest: {node: "tests/integration/test_bronze_uc.py::test_dag_triggers", marker: "integration"}
+```
+"""
+
+    INTEGRATION_WITH_SE_EVIDENCE = """\
+# STORY-02-007: Bronze integration test
+
+| Field | Value |
+|-------|-------|
+| **Story Type** | integration-test |
+| **Dependencies** | STORY-02-006 |
+
+## Acceptance Criteria
+- [ ] Airflow DAG `bronze_ingestion_v1` triggered against Unity Catalog OSS local [LLD §4.2]
+- [ ] All 13 Bronze tables registered in `unity.bronze` [LLD §5.1]
+- [ ] `bronze_se_stats` has >=1 row whose `meta_dq_run_id` matches the run [LLD §8.3]
+
+## Verification
+
+```yaml
+AC1:
+  - pytest: {node: "tests/integration/test_bronze_uc.py::test_dag_triggers", marker: "integration"}
+AC2:
+  - pytest: {node: "tests/integration/test_bronze_uc.py::test_se_stats_populated", marker: "integration"}
+```
+"""
+
+    BUILD_PERF = """\
+# STORY-02-006: Bronze perf
+
+| Field | Value |
+|-------|-------|
+| **Story Type** | performance-optimization |
+
+## Acceptance Criteria
+- [ ] Shuffle partitions tuned [LLD §6.5]
+"""
+
+    def _build_layer_epic(self, tmp_path, integration_body):
+        from conftest import VALID_BACKLOG
+
+        stories_dir = tmp_path / "stories"
+        stories_dir.mkdir()
+        (stories_dir / "BACKLOG-2026-04-26-test.md").write_text(VALID_BACKLOG, encoding="utf-8")
+        # EPIC-01 satisfies BOOTSTRAP-001
+        epic1 = stories_dir / "EPIC-01-foundation"
+        epic1.mkdir()
+        (epic1 / "EPIC-01.md").write_text(
+            "# EPIC-01\n## Objective\nFoo\n## Stories\n| ID |\n|---|\n",
+            encoding="utf-8",
+        )
+        (epic1 / "STORY-01-006-bootstrap.md").write_text(
+            "# STORY-01-006\n| Field | Value |\n|---|---|\n| **Story Type** | runtime-bootstrap |\n\n## Acceptance Criteria\n- [ ] foo\n",
+            encoding="utf-8",
+        )
+        # Layer epic with the integration-test under test
+        epic2 = stories_dir / "EPIC-02-bronze"
+        epic2.mkdir()
+        (epic2 / "EPIC-02.md").write_text(self.LAYER_EPIC_LLD51, encoding="utf-8")
+        (epic2 / "STORY-02-006-perf.md").write_text(self.BUILD_PERF, encoding="utf-8")
+        (epic2 / "STORY-02-007-integration.md").write_text(integration_body, encoding="utf-8")
+        return stories_dir
+
+    def test_integration_without_se_evidence_fires_critical(self, tmp_path):
+        stories_dir = self._build_layer_epic(tmp_path, self.INTEGRATION_NO_SE_EVIDENCE)
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert any("no AC asserting SE runtime artifacts" in m for m in msgs), msgs
+
+    def test_integration_with_se_evidence_passes(self, tmp_path):
+        stories_dir = self._build_layer_epic(tmp_path, self.INTEGRATION_WITH_SE_EVIDENCE)
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert not any("no AC asserting SE runtime artifacts" in m for m in msgs), msgs
+
+    def test_pytest_verifier_alone_discharges_rule(self, tmp_path):
+        body = """\
+# STORY-02-007: Bronze integration test
+
+| Field | Value |
+|-------|-------|
+| **Story Type** | integration-test |
+| **Dependencies** | STORY-02-006 |
+
+## Acceptance Criteria
+- [ ] Airflow DAG triggered against Unity Catalog OSS local [LLD §4.2]
+
+## Verification
+
+```yaml
+AC1:
+  - pytest: {node: "tests/integration/test_bronze_uc.py::test_se_stats_populated", marker: "integration"}
+```
+"""
+        stories_dir = self._build_layer_epic(tmp_path, body)
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert not any("no AC asserting SE runtime artifacts" in m for m in msgs), msgs
+
+    def test_non_layer_epic_skipped(self, tmp_path):
+        from conftest import VALID_BACKLOG
+
+        stories_dir = tmp_path / "stories"
+        stories_dir.mkdir()
+        (stories_dir / "BACKLOG-2026-04-26-test.md").write_text(VALID_BACKLOG, encoding="utf-8")
+        epic1 = stories_dir / "EPIC-01-foundation"
+        epic1.mkdir()
+        (epic1 / "EPIC-01.md").write_text(
+            "# EPIC-01\n## Objective\nFoo\n## Stories\n| ID |\n|---|\n",
+            encoding="utf-8",
+        )
+        (epic1 / "STORY-01-006-bootstrap.md").write_text(
+            "# STORY-01-006\n| Field | Value |\n|---|---|\n| **Story Type** | runtime-bootstrap |\n\n## Acceptance Criteria\n- [ ] foo\n",
+            encoding="utf-8",
+        )
+        epic_release = stories_dir / "EPIC-09-release"
+        epic_release.mkdir()
+        (epic_release / "EPIC-09.md").write_text(
+            "# EPIC-09: Release\n\n| Field | Value |\n|---|---|\n| **Epic Scope** | crosscut |\n\n## Objective\nProd promote.\n## Stories\n| ID |\n|---|\n",
+            encoding="utf-8",
+        )
+        (epic_release / "STORY-09-001-release.md").write_text(
+            self.INTEGRATION_NO_SE_EVIDENCE, encoding="utf-8"
+        )
+        report = validate_stories_dir(stories_dir)
+        msgs = [r.message for r in report.results if r.level == ValidationLevel.CRITICAL]
+        assert not any("no AC asserting SE runtime artifacts" in m for m in msgs), msgs
