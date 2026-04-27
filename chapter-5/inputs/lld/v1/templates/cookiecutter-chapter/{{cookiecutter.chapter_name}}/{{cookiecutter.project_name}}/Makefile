@@ -1,9 +1,12 @@
-.PHONY: dev-setup test lint format clean validate dev-up dev-down uc-init seed-source-data wait-for-uc
+.PHONY: dev-setup test lint format clean validate dev-up dev-down uc-init seed-source-data wait-for-uc spark-smoke
 
 UC_HOST ?= http://localhost:8080
+UC_UI_HOST ?= http://localhost:3001
 UC_CATALOG ?= unity
 UC_SCHEMAS ?= bronze,silver,gold
 DOCKER_COMPOSE ?= docker compose -f _infra/docker/docker-compose.yml
+# In-airflow Spark per LLD §6.1 (local_executor_mode = in-airflow-local[*]).
+SPARK_MASTER ?= local[2]
 
 dev-setup:
 	uv sync --all-extras
@@ -26,15 +29,22 @@ clean:
 	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null; \
 	find . -name "*.pyc" -delete 2>/dev/null; true
 
-dev-up: ## Bring up the local stack: docker + UC catalog/schemas + source data
-	$(DOCKER_COMPOSE) up -d
+dev-up: ## Bring up the local stack: docker + UC catalog/schemas + source data + spark smoke
+	$(DOCKER_COMPOSE) up -d --build
 	@$(MAKE) wait-for-uc
 	@$(MAKE) uc-init
 	@$(MAKE) seed-source-data
+	@$(MAKE) spark-smoke
 	@echo ""
 	@echo "Stack is up. Verify with:"
-	@echo "  curl -fsS http://localhost:8081/health"
+	@echo "  curl -fsS http://localhost:8081/health      # Airflow"
 	@echo "  curl -fsS $(UC_HOST)/api/2.1/unity-catalog/catalogs"
+	@echo "  open      $(UC_UI_HOST)                      # Unity Catalog UI"
+	@echo "  $(DOCKER_COMPOSE) exec airflow spark-submit --master '$(SPARK_MASTER)' --version"
+
+spark-smoke: ## Verify spark-submit runs in-airflow (LLD §6.1 local_executor_mode = in-airflow-local[*])
+	@echo "Verifying in-airflow Spark via --master $(SPARK_MASTER) ..."
+	$(DOCKER_COMPOSE) exec -T airflow spark-submit --master '$(SPARK_MASTER)' --version
 
 dev-down:
 	$(DOCKER_COMPOSE) down

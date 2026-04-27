@@ -596,6 +596,317 @@ def check_deployment_infra_paths(sections: dict[str, str]) -> list[ValidationRes
     return results
 
 
+# --- Chapter-5 specific checks (added 2026-04-26 after spokane's green Bronze run) ---
+
+VALID_EXECUTOR_MODES = ("in-airflow-local[*]", "sidecar-spark", "external-cluster")
+_LOCAL_EXECUTOR_LINE = re.compile(
+    r"^\s*local_executor_mode\s*:\s*(\S.*?)\s*$",
+    re.MULTILINE,
+)
+_FENCED_YAML_BLOCK = re.compile(r"```ya?ml\s*\n(.*?)\n```", re.DOTALL)
+_BRONZE_RUNNER_HEADING = re.compile(
+    r"(ingestion_runner|Bronze\s+(?:Runner|Ingestion))",
+    re.IGNORECASE,
+)
+_PATH_BASED_BRONZE = re.compile(
+    r"(warehouse/\{?env\}?/bronze|/tmp/uc-warehouse/.*?/bronze|"
+    r"\.format\(\s*[\'\"]delta[\'\"]\s*\)\s*\.save\()",
+    re.IGNORECASE,
+)
+_UC_SAVE_AS_TABLE = re.compile(
+    r"(saveAsTable\([^)]*unity\.bronze|UCSingleCatalog|unity\.bronze\.\w+)",
+    re.IGNORECASE,
+)
+_SE_PIN_BELOW_2_10 = re.compile(
+    r"spark[-_]expectations\s*==\s*[\"']?2\.[0-9](?!\d)",
+    re.IGNORECASE,
+)
+
+
+def check_local_executor_mode(sections: dict[str, str]) -> list[ValidationResult]:
+    """CRITICAL: §6 must declare `local_executor_mode` in a fenced YAML block.
+
+    Added after spokane's first green Bronze run revealed that LLDs without
+    an explicit `local_executor_mode` produce a runtime stack the bootstrap
+    story can't smoke-test (the "DAG runs but spark-submit fails" failure
+    mode the chapter-5 sample-stories now warn against).
+    """
+    results: list[ValidationResult] = []
+    section_key = "6. Performance & Optimization"
+    content = sections.get(section_key, "")
+    if not content:
+        return results
+
+    # The declaration must live inside a fenced YAML block so downstream
+    # plugins can grep it deterministically. A bare `local_executor_mode: foo`
+    # outside a code fence is brittle.
+    yaml_blocks = _FENCED_YAML_BLOCK.findall(content)
+    declared_value: str | None = None
+    for block in yaml_blocks:
+        match = _LOCAL_EXECUTOR_LINE.search(block)
+        if match:
+            declared_value = match.group(1).strip().strip("\"'")
+            break
+
+    if declared_value is None:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section=section_key,
+                message=(
+                    "§6.1 missing `local_executor_mode` declaration in a fenced " "YAML block."
+                ),
+                suggestion=(
+                    "Add a `### 6.1 Compute & Local Executor Mode` subsection with "
+                    "a fenced ```yaml block declaring `local_executor_mode: "
+                    "<in-airflow-local[*]|sidecar-spark|external-cluster>` plus "
+                    "`spark_master_url`, `spark_version`, `provider_pin`. "
+                    "Educational default for chapter-5 is `in-airflow-local[*]`."
+                ),
+            )
+        )
+        return results
+
+    if declared_value not in VALID_EXECUTOR_MODES:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section=section_key,
+                message=(
+                    f"`local_executor_mode: {declared_value}` is not one of the "
+                    f"three accepted modes: {', '.join(VALID_EXECUTOR_MODES)}."
+                ),
+                suggestion=(
+                    "Pick exactly one mode. `in-airflow-local[*]` bakes Spark into "
+                    "the Airflow image (chapter-5 default). `sidecar-spark` uses "
+                    "bitnami/spark master+worker services. `external-cluster` "
+                    "submits to a remote YARN/k8s cluster."
+                ),
+            )
+        )
+    return results
+
+
+def check_performance_subsections(sections: dict[str, str]) -> list[ValidationResult]:
+    """WARNING: §6 should be split into §6.1–§6.5 subsections.
+
+    Subsection numbering is load-bearing — downstream Scrum Master rules
+    (`STORIES-BOOTSTRAP-COVERAGE-001` and per-layer `performance-optimization`
+    stories) cite §6.1 / §6.2 / §6.3 / §6.4 / §6.5 specifically.
+    """
+    results: list[ValidationResult] = []
+    section_key = "6. Performance & Optimization"
+    content = sections.get(section_key, "")
+    if not content:
+        return results
+
+    expected = {
+        "6.1": "Compute & Local Executor Mode",
+        "6.2": "Join",
+        "6.3": "Shuffle",
+        "6.4": "Caching",
+        "6.5": "Partition",
+    }
+    missing = []
+    for num, hint in expected.items():
+        # Match `### 6.1 ...`, `**§6.1**`, or `§6.1` form. We just need
+        # *some* heading-like marker that the LLD splits §6 into pieces.
+        pattern = re.compile(
+            rf"(?:^\s*###\s*{re.escape(num)}\b|§\s*{re.escape(num)}\b)",
+            re.MULTILINE,
+        )
+        if not pattern.search(content):
+            missing.append(f"{num} {hint}")
+
+    if missing:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section=section_key,
+                message=(
+                    "§6 is missing the load-bearing subsection structure: " + ", ".join(missing)
+                ),
+                suggestion=(
+                    "Split §6 into `### 6.1 Compute & Local Executor Mode`, "
+                    "`### 6.2 Join Strategies`, `### 6.3 Shuffle & Parallelism`, "
+                    "`### 6.4 Caching`, `### 6.5 Partition Tuning`. Downstream "
+                    "rules cite these subsection numbers."
+                ),
+            )
+        )
+    return results
+
+
+def check_bronze_uc_wiring(sections: dict[str, str]) -> list[ValidationResult]:
+    """CRITICAL: Bronze runner contract must use UC saveAsTable, not path-based Delta.
+
+    LLD Decision 15 (added 2026-04-26 after spokane's manual `docker cp` +
+    REST registration workaround) mandates `UCSingleCatalog` +
+    `saveAsTable("unity.bronze.<table>")`. Path-based writes leave UC
+    empty until manual external-table registration — and the gap recurs
+    every DAG run.
+    """
+    results: list[ValidationResult] = []
+
+    # Inspect §2 Code Architecture (where §2.3 module contracts live) and
+    # §5 Task Implementation Details (where output paths land).
+    bronze_runner_sources = [
+        ("2. Code Architecture", sections.get("2. Code Architecture", "")),
+        ("5. Task Implementation Details", sections.get("5. Task Implementation Details", "")),
+    ]
+    for section_key, content in bronze_runner_sources:
+        if not content:
+            continue
+        # Only fire when the section actually discusses a Bronze runner / output.
+        if not _BRONZE_RUNNER_HEADING.search(content) and "bronze" not in content.lower():
+            continue
+        path_based = _PATH_BASED_BRONZE.search(content)
+        uc_wired = _UC_SAVE_AS_TABLE.search(content)
+        if path_based and not uc_wired:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.CRITICAL,
+                    section=section_key,
+                    message=(
+                        f"{section_key} describes a Bronze write target as "
+                        "path-based Delta (e.g. `warehouse/{env}/bronze/<table>/`) "
+                        "without any UCSingleCatalog / saveAsTable wiring. "
+                        "Decision 15 forbids path-based Bronze writes."
+                    ),
+                    suggestion=(
+                        "Update the Bronze runner contract to land in "
+                        "`unity.bronze.<table>` via `UCSingleCatalog` + "
+                        "`saveAsTable(...)`. See `inputs/code/v1/scripts/"
+                        "ingestion_runner.py.snippet` for the canonical pattern."
+                    ),
+                )
+            )
+    return results
+
+
+def check_catalog_config(sections: dict[str, str]) -> list[ValidationResult]:
+    """WARNING: §7 Configuration Schema should declare the UC catalog block.
+
+    The Bronze runner reads `catalog.uc_uri`, `catalog.bronze_catalog_name`,
+    `catalog.bronze_schema` from the per-env config. Missing keys mean the
+    generated `_infra/cd/config/<env>.yaml` won't have the values the
+    runner expects.
+    """
+    results: list[ValidationResult] = []
+    section_key = "7. Configuration Schema"
+    content = sections.get(section_key, "")
+    if not content:
+        return results
+
+    expected_keys = ("catalog_uc_uri", "catalog_bronze_catalog_name", "catalog_bronze_schema")
+    # Also accept the dotted form `catalog.uc_uri` etc.
+    missing = []
+    for key in expected_keys:
+        dotted = key.replace("_", ".", 1)
+        if key not in content and dotted not in content:
+            missing.append(key)
+    if missing:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section=section_key,
+                message=(
+                    "§7 Configuration Schema is missing UC catalog parameter(s): "
+                    + ", ".join(missing)
+                ),
+                suggestion=(
+                    "Add rows for `catalog_uc_uri` (e.g. http://unity-catalog:8080), "
+                    "`catalog_bronze_catalog_name` (e.g. `unity`), and "
+                    "`catalog_bronze_schema` (e.g. `bronze`). The Bronze runner "
+                    "consumes these via the `UC_URI` env var."
+                ),
+            )
+        )
+    return results
+
+
+def check_se_version_floor(content: str) -> list[ValidationResult]:
+    """CRITICAL: spark-expectations must not be pinned below 2.10.
+
+    The YAML/JSON rule loader (`spark_expectations.rules.load_rules_from_yaml`)
+    was added in v2.10.0 (PR #300). Earlier 2.x releases (e.g. 2.6.0 — what
+    spokane shipped pre-fix) raise `ModuleNotFoundError` on every generated
+    `se_runner.py` and force a `BRONZE_SKIP_SE=1` bypass that defeats DQ.
+    The `library-imports.yaml` overlay enforces this floor; the LLD must
+    not contradict it.
+    """
+    results: list[ValidationResult] = []
+    offenders: list[str] = []
+    for match in _SE_PIN_BELOW_2_10.finditer(content):
+        offenders.append(match.group(0))
+    if offenders:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section="11. Upstream Artifact References",
+                message=(
+                    "LLD pins `spark-expectations` below 2.10: "
+                    + ", ".join(sorted(set(offenders)))
+                    + ". The YAML rule loader the developer-plugin emits "
+                    "requires v2.10.0+ (PR #300)."
+                ),
+                suggestion=(
+                    "Reference `spark-expectations >= 2.10.0` in §11 / "
+                    "`dq_rules/{table}.yml` notes. The `library-imports.yaml` "
+                    "overlay (`min_version: 2.10.0`) is the floor; "
+                    "`refresh-libraries` flags any drift below."
+                ),
+            )
+        )
+    return results
+
+
+def check_uc_decision_log(sections: dict[str, str]) -> list[ValidationResult]:
+    """INFO: when Bronze is UC-wired, §13 should record Decision 15 (or equivalent).
+
+    Decision 15 = "Bronze writes use UCSingleCatalog + saveAsTable instead of
+    path-based Delta." If §2/§5 mention `unity.bronze.` or
+    `UCSingleCatalog`, §13 should explain *why* (rationale + trade-off) so
+    future maintainers don't drift back to the path-based pattern.
+    """
+    results: list[ValidationResult] = []
+    code_arch = sections.get("2. Code Architecture", "")
+    task_impl = sections.get("5. Task Implementation Details", "")
+    decisions = sections.get("13. Decision Log", "")
+    bronze_uc_referenced = bool(
+        _UC_SAVE_AS_TABLE.search(code_arch) or _UC_SAVE_AS_TABLE.search(task_impl)
+    )
+    if not bronze_uc_referenced:
+        return results
+    decision_recorded = bool(
+        re.search(
+            r"(Decision\s*15|UCSingleCatalog|Bronze\s+UC\s+wiring|"
+            r"saveAsTable\([^)]*unity\.bronze)",
+            decisions,
+            re.IGNORECASE,
+        )
+    )
+    if not decision_recorded:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.INFO,
+                section="13. Decision Log",
+                message=(
+                    "§2 / §5 reference UC-managed Bronze writes but §13 has no "
+                    "Decision 15 (or equivalent) explaining the policy choice."
+                ),
+                suggestion=(
+                    'Add a Decision 15 entry: "Bronze writes use UCSingleCatalog '
+                    '+ saveAsTable(\\"unity.bronze.<table>\\") instead of '
+                    'path-based Delta." Include Options Considered, Rationale '
+                    "(spokane invisible-tables gap), and Trade-off (UC catalog "
+                    "wiring required at session build time)."
+                ),
+            )
+        )
+    return results
+
+
 def check_scaffold_decision_entry(sections: dict[str, str]) -> list[ValidationResult]:
     """INFO: §13 Decision Log should contain the bootstrap scaffold-adoption entry."""
     results: list[ValidationResult] = []
@@ -1103,6 +1414,10 @@ def validate_lld(file_path: Path) -> ValidationReport:
     report.results.extend(check_scaffold_layout(sections, scaffold_top_dirs))
     report.results.extend(check_configuration_schema(sections))
     report.results.extend(check_upstream_references(sections))
+    # Chapter-5 specific CRITICAL rules
+    report.results.extend(check_local_executor_mode(sections))
+    report.results.extend(check_bronze_uc_wiring(sections))
+    report.results.extend(check_se_version_floor(content))
 
     # WARNING checks
     report.results.extend(check_upstream_traceability(content))
@@ -1114,12 +1429,16 @@ def validate_lld(file_path: Path) -> ValidationReport:
     report.results.extend(check_decision_documentation(content))
     report.results.extend(check_performance_numerics(sections))
     report.results.extend(check_scaffold_paths(sections, content))
+    # Chapter-5 specific WARNING rules
+    report.results.extend(check_performance_subsections(sections))
+    report.results.extend(check_catalog_config(sections))
 
     # INFO checks
     report.results.extend(check_placeholders(content))
     report.results.extend(check_rollback(sections))
     report.results.extend(check_critical_path(sections))
     report.results.extend(check_scaffold_decision_entry(sections))
+    report.results.extend(check_uc_decision_log(sections))
     report.results.extend(check_config_template_exists(sections, file_path))
     report.results.extend(check_dag_definition_exists(sections, file_path))
     report.results.extend(check_mermaid_export_exists(sections, file_path))

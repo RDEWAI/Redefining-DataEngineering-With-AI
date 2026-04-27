@@ -100,6 +100,71 @@ Use `AskUserQuestion` to confirm:
 - Use `TaskGroup` to group bronze / silver / gold stages
 - Parameterise connections and paths via Airflow Variables or a config YAML
 - Include docstring referencing the LLD section and artifact version
+- **CRITICAL — env-driven paths in every generated DAG file:**
+  - `configs_dir = os.environ.get("AIRFLOW_CONFIGS_DIR", "/opt/airflow/configs")`
+  - `application = os.environ.get("<TYPE>_RUNNER_APP", "/opt/airflow/jobs/run_<task_type>.py")` per task type from LLD §4.2
+  - Never emit `application="run_local.py"` (relative — breaks under `/opt/airflow/`)
+  - Never emit `configs_dir="airflow/configs"` (relative — same issue)
+  - The validator (`DAG-PATHS-001`, `DAG-PATHS-002`) rejects either pattern.
+  - Reference snippet: `inputs/code/v1/scripts/dag_factory.py.snippet`.
+
+### Phase 3b: Generate per-task entry wrappers (MANDATORY)
+
+`SparkSubmitOperator.application` is a path to a `.py` file, not a `-m
+module` spec. Spokane learned this when its wrapper failed at runtime with
+`PermissionError: '-m'`. To prevent recurrence, this skill auto-generates
+per-task entry shims under `<project_root>/airflow/jobs/run_<task_type>.py`
+from `inputs/code/v1/scripts/run_layer_entrypoint.py.j2`, one shim per
+distinct task type listed in **LLD §4.2 task inventory**.
+
+**Generation steps:**
+
+1. **Parse LLD §4.2 task inventory.** Extract the distinct task-type set
+   (e.g. for the patient_360 LLD: `bronze_ingestion`, `bronze_recon`,
+   `silver_dim`, `silver_fact`, `gold_aggregate`). Group rows that share a
+   `Type` column — emit one wrapper per type, not per-row.
+2. **For each task type, resolve the runner contract.** Read LLD §5 task
+   table to extract `Module Path` (the dotted runner module) and the argv
+   signature (typical args: `--config-path`, `--ds`, sometimes `--layer`,
+   `--table`, `--configs-dir`). The runner's entry function is `main` by
+   convention; if the LLD §2.3 contract names it differently, use that.
+3. **Render the Jinja template** with these variables and write to
+   `<project_root>/airflow/jobs/run_<task_type>.py`:
+   ```python
+   from jinja2 import Environment, FileSystemLoader
+   env = Environment(loader=FileSystemLoader(f"{workspace_root}/inputs/code/v1/scripts"))
+   tmpl = env.get_template("run_layer_entrypoint.py.j2")
+   for task_type, spec in task_types.items():
+       (jobs_dir / f"run_{task_type}.py").write_text(tmpl.render(
+           project=project_name,
+           task_type=task_type,
+           runner_module=spec["module"],
+           entry_function=spec.get("entry", "main"),
+           argv_spec=spec["argv"],
+       ))
+   ```
+4. **Emit env-var bindings in the airflow service of `_infra/docker/docker-compose.yml`.**
+   Each generated wrapper gets a `<TYPE>_RUNNER_APP=/opt/airflow/jobs/run_<task_type>.py`
+   line in `environment:` so the DAG factory's
+   `application=os.environ["<TYPE>_RUNNER_APP"]` lookup resolves at runtime.
+   The current cookiecutter ships with `BRONZE_RUNNER_APP` and `BRONZE_RECON_APP`
+   pre-wired; add others here when LLD §4.2 introduces new task types.
+5. **DAG factory consumes the env vars.** Generated DAG files MUST resolve
+   `application` from the `<TYPE>_RUNNER_APP` env var (not hardcode the path).
+   See `inputs/code/v1/scripts/dag_factory.py.snippet:_spark_task` for the
+   reference pattern.
+
+**Worked example — Bronze, two task types:**
+
+| LLD §4.2 row | task_type | Wrapper file | Runner module | Compose env var |
+|---|---|---|---|---|
+| `ingest_*` (13 rows) | `bronze_ingestion` | `airflow/jobs/run_bronze_ingestion.py` | `patient_360.bronze.ingestion_runner` | `BRONZE_RUNNER_APP` |
+| `reconciliation_bronze` | `bronze_recon` | `airflow/jobs/run_bronze_recon.py` | `patient_360.bronze.reconciliation` | `BRONZE_RECON_APP` |
+
+The DAG factory's `_spark_task("ingest_patients", "bronze", "synthea_patients")`
+call resolves `application` to `os.environ["BRONZE_RUNNER_APP"]` →
+`/opt/airflow/jobs/run_bronze_ingestion.py` → which imports
+`patient_360.bronze.ingestion_runner.main(args)`.
 
 ### Phase 4: Write Output
 Save to `{project_root}/airflow/dags/{dag_id}.py`

@@ -249,7 +249,7 @@ terminal UI. You can ask 1-4 questions per call, each with 2-4 options.
 - **File Formats** → storage format (Parquet, Delta, Iceberg), compression, partitioning
 - **DAG Specification** → task organization, dependencies, scheduling
 - **Task Implementation** → transformation approach, DQ integration points
-- **Performance** → parallelism strategy, caching, join optimization
+- **Performance** → parallelism strategy, caching, join optimization, **and `local_executor_mode`** (`in-airflow-local[*]` / `sidecar-spark` / `external-cluster`). NEVER skip this — leaving it implicit is what produces the "DAG runs but spark-submit fails in the airflow container" failure mode. Ask explicitly via AskUserQuestion if not in upstream inputs.
 - **Configuration Schema** → what should be configurable per environment
 - **Error Handling** → retry strategy; confirm SE `_error` table wiring for row_dq drops and SE stats table for agg_dq/query_dq (do NOT add a custom writer for row-level DQ rejections — SE handles this); define the **ingest DLQ** (pre-validation parse/schema/encoding failures only); alerting channels
 - **Deployment** → environment promotion, rollback strategy
@@ -502,6 +502,20 @@ copy schemas here.
 - Every DAG file path MUST be `airflow/dags/<dag_id>.py` and every DAG config
   path MUST be `airflow/configs/<dag_id>.yaml` — no deviations.
 
+**§2.3 Module Interface Contracts — Bronze UC wiring (MANDATORY)**
+
+The Bronze runner contract (`src/<project>/bronze/ingestion_runner.py`) MUST
+specify `unity.bronze.<table>` as the **output target**, not a path-based
+Delta location like `warehouse/{env}/bronze/{table}/`. Use `UCSingleCatalog`
++ `saveAsTable("unity.bronze.<table>")` so data lands in Unity Catalog OSS
+at write time. Path-based writes leave UC empty until a manual
+`docker cp` + external-table registration — exactly the gap spokane hit.
+Reference the working snippet at
+`inputs/code/v1/scripts/ingestion_runner.py.snippet`. Add a Decision Log
+entry in §13 documenting this policy: "Bronze writes use UCSingleCatalog
++ saveAsTable; path-based Delta is not the bronze landing format. UC
+wiring is no longer reserved for Silver/Gold."
+
 **Section 5 — Task Implementation Details**
 - Per-task specification table with scaffold-aligned columns:
 
@@ -520,10 +534,56 @@ copy schemas here.
   cookiecutter scaffold — never invent a path.
 
 **Section 6 — Performance & Optimization**
-- Parallelism settings: executors, cores, memory per task
-- Join strategies: broadcast threshold, sort-merge, shuffle hash
-- Caching: which intermediate results to cache and why
-- Partition tuning: target file sizes (128MB-256MB), repartition points
+
+This section MUST be split into the subsections below. The downstream Scrum
+Master `STORIES-BOOTSTRAP-COVERAGE-001` rule and per-layer `performance-optimization`
+stories cite these subsection numbers, so naming is load-bearing.
+
+**§6.1 Compute & Local Executor Mode (MANDATORY)**
+
+Two declarations every LLD MUST make:
+
+1. **Production compute profile** — executors, cores, memory per task, dynamic
+   allocation min/max, broadcast threshold. Per environment (DEV / STAGING / PROD).
+2. **`local_executor_mode`** — exactly one of:
+   - `in-airflow-local[*]` — pyspark + JDK installed in the Airflow worker image;
+     `--master local[*]`. Simplest stack; no separate Spark service.
+   - `sidecar-spark` — bitnami/spark master+worker pair in docker-compose;
+     `--master spark://spark-master:7077` from the Airflow worker. Most realistic.
+   - `external-cluster` — Airflow worker submits to a remote YARN/k8s cluster;
+     local docker-compose has no Spark service. Requires VPN/auth in dev.
+
+   **Educational default for chapter-5: `in-airflow-local[*]`.** The
+   cookiecutter `Dockerfile.airflow` bakes JDK 17 + PySpark 4.0.0 +
+   delta-spark 4.0.0 + spark-expectations into the image so a single
+   container runs Airflow + Spark together. This is what spokane proved
+   green end-to-end (`run_v8_162157`, 16/16 Bronze tasks). Use the other
+   modes only when the LLD explicitly justifies them.
+
+   Render the decision as a single fenced YAML block so the scrum-master /
+   developer plugins can grep it:
+
+   ```yaml
+   local_executor_mode: in-airflow-local[*]
+   spark_master_url: local[2]
+   spark_version: 4.0.0
+   provider_pin: apache-airflow-providers-apache-spark==6.0.1
+   ```
+
+   This decision drives: (a) the docker-compose service list, (b) the
+   `_PIP_ADDITIONAL_REQUIREMENTS` for the Airflow image, (c) the runtime-bootstrap
+   story's spark-submit AC wording (per `story-standards.md`), and (d) every
+   build story's `--master` argument default. Stories cannot be written without
+   this decision — leaving it implicit is what produces the "DAG runs but
+   spark-submit fails" failure mode.
+
+**§6.2 Join Strategies** — broadcast threshold, sort-merge vs shuffle hash hints, explicit `broadcast()` usage.
+
+**§6.3 Shuffle & Parallelism** — `spark.sql.shuffle.partitions`, `spark.default.parallelism` per environment.
+
+**§6.4 Caching** — which intermediate DataFrames to `.cache()` / `.persist()` and at which storage level; eviction strategy.
+
+**§6.5 Partition Tuning** — target file sizes (128MB-256MB), `repartition`/`coalesce` points, `replaceWhere` predicates for Bronze.
 
 **Section 7 — Configuration Schema**
 - Parameter inventory table: Parameter | Type | Default | Description | Per-Environment

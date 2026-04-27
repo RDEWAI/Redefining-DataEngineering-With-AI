@@ -1,4 +1,5 @@
 """Tests for the LLD validator script."""
+# ruff: noqa: E501  # test fixtures embed long markdown literals verbatim
 
 from __future__ import annotations
 
@@ -24,14 +25,20 @@ from conftest import (  # noqa: E402
 from validate_lld import (  # noqa: E402
     ValidationLevel,
     ValidationReport,
+    check_bronze_uc_wiring,
+    check_catalog_config,
     check_dag_definition_exists,
     check_dag_specification,
     check_design_overview,
     check_impl_sequence_exists,
+    check_local_executor_mode,
     check_mermaid_export_exists,
     check_metadata,
+    check_performance_subsections,
     check_placeholders,
     check_required_sections,
+    check_se_version_floor,
+    check_uc_decision_log,
     check_upstream_references,
     parse_lld_sections,
     validate_lld,
@@ -248,3 +255,224 @@ class TestValidationReport:
         f.write_text(MINIMAL_INVALID_LLD, encoding="utf-8")
         report = validate_lld(f)
         assert report.passed is False
+
+
+# --- Chapter-5 specific rule tests --------------------------------------------
+
+
+class TestCheckLocalExecutorMode:
+    """LLD-EXECUTOR-MODE-001 — §6 must declare `local_executor_mode` (CRITICAL)."""
+
+    def test_valid_lld_passes(self):
+        sections = parse_lld_sections(VALID_LLD)
+        results = check_local_executor_mode(sections)
+        assert results == []
+
+    def test_missing_yaml_fails(self):
+        sections = {
+            "6. Performance & Optimization": (
+                "Spark cluster: 4 executors. Target file size 128MB."
+            ),
+        }
+        results = check_local_executor_mode(sections)
+        assert len(results) == 1
+        assert results[0].level == ValidationLevel.CRITICAL
+        assert "local_executor_mode" in results[0].message
+
+    def test_invalid_value_rejected(self):
+        sections = {
+            "6. Performance & Optimization": (
+                "### 6.1\n\n```yaml\nlocal_executor_mode: kubernetes-magic\n```"
+            ),
+        }
+        results = check_local_executor_mode(sections)
+        assert len(results) == 1
+        assert results[0].level == ValidationLevel.CRITICAL
+        assert "kubernetes-magic" in results[0].message
+
+    def test_each_valid_mode_accepted(self):
+        for mode in ("in-airflow-local[*]", "sidecar-spark", "external-cluster"):
+            sections = {
+                "6. Performance & Optimization": (
+                    f"### 6.1\n\n```yaml\nlocal_executor_mode: {mode}\n```"
+                ),
+            }
+            assert check_local_executor_mode(sections) == [], f"mode={mode}"
+
+    def test_yaml_value_outside_fenced_block_rejected(self):
+        """Bare `local_executor_mode: foo` outside a code fence does NOT count."""
+        sections = {
+            "6. Performance & Optimization": (
+                "Some prose. local_executor_mode: in-airflow-local[*]"
+            ),
+        }
+        results = check_local_executor_mode(sections)
+        assert len(results) == 1
+        assert results[0].level == ValidationLevel.CRITICAL
+
+
+class TestCheckPerformanceSubsections:
+    """LLD-PERFORMANCE-SUBSECTIONS — §6 should be split into §6.1–§6.5 (WARNING)."""
+
+    def test_valid_lld_has_all_subsections(self):
+        sections = parse_lld_sections(VALID_LLD)
+        results = check_performance_subsections(sections)
+        assert results == []
+
+    def test_missing_subsections_warns(self):
+        sections = {
+            "6. Performance & Optimization": "Just a paragraph, no subsections.",
+        }
+        results = check_performance_subsections(sections)
+        assert len(results) == 1
+        assert results[0].level == ValidationLevel.WARNING
+        for num in ("6.1", "6.2", "6.3", "6.4", "6.5"):
+            assert num in results[0].message
+
+
+class TestCheckBronzeUcWiring:
+    """LLD-UC-WIRING-001 — Bronze must use UC saveAsTable, not path-based Delta (CRITICAL)."""
+
+    def test_valid_lld_passes(self):
+        sections = parse_lld_sections(VALID_LLD)
+        results = check_bronze_uc_wiring(sections)
+        # VALID_LLD doesn't reference path-based bronze — no fire.
+        assert results == []
+
+    def test_path_based_bronze_in_section_2_fires(self):
+        sections = {
+            "2. Code Architecture": (
+                "**Bronze Ingestion Runner**\n"
+                "- Output: Delta table written to `warehouse/{env}/bronze/<table>/ds={ds}/`."
+            ),
+        }
+        results = check_bronze_uc_wiring(sections)
+        assert len(results) == 1
+        assert results[0].level == ValidationLevel.CRITICAL
+        assert "Decision 15" in results[0].message
+
+    def test_uc_saveastable_present_passes(self):
+        sections = {
+            "2. Code Architecture": (
+                "**Bronze Ingestion Runner**\n"
+                '- Output: Delta table written via `saveAsTable("unity.bronze.<table>")`\n'
+                "  with `UCSingleCatalog` Spark session, instead of "
+                "`warehouse/{env}/bronze/<table>/`."
+            ),
+        }
+        results = check_bronze_uc_wiring(sections)
+        assert results == []
+
+    def test_path_based_bronze_in_section_5_fires(self):
+        sections = {
+            "5. Task Implementation Details": (
+                "| ingest_patients | Bronze | "
+                "Output: `warehouse/{env}/bronze/synthea_patients/ds={ds}/` |"
+            ),
+        }
+        results = check_bronze_uc_wiring(sections)
+        assert len(results) == 1
+        assert results[0].level == ValidationLevel.CRITICAL
+
+
+class TestCheckCatalogConfig:
+    """LLD-CATALOG-CONFIG — §7 should declare UC catalog parameters (WARNING)."""
+
+    def test_valid_lld_has_catalog_block(self):
+        sections = parse_lld_sections(VALID_LLD)
+        results = check_catalog_config(sections)
+        assert results == []
+
+    def test_missing_catalog_keys_warns(self):
+        sections = {
+            "7. Configuration Schema": (
+                "| Parameter | Type | Default |\n"
+                "|---|---|---|\n"
+                "| schedule_cron | string | 0 2 * * * |"
+            ),
+        }
+        results = check_catalog_config(sections)
+        assert len(results) == 1
+        assert results[0].level == ValidationLevel.WARNING
+        for key in ("catalog_uc_uri", "catalog_bronze_catalog_name", "catalog_bronze_schema"):
+            assert key in results[0].message
+
+    def test_dotted_form_also_accepted(self):
+        sections = {
+            "7. Configuration Schema": (
+                "| Parameter | Type | Default |\n"
+                "|---|---|---|\n"
+                "| catalog.uc_uri | string | http://unity-catalog:8080 |\n"
+                "| catalog.bronze_catalog_name | string | unity |\n"
+                "| catalog.bronze_schema | string | bronze |"
+            ),
+        }
+        results = check_catalog_config(sections)
+        assert results == []
+
+
+class TestCheckSeVersionFloor:
+    """LLD-SE-VERSION-001 — spark-expectations must not be pinned below 2.10 (CRITICAL)."""
+
+    def test_valid_lld_passes(self):
+        results = check_se_version_floor(VALID_LLD)
+        assert results == []
+
+    def test_pin_below_2_10_fails(self):
+        body = "Reference: `spark-expectations==2.6.0` per Nike repo."
+        results = check_se_version_floor(body)
+        assert len(results) == 1
+        assert results[0].level == ValidationLevel.CRITICAL
+        assert "2.10" in results[0].message
+
+    def test_pin_at_2_10_passes(self):
+        body = "Pinned to `spark-expectations>=2.10.0` for the YAML loader."
+        results = check_se_version_floor(body)
+        assert results == []
+
+    def test_pin_above_2_10_passes(self):
+        body = "Pinned to `spark-expectations==2.11.3` for the YAML loader."
+        results = check_se_version_floor(body)
+        assert results == []
+
+    def test_underscore_form_also_caught(self):
+        body = "spark_expectations==2.6.0"
+        results = check_se_version_floor(body)
+        assert len(results) == 1
+
+
+class TestCheckUcDecisionLog:
+    """LLD-DECISION-15 — UC-wired Bronze should be recorded in §13 (INFO)."""
+
+    def test_no_uc_reference_no_fire(self):
+        sections = {
+            "2. Code Architecture": "Bronze writes path-based Delta.",
+            "5. Task Implementation Details": "",
+            "13. Decision Log": "Decision: Storage Format. Selected Delta.",
+        }
+        assert check_uc_decision_log(sections) == []
+
+    def test_uc_referenced_no_decision_fires(self):
+        sections = {
+            "2. Code Architecture": (
+                "Bronze runner uses `UCSingleCatalog` + " '`saveAsTable("unity.bronze.<table>")`.'
+            ),
+            "5. Task Implementation Details": "",
+            "13. Decision Log": "Decision: Storage Format. Selected Delta.",
+        }
+        results = check_uc_decision_log(sections)
+        assert len(results) == 1
+        assert results[0].level == ValidationLevel.INFO
+        assert "Decision 15" in results[0].message
+
+    def test_uc_referenced_decision_recorded_passes(self):
+        sections = {
+            "2. Code Architecture": ("Bronze runner uses `UCSingleCatalog` + saveAsTable."),
+            "5. Task Implementation Details": "",
+            "13. Decision Log": (
+                "### Decision 15: Bronze UC wiring\n"
+                "Selected: UCSingleCatalog + saveAsTable.\n"
+                "Rationale: spokane invisible-tables gap."
+            ),
+        }
+        assert check_uc_decision_log(sections) == []

@@ -70,7 +70,37 @@ The script queries, in order of availability:
 4. **Apache mirror / docs page** — Airflow.
 
 The JSON output is the diff table:
-`[{library, old_version, new_version, old_url, new_url, breaking_change_note}]`.
+`[{library, old_version, new_version, old_url, new_url, breaking_change_note,
+canonical_imports, spark_jars_packages, overlay_notes, min_version, floor_violation}]`.
+
+The last five fields come from the **Canonical Imports overlay** at
+`inputs/code/v*/library-imports.yaml` (see "Canonical Imports overlay"
+below). When `floor_violation` is `true` for any row, the script exits
+non-zero and the skill MUST refuse to write LIBRARIES.md until the user
+acknowledges the drift via `AskUserQuestion`.
+
+#### Canonical Imports overlay
+
+`library-imports.yaml` is a curated map keyed by package name. For each
+library it can declare:
+
+- `min_version` — the floor below which generators emit broken imports
+  (e.g. `spark-expectations: 2.10.0` — `spark_expectations.rules`
+  doesn't exist before that). The resolver flags `floor_violation` if
+  the current pin or resolved latest sits below this floor.
+- `canonical_imports` — verbatim Python `import` lines our generators
+  must emit. The Phase 4 rewriter renders these into a
+  `## Canonical Imports` section in LIBRARIES.md.
+- `spark_jars_packages` — Maven coordinates injected into the
+  `spark.jars.packages` block.
+- `notes` — context (changelog pointer, why this floor exists).
+
+When a library's public API changes — say SE moves
+`WrappedDataFrameWriter` to a new module — edit `library-imports.yaml`
+in the same commit that bumps the version. The overlay is the
+single human-curated source of truth; the resolver never invents
+imports. If the overlay is missing the script logs
+`(no overlay loaded)` and falls back to version-only diff (back-compat).
 
 ### Phase 3 — Present diff & ask approval
 

@@ -24,6 +24,27 @@ Every story MUST follow this structure:
 8. **How to Test (User)** — Prerequisites + ≥1 numbered Step + Expected outcome that a human can run on their own machine. Required for `build`, `integration-test`, `runtime-bootstrap`. Maps DoD criterion #2 / #3 onto a runnable runbook.
 9. **Documentation Updates** — List of specific README/runbook sections that must change. Required for `runtime-bootstrap`, `integration-test`, `release`. Maps DoD criterion #6 onto a concrete edit list.
 
+### Runtime-Bootstrap Coverage Rules
+
+A `runtime-bootstrap` story's Acceptance Criteria must verify every executor
+that downstream `build` stories will invoke. The fixed checklist (JDK / Docker
+/ UC catalog+schemas / source seed / UC API 200) is the **floor**, not the
+ceiling — each backlog must add ACs derived from the LLD §6.1 `local_executor_mode`:
+
+| LLD §6.1 `local_executor_mode` | Bootstrap MUST add an AC like… |
+|---|---|
+| `in-airflow-local[*]` (chapter-5 default) | `docker compose exec airflow spark-submit --master 'local[2]' --version` reports the pinned Spark version (4.0.0) AND `docker compose exec airflow python -c "from spark_expectations.core.expectations import SparkExpectations"` exits 0 |
+| `sidecar-spark` | `docker compose exec airflow-worker spark-submit --master spark://spark-master:7077 --version` returns 0 AND `curl http://localhost:8080/api/2.1/unity-catalog/catalogs` returns 200 |
+| `external-cluster` | `airflow tasks test <bronze-dag-id> <one-spark-task> <ds>` exits 0 against the configured cluster |
+
+Validator rule `STORIES-BOOTSTRAP-COVERAGE-001` enforces this: if any `build`
+story references `SparkSubmitOperator`, `spark-submit`, `pyspark`, or
+`--master`, the runtime-bootstrap story(ies) collectively must contain ≥1 AC
+that mentions one of `spark-submit`, `spark.master`, `pyspark`, `--master`,
+or `airflow tasks test`. Without this rule, "the stack is up" can be true
+while no Spark task can actually run — exactly the gap that motivated the
+runtime-bootstrap story type.
+
 ### Optional Sections
 - **Mockup / Diagram** — Visual aid if applicable
 - **Out of Scope** — What this story explicitly does NOT cover

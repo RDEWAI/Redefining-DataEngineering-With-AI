@@ -43,11 +43,14 @@ and "data actually lands in UC".
 - [ ] UC catalog `unity` and schemas `bronze`/`silver`/`gold` created via `scripts/uc_init.py` [LLD §1]
 - [ ] Source data seeded into local source DB [LLD §5.1]
 - [ ] `curl http://localhost:8080/api/2.1/unity-catalog/catalogs` returns 200 with `unity` listed [LLD §1]
+- [ ] `docker compose exec airflow spark-submit --master 'local[2]' --version` exits 0 and reports the LLD-pinned Spark version (4.0.0) [LLD §6.1 — closes STORIES-BOOTSTRAP-COVERAGE-001]
+- [ ] `docker compose exec airflow python -c "from spark_expectations.core.expectations import SparkExpectations"` exits 0 (proves SE 2.10+ imports cleanly — DQ is mandatory, no BRONZE_SKIP_SE bypass) [LLD §6.1]
 
 ## Technical Notes
 
 - Upstream references: LLD §1, §6.1, §9
-- Implementation hints: `make dev-up` wraps the four-step bootstrap.
+- Implementation hints: `make dev-up` wraps the five-step bootstrap (compose up → wait-for-uc → uc-init → seed → spark-smoke).
+- The Spark-submit smoke is the gate that proves the Airflow→Spark→UC bridge is wired before any `build` story runs. AC content varies by `local_executor_mode` per the standards table.
 
 ## Estimation Support
 
@@ -60,6 +63,8 @@ and "data actually lands in UC".
 | Coverage | What | How |
 |----------|------|-----|
 | Smoke | UC OSS catalog/schemas exist | pytest tests/bootstrap/test_uc_health.py |
+| Smoke | spark-submit reachable from airflow worker | pytest tests/bootstrap/test_spark_smoke.py |
+| Smoke | spark-expectations imports cleanly (DQ path live) | pytest tests/bootstrap/test_se_smoke.py |
 
 ## Verification
 
@@ -72,6 +77,10 @@ AC3:
   - pytest: {node: "tests/bootstrap/test_uc_health.py::test_schemas_exist"}
 AC5:
   - pytest: {node: "tests/bootstrap/test_uc_health.py::test_catalog_api_200"}
+AC6:
+  - pytest: {node: "tests/bootstrap/test_spark_smoke.py::test_spark_submit_local_master"}
+AC7:
+  - pytest: {node: "tests/bootstrap/test_se_smoke.py::test_spark_expectations_imports"}
 ```
 
 ## How to Test (User)
@@ -87,17 +96,23 @@ AC5:
 1. `make dev-up`
 2. `curl -s http://localhost:8080/api/2.1/unity-catalog/catalogs | jq '.catalogs[].name'`
 3. Expect `unity` listed; query schemas: `curl -s 'http://localhost:8080/api/2.1/unity-catalog/schemas?catalog_name=unity' | jq '.schemas[].name'`
+4. `docker compose exec airflow spark-submit --master 'local[2]' --version`
+5. `docker compose exec airflow python -c "from spark_expectations.core.expectations import SparkExpectations; print('SE OK')"`
+6. Open `http://localhost:3001` (Unity Catalog UI) and verify the `unity` catalog with `bronze` schema is browsable
 
 ### Expected outcome
 
-- Five containers running (`docker compose ps`)
+- Containers running (`docker compose ps` — airflow, unity-catalog, unity-catalog-ui, marquez, marquez-db, otel-collector)
 - UC API returns `["unity"]`
 - Schemas list returns `["bronze","silver","gold"]`
+- Step 4 prints `version 4.0.0` and exits 0
+- Step 5 prints `SE OK` (spark-expectations 2.10+ imports cleanly — DQ enforcement path is live)
+- Step 6 shows the `unity.bronze` schema in the browser without manual `docker network connect`
 
 ## Documentation Updates
 
 - [ ] Update `<project>/README.md` § "Bootstrap" with the `make dev-up` one-liner and expected ports
-- [ ] Update `<project>/README.md` § "Troubleshooting" with the JDK-17 / port-conflict checklist
+- [ ] Update `<project>/README.md` § "Troubleshooting" with the JDK-17 / port-conflict / SE-import / UC-UI-proxy checklist
 ```
 
 ---

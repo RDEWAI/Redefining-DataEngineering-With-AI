@@ -907,6 +907,116 @@ def check_backlog_has_bootstrap(
     return results
 
 
+# --- Backlog-level: bootstrap covers every executor a build story invokes ---
+# (BOOTSTRAP-COVERAGE-001)
+#
+# Motivation: a build story can invoke SparkSubmitOperator while the
+# runtime-bootstrap story only checks UC catalogs. Bootstrap then passes,
+# every build story FAILs at first execution because spark-submit is missing
+# or unreachable. This rule enforces that, when build stories use Spark, the
+# bootstrap story explicitly proves the Airflow→Spark bridge before any
+# integration test runs against it.
+
+# Triggers a Spark requirement when seen in a non-bootstrap story body.
+_SPARK_TRIGGER_PATTERN = re.compile(
+    r"SparkSubmitOperator|\bspark-submit\b|\bpyspark\b|--master\b",
+    re.IGNORECASE,
+)
+# Discharges the requirement when seen in a runtime-bootstrap story's ACs.
+_SPARK_BOOTSTRAP_COVERAGE_PATTERN = re.compile(
+    r"\bspark-submit\b|\bspark\.master\b|\bpyspark\b|--master\b|airflow\s+tasks\s+test",
+    re.IGNORECASE,
+)
+
+
+def check_bootstrap_executor_coverage(
+    story_type_by_id: dict[str, str],
+    story_file_by_id: dict[str, Path],
+    directory: Path,
+) -> list[ValidationResult]:
+    """BOOTSTRAP-COVERAGE-001: bootstrap must verify every executor build stories invoke.
+
+    Today this rule covers Spark only — when any non-bootstrap story (typically
+    a `build` story) references ``SparkSubmitOperator`` / ``spark-submit`` /
+    ``pyspark`` / ``--master``, the runtime-bootstrap story(ies) collectively
+    must contain ≥1 line in their ``## Acceptance Criteria`` mentioning
+    ``spark-submit``, ``spark.master``, ``pyspark``, ``--master``, or
+    ``airflow tasks test``. Without that AC, a passing bootstrap doesn't
+    actually prove the Airflow→Spark bridge works, and every Spark-backed
+    build story fails on first execution.
+    """
+    results: list[ValidationResult] = []
+
+    spark_using_story_ids: list[str] = []
+    for sid, sfile in story_file_by_id.items():
+        if story_type_by_id.get(sid) == "runtime-bootstrap":
+            continue
+        try:
+            content = sfile.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if _SPARK_TRIGGER_PATTERN.search(content):
+            spark_using_story_ids.append(sid)
+
+    if not spark_using_story_ids:
+        return results
+
+    bootstrap_story_ids = [
+        sid for sid, stype in story_type_by_id.items() if stype == "runtime-bootstrap"
+    ]
+    if not bootstrap_story_ids:
+        # BOOTSTRAP-001 already fires for this case — don't double-report here.
+        return results
+
+    covered = False
+    for sid in bootstrap_story_ids:
+        sfile = story_file_by_id.get(sid)
+        if not sfile:
+            continue
+        try:
+            content = sfile.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        ac_body = _get_section_content(content, "Acceptance Criteria")
+        if ac_body and _SPARK_BOOTSTRAP_COVERAGE_PATTERN.search(ac_body):
+            covered = True
+            break
+
+    if covered:
+        return results
+
+    sample = ", ".join(sorted(spark_using_story_ids)[:3])
+    if len(spark_using_story_ids) > 3:
+        sample += f", … ({len(spark_using_story_ids)} total)"
+    results.append(
+        ValidationResult(
+            level=ValidationLevel.CRITICAL,
+            section=directory.name,
+            message=(
+                f"Build stories ({sample}) invoke Spark "
+                "(SparkSubmitOperator / spark-submit / pyspark / --master) but no "
+                "runtime-bootstrap story has an Acceptance Criterion that verifies "
+                "spark-submit reachability. The bootstrap will pass while every "
+                "Spark-backed task FAILs on first execution — exactly the gap that "
+                "motivated the runtime-bootstrap story type."
+            ),
+            suggestion=(
+                "Add an AC to the runtime-bootstrap story whose wording matches the "
+                "LLD §6.1 `local_executor_mode`. Examples:\n"
+                "  • in-airflow-local[*]: `docker compose exec airflow-scheduler "
+                "spark-submit --version` exits 0\n"
+                "  • sidecar-spark: `docker compose exec airflow-scheduler "
+                "spark-submit --master spark://spark-master:7077 --version` exits 0\n"
+                "  • external-cluster: `airflow tasks test <bronze-dag-id> "
+                "<one-spark-task> <ds>` exits 0\n"
+                "Pair the AC with a `pytest:` verifier (e.g. "
+                "tests/bootstrap/test_spark_smoke.py) so verify_acs.py can gate it."
+            ),
+        )
+    )
+    return results
+
+
 # --- Per-story: ## Testing / ## How to Test (User) / ## Documentation Updates ---
 
 
@@ -1210,6 +1320,11 @@ def validate_stories_dir(directory: Path) -> ValidationReport:
 
     # Backlog-level: BOOTSTRAP-001
     report.results.extend(check_backlog_has_bootstrap(story_type_by_id, directory))
+
+    # Backlog-level: BOOTSTRAP-COVERAGE-001 (executor reachability)
+    report.results.extend(
+        check_bootstrap_executor_coverage(story_type_by_id, story_file_by_id, directory)
+    )
 
     # Check each epic
     for epic_dir in epic_dirs:

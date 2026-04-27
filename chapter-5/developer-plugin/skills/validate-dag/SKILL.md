@@ -52,6 +52,30 @@ Cite each pattern doc consulted, e.g. `Checked against inputs/code/v1/airflow-da
 
 ## Checks
 
+### Automated regression rules (run via `scripts/validate_dag.py`)
+
+```bash
+uv run python ${CLAUDE_PLUGIN_ROOT}/skills/validate-dag/scripts/validate_dag.py {file}
+# or, recursive over a project root:
+uv run python ${CLAUDE_PLUGIN_ROOT}/skills/validate-dag/scripts/validate_dag.py --all {project_root}
+```
+
+CRITICAL rules — fail-the-build:
+
+- **DAG-PATHS-001** — literal `application="run_local.py"` (relative path)
+  is rejected. Path doesn't resolve when Airflow runs from `/opt/airflow/`.
+  Use `os.environ.get("<TYPE>_RUNNER_APP", "/opt/airflow/jobs/run_<task_type>.py")`.
+- **DAG-PATHS-002** — literal `configs_dir="airflow/configs"` (relative)
+  is rejected. Use `os.environ.get("AIRFLOW_CONFIGS_DIR", "/opt/airflow/configs")`.
+- **UC-WIRING-001** — Bronze runners under `src/**/bronze/**.py` may not
+  use `df.write.format("delta").save(...)` (path-based Delta). Use
+  `saveAsTable("unity.bronze.<table>")` per LLD Decision 15 — otherwise
+  Unity Catalog never sees the table.
+
+The script skips pure-comment lines and lines containing negative-keyword
+markers (`NEVER`, `don't`, `pitfall`, …) so anti-pattern documentation is
+allowed.
+
 ### CRITICAL (must fix before merge)
 - Python syntax errors (`python -m py_compile {file}`)
 - Missing required imports

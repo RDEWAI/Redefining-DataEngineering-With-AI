@@ -54,6 +54,9 @@ The validator checks rules across three severity levels:
 - Task Implementation Details has per-task specs with ≥3 rows
 - Configuration Schema has parameter table with ≥3 rows
 - Upstream Artifact References cites all 5 upstream docs (DRD, HLD, DMS, STM, DQS)
+- **§6 declares `local_executor_mode`** in a fenced YAML block, value ∈ {`in-airflow-local[*]`, `sidecar-spark`, `external-cluster`}. Without this, the runtime stack the bootstrap story smoke-tests is undefined.
+- **Bronze runner contract is UC-wired** — §2 / §5 must use `UCSingleCatalog` + `saveAsTable("unity.bronze.<table>")`, NOT path-based Delta (`warehouse/{env}/bronze/...` or `format("delta").save(...)`). LLD Decision 15 forbids path-based Bronze writes; spokane's first green run revealed they leave Unity Catalog empty until manual `docker cp` + REST registration.
+- **`spark-expectations` is not pinned below 2.10** anywhere in the LLD. The YAML rule loader (`spark_expectations.rules.load_rules_from_yaml`) was added in v2.10.0 (PR #300) — earlier 2.x releases break every generated `se_runner.py` and force a forbidden `BRONZE_SKIP_SE=1` bypass.
 
 ### WARNING (needs attention)
 - Upstream traceability — at least 5 citations with § section references
@@ -63,29 +66,32 @@ The validator checks rules across three severity levels:
 - DAG section has ≥1 Mermaid diagram
 - Decision Log uses Options Considered / Rationale format
 - Performance section has numeric values (MB, GB, seconds, partitions)
+- **§6 split into §6.1–§6.5 subsections** (Compute & Local Executor Mode / Joins / Shuffle & Parallelism / Caching / Partition Tuning). Naming is load-bearing — downstream Scrum Master `STORIES-BOOTSTRAP-COVERAGE-001` and per-layer `performance-optimization` stories cite the subsection numbers.
+- **§7 Configuration Schema declares the UC catalog block** — `catalog_uc_uri`, `catalog_bronze_catalog_name`, `catalog_bronze_schema`. Both underscore (`catalog_uc_uri`) and dotted (`catalog.uc_uri`) forms are accepted.
 
 ### INFO (suggestions for improvement)
 - Placeholder text remaining ([TBD], [TODO])
 - Deployment mentions rollback procedures
 - DAG section mentions critical path
 - Config template YAML exists alongside LLD
+- **§13 records Decision 15 (Bronze UC wiring) when §2/§5 reference `UCSingleCatalog` / `unity.bronze.<table>`.** Future maintainers need the rationale + trade-off so they don't drift back to path-based Delta.
 
 ## LLD Sections Reference
 
 A complete LLD contains these 14 sections:
 - **1. Design Overview**: Implementation approach, key decisions at a glance
-- **2. Code Architecture**: Project structure, coding conventions, templates
+- **2. Code Architecture**: Project structure, coding conventions, templates. **§2.3 Bronze runner contract** uses `UCSingleCatalog` + `saveAsTable("unity.bronze.<table>")` (Decision 15) — never path-based Delta.
 - **3. File Formats & Storage Layout**: Storage format, compression, partitioning
-- **4. DAG Specification**: Task inventory, dependencies, Mermaid diagram, scheduling
+- **4. DAG Specification**: Task inventory, dependencies, Mermaid diagram, scheduling. **§4.2 task-type set** drives `airflow/jobs/run_<task_type>.py` wrapper auto-generation.
 - **5. Task Implementation Details**: Per-task I/O contracts, transform refs, DQ checks
-- **6. Performance & Optimization**: Parallelism, caching, join strategies, memory
-- **7. Configuration Schema**: Parameters with per-environment defaults
+- **6. Performance & Optimization**: **§6.1 Compute & Local Executor Mode** (mandatory `local_executor_mode` fenced YAML); §6.2 Joins; §6.3 Shuffle/Parallelism; §6.4 Caching; §6.5 Partition Tuning. Subsection numbering is load-bearing for downstream rules.
+- **7. Configuration Schema**: Parameters with per-environment defaults. Catalog block: `catalog_uc_uri`, `catalog_bronze_catalog_name`, `catalog_bronze_schema`.
 - **8. Error Handling**: Retry policies, SE `_error` table (row_dq), SE stats/detailed tables (agg_dq/query_dq), ingest DLQ (pre-validation only), alerting
-- **9. Deployment**: Environments, promotion, rollback, health checks
+- **9. Deployment**: Environments, promotion, rollback, health checks. `_infra/docker/Dockerfile.airflow` is required when `local_executor_mode` is `in-airflow-local[*]` or `sidecar-spark`.
 - **10. Monitoring**: Metrics, dashboards, alerting rules
-- **11. Upstream Artifact References**: Hub cross-reference to DRD, HLD, DMS, STM, DQS
+- **11. Upstream Artifact References**: Hub cross-reference to DRD, HLD, DMS, STM, DQS. `spark-expectations` row pins **>=2.10.0** (YAML rule loader floor).
 - **12. Traceability Matrix**: Requirements → implementation mapping
-- **13. Decision Log**: Options Considered, Rationale, Trade-off
+- **13. Decision Log**: Options Considered, Rationale, Trade-off. **Decision 15** = Bronze UC wiring policy.
 - **14. Version History**: Version tracking table
 
 ## Step 2.5: Fix CRITICAL issues before presenting

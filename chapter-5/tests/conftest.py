@@ -1924,9 +1924,32 @@ When input is empty, ingestion tasks write a zero-row Delta table with schema pr
 
 ## 6. Performance & Optimization
 
+### 6.1 Compute & Local Executor Mode
+
 Spark cluster: 4 executors x 4 cores x 8GB each = 128GB total [HLD §5.4].
+
+```yaml
+local_executor_mode: in-airflow-local[*]
+spark_master_url: local[2]
+spark_version: 4.0.0
+provider_pin: apache-airflow-providers-apache-spark==6.0.1
+```
+
+### 6.2 Join Strategies
+
 Target file size: 128MB per partition. Broadcast join threshold: 10MB.
-Parallelism: 16 partitions default. Cache silver tables used by multiple gold tasks.
+
+### 6.3 Shuffle & Parallelism
+
+Parallelism: 16 partitions default per environment.
+
+### 6.4 Caching
+
+Cache silver tables used by multiple gold tasks.
+
+### 6.5 Partition Tuning
+
+Repartition Bronze to 8 partitions before write; Silver to 16; Gold to 32.
 
 ## 7. Configuration Schema
 
@@ -1939,6 +1962,9 @@ Parallelism: 16 partitions default. Cache silver tables used by multiple gold ta
 | retry_max_attempts | int | 3 | Max task retries | Yes |
 | alert_channel | string | #pipeline-alerts | Slack channel | Yes |
 | dq_fail_threshold | float | 0.05 | DQ failure rate threshold | Yes |
+| catalog_uc_uri | string | http://unity-catalog:8080 | Unity Catalog OSS URI | Yes |
+| catalog_bronze_catalog_name | string | unity | UC catalog Bronze writes via saveAsTable | Yes |
+| catalog_bronze_schema | string | bronze | UC schema for Bronze tables | Yes |
 
 ## 8. Error Handling
 

@@ -345,14 +345,54 @@ Write Python modules to `{project_root}/src/{project_name}/bronze/`
    `quarantine_path` key; fall back to the default if absent.
    **`run_inline_dq`** signature: `(df, cfg, env, dq_rules_dir)`. Define
    `_DQ_ENV_MAP = {"DEV": "DEV", "STAGING": "QA", "PROD": "PROD"}` (LLD §2.3)
-   and map `env` before calling `run_dq`. Derive `dq_rules_dir` in `ingest()`
-   from the config path: `config_path.parent.parent.parent / "dq_rules"`.
+   and map `env` before calling `run_dq`. **Derive `dq_rules_dir` in this order**
+   (matches the `AIRFLOW_CONFIGS_DIR` pattern):
+   1. Explicit kwarg passed by the caller.
+   2. `os.environ.get("DQ_RULES_DIR")` — the canonical container path injected
+      by the cookiecutter `docker-compose.yml`.
+   3. Walk up from the config path: `config_path.parent.parent.parent / "dq_rules"`
+      — only as a fallback for non-container runs (local pytest, etc.).
+   Never hardcode `/opt/dq_rules` (relative or absolute) — spokane shipped a
+   duplicate `dq_rules` bind mount because some generated code referenced
+   that literal. The env var is the single resolution mechanism.
    **`se_action_if_failed`** from the per-table YAML is the fail-closed default
    for rules that omit their own `action_if_failed`; per-rule declarations take
    precedence (LLD §5.4).
-2. **`ingestion_factory.py`** — `build_bronze_taskgroup(dag, configs_dir)`
-   scans `airflow/configs/*.yml` at DAG parse time, returns an Airflow
+**CRITICAL — UC-managed writes for Bronze (LLD §2.3 / Decision 12).**
+
+The Bronze runner MUST land tables in Unity Catalog at write time using
+`UCSingleCatalog` + `saveAsTable("unity.bronze.<table>")`. Path-based Delta
+writes (`df.write.format("delta").save("/tmp/...")`) leave UC empty until
+a manual `docker cp` + external-table registration — that's the gap spokane
+hit on its first green run. The skill's Phase 3 generator MUST emit the
+Spark session wiring shown in `inputs/code/v1/scripts/ingestion_runner.py.snippet`:
+
+- `spark.sql.catalog.unity = io.unitycatalog.spark.UCSingleCatalog`
+- `spark.sql.catalog.unity.uri = os.environ["UC_URI"]`
+- `spark.sql.defaultCatalog = unity`
+- Plus the Delta extensions / Delta catalog config.
+
+Then the write becomes `df.write.mode(...).partitionBy("ds").option("replaceWhere", ...).saveAsTable(f"unity.bronze.{table}")`.
+
+The validator (`validate-dag UC-WIRING-001`) rejects any generated
+`src/**/bronze/**.py` file that calls `.save("/tmp/`, `.save("file://`,
+or `.save(<warehouse_path_var>)` instead of `saveAsTable`. The
+`tests/test_uc_wiring.py` regression scan blocks the same pattern from
+being introduced into snippets.
+
+2. **`ingestion_factory.py`** — `build_bronze_taskgroup(dag, configs_dir=None)`
+   scans `<configs_dir>/*.yml` at DAG parse time, returns an Airflow
    TaskGroup named `bronze_ingestion` with one `SparkSubmitOperator` per file.
+   **CRITICAL — env-driven path resolution.** The factory MUST resolve
+   `configs_dir` in this order: explicit arg → `os.environ.get("AIRFLOW_CONFIGS_DIR")`
+   → `/opt/airflow/configs`. Never hardcode `airflow/configs` (relative)
+   or any other relative path — when Airflow runs from `/opt/airflow/` in
+   the cookiecutter container, relative paths don't resolve. The
+   `validate-dag DAG-PATHS-002` rule rejects DAG files containing the
+   literal string `configs_dir="airflow/configs"`. The reconciliation
+   runner under `airflow/jobs/run_<layer>_recon.py` follows the same
+   pattern via `--configs-dir` argparse with the same default chain
+   (see `inputs/code/v1/scripts/reconciliation.py.snippet`).
 3. **`spark_submit_wrapper.py`** — thin helper that builds the
    `SparkSubmitOperator` with memory/cores/executors pulled from the
    pipeline config (§7) and passes `--config-path` to the runner module named
@@ -363,9 +403,17 @@ Write Python modules to `{project_root}/src/{project_name}/bronze/`
 
 4. **`src/{project_name}/utils/se_runner.py`** — implement `run_dq(df, *, table,
    env, dq_rules_dir, action_if_failed, quarantine_path)`. This module is the
-   implementation of the LLD §2.3 `se_runner.py` interface contract. Pin the
-   following wiring details exactly — they are **not** in the LLD but are
-   required by SE 2.10 for local non-Databricks runs:
+   implementation of the LLD §2.3 `se_runner.py` interface contract.
+
+   **Version requirement (CRITICAL):** these imports require
+   `spark-expectations >= 2.10.0`. The YAML rule loader and
+   `WrappedDataFrameWriter` were added in v2.10.0
+   (https://github.com/Nike-Inc/spark-expectations/releases/tag/v2.10.0). If
+   the LIBRARIES.md catalogue ever pins SE below 2.10 these imports raise
+   `ModuleNotFoundError: No module named 'spark_expectations.rules'` at
+   runtime — the developer plugin's `validate-dag SE-IMPORTS-001` rule and
+   `tests/test_se_runner_imports.py` regression test gate against that
+   downgrade. Pin the wiring details exactly:
 
    ```python
    from spark_expectations.core.expectations import SparkExpectations, WrappedDataFrameWriter
