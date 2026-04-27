@@ -146,6 +146,110 @@ Also track upstream input coverage:
 | HLD architecture | COMPLETE / PARTIAL / MISSING | ... |
 | DRD requirements | COMPLETE / PARTIAL / MISSING | ... |
 
+### Step 2.4: SE Coverage Detection (MANDATORY)
+
+DQ is non-optional in chapter-5. Mirror the DAG-must-run mandate
+(`BOOTSTRAP-COVERAGE-001`) for Spark Expectations. After reading the LLD
+(Step 1), scan §2.3 / §5 for any module that wires SE — keywords:
+`SparkExpectations`, `WrappedDataFrameWriter`, `with_expectations`,
+`se_runner.run_dq`, `spark-expectations`. When detected, the runtime-bootstrap
+story you generate **MUST** include an AC that exercises SE end-to-end
+(not just imports). At minimum:
+
+- A `pytest -m integration` test that calls `with_expectations(...)`
+  against a real Spark session.
+- An AC asserting `bronze_se_stats` (or the configured SE stats table)
+  has ≥1 row whose `meta_dq_run_id` matches the smoke run.
+
+Importing `SparkExpectations` is insufficient. Spokane (2026-04-26)
+shipped a "DQ-wired" Bronze pipeline where every unit test passed but
+`with_expectations(...)` was never invoked end-to-end — DQ silently did
+nothing. The validator rule `STORIES-SE-COVERAGE-001` rejects this
+state. `BRONZE_SKIP_SE=1` and similar bypasses are explicitly forbidden
+(LLD §8.6.1, Decision 16).
+
+For every layer epic (LLD §5.1/§5.2/§5.3) you generate, the
+integration-test story MUST also assert SE runtime artifacts in
+addition to the DAG-trigger AC: stats table populated, `<table>_error`
+created, or `dq_pass_rate` reported. The validator rule
+`STORIES-INTEGRATION-SE-001` rejects integration-test stories that
+trigger a layer DAG without an SE-evidence AC. Recommended verifier:
+`pytest -m integration tests/integration/test_<layer>_uc.py::test_se_stats_populated`.
+
+### Step 2.5: Phased Contract Detection (MANDATORY)
+
+LLD sections sometimes describe a **temporal lifecycle** — for example
+"in bootstrap mode, soft-import `se_runner`; once `se_runner.py` ships,
+remove the soft-import and fail-closed." Naively decomposing both states
+into separate stories produces **mutually exclusive acceptance
+criteria** — one story's `grep: 'WARNING: se_runner not available'`
+collides with the other story's `grep_absent: 'WARNING: se_runner not
+available'`. The downstream
+`scrum-master-plugin:validate-stories STORIES-AC-CONTRADICTION-001`
+rule rejects backlogs in this state.
+
+**Spokane case (2026-04-26):** `STORY-02-001 AC4` ("Runner soft-imports
+`se_runner` and logs `WARNING: se_runner not available` in bootstrap
+mode") collided with `STORY-02-004 AC4` ("no soft-import, fail-closed
+per LLD §8.6"). Both cited §8.6. The user had to hand-edit one story
+to mark its AC superseded — that's the failure mode this step prevents.
+
+**Detection heuristic.** After Step 2 (gap assessment), scan the LLD
+for sections containing **both** halves of the phased contract:
+
+- Bootstrap keywords: `bootstrap`, `soft-import`, `try/except ImportError`,
+  `PENDING IMPLEMENTATION`.
+- Fail-closed keywords: `fail-closed`, `must be removed`, `hard error`,
+  `removed from <module>`.
+
+If the section has both halves AND no explicit `**TEMP — bootstrap phase
+only**` callout, treat it as a phased contract.
+
+**Resolution policy: TWO STORIES + Depends-On (NOT merge).** Keep both
+stories so each LLD phase has its own auditable verification gate.
+Auto-add a `Dependencies` line in the **fail-closed-side story's
+metadata** pointing to the bootstrap-side story. The dependency edge
+tells the validator that the fail-closed AC supersedes the bootstrap
+AC after the bootstrap story ships:
+
+```markdown
+# STORY-02-004: Bronze SE runner (fail-closed)
+
+| Field | Value |
+|---|---|
+| **Story Type** | build |
+| **Dependencies** | STORY-02-001 |   ← AUTO-ADDED by phased-contract guard
+```
+
+The verification block on the fail-closed story uses `grep_absent` for
+the bootstrap warning string; the verification block on the bootstrap
+story uses `grep` for the same string. Both pass at their respective
+lifecycle phases.
+
+**Confirm via AskUserQuestion before writing files.** When a phased
+contract is detected:
+
+```json
+{
+  "questions": [
+    {
+      "question": "LLD §X.Y describes a phased contract (bootstrap → fail-closed). I'll keep two stories with auto-Depends-On from the fail-closed story (STORY-A) to the bootstrap story (STORY-B). Confirm or change?",
+      "header": "Phased",
+      "multiSelect": false,
+      "options": [
+        { "label": "Yes, two stories + Depends-On", "description": "Default. Both stories file; fail-closed depends on bootstrap." },
+        { "label": "Merge into one story", "description": "Single story with phased AC1 + AC2 (loses per-phase verification gate)." },
+        { "label": "Drop bootstrap-only story", "description": "Skip the bootstrap story; only file the fail-closed story." }
+      ]
+    }
+  ]
+}
+```
+
+The default — two stories + Depends-On — preserves traceability and
+matches the LLD's lifecycle-owner pattern (§8 describes the transition;
+§2 / §5 reference but don't restate it).
+
 ### Step 3: Ask Targeted Questions Using AskUserQuestion Tool
 
 For every area that is PARTIAL or MISSING, call the `AskUserQuestion` tool.

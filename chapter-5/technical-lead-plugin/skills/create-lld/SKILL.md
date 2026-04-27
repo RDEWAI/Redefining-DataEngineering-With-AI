@@ -502,6 +502,32 @@ copy schemas here.
 - Every DAG file path MUST be `airflow/dags/<dag_id>.py` and every DAG config
   path MUST be `airflow/configs/<dag_id>.yaml` — no deviations.
 
+**§2.3 Module Interface Contracts — phased lifecycle hygiene (MANDATORY)**
+
+**Never duplicate phased / temporal lifecycle prose in §2.3 module
+contracts.** §8 Error Handling owns lifecycle states (e.g. SE Bootstrap
+Mode Degradation in §8.6). §2.3 should reference §8.X by section number,
+not restate the lifecycle inline.
+
+If a module legitimately has a transitional state (e.g. `[PENDING
+IMPLEMENTATION]` bootstrap mode that flips to fail-closed once the module
+ships), the §2.3 prose MUST do **one** of:
+
+1. Defer entirely to §8.X with a one-liner: *"For SE Bootstrap Mode
+   Degradation behavior see §8.6 + Decision N."* — preferred.
+2. Wrap any bootstrap-mode prose in an explicit
+   `> **TEMP — bootstrap phase only (Decision N, §8.X):**` callout so a
+   downstream scrum-master agent and the
+   `validate-lld LLD-PHASED-CONTRACT-001` rule recognize it as
+   transitional.
+
+The `LLD-PHASED-CONTRACT-001` rule fires WARNING when §2 / §5 contains
+both bootstrap keywords (`soft-import`, `bootstrap mode`,
+`try/except ImportError`, `PENDING IMPLEMENTATION`) and fail-closed
+keywords (`fail-closed`, `must be removed`, `hard error`) without a TEMP
+marker — the spokane STORY-02-001 vs STORY-02-004 collision (2026-04-26)
+was caused by exactly this anti-pattern.
+
 **§2.3 Module Interface Contracts — Bronze UC wiring (MANDATORY)**
 
 The Bronze runner contract (`src/<project>/bronze/ingestion_runner.py`) MUST

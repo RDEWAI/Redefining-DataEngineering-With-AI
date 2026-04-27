@@ -37,6 +37,45 @@ ceiling — each backlog must add ACs derived from the LLD §6.1 `local_executor
 | `sidecar-spark` | `docker compose exec airflow-worker spark-submit --master spark://spark-master:7077 --version` returns 0 AND `curl http://localhost:8080/api/2.1/unity-catalog/catalogs` returns 200 |
 | `external-cluster` | `airflow tasks test <bronze-dag-id> <one-spark-task> <ds>` exits 0 against the configured cluster |
 
+### SE end-to-end run is MANDATORY (not just import)
+
+Importing `SparkExpectations` proves the package is installed. It does
+**not** prove the DQ engine actually executes against data. Spokane
+shipped a Bronze pipeline where every unit test passed (against mocked
+SE) but `with_expectations(...)` was never invoked end-to-end — DQ
+silently did nothing.
+
+To close that gap, the runtime-bootstrap story MUST also verify SE runs
+**end-to-end against ≥1 table**, not just imports. Mirror the pattern
+used for DAG runs (`STORIES-BOOTSTRAP-COVERAGE-001`):
+
+| When the build story…                                   | Bootstrap MUST add an AC verifying… |
+|---------------------------------------------------------|--------------------------------------|
+| imports `SparkExpectations` / `WrappedDataFrameWriter`  | a `pytest -m integration` test invokes `with_expectations(...)` against a real Spark session and the test passes |
+| writes via `se_runner.run_dq(...)`                      | `bronze_se_stats` (or the LLD-named stats table) has ≥1 row whose `meta_dq_run_id` matches the run's `--ds` after `make dev-up && make smoke-se` |
+| any SE rule type (row_dq / agg_dq / query_dq)           | a stats / error / detailed table is queryable post-run; reconciliation_bronze fails-closed when the stats table is empty for the current `--ds` |
+
+`STORIES-SE-COVERAGE-001` (CRITICAL) enforces this: when build stories
+reference `SparkExpectations`, `WrappedDataFrameWriter`, `with_expectations`,
+or `se_runner.run_dq`, the runtime-bootstrap story must contain ≥1 AC
+that mentions `with_expectations`, `bronze_se_stats` (or the configured
+SE stats table), `dq_pass_rate`, or `<table>_error`. Importing alone is
+insufficient.
+
+`STORIES-INTEGRATION-SE-001` (CRITICAL) further requires that every
+medallion-layer integration-test story which triggers a Bronze/Silver/Gold
+DAG against UC OSS local must include ≥1 AC asserting **SE produced
+runtime artifacts** for the run — stats table populated, `<table>_error`
+created (or absent for clean runs), or `dq_pass_rate` reported in the
+run's Marquez/Grafana dashboard. The DAG triggering alone is not enough;
+SE-ran is the gate.
+
+DQ is **not opt-out** in chapter-5. `BRONZE_SKIP_SE=1` and similar
+bypasses are explicitly forbidden. The bootstrap story's `## How to
+Test (User)` block must include both a spark-submit smoke step and an
+SE end-to-end smoke step so the human reviewer sees DQ actually fired
+before approving Done.
+
 Validator rule `STORIES-BOOTSTRAP-COVERAGE-001` enforces this: if any `build`
 story references `SparkSubmitOperator`, `spark-submit`, `pyspark`, or
 `--master`, the runtime-bootstrap story(ies) collectively must contain ≥1 AC

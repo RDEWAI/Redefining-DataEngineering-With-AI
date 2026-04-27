@@ -907,6 +907,359 @@ def check_backlog_has_bootstrap(
     return results
 
 
+# --- Backlog-level: SE end-to-end coverage (SE-COVERAGE-001) ---
+#
+# Spokane case (2026-04-26): every unit test passed (against mocked SE)
+# but `with_expectations(...)` was never invoked end-to-end against real
+# Spark. SE was "wired and importable" but not "ran". DQ silently did
+# nothing. Mirror BOOTSTRAP-COVERAGE-001 (executor reachability) for SE.
+
+# Triggers an SE-coverage requirement when seen in a non-bootstrap story.
+# We only trigger on positive SE usage (the build story actually wires
+# se_runner / SparkExpectations into a runner) — `grep_absent: ...se...`
+# is the fail-closed AC and does NOT trigger.
+_SE_USAGE_TRIGGER_PATTERN = re.compile(
+    r"(SparkExpectations\b|WrappedDataFrameWriter|with_expectations|"
+    r"\bse_runner\b|run_dq\b|spark[-_]expectations)",
+    re.IGNORECASE,
+)
+# Discharges the requirement when seen in a runtime-bootstrap story's ACs.
+# "imports cleanly" alone is INSUFFICIENT — must mention end-to-end run
+# / stats table / with_expectations / dq_pass_rate.
+_SE_BOOTSTRAP_COVERAGE_PATTERN = re.compile(
+    r"(with_expectations|bronze_se_stats|silver_se_stats|gold_se_stats|"
+    r"\b\w+_se_stats\b|dq_pass_rate|\bse\s+end[-\s]to[-\s]end\b|"
+    r"runs\s+end[-\s]to[-\s]end|<table>_error|"
+    r"_error\s+(?:table|delta\s+table))",
+    re.IGNORECASE,
+)
+# Discharges the integration-test SE requirement (any SE runtime
+# evidence: stats table query, error table presence, dq_pass_rate gauge).
+_SE_INTEGRATION_EVIDENCE_PATTERN = re.compile(
+    r"(\b\w+_se_stats\b|<table>_error|dq_pass_rate|"
+    r"meta_dq_run_id|test_se_stats_populated|"
+    r"test_dq_pass_rate)",
+    re.IGNORECASE,
+)
+
+
+def check_se_coverage(
+    story_type_by_id: dict[str, str],
+    story_file_by_id: dict[str, Path],
+    directory: Path,
+) -> list[ValidationResult]:
+    """SE-COVERAGE-001 (CRITICAL): bootstrap must verify SE runs end-to-end.
+
+    Importing SparkExpectations is insufficient — the bootstrap story
+    must contain ≥1 AC that mentions `with_expectations`, the SE stats
+    table, `dq_pass_rate`, or an SE error table. Spokane's first run
+    showed every unit test passing while `with_expectations` was never
+    invoked against real data.
+    """
+    results: list[ValidationResult] = []
+
+    se_using_story_ids: list[str] = []
+    for sid, sfile in story_file_by_id.items():
+        if story_type_by_id.get(sid) == "runtime-bootstrap":
+            continue
+        try:
+            content = sfile.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if _SE_USAGE_TRIGGER_PATTERN.search(content):
+            se_using_story_ids.append(sid)
+
+    if not se_using_story_ids:
+        return results
+
+    bootstrap_story_ids = [
+        sid for sid, stype in story_type_by_id.items() if stype == "runtime-bootstrap"
+    ]
+    if not bootstrap_story_ids:
+        # BOOTSTRAP-001 already fires for this case — don't double-report here.
+        return results
+
+    covered = False
+    for sid in bootstrap_story_ids:
+        sfile = story_file_by_id.get(sid)
+        if not sfile:
+            continue
+        try:
+            content = sfile.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        ac_body = _get_section_content(content, "Acceptance Criteria")
+        if ac_body and _SE_BOOTSTRAP_COVERAGE_PATTERN.search(ac_body):
+            covered = True
+            break
+
+    if covered:
+        return results
+
+    sample = ", ".join(sorted(se_using_story_ids)[:3])
+    if len(se_using_story_ids) > 3:
+        sample += f", … ({len(se_using_story_ids)} total)"
+    results.append(
+        ValidationResult(
+            level=ValidationLevel.CRITICAL,
+            section=directory.name,
+            message=(
+                f"Build stories ({sample}) wire Spark Expectations "
+                "(SparkExpectations / WrappedDataFrameWriter / with_expectations / "
+                "se_runner.run_dq) but no runtime-bootstrap story has an AC "
+                "verifying SE actually runs end-to-end. Importing the package "
+                "alone is insufficient — spokane shipped a 'DQ-wired' pipeline "
+                "where with_expectations was never invoked against real data."
+            ),
+            suggestion=(
+                "Add an AC to the runtime-bootstrap story that exercises SE "
+                "end-to-end. Examples:\n"
+                "  • `pytest -m integration tests/bootstrap/test_se_smoke.py::"
+                "test_with_expectations_runs_end_to_end` invokes "
+                "`WrappedDataFrameWriter(...).with_expectations(...)` against "
+                "a real Spark session\n"
+                "  • The test asserts `bronze_se_stats` has ≥1 row whose "
+                "`meta_dq_run_id` matches the run\n"
+                "DQ is mandatory in chapter-5 — `BRONZE_SKIP_SE=1` and "
+                "similar bypasses are explicitly forbidden."
+            ),
+        )
+    )
+    return results
+
+
+def check_integration_se_evidence(
+    epic_dir: Path,
+    story_type_by_id: dict[str, str],
+    story_file_by_id: dict[str, Path],
+) -> list[ValidationResult]:
+    """STORIES-INTEGRATION-SE-001 (CRITICAL): integration-test stories that
+    trigger a layer DAG MUST assert SE runtime artifacts (stats/error table,
+    dq_pass_rate). The DAG firing alone is insufficient — DQ ran is the gate.
+
+    Operates per-epic; only fires on layer epics whose integration-test
+    stories already match CLOSURE-003 (mention Airflow DAG + UC). Without
+    SE runtime evidence the run can land Bronze tables in UC while DQ
+    silently did nothing — exactly the spokane regression.
+    """
+    results: list[ValidationResult] = []
+    epic_file = find_epic_file(epic_dir)
+    if not epic_file:
+        return results
+    if not is_layer_epic(epic_file):
+        return results
+
+    story_files = find_story_files(epic_dir)
+    for sf in story_files:
+        sid = _extract_story_id(sf)
+        if not sid:
+            continue
+        if story_type_by_id.get(sid) != "integration-test":
+            continue
+        try:
+            content = sf.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        ac_body = _get_section_content(content, "Acceptance Criteria")
+        verif_body = _get_section_content(content, "Verification")
+        # The story must mention SE runtime evidence somewhere in AC or
+        # Verification — checking both gives the author flexibility (a
+        # `pytest:` verifier hitting `test_se_stats_populated` discharges
+        # the rule even if the AC text is brief).
+        combined = (ac_body or "") + "\n" + (verif_body or "")
+        if _SE_INTEGRATION_EVIDENCE_PATTERN.search(combined):
+            continue
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section=f"{epic_dir.name}/{sf.name}",
+                message=(
+                    "Integration-test story triggers a layer DAG but has no AC "
+                    "asserting SE runtime artifacts. DQ silently doing nothing "
+                    "is exactly the spokane gap — DAG ran ≠ SE ran."
+                ),
+                suggestion=(
+                    "Add an AC asserting at least one of: (a) `bronze_se_stats` "
+                    "(or the configured layer SE stats table) has ≥1 row whose "
+                    "`meta_dq_run_id` matches the DAG run, (b) "
+                    "`<table>_error` Delta tables created (or empty for clean "
+                    "runs), (c) `dq_pass_rate` reported in Marquez run facets / "
+                    "Grafana dashboard. Pair the AC with a `pytest:` verifier "
+                    "such as `test_se_stats_populated` or `test_dq_pass_rate`."
+                ),
+            )
+        )
+    return results
+
+
+# --- Backlog-level: cross-story AC contradiction (AC-CONTRADICTION-001) ---
+#
+# Spokane case (2026-04-26): STORY-02-001 AC4 used `grep` for
+# "WARNING: se_runner not available" while STORY-02-004 AC4 used
+# `grep_absent` for the same string in the same file, both citing
+# LLD §8.6. They cannot both be true. The user had to hand-edit one
+# story to mark its AC superseded — exactly the gap this rule guards.
+#
+# A Depends-On edge from the fail-closed story to the bootstrap story
+# discharges the rule (the bootstrap AC ships first, then the
+# fail-closed AC supersedes it).
+
+# Match a `[LLD §X.Y]` / `[HLD §X]` / `[DRD §X.Y]` etc. citation in AC text.
+_ARTIFACT_SECTION_REF = re.compile(
+    r"\[(?:LLD|HLD|DMS|DQS|STM|DRD)\s*§\s*(\d+(?:\.\d+)*)\]",
+    re.IGNORECASE,
+)
+
+
+def _extract_lld_sections_cited(story_file: Path) -> set[str]:
+    """Return the set of LLD §X.Y sections cited in the story's ## Acceptance Criteria."""
+    try:
+        content = story_file.read_text(encoding="utf-8")
+    except OSError:
+        return set()
+    ac_body = _get_section_content(content, "Acceptance Criteria")
+    if not ac_body:
+        return set()
+    return {m.group(1) for m in _ARTIFACT_SECTION_REF.finditer(ac_body)}
+
+
+def _extract_grep_verifiers(
+    story_file: Path,
+) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    """Return (grep_pairs, grep_absent_pairs) where each pair is (file, pattern).
+
+    Reads the story's ``## Verification`` YAML. Skips silently on parse
+    errors (the existing `check_verification_block` rule reports those).
+    """
+    import yaml
+
+    try:
+        content = story_file.read_text(encoding="utf-8")
+    except OSError:
+        return [], []
+    block = _get_section_content(content, "Verification")
+    if not block:
+        return [], []
+    fence = re.search(r"```ya?ml\s*\n(.*?)\n```", block, re.DOTALL)
+    payload = fence.group(1) if fence else block
+    try:
+        data = yaml.safe_load(payload)
+    except yaml.YAMLError:
+        return [], []
+    if not isinstance(data, dict):
+        return [], []
+
+    grep_pairs: list[tuple[str, str]] = []
+    grep_absent_pairs: list[tuple[str, str]] = []
+    for specs in data.values():
+        items = specs if isinstance(specs, list) else [specs]
+        for spec in items:
+            if not isinstance(spec, dict) or len(spec) != 1:
+                continue
+            kind = next(iter(spec.keys()))
+            value = spec[kind]
+            kind_norm = str(kind).strip().lower()
+            if kind_norm not in ("grep", "grep_absent"):
+                continue
+            file_arg = pattern_arg = ""
+            if isinstance(value, dict):
+                file_arg = str(value.get("file", "")).strip()
+                pattern_arg = str(value.get("pattern", "")).strip()
+            if not file_arg or not pattern_arg:
+                continue
+            target = (file_arg, pattern_arg)
+            if kind_norm == "grep":
+                grep_pairs.append(target)
+            else:
+                grep_absent_pairs.append(target)
+    return grep_pairs, grep_absent_pairs
+
+
+def check_ac_contradictions(
+    story_type_by_id: dict[str, str],
+    story_file_by_id: dict[str, Path],
+    directory: Path,
+) -> list[ValidationResult]:
+    """STORIES-AC-CONTRADICTION-001 (CRITICAL): two stories assert opposite
+    things about the same file/pattern, both cite the same LLD §, no
+    Depends-On link orders them.
+
+    Once the create-stories SKILL adds the auto-Depends-On for phased
+    contracts (Step 2.5), this rule becomes a no-op for correctly-generated
+    backlogs and a regression guard for hand-edited ones.
+    """
+    results: list[ValidationResult] = []
+
+    # Cache per-story artifacts so we don't reread N times.
+    sections_by_id: dict[str, set[str]] = {}
+    greps_by_id: dict[str, list[tuple[str, str]]] = {}
+    absents_by_id: dict[str, list[tuple[str, str]]] = {}
+    deps_by_id: dict[str, set[str]] = {}
+    for sid, sfile in story_file_by_id.items():
+        sections_by_id[sid] = _extract_lld_sections_cited(sfile)
+        g, a = _extract_grep_verifiers(sfile)
+        greps_by_id[sid] = g
+        absents_by_id[sid] = a
+        deps_by_id[sid] = set(_parse_dependency_story_ids(sfile))
+
+    seen_pairs: set[tuple[str, str, str, str]] = set()
+    sorted_ids = sorted(story_file_by_id.keys())
+    for a_id in sorted_ids:
+        a_greps = greps_by_id.get(a_id, [])
+        a_sections = sections_by_id.get(a_id, set())
+        if not a_greps or not a_sections:
+            continue
+        for b_id in sorted_ids:
+            if a_id == b_id:
+                continue
+            b_absents = absents_by_id.get(b_id, [])
+            b_sections = sections_by_id.get(b_id, set())
+            if not b_absents or not b_sections:
+                continue
+            shared_sections = a_sections & b_sections
+            if not shared_sections:
+                continue
+            # Depends-On wiring discharges the rule.
+            if a_id in deps_by_id.get(b_id, set()) or b_id in deps_by_id.get(a_id, set()):
+                continue
+            for a_file, a_pattern in a_greps:
+                for b_file, b_pattern in b_absents:
+                    if a_file != b_file:
+                        continue
+                    if a_pattern.strip() != b_pattern.strip():
+                        continue
+                    key = (a_id, b_id, a_file, a_pattern)
+                    if key in seen_pairs:
+                        continue
+                    seen_pairs.add(key)
+                    sample_section = sorted(shared_sections)[0]
+                    results.append(
+                        ValidationResult(
+                            level=ValidationLevel.CRITICAL,
+                            section=directory.name,
+                            message=(
+                                f"AC contradiction: {a_id}'s `grep` and "
+                                f"{b_id}'s `grep_absent` target the same "
+                                f"file `{a_file}` and pattern `{a_pattern}`, "
+                                f"and both cite LLD §{sample_section}. "
+                                "Without a Depends-On link the two ACs cannot "
+                                "both be true."
+                            ),
+                            suggestion=(
+                                f"Add `| **Dependencies** | {a_id} |` to the "
+                                f"metadata of {b_id} (the fail-closed side) "
+                                f"so the validator sees that {b_id} ships "
+                                f"after {a_id}'s bootstrap behavior, "
+                                "superseding it. The phased-contract guard in "
+                                "create-stories Step 2.5 emits this edge "
+                                "automatically; if the backlog was hand-edited, "
+                                "add the line manually."
+                            ),
+                        )
+                    )
+    return results
+
+
 # --- Backlog-level: bootstrap covers every executor a build story invokes ---
 # (BOOTSTRAP-COVERAGE-001)
 #
@@ -1326,6 +1679,12 @@ def validate_stories_dir(directory: Path) -> ValidationReport:
         check_bootstrap_executor_coverage(story_type_by_id, story_file_by_id, directory)
     )
 
+    # Backlog-level: AC-CONTRADICTION-001 (cross-story phased-contract guard)
+    report.results.extend(check_ac_contradictions(story_type_by_id, story_file_by_id, directory))
+
+    # Backlog-level: SE-COVERAGE-001 (bootstrap verifies SE runs end-to-end)
+    report.results.extend(check_se_coverage(story_type_by_id, story_file_by_id, directory))
+
     # Check each epic
     for epic_dir in epic_dirs:
         report.results.extend(check_epic_has_file(epic_dir))
@@ -1337,6 +1696,9 @@ def validate_stories_dir(directory: Path) -> ValidationReport:
 
         report.results.extend(check_stories_exist(epic_dir))
         report.results.extend(check_layer_closure(epic_dir, story_type_by_id, story_file_by_id))
+        report.results.extend(
+            check_integration_se_evidence(epic_dir, story_type_by_id, story_file_by_id)
+        )
 
         story_files = find_story_files(epic_dir)
         for story_file in story_files:

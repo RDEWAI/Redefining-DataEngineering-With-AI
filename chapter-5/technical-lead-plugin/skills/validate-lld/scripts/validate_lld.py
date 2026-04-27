@@ -220,8 +220,7 @@ def check_design_overview(sections: dict[str, str]) -> list[ValidationResult]:
                 level=ValidationLevel.CRITICAL,
                 section="1. Design Overview",
                 message=(
-                    f"Design Overview has only {len(sentences)} sentence(s);"
-                    " at least 2 required."
+                    f"Design Overview has only {len(sentences)} sentence(s); at least 2 required."
                 ),
                 suggestion=(
                     "Expand the Design Overview to at least 3-5 sentences"
@@ -257,7 +256,7 @@ def check_dag_specification(sections: dict[str, str]) -> list[ValidationResult]:
             ValidationResult(
                 level=ValidationLevel.CRITICAL,
                 section=section_key,
-                message=("DAG Specification has fewer than 3 task rows;" " at least 3 required."),
+                message=("DAG Specification has fewer than 3 task rows; at least 3 required."),
                 suggestion=(
                     "Add rows for all pipeline tasks: ingestion, transformation,"
                     " denormalization, and DQ validation tasks."
@@ -466,8 +465,7 @@ def check_scaffold_layout(
                 level=ValidationLevel.CRITICAL,
                 section="2. Code Architecture",
                 message=(
-                    "§2.1 Project Layout is missing scaffold top-level dirs: "
-                    f"{', '.join(missing)}."
+                    f"§2.1 Project Layout is missing scaffold top-level dirs: {', '.join(missing)}."
                 ),
                 suggestion=(
                     "Include every cookiecutter top-level directory in the §2.1 tree: "
@@ -622,6 +620,25 @@ _SE_PIN_BELOW_2_10 = re.compile(
     re.IGNORECASE,
 )
 
+# Phased-contract heuristic — sections that describe a temporal lifecycle
+# (e.g. bootstrap → fail-closed) without a TEMP / PENDING marker.
+# `_BOOTSTRAP_KEYWORDS` and `_FAIL_CLOSED_KEYWORDS` are the two halves of
+# the contradiction; `_TEMP_MARKERS` are the markers that tell readers
+# "this is transitional, not permanent."
+_BOOTSTRAP_KEYWORDS = re.compile(
+    r"(soft[- ]import|bootstrap\s+mode|try/except\s+ImportError|" r"PENDING\s+IMPLEMENTATION)",
+    re.IGNORECASE,
+)
+_FAIL_CLOSED_KEYWORDS = re.compile(
+    r"(fail[- ]closed|fail\s+closed|must\s+be\s+removed|hard\s+error|" r"removed\s+from\s+\w+\.py)",
+    re.IGNORECASE,
+)
+_TEMP_MARKERS = re.compile(
+    r"(\*\*TEMP\b|TEMP\s+—|temporary|transitional|conditionally[- ]temporal|"
+    r"bootstrap\s+phase\s+only)",
+    re.IGNORECASE,
+)
+
 
 def check_local_executor_mode(sections: dict[str, str]) -> list[ValidationResult]:
     """CRITICAL: §6 must declare `local_executor_mode` in a fenced YAML block.
@@ -653,9 +670,7 @@ def check_local_executor_mode(sections: dict[str, str]) -> list[ValidationResult
             ValidationResult(
                 level=ValidationLevel.CRITICAL,
                 section=section_key,
-                message=(
-                    "§6.1 missing `local_executor_mode` declaration in a fenced " "YAML block."
-                ),
+                message=("§6.1 missing `local_executor_mode` declaration in a fenced YAML block."),
                 suggestion=(
                     "Add a `### 6.1 Compute & Local Executor Mode` subsection with "
                     "a fenced ```yaml block declaring `local_executor_mode: "
@@ -855,6 +870,71 @@ def check_se_version_floor(content: str) -> list[ValidationResult]:
                     "`dq_rules/{table}.yml` notes. The `library-imports.yaml` "
                     "overlay (`min_version: 2.10.0`) is the floor; "
                     "`refresh-libraries` flags any drift below."
+                ),
+            )
+        )
+    return results
+
+
+def check_phased_contract(sections: dict[str, str]) -> list[ValidationResult]:
+    """LLD-PHASED-CONTRACT-001 (WARNING): a section describing both a
+    bootstrap-mode behavior AND a fail-closed final state without an
+    explicit TEMP / PENDING-IMPLEMENTATION marker on the bootstrap prose
+    will produce contradictory ACs when the scrum-master decomposes it.
+
+    Added after spokane's STORY-02-001 vs STORY-02-004 collision
+    (2026-04-26). LLD §2.3 carried "Runner soft-imports `se_runner` and
+    logs `WARNING: se_runner not available`" prose that read like a
+    permanent contract, while §8.6 mandated fail-closed post-implementation.
+    The scrum-master generated two ACs with `grep` vs `grep_absent`
+    against the same warning string. This rule flags any §2 / §5
+    section repeating the contradiction so authors can either (a)
+    add an explicit TEMP marker or (b) defer the lifecycle prose to
+    §8 and stop duplicating it in §2.
+    """
+    results: list[ValidationResult] = []
+    # §8 owns the lifecycle by design — exempt it. We only flag §2 / §5
+    # because those are the section kinds the scrum-master decomposes
+    # into module-level ACs.
+    candidate_sections = (
+        "2. Code Architecture",
+        "5. Task Implementation Details",
+    )
+    for section_key in candidate_sections:
+        content = sections.get(section_key, "")
+        if not content:
+            continue
+        bootstrap_hits = list(_BOOTSTRAP_KEYWORDS.finditer(content))
+        fail_closed_hits = list(_FAIL_CLOSED_KEYWORDS.finditer(content))
+        if not bootstrap_hits or not fail_closed_hits:
+            continue
+        # Both halves present. Look for ANY TEMP marker in the section.
+        # The point of the rule is "is the lifecycle called out?"; if the
+        # author tagged bootstrap-mode as transitional anywhere in the
+        # section, the scrum-master will see it — even if it's a few
+        # paragraphs away from the first bootstrap keyword.
+        if _TEMP_MARKERS.search(content):
+            continue
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section=section_key,
+                message=(
+                    f"{section_key} mixes bootstrap-mode prose "
+                    f"({bootstrap_hits[0].group(0)!r}) with fail-closed "
+                    f"prose ({fail_closed_hits[0].group(0)!r}) without an "
+                    "explicit TEMP / bootstrap-phase-only marker. The "
+                    "scrum-master will generate contradictory ACs from "
+                    "this section."
+                ),
+                suggestion=(
+                    "Either (a) wrap the bootstrap-mode paragraph in a "
+                    "`> **TEMP — bootstrap phase only (Decision N, §8.X):**` "
+                    "callout so readers see it is transitional, or (b) "
+                    "remove the lifecycle prose from this section entirely "
+                    "and defer to §8 (which owns SE Bootstrap Mode "
+                    "Degradation). Option (b) is preferred — see the §2.3 "
+                    "fix in LLD v1.7."
                 ),
             )
         )
@@ -1112,7 +1192,7 @@ def check_deployment_environments(sections: dict[str, str]) -> list[ValidationRe
                 section=section_key,
                 message="Deployment does not mention both DEV and PROD environments.",
                 suggestion=(
-                    "Add environment-specific deployment details" " for DEV, STAGING, and PROD."
+                    "Add environment-specific deployment details for DEV, STAGING, and PROD."
                 ),
             )
         )
@@ -1264,7 +1344,7 @@ def check_rollback(sections: dict[str, str]) -> list[ValidationResult]:
                 section="9. Deployment",
                 message="Deployment section does not mention rollback procedures.",
                 suggestion=(
-                    "Add rollback strategy including detection," " revert, and notification steps."
+                    "Add rollback strategy including detection, revert, and notification steps."
                 ),
             )
         )
@@ -1320,9 +1400,7 @@ def check_dag_definition_exists(
                 level=ValidationLevel.INFO,
                 section="4. DAG Specification",
                 message="No dag-definition.yaml found alongside the LLD.",
-                suggestion=(
-                    "Run generate-dag-definition to create the DAG YAML" " from Section 4."
-                ),
+                suggestion=("Run generate-dag-definition to create the DAG YAML from Section 4."),
             )
         )
     return results
@@ -1341,7 +1419,7 @@ def check_mermaid_export_exists(
                 section="4. DAG Specification",
                 message="No dag-pipeline.mmd found alongside the LLD.",
                 suggestion=(
-                    "Run generate-dag-definition to export the Mermaid" " diagram from Section 4.3."
+                    "Run generate-dag-definition to export the Mermaid diagram from Section 4.3."
                 ),
             )
         )
@@ -1432,6 +1510,7 @@ def validate_lld(file_path: Path) -> ValidationReport:
     # Chapter-5 specific WARNING rules
     report.results.extend(check_performance_subsections(sections))
     report.results.extend(check_catalog_config(sections))
+    report.results.extend(check_phased_contract(sections))
 
     # INFO checks
     report.results.extend(check_placeholders(content))

@@ -332,6 +332,7 @@ After applying all edits, verify:
 13. DAG definition YAML matches §4 task inventory and emits `dag_file: airflow/dags/<dag_id>.py`.
 14. Implementation sequence phases align with §2 module structure and §4 task order.
 15. `outputs/lld/v*/config/{dev,stage,prod}.yaml` contain the catalog block defined in §7 and stay consistent with each other (only env-specific values differ).
+16. **§2 / §5 phased-contract hygiene** — no module section mixes bootstrap-mode prose (`soft-import`, `bootstrap mode`, `try/except ImportError`, `PENDING IMPLEMENTATION`) with fail-closed prose (`fail-closed`, `must be removed`, `hard error`) unless it carries an explicit `> **TEMP — bootstrap phase only (Decision N, §8.X):**` callout. §8 owns the lifecycle by design and is exempt. The `LLD-PHASED-CONTRACT-001` rule fires WARNING on violations — and the scrum-master will generate contradictory ACs (per spokane's STORY-02-001 vs STORY-02-004 collision, 2026-04-26). When updating a module contract that touches a transitional state, prefer deferring the lifecycle prose to §8.X via a one-liner; reach for the TEMP callout only if the inline mention is unavoidable.
 
 #### 3e. Update version tracking
 

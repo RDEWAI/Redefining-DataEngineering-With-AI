@@ -68,6 +68,7 @@ The validator checks rules across three severity levels:
 - Performance section has numeric values (MB, GB, seconds, partitions)
 - **§6 split into §6.1–§6.5 subsections** (Compute & Local Executor Mode / Joins / Shuffle & Parallelism / Caching / Partition Tuning). Naming is load-bearing — downstream Scrum Master `STORIES-BOOTSTRAP-COVERAGE-001` and per-layer `performance-optimization` stories cite the subsection numbers.
 - **§7 Configuration Schema declares the UC catalog block** — `catalog_uc_uri`, `catalog_bronze_catalog_name`, `catalog_bronze_schema`. Both underscore (`catalog_uc_uri`) and dotted (`catalog.uc_uri`) forms are accepted.
+- **`LLD-PHASED-CONTRACT-001`** — §2 / §5 sections that mix bootstrap-mode prose (`soft-import`, `bootstrap mode`, `try/except ImportError`, `PENDING IMPLEMENTATION`) with fail-closed prose (`fail-closed`, `must be removed`, `hard error`) WITHOUT an explicit TEMP / `bootstrap phase only` callout fire WARNING. Spokane's STORY-02-001 vs STORY-02-004 collision (2026-04-26) was traced to LLD §2.3 reading like a permanent contract while §8.6 / Decision 14 carried the actual lifecycle — the scrum-master generated contradictory ACs from the unmarked §2.3 prose. §8 is exempt (it's the lifecycle owner by design).
 
 ### INFO (suggestions for improvement)
 - Placeholder text remaining ([TBD], [TODO])

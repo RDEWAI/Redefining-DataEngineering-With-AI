@@ -35,6 +35,7 @@ from validate_lld import (  # noqa: E402
     check_mermaid_export_exists,
     check_metadata,
     check_performance_subsections,
+    check_phased_contract,
     check_placeholders,
     check_required_sections,
     check_se_version_floor,
@@ -476,3 +477,78 @@ class TestCheckUcDecisionLog:
             ),
         }
         assert check_uc_decision_log(sections) == []
+
+
+class TestCheckPhasedContract:
+    """LLD-PHASED-CONTRACT-001 — §2/§5 mixing bootstrap+fail-closed without TEMP marker fires WARNING."""
+
+    def test_pure_bootstrap_section_does_not_fire(self):
+        sections = {
+            "2. Code Architecture": (
+                "**`se_runner.py`** [PENDING IMPLEMENTATION]\n"
+                "Bootstrap mode: soft-import se_runner; log WARNING on missing import."
+            ),
+        }
+        assert check_phased_contract(sections) == []
+
+    def test_pure_fail_closed_section_does_not_fire(self):
+        sections = {
+            "2. Code Architecture": (
+                "**`se_runner.py`**: must fail closed if import fails. Hard error."
+            ),
+        }
+        assert check_phased_contract(sections) == []
+
+    def test_mixed_without_temp_marker_fires_warning(self):
+        sections = {
+            "2. Code Architecture": (
+                "**`se_runner.py`**\n"
+                "Bootstrap mode: soft-import se_runner; log WARNING on missing import.\n"
+                "Once shipped this fallback must be removed — fail-closed if SE missing."
+            ),
+        }
+        results = check_phased_contract(sections)
+        assert len(results) == 1
+        assert results[0].level == ValidationLevel.WARNING
+        # Message names *some* bootstrap keyword and *some* fail-closed keyword.
+        bootstrap_found = any(
+            kw in results[0].message.lower()
+            for kw in ("soft-import", "bootstrap mode", "pending implementation")
+        )
+        fail_closed_found = any(
+            kw in results[0].message.lower()
+            for kw in ("fail-closed", "fail closed", "must be removed", "hard error")
+        )
+        assert bootstrap_found and fail_closed_found, results[0].message
+
+    def test_temp_marker_close_to_bootstrap_clears_rule(self):
+        sections = {
+            "2. Code Architecture": (
+                "**`se_runner.py`**\n"
+                "> **TEMP — bootstrap phase only (Decision 14, §8.6):**\n"
+                "Bootstrap mode: soft-import se_runner. Once shipped this must be removed; fail-closed.\n"
+            ),
+        }
+        assert check_phased_contract(sections) == []
+
+    def test_section_8_exempted(self):
+        """§8 is the lifecycle owner — it's allowed to describe both phases."""
+        sections = {
+            "8. Error Handling": (
+                "Bootstrap mode: soft-import se_runner. "
+                "Post-implementation: must be removed; fail-closed."
+            ),
+        }
+        assert check_phased_contract(sections) == []
+
+    def test_section_5_also_checked(self):
+        sections = {
+            "5. Task Implementation Details": (
+                "**Bronze runner**\n"
+                "Bootstrap mode: try/except ImportError around se_runner.\n"
+                "Once se_runner is shipped, the soft-import must be removed (fail-closed)."
+            ),
+        }
+        results = check_phased_contract(sections)
+        assert len(results) == 1
+        assert results[0].section == "5. Task Implementation Details"
