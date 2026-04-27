@@ -150,18 +150,34 @@ RESOLVED_ARG=$(resolve_skill_arg "$USER_ARG")
 If `$RESOLVED_ARG` is `__AUTO__`, expand it into the first un-Done epic
 in the backlog and proceed without asking.
 
-**Loud-banner rule (anti-flake guard).** Whenever the resolver lands in
-the `__AUTO__` branch (sources 1–3 all empty), emit this banner as the
-*first line* of skill output before any other work — so the user
-immediately notices if their explicit arg was lost in transit:
+**Resolution-source banner (mandatory, every run).** As the *first
+line* of skill output, before any other work, print exactly which
+source supplied the target so the user can spot a lost arg
+immediately:
+
+```
+RESOLVED TARGET: <EPIC-NN | STORY-NN-NNN | Sprint N> (source: <SKILL_ARG | .skill-arg | conversational | __AUTO__>)
+```
+
+Whenever the source is `__AUTO__` (sources 1–3 all empty), upgrade the
+banner to a hard warning:
 
 ```
 ⚠ AUTO-MODE FALLBACK: no explicit target found in $SKILL_ARG, .skill-arg,
-  or conversational arg. Resolved to <EPIC-NN> (first un-Done epic).
-  If you intended a different target, abort with Ctrl-C and re-invoke
+  or conversational arg. Resolved to <EPIC-NN> (first un-Done epic in backlog order).
+  If you intended a different target, abort now and re-invoke
   AFTER writing the target to {workspace_root}/.skill-arg, e.g.:
       echo "EPIC-02" > {workspace_root}/.skill-arg
 ```
+
+**Mandatory confirm (cannot be skipped).** Phase 0 Step 3's
+`AskUserQuestion` gate runs **on every invocation**, including auto-mode.
+There is no "skip confirm" path. The resolution-source banner makes the
+auto-mode disagreement visible; the AskUserQuestion gate then lets the
+user redirect. Skipping the confirm to "save a turn" is a defect — the
+loop the gate prevents (silently dispatching to the wrong epic, which
+leaves no plan JSON for the intended one) is far more expensive than
+one extra prompt.
 
 **Caller contract.** The Skill-tool argument frequently fails to reach
 forked subagents. Any caller (slash command, parent agent, hook) that
@@ -169,7 +185,16 @@ invokes `/developer-plugin:implement-stories <arg>` programmatically
 MUST also `echo "<arg>" > {workspace_root}/.skill-arg` immediately
 before the Skill invocation. The skill consumes the file (deletes after
 read), so it is a one-shot. Without this, auto-mode silently picks the
-first un-Done epic — the banner above is the safety net, not a contract.
+first un-Done epic — the banner + Step 3 confirm above are the safety
+net, not a substitute for the contract.
+
+**Auto-mode marker hygiene.** `$CLAUDE_AUTO_MODE=1` is the supported
+auto-mode trigger. The legacy `{workspace_root}/.auto-mode` file is
+honoured for backward compatibility but **strongly discouraged**: it is
+too easy to leave behind across sessions. If you find a `.auto-mode`
+file with no recent edits (older than the latest `.skill-arg` write),
+treat it as stale — emit a WARNING in the banner and ask the user
+whether to delete it before continuing.
 
 #### Version lockfile (pinned upstream v{N})
 
@@ -241,11 +266,19 @@ For `Sprint N`, parse every story file under the latest
 `{stories_dir}/v*/` (from discovery) and filter by `sprint == "Sprint N"`,
 then topo-sort the same way.
 
-**Step 3 — Show the resolved list and confirm.**
+**Step 3 — Show the resolved list and confirm (mandatory).**
 
-Use `AskUserQuestion`:
+This `AskUserQuestion` gate is the last guard before plans are persisted
+and sub-skills mutate the project. It runs on **every** invocation — no
+exceptions for auto-mode, no exceptions for `$CLAUDE_AUTO_MODE=1`. The
+prompt MUST surface (a) the resolved target with its resolution source
+(matching the banner above) and (b) the ordered story list, so a lost
+conversational arg becomes visible *here*, not after EPIC-01 plans
+overwrite EPIC-02 work:
 
 ```
+RESOLVED TARGET: EPIC-02 (source: .skill-arg)
+
 About to implement 3 stories in this order:
   1. STORY-02-001 — Per-Table YAML Ingestion Configs   (create-ingestion)
   2. STORY-02-002 — Generic Ingestion Runner           (create-ingestion)
@@ -255,6 +288,7 @@ Proceed? (Yes / No / Edit order)
 ```
 
 If the user picks Edit, ask which stories to keep or reorder, then re-confirm.
+If the user picks No, exit cleanly with no plan writes and no dispatches.
 
 ### Phase 1: Pre-flight
 

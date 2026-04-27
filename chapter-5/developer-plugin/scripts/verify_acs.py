@@ -17,22 +17,23 @@ Verifier types (all paths resolve relative to chapter-5 workspace root):
     - validator:    <validate-* script path under developer-plugin>
     - manual:       <reason>           # explicit INDETERMINATE, human review
 
-Example (embedded in a story file):
+Example (embedded in a story file; ``<project>`` is the cookiecutter
+project package — discovered at runtime, not hardcoded):
 
     ## Verification
 
     ```yaml
     AC1:
-      - file_count: {glob: "patient_360/airflow/configs/*.yml", equals: 13}
+      - file_count: {glob: "<project>/airflow/configs/*.yml", equals: 13}
       - grep_count:
-          glob: "patient_360/airflow/configs/*.yml"
+          glob: "<project>/airflow/configs/*.yml"
           pattern: "empty_input_behavior:\\s*fail"
           equals: 6
     AC5:
-      - file_count: {glob: "patient_360/ddl/liquibase/changelogs/*.xml", equals: 13}
+      - file_count: {glob: "<project>/ddl/liquibase/changelogs/*.xml", equals: 13}
     AC6:
-      - file_exists: "patient_360/tests/test_contracts.py"
-      - pytest: {node: "patient_360/tests/test_contracts.py"}
+      - file_exists: "<project>/tests/test_contracts.py"
+      - pytest: {node: "<project>/tests/test_contracts.py"}
     ```
 
 Exit codes: 0 = all PASS (INDETERMINATE allowed), 1 = any FAIL, 2 = runner error.
@@ -136,6 +137,28 @@ def _coerce(spec: Any) -> tuple[str, dict | str]:
     return kind, payload
 
 
+_BRACE_RE = re.compile(r"\{([^{}]+)\}")
+
+
+def _expand_braces(pattern: str) -> list[str]:
+    """Expand ``{a,b,c}`` brace alternations bash-style.
+
+    Python's ``glob.glob`` does not natively expand braces. Stories often write
+    ``contracts/{clinical,reference,billing}_*.yml`` to match three layer
+    prefixes in one pattern; expand to three separate globs and union.
+
+    Handles nested-free single-level braces (sufficient for AC patterns).
+    """
+    m = _BRACE_RE.search(pattern)
+    if not m:
+        return [pattern]
+    prefix, suffix = pattern[: m.start()], pattern[m.end() :]
+    expanded: list[str] = []
+    for alt in m.group(1).split(","):
+        expanded.extend(_expand_braces(prefix + alt + suffix))
+    return expanded
+
+
 def _resolve_files(payload: dict, root: Path) -> list[Path]:
     if "file" in payload:
         return [root / payload["file"]]
@@ -143,7 +166,15 @@ def _resolve_files(payload: dict, root: Path) -> list[Path]:
         vals = payload["files"]
         return [root / v for v in (vals if isinstance(vals, list) else [vals])]
     if "glob" in payload:
-        return [Path(p) for p in globlib.glob(str(root / payload["glob"]), recursive=True)]
+        seen: set[str] = set()
+        out: list[Path] = []
+        for pat in _expand_braces(payload["glob"]):
+            for p in globlib.glob(str(root / pat), recursive=True):
+                if p in seen:
+                    continue
+                seen.add(p)
+                out.append(Path(p))
+        return out
     raise ValueError(f"Need one of file|files|glob in {payload!r}")
 
 

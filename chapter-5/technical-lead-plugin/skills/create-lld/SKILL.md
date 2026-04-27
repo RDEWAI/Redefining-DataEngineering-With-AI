@@ -659,6 +659,35 @@ This section MUST have subsections keyed to the scaffold's `_infra/` tree:
 - **§9.3 Docker (`_infra/docker/`)** — image definitions (e.g.,
   `_infra/docker/Dockerfile.bronze`, `_infra/docker/Dockerfile.silver`) and
   base image strategy.
+
+§9 (Deployment) MUST also include — somewhere within its subsections — a
+**Compose Services** heading with a structured table enumerating every
+service in `_infra/docker/docker-compose.yml`. Place it wherever
+logical for your §9 layout: as `### Compose Services` under §9.1 if
+you use a unified Scaffold Infrastructure Layout, or as `#### §9.3.x
+Compose Services` under §9.3 Docker if you split CI/CD/Docker into
+separate subsections. The validator finds it by heading text, not
+section number.
+
+Required column shape:
+
+```markdown
+### Compose Services
+
+| Service | Image | Role | Port(s) |
+|---------|-------|------|---------|
+| unity-catalog | unitycatalog/unitycatalog:v0.4.0 | Catalog/metastore | 8080 |
+| marquez | marquezproject/marquez:0.51.1 | OpenLineage backend | 5000 |
+| airflow | local-built | Orchestrator (LocalExecutor) | 8081 |
+| otel-collector | otel/opentelemetry-collector-contrib:0.107.0 | Telemetry pipeline | 4317/4318 |
+```
+
+Add a row for every service the project ships (e.g., grafana, prometheus,
+loki for observability stacks; sidecar-spark if the project uses an
+external Spark cluster). The `developer-plugin:validate-scaffold` Area 5
+reads this table at runtime to check that `_infra/docker/docker-compose.yml`
+contains a matching `services:` block — keep names consistent. Services
+the LLD does NOT list are not validated (over-provisioning is acceptable).
 - **§9.4 Schema Migrations (`ddl/liquibase/`)** — changelog file naming,
   apply order, rollback changelog conventions.
 

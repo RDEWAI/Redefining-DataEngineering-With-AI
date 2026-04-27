@@ -1,4 +1,5 @@
 """Regression tests for validate_ingestion.py."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -30,17 +31,20 @@ def test_check_contract_config_real_shape(tmp_path):
     (project_root / "dq_rules" / "patients.yml").write_text("rules: []")
 
     contract_path = project_root / "contracts" / "patients.yml"
-    _write_yaml(contract_path, {
-        "table": "patients",
-        "layer": "bronze",
-        "schema": "synthea",
-        "ddl_path": "ddl/liquibase/changelogs/patients.xml",
-        "dq_path": "dq_rules/patients.yml",
-        "columns": [
-            {"name": "id", "type": "VARCHAR"},
-            {"name": "ds", "type": "DATE"},
-        ],
-    })
+    _write_yaml(
+        contract_path,
+        {
+            "table": "patients",
+            "layer": "bronze",
+            "schema": "raw_source",
+            "ddl_path": "ddl/liquibase/changelogs/patients.xml",
+            "dq_path": "dq_rules/patients.yml",
+            "columns": [
+                {"name": "id", "type": "VARCHAR"},
+                {"name": "ds", "type": "DATE"},
+            ],
+        },
+    )
 
     findings = module.Findings()
     module.check_contract_config(contract_path, project_root, findings)
@@ -58,12 +62,15 @@ def test_check_contract_config_legacy_nested_shape(tmp_path):
     (project_root / "dq_rules" / "x.yml").write_text("rules: []")
 
     contract_path = project_root / "contracts" / "x.yml"
-    _write_yaml(contract_path, {
-        "table": "x",
-        "ddl_path": "ddl/liquibase/changelogs/x.xml",
-        "dq_path": "dq_rules/x.yml",
-        "schema": {"columns": [{"name": "_ingested_at"}]},
-    })
+    _write_yaml(
+        contract_path,
+        {
+            "table": "x",
+            "ddl_path": "ddl/liquibase/changelogs/x.xml",
+            "dq_path": "dq_rules/x.yml",
+            "schema": {"columns": [{"name": "_ingested_at"}]},
+        },
+    )
 
     findings = module.Findings()
     module.check_contract_config(contract_path, project_root, findings)

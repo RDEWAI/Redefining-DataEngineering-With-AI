@@ -41,7 +41,7 @@ STORY_ROW_RE = re.compile(
     r"\s*(?P<points>\d+)\s*\|\s*(?P<sprint>[^|]+?)\s*\|"
     r"\s*(?P<deps>[^|]+?)\s*\|\s*$"
 )
-PATH_TOKEN_RE = re.compile(r"`([A-Za-z0-9_./{}-]+\.(?:py|yml|yaml|md|xml|toml|json))`")
+PATH_TOKEN_RE = re.compile(r"`([A-Za-z0-9_./*{}-]+\.(?:py|yml|yaml|md|xml|toml|json))`")
 VALID_STORY_STATUSES = {"To Do", "In Progress", "Done"}
 VALID_EPIC_STATUSES = {"To Do", "Updated - Pending Review", "Done"}
 
@@ -819,7 +819,7 @@ def _candidate_path_variants(path: str, project_name: str | None) -> list[str]:
     """Return path variants to try against owner globs.
 
     Stories sometimes write deliverables workspace-relative
-    (``patient_360/pyproject.toml``) and sometimes project-relative
+    (``<project>/pyproject.toml``) and sometimes project-relative
     (``pyproject.toml``). Try both so the registry only needs the
     project-relative form.
     """
@@ -860,6 +860,39 @@ def _strip_placeholder_segments(path: str) -> str:
     return re.sub(r"\{[^}/]+\}", "*", path)
 
 
+def _expand_glob_token(token: str, ws: Workspace) -> list[str]:
+    """Expand a token containing literal ``*`` against the workspace.
+
+    Tries ``workspace_root`` first (handles workspace-relative tokens like
+    ``<project>/contracts/<prefix>_*.yml``). Falls back to ``project_root``
+    (handles project-relative tokens like ``contracts/<prefix>_*.yml``) and
+    re-prefixes matches with ``project_name`` so callers always see a
+    workspace-relative path.
+
+    Returns ``[]`` if the glob matches nothing on disk -- caller decides
+    whether to keep the unexpanded token (so the verifier can mark it
+    INDETERMINATE) or drop it.
+    """
+    matches: list[str] = []
+    try:
+        for hit in sorted(ws.workspace_root.glob(token)):
+            if hit.is_file():
+                matches.append(str(hit.relative_to(ws.workspace_root)))
+    except (OSError, ValueError):
+        pass
+    if matches:
+        return matches
+    if ws.project_root and ws.project_name:
+        try:
+            for hit in sorted(ws.project_root.glob(token)):
+                if hit.is_file():
+                    rel = hit.relative_to(ws.project_root)
+                    matches.append(f"{ws.project_name}/{rel}")
+        except (OSError, ValueError):
+            pass
+    return matches
+
+
 def extract_deliverables(ws: Workspace, story_id: str) -> dict:
     """Extract deliverable paths from a story's AC and group by owning skill.
 
@@ -886,6 +919,15 @@ def extract_deliverables(ws: Workspace, story_id: str) -> dict:
     paths: list[str] = []
     for ac in story["ac_lines"]:
         for token in extract_deliverable_paths(ac["text"]):
+            if "*" in token:
+                expanded = _expand_glob_token(token, ws)
+                if expanded:
+                    for p in expanded:
+                        if p in seen:
+                            continue
+                        seen.add(p)
+                        paths.append(p)
+                    continue
             normalised = _strip_placeholder_segments(token)
             if normalised in seen:
                 continue

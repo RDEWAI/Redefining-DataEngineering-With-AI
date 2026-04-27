@@ -94,7 +94,7 @@ the data domain:
 | `src/<project_name>/{bronze,silver,gold}/__init__.py`                    | Empty package markers for the layer skills to fill             |
 | `contracts/**` (excluding `contracts/dq/**`)                             | StructType contracts, one per DMS §2 table                     |
 | `tests/conftest.py`, `tests/utils/**`, per-layer `tests/<L>/conftest.py` | Shared test fixtures; per-module utility tests                 |
-| `_infra/docker/**`, `docker-compose.yml`                                 | Local dev stack (Airflow + UC + whatever LLD §9.1 specifies)   |
+| `_infra/docker/**`, `docker-compose.yml`                                 | Local dev stack (cookiecutter baseline + LLD §9.3 Compose Services) |
 | `_infra/ci/.github/workflows/{lint,unit-test,integration-test}.yml`      | Skeleton CI workflows calling `make lint`/`make test` targets  |
 | `ddl/liquibase/master-changelog.xml`, `ddl/liquibase/changelogs/**`      | Liquibase root + one changelog per Bronze table (DMS §2 count) |
 | `tests/test_contracts.py`                                                | Closed-graph check that every contract's `ddl_path`/`dq_path` resolves |
@@ -397,7 +397,24 @@ stop with CRITICAL naming the table.
 
 **Branch E — Infra (`_infra/docker/**`, `docker-compose.yml`).**
 
-Generate per LLD §9.1. Pin image versions from `$PATTERNS_DIR/LIBRARIES.md`.
+The cookiecutter ships a baseline `_infra/docker/docker-compose.yml`
+with the standard local-dev services (UC, Marquez, Airflow, OTEL —
+project-agnostic, image versions pinned from `$PATTERNS_DIR/LIBRARIES.md`).
+Cross-check against LLD §9's **Compose Services** table (find by heading
+text, anywhere within §9 — typically under §9.1 Scaffold Infrastructure
+Layout or §9.3 Docker depending on the LLD's chosen layout):
+
+- For every service in the LLD table NOT present in the baseline compose,
+  append a service block. Pin its image version from
+  `$PATTERNS_DIR/LIBRARIES.md` (or stop with CRITICAL if LIBRARIES.md has
+  no entry for that image).
+- For every service in the baseline compose NOT listed in the LLD table,
+  leave it in place (over-provisioning is fine; validate-scaffold reports
+  it as INFO not FAIL).
+- Do NOT remove services from the baseline.
+
+If §9 lacks a `Compose Services` heading, ship the baseline as-is and
+emit a WARNING pointing the user at the create-lld §9 guidance.
 
 **Branch F — ROUTE-OUT.**
 

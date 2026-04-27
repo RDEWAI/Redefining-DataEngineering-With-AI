@@ -41,6 +41,27 @@ repos:
         pass_filenames: false
         entry: mypy chapter-2/src/
 
+  # Project-agnostic guard: developer-plugin code/tests must never hardcode
+  # the example use case (patient_360 / synthea). SKILL.md prose examples
+  # are allowed; everything else (Python, YAML, hooks) is not. Per
+  # chapter-5/CLAUDE.md "Developer plugin": the plugin reads upstream
+  # artifacts at runtime — project_name and schema are discovered, not baked in.
+  - repo: local
+    hooks:
+      - id: developer-plugin-project-agnostic
+        name: developer-plugin-project-agnostic
+        entry: |-
+          bash -c '
+            hits=$(grep -RnE "patient_360|synthea" chapter-5/developer-plugin --include="*.py" --include="*.yaml" --include="*.yml" --include="*.json" 2>/dev/null)
+            if [ -n "$hits" ]; then
+              printf "ERROR developer-plugin must stay project-agnostic. Replace with project/prefix placeholders.\n%s\n" "$hits"
+              exit 1
+            fi
+          '
+        language: system
+        pass_filenames: false
+        files: ^chapter-5/developer-plugin/
+
   # Unit tests on pre-push (runs before code is pushed to remote)
   - repo: local
     hooks:

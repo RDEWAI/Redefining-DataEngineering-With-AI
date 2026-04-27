@@ -199,6 +199,76 @@ def test_plan_save_load_roundtrip(tmp_path: Path) -> None:
     assert loaded2["plan_version"] == 2
 
 
+def test_wildcard_token_expands_against_workspace(tmp_path: Path) -> None:
+    """A `prefix_*.yml` token in an AC expands to matching files on disk."""
+    _write_owners(tmp_path)
+    # Workspace-relative contract files (matching the cookiecutter layout).
+    contracts_dir = tmp_path / "demo" / "contracts"
+    contracts_dir.mkdir(parents=True)
+    for name in ("synthea_patients.yml", "synthea_encounters.yml", "synthea_claims.yml"):
+        (contracts_dir / name).write_text("columns: []\n", encoding="utf-8")
+    (contracts_dir / "clinical_patients.yml").write_text("columns: []\n", encoding="utf-8")
+    story_dir = tmp_path / "outputs" / "stories" / "v1" / "EPIC-01-foundation"
+    story_dir.mkdir(parents=True)
+    (story_dir / "STORY-01-003-schema-contracts.md").write_text(
+        """# STORY-01-003
+
+| Field | Value |
+|-------|-------|
+| **Status** | To Do |
+| **Epic** | EPIC-01 |
+| **Sprint** | Sprint 1 |
+| **Dependencies** | None |
+
+## Acceptance Criteria
+
+- [ ] Bronze contracts under `demo/contracts/synthea_*.yml`
+- [ ] Silver contracts under `demo/contracts/clinical_*.yml`
+
+## Technical Notes
+""",
+        encoding="utf-8",
+    )
+    ws = _ws(tmp_path, project_name="demo")
+    result = sr.extract_deliverables(ws, "STORY-01-003")
+    # Wildcard expanded to 3 synthea files + 1 clinical file = 4 paths total.
+    assert len(result["paths"]) == 4
+    assert "demo/contracts/synthea_patients.yml" in result["paths"]
+    assert "demo/contracts/clinical_patients.yml" in result["paths"]
+    # All routed to scaffold (contracts/** glob).
+    assert set(result["by_skill"].keys()) == {"scaffold"}
+    assert len(result["by_skill"]["scaffold"]) == 4
+
+
+def test_wildcard_token_with_no_matches_keeps_token(tmp_path: Path) -> None:
+    """A wildcard token that matches no files on disk falls through unchanged."""
+    _write_owners(tmp_path)
+    story_dir = tmp_path / "outputs" / "stories" / "v1" / "EPIC-01-foundation"
+    story_dir.mkdir(parents=True)
+    (story_dir / "STORY-01-099-future.md").write_text(
+        """# STORY-01-099
+
+| Field | Value |
+|-------|-------|
+| **Status** | To Do |
+| **Epic** | EPIC-01 |
+| **Sprint** | Sprint 1 |
+| **Dependencies** | None |
+
+## Acceptance Criteria
+
+- [ ] Future contracts under `demo/contracts/future_*.yml`
+
+## Technical Notes
+""",
+        encoding="utf-8",
+    )
+    ws = _ws(tmp_path, project_name="demo")
+    result = sr.extract_deliverables(ws, "STORY-01-099")
+    # No matches on disk → original token kept (with `*` collapsed via _strip_placeholder_segments).
+    assert result["paths"] == ["demo/contracts/future_*.yml"]
+
+
 def test_behavioural_story_with_no_paths_falls_back_to_classifier(
     tmp_path: Path,
 ) -> None:
