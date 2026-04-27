@@ -1,0 +1,83 @@
+table: synthea_medications
+layer: bronze
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_medications.xml
+dq_path: dq_rules/synthea_medications.yml
+owner: patient_360
+description: Bronze contract for synthea_medications
+tags:
+- bronze
+columns:
+- name: START
+  type: TIMESTAMP
+  nullable: true
+  source: synthea.medications.START
+  description: Prescription start datetime
+- name: STOP
+  type: TIMESTAMP
+  nullable: true
+  source: synthea.medications.STOP
+  description: Prescription stop datetime — NULL for active prescriptions
+- name: PATIENT
+  type: VARCHAR
+  nullable: true
+  source: synthea.medications.PATIENT
+  description: FK to patients.Id
+- name: PAYER
+  type: VARCHAR
+  nullable: true
+  source: synthea.medications.PAYER
+  description: FK to payers.Id
+- name: ENCOUNTER
+  type: VARCHAR
+  nullable: true
+  source: synthea.medications.ENCOUNTER
+  description: FK to encounters.Id
+- name: CODE
+  type: BIGINT
+  nullable: true
+  source: synthea.medications.CODE
+  description: RxNorm code — BIGINT in source, cast to VARCHAR in Silver
+- name: DESCRIPTION
+  type: VARCHAR
+  nullable: true
+  source: synthea.medications.DESCRIPTION
+  description: Medication description
+- name: BASE_COST
+  type: DOUBLE
+  nullable: true
+  source: synthea.medications.BASE_COST
+  description: Base medication cost — cast to DECIMAL(12,2) in Silver
+- name: PAYER_COVERAGE
+  type: DOUBLE
+  nullable: true
+  source: synthea.medications.PAYER_COVERAGE
+  description: Payer coverage amount — cast to DECIMAL(12,2) in Silver
+- name: DISPENSES
+  type: BIGINT
+  nullable: true
+  source: synthea.medications.DISPENSES
+  description: Number of dispenses
+- name: TOTALCOST
+  type: DOUBLE
+  nullable: true
+  source: synthea.medications.TOTALCOST
+  description: Total medication cost — cast to DECIMAL(12,2) in Silver
+- name: REASONCODE
+  type: BIGINT
+  nullable: true
+  source: synthea.medications.REASONCODE
+  description: Reason SNOMED code — cast to VARCHAR in Silver
+- name: REASONDESCRIPTION
+  type: VARCHAR
+  nullable: true
+  source: synthea.medications.REASONDESCRIPTION
+  description: Reason description
+- name: _source_file
+  type: VARCHAR
+  nullable: true
+  source: system
+  description: Source file path
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'
+source_table: synthea.medications

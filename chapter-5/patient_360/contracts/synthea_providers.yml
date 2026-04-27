@@ -1,0 +1,83 @@
+table: synthea_providers
+layer: bronze
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_providers.xml
+dq_path: dq_rules/synthea_providers.yml
+owner: patient_360
+description: Bronze contract for synthea_providers
+tags:
+- bronze
+columns:
+- name: Id
+  type: VARCHAR
+  nullable: true
+  source: synthea.providers.Id
+  description: Provider UUID — natural key
+- name: ORGANIZATION
+  type: VARCHAR
+  nullable: true
+  source: synthea.providers.ORGANIZATION
+  description: FK to organizations.Id
+- name: NAME
+  type: VARCHAR
+  nullable: true
+  source: synthea.providers.NAME
+  description: Provider full name
+- name: GENDER
+  type: VARCHAR
+  nullable: true
+  source: synthea.providers.GENDER
+  description: Provider gender
+- name: SPECIALITY
+  type: VARCHAR
+  nullable: true
+  source: synthea.providers.SPECIALITY
+  description: 'Medical specialty (note: source column is SPECIALITY not SPECIALTY)'
+- name: ADDRESS
+  type: VARCHAR
+  nullable: true
+  source: synthea.providers.ADDRESS
+  description: Street address
+- name: CITY
+  type: VARCHAR
+  nullable: true
+  source: synthea.providers.CITY
+  description: City
+- name: STATE
+  type: VARCHAR
+  nullable: true
+  source: synthea.providers.STATE
+  description: State abbreviation
+- name: ZIP
+  type: VARCHAR
+  nullable: true
+  source: synthea.providers.ZIP
+  description: ZIP code
+- name: LAT
+  type: DOUBLE
+  nullable: true
+  source: synthea.providers.LAT
+  description: Latitude — cast to DECIMAL(9,6) in Silver
+- name: LON
+  type: DOUBLE
+  nullable: true
+  source: synthea.providers.LON
+  description: Longitude — cast to DECIMAL(9,6) in Silver
+- name: ENCOUNTERS
+  type: BIGINT
+  nullable: true
+  source: synthea.providers.ENCOUNTERS
+  description: Total encounter count
+- name: PROCEDURES
+  type: BIGINT
+  nullable: true
+  source: synthea.providers.PROCEDURES
+  description: Total procedure count
+- name: _source_file
+  type: VARCHAR
+  nullable: true
+  source: system
+  description: Source file path
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'
+source_table: synthea.providers

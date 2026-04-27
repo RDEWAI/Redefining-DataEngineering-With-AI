@@ -1,0 +1,106 @@
+{
+  "story_id": "STORY-01-005",
+  "story_file": "/Users/asingamaneni/conductor/workspaces/Redefining-DataEngineering-With-AI/spokane/chapter-5/outputs/stories/v1/EPIC-01-foundation-bootstrap/STORY-01-005-docker-stack.md",
+  "epic_id": "EPIC-01",
+  "plan_version": 1,
+  "status": "planned",
+  "generated_at": "2026-04-27T06:39:38.736347+00:00",
+  "summary": "1 task(s) across ['scaffold'] \u2014 4 AC(s).",
+  "classifier": {
+    "kind": "scaffold",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-01-005",
+    "paths": [
+      "patient_360/_infra/docker/docker-compose.yml"
+    ],
+    "by_skill": {
+      "scaffold": [
+        "patient_360/_infra/docker/docker-compose.yml"
+      ]
+    },
+    "dispatch_order": [
+      "scaffold"
+    ],
+    "unmatched": [],
+    "fallback_kind": null
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "create-scaffold",
+      "kind": "scaffold",
+      "mode": "create",
+      "paths": [
+        "patient_360/_infra/docker/docker-compose.yml"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "started_at": null,
+      "finished_at": null,
+      "artifacts": [],
+      "files_created": 0,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-scaffold",
+      "validator_status": "pending",
+      "notes": ""
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "`patient_360/_infra/docker/docker-compose.yml` exists with `uc-oss`, `marquez`, `grafana`, `prometheus`, `loki`, `airflow` services [LLD \u00a79.1]",
+      "line": 23,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "`docker compose -f patient_360/_infra/docker/docker-compose.yml up -d` succeeds [LLD \u00a71]",
+      "line": 24,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "`curl http://localhost:8080/api/2.1/unity-catalog/catalogs` returns 200 [LLD \u00a79.5]",
+      "line": 25,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 4,
+      "text": "`curl http://localhost:5001` (Marquez) returns 200 [LLD \u00a79.5]",
+      "line": 26,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

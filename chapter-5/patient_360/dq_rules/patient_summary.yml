@@ -1,0 +1,3 @@
+# DQ rules for patient_summary — populated by /dq-engineer-plugin:generate-se-rules
+row_dq_rules: []
+agg_dq_rules: []

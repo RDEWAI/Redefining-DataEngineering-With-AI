@@ -1,0 +1,160 @@
+table: synthea_patients
+layer: bronze
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_patients.xml
+dq_path: dq_rules/synthea_patients.yml
+owner: patient_360
+description: Bronze contract for synthea_patients
+tags:
+- bronze
+columns:
+- name: Id
+  type: VARCHAR
+  nullable: false
+  source: synthea.patients.Id
+  description: Patient UUID — natural key
+- name: BIRTHDATE
+  type: DATE
+  nullable: true
+  source: synthea.patients.BIRTHDATE
+  description: Date of birth
+- name: DEATHDATE
+  type: DATE
+  nullable: true
+  source: synthea.patients.DEATHDATE
+  description: Date of death — NULL for living patients
+- name: SSN
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.SSN
+  description: Social Security Number — PHI, dropped at Silver boundary
+- name: DRIVERS
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.DRIVERS
+  description: Driver license number — PII, dropped at Silver boundary
+- name: PASSPORT
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.PASSPORT
+  description: Passport number — PII, dropped at Silver boundary
+- name: PREFIX
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.PREFIX
+  description: Name prefix (Mr., Ms., Dr.)
+- name: FIRST
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.FIRST
+  description: First name — PHI
+- name: MIDDLE
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.MIDDLE
+  description: Middle name — PHI
+- name: LAST
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.LAST
+  description: Last name — PHI
+- name: SUFFIX
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.SUFFIX
+  description: Name suffix (Jr., III)
+- name: MAIDEN
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.MAIDEN
+  description: Maiden name — PHI
+- name: MARITAL
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.MARITAL
+  description: Marital status code (M, S, W, D)
+- name: RACE
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.RACE
+  description: Race
+- name: ETHNICITY
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.ETHNICITY
+  description: Ethnicity
+- name: GENDER
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.GENDER
+  description: Gender code (M, F)
+- name: BIRTHPLACE
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.BIRTHPLACE
+  description: Birth place
+- name: ADDRESS
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.ADDRESS
+  description: Street address — PHI
+- name: CITY
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.CITY
+  description: City
+- name: STATE
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.STATE
+  description: State abbreviation
+- name: COUNTY
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.COUNTY
+  description: County name
+- name: FIPS
+  type: BIGINT
+  nullable: true
+  source: synthea.patients.FIPS
+  description: FIPS geographic code
+- name: ZIP
+  type: VARCHAR
+  nullable: true
+  source: synthea.patients.ZIP
+  description: ZIP code
+- name: LAT
+  type: DOUBLE
+  nullable: true
+  source: synthea.patients.LAT
+  description: Latitude — DOUBLE in source, cast to DECIMAL(9,6) in Silver
+- name: LON
+  type: DOUBLE
+  nullable: true
+  source: synthea.patients.LON
+  description: Longitude — DOUBLE in source, cast to DECIMAL(9,6) in Silver
+- name: HEALTHCARE_EXPENSES
+  type: DOUBLE
+  nullable: true
+  source: synthea.patients.HEALTHCARE_EXPENSES
+  description: Total healthcare expenses — DOUBLE in source, cast to DECIMAL(12,2)
+    in Silver
+- name: HEALTHCARE_COVERAGE
+  type: DOUBLE
+  nullable: true
+  source: synthea.patients.HEALTHCARE_COVERAGE
+  description: Total healthcare coverage — DOUBLE in source, cast to DECIMAL(12,2)
+    in Silver
+- name: INCOME
+  type: BIGINT
+  nullable: true
+  source: synthea.patients.INCOME
+  description: Annual income
+- name: _source_file
+  type: VARCHAR
+  nullable: true
+  source: system
+  description: Source file path (CSV ingestion)
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'
+source_table: synthea.patients

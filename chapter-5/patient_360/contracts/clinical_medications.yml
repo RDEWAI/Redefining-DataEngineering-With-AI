@@ -1,0 +1,107 @@
+table: clinical_medications
+layer: silver
+schema: clinical
+ddl_path: ddl/liquibase/changelogs/clinical_medications.xml
+dq_path: dq_rules/clinical_medications.yml
+owner: patient_360
+description: Silver contract for clinical_medications
+tags:
+- silver
+columns:
+- name: patient_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_medications.PATIENT
+  description: FK to clinical_patients.patient_id
+- name: encounter_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_medications.ENCOUNTER
+  description: FK to clinical_encounters.encounter_id
+- name: payer_id
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_medications.PAYER
+  description: FK to reference_payers.payer_id
+- name: start_date
+  type: TIMESTAMP
+  nullable: false
+  source: bronze.synthea_medications.START
+  description: Prescription start datetime
+- name: stop_date
+  type: TIMESTAMP
+  nullable: true
+  source: bronze.synthea_medications.STOP
+  description: "Prescription stop datetime \u2014 NULL for active prescriptions"
+- name: rxnorm_code
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_medications.CODE
+  description: "RxNorm medication code \u2014 cast from BIGINT"
+- name: medication_description
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_medications.DESCRIPTION
+  description: Medication name and dosage
+- name: base_cost
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_medications.BASE_COST
+  business_rule: "COALESCE(BASE_COST, 0) [DRD \xA75.1]"
+  description: Base medication cost
+- name: payer_coverage
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_medications.PAYER_COVERAGE
+  business_rule: "COALESCE(PAYER_COVERAGE, 0) [DRD \xA75.1]"
+  description: Payer coverage amount
+- name: dispenses
+  type: INTEGER
+  nullable: true
+  source: bronze.synthea_medications.DISPENSES
+  description: Number of dispenses
+- name: total_cost
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_medications.TOTALCOST
+  business_rule: "COALESCE(TOTALCOST, 0) [DRD \xA75.1]"
+  description: Total medication cost
+- name: reason_code
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_medications.REASONCODE
+  description: "Reason SNOMED code \u2014 cast from BIGINT"
+- name: reason_description
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_medications.REASONDESCRIPTION
+  description: Prescription reason
+- name: medication_status
+  type: VARCHAR(15)
+  nullable: false
+  source: derived
+  business_rule: "Active if stop_date IS NULL OR stop_date > CURRENT_DATE, else Discontinued\
+    \ [DRD \xA75.2]"
+  description: Medication status (Active / Discontinued)
+- name: ds
+  type: DATE
+  nullable: false
+  source: system
+  description: Ingestion partition date
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  source: system
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: VARCHAR
+  nullable: false
+  source: system
+  description: Pipeline run identifier
+- name: _record_hash
+  type: VARCHAR(64)
+  nullable: false
+  source: system
+  description: SHA-256 hash of business columns
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'

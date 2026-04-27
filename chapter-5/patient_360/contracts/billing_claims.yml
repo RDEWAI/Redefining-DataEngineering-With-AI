@@ -1,0 +1,122 @@
+table: billing_claims
+layer: silver
+schema: billing
+ddl_path: ddl/liquibase/changelogs/billing_claims.xml
+dq_path: dq_rules/billing_claims.yml
+owner: patient_360
+description: Silver contract for billing_claims
+tags:
+- silver
+columns:
+- name: claim_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_claims.Id
+  description: "Claim UUID \u2014 natural key"
+- name: patient_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_claims.PATIENTID
+  description: FK to clinical_patients.patient_id
+- name: provider_id
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_claims.PROVIDERID
+  description: FK to reference_providers.provider_id
+- name: primary_insurance_id
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_claims.PRIMARYPATIENTINSURANCEID
+  description: Primary patient insurance ID (payer transition reference)
+- name: secondary_insurance_id
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_claims.SECONDARYPATIENTINSURANCEID
+  description: Secondary patient insurance ID
+- name: diagnosis_code_1
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_claims.DIAGNOSIS1
+  description: "Primary diagnosis code \u2014 cast from BIGINT"
+- name: diagnosis_code_2
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_claims.DIAGNOSIS2
+  description: "Secondary diagnosis code \u2014 cast from BIGINT"
+- name: diagnosis_code_3
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_claims.DIAGNOSIS3
+  description: "Tertiary diagnosis code \u2014 cast from BIGINT"
+- name: referring_provider_id
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_claims.REFERRINGPROVIDERID
+  description: Referring provider FK
+- name: supervising_provider_id
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_claims.SUPERVISINGPROVIDERID
+  description: Supervising provider FK
+- name: service_date
+  type: TIMESTAMP
+  nullable: true
+  source: bronze.synthea_claims.SERVICEDATE
+  description: Service date
+- name: current_illness_date
+  type: TIMESTAMP
+  nullable: true
+  source: bronze.synthea_claims.CURRENTILLNESSDATE
+  description: Current illness date
+- name: status_primary
+  type: VARCHAR(50)
+  nullable: true
+  source: bronze.synthea_claims.STATUS1
+  description: Primary claim status
+- name: status_secondary
+  type: VARCHAR(50)
+  nullable: true
+  source: bronze.synthea_claims.STATUS2
+  description: Secondary claim status
+- name: status_patient
+  type: VARCHAR(50)
+  nullable: true
+  source: bronze.synthea_claims.STATUSP
+  description: Patient claim status
+- name: outstanding_primary
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_claims.OUTSTANDING1
+  description: "Primary outstanding amount \u2014 cast from DOUBLE"
+- name: outstanding_secondary
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_claims.OUTSTANDING2
+  description: "Secondary outstanding amount \u2014 cast from DOUBLE"
+- name: outstanding_patient
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_claims.OUTSTANDINGP
+  description: "Patient outstanding amount \u2014 cast from DOUBLE"
+- name: ds
+  type: DATE
+  nullable: false
+  source: system
+  description: Ingestion partition date
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  source: system
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: VARCHAR
+  nullable: false
+  source: system
+  description: Pipeline run identifier
+- name: _record_hash
+  type: VARCHAR(64)
+  nullable: false
+  source: system
+  description: SHA-256 hash of business columns
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'

@@ -1,0 +1,128 @@
+table: synthea_payers
+layer: bronze
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_payers.xml
+dq_path: dq_rules/synthea_payers.yml
+owner: patient_360
+description: Bronze contract for synthea_payers
+tags:
+- bronze
+columns:
+- name: Id
+  type: VARCHAR
+  nullable: true
+  source: synthea.payers.Id
+  description: Payer UUID — natural key
+- name: NAME
+  type: VARCHAR
+  nullable: true
+  source: synthea.payers.NAME
+  description: Payer name
+- name: OWNERSHIP
+  type: VARCHAR
+  nullable: true
+  source: synthea.payers.OWNERSHIP
+  description: Ownership type (Government, Private)
+- name: ADDRESS
+  type: VARCHAR
+  nullable: true
+  source: synthea.payers.ADDRESS
+  description: Street address
+- name: CITY
+  type: VARCHAR
+  nullable: true
+  source: synthea.payers.CITY
+  description: City
+- name: STATE_HEADQUARTERED
+  type: VARCHAR
+  nullable: true
+  source: synthea.payers.STATE_HEADQUARTERED
+  description: State where headquartered
+- name: ZIP
+  type: VARCHAR
+  nullable: true
+  source: synthea.payers.ZIP
+  description: ZIP code
+- name: PHONE
+  type: VARCHAR
+  nullable: true
+  source: synthea.payers.PHONE
+  description: Phone number
+- name: AMOUNT_COVERED
+  type: DOUBLE
+  nullable: true
+  source: synthea.payers.AMOUNT_COVERED
+  description: Total amount covered — cast to DECIMAL(12,2) in Silver
+- name: AMOUNT_UNCOVERED
+  type: DOUBLE
+  nullable: true
+  source: synthea.payers.AMOUNT_UNCOVERED
+  description: Total amount uncovered — cast to DECIMAL(12,2) in Silver
+- name: REVENUE
+  type: DOUBLE
+  nullable: true
+  source: synthea.payers.REVENUE
+  description: Total revenue — cast to DECIMAL(12,2) in Silver
+- name: COVERED_ENCOUNTERS
+  type: BIGINT
+  nullable: true
+  source: synthea.payers.COVERED_ENCOUNTERS
+  description: Count of covered encounters
+- name: UNCOVERED_ENCOUNTERS
+  type: BIGINT
+  nullable: true
+  source: synthea.payers.UNCOVERED_ENCOUNTERS
+  description: Count of uncovered encounters
+- name: COVERED_MEDICATIONS
+  type: BIGINT
+  nullable: true
+  source: synthea.payers.COVERED_MEDICATIONS
+  description: Count of covered medications
+- name: UNCOVERED_MEDICATIONS
+  type: BIGINT
+  nullable: true
+  source: synthea.payers.UNCOVERED_MEDICATIONS
+  description: Count of uncovered medications
+- name: COVERED_PROCEDURES
+  type: BIGINT
+  nullable: true
+  source: synthea.payers.COVERED_PROCEDURES
+  description: Count of covered procedures
+- name: UNCOVERED_PROCEDURES
+  type: BIGINT
+  nullable: true
+  source: synthea.payers.UNCOVERED_PROCEDURES
+  description: Count of uncovered procedures
+- name: COVERED_IMMUNIZATIONS
+  type: BIGINT
+  nullable: true
+  source: synthea.payers.COVERED_IMMUNIZATIONS
+  description: Count of covered immunizations
+- name: UNCOVERED_IMMUNIZATIONS
+  type: BIGINT
+  nullable: true
+  source: synthea.payers.UNCOVERED_IMMUNIZATIONS
+  description: Count of uncovered immunizations
+- name: UNIQUE_CUSTOMERS
+  type: BIGINT
+  nullable: true
+  source: synthea.payers.UNIQUE_CUSTOMERS
+  description: Unique customer count
+- name: QOLS_AVG
+  type: DOUBLE
+  nullable: true
+  source: synthea.payers.QOLS_AVG
+  description: Quality of life score average
+- name: MEMBER_MONTHS
+  type: BIGINT
+  nullable: true
+  source: synthea.payers.MEMBER_MONTHS
+  description: Total member months
+- name: _source_file
+  type: VARCHAR
+  nullable: true
+  source: system
+  description: Source file path
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'
+source_table: synthea.payers

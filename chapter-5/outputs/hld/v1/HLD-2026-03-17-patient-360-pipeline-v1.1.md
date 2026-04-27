@@ -6,7 +6,7 @@
 | **Created** | 2026-03-16 |
 | **Last Modified** | 2026-03-23 |
 | **Author** | Architect Agent |
-| **Status** | Draft |
+| **Status** | Approved |
 | **DRD Reference** | DRD-2026-02-11-patient-360.md (v1.1) |
 
 ---

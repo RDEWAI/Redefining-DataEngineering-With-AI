@@ -1,0 +1,63 @@
+table: clinical_immunizations
+layer: silver
+schema: clinical
+ddl_path: ddl/liquibase/changelogs/clinical_immunizations.xml
+dq_path: dq_rules/clinical_immunizations.yml
+owner: patient_360
+description: Silver contract for clinical_immunizations
+tags:
+- silver
+columns:
+- name: patient_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_immunizations.PATIENT
+  description: FK to clinical_patients.patient_id
+- name: encounter_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_immunizations.ENCOUNTER
+  description: FK to clinical_encounters.encounter_id
+- name: immunization_date
+  type: TIMESTAMP
+  nullable: false
+  source: bronze.synthea_immunizations.DATE
+  description: Immunization datetime
+- name: cvx_code
+  type: VARCHAR(10)
+  nullable: true
+  source: bronze.synthea_immunizations.CODE
+  description: "CVX vaccine code \u2014 already VARCHAR in source"
+- name: immunization_description
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_immunizations.DESCRIPTION
+  description: Vaccine description
+- name: base_cost
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_immunizations.BASE_COST
+  business_rule: "COALESCE(BASE_COST, 0) [DRD \xA75.1]"
+  description: Immunization base cost
+- name: ds
+  type: DATE
+  nullable: false
+  source: system
+  description: Ingestion partition date
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  source: system
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: VARCHAR
+  nullable: false
+  source: system
+  description: Pipeline run identifier
+- name: _record_hash
+  type: VARCHAR(64)
+  nullable: false
+  source: system
+  description: SHA-256 hash of business columns
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'

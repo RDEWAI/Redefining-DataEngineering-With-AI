@@ -1,0 +1,48 @@
+table: synthea_immunizations
+layer: bronze
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_immunizations.xml
+dq_path: dq_rules/synthea_immunizations.yml
+owner: patient_360
+description: Bronze contract for synthea_immunizations
+tags:
+- bronze
+columns:
+- name: DATE
+  type: TIMESTAMP
+  nullable: true
+  source: synthea.immunizations.DATE
+  description: Immunization datetime
+- name: PATIENT
+  type: VARCHAR
+  nullable: true
+  source: synthea.immunizations.PATIENT
+  description: FK to patients.Id
+- name: ENCOUNTER
+  type: VARCHAR
+  nullable: true
+  source: synthea.immunizations.ENCOUNTER
+  description: FK to encounters.Id
+- name: CODE
+  type: VARCHAR
+  nullable: true
+  source: synthea.immunizations.CODE
+  description: CVX immunization code — already VARCHAR in source
+- name: DESCRIPTION
+  type: VARCHAR
+  nullable: true
+  source: synthea.immunizations.DESCRIPTION
+  description: Vaccine description
+- name: BASE_COST
+  type: DOUBLE
+  nullable: true
+  source: synthea.immunizations.BASE_COST
+  description: Base immunization cost — cast to DECIMAL(12,2) in Silver
+- name: _source_file
+  type: VARCHAR
+  nullable: true
+  source: system
+  description: Source file path
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'
+source_table: synthea.immunizations

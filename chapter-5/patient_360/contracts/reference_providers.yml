@@ -1,0 +1,108 @@
+table: reference_providers
+layer: silver
+schema: reference
+ddl_path: ddl/liquibase/changelogs/reference_providers.xml
+dq_path: dq_rules/reference_providers.yml
+owner: patient_360
+description: Silver contract for reference_providers
+tags:
+- silver
+columns:
+- name: provider_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_providers.Id
+  description: "Provider UUID \u2014 natural key"
+- name: organization_id
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_providers.ORGANIZATION
+  description: FK to reference_organizations.organization_id
+- name: provider_name
+  type: VARCHAR(200)
+  nullable: true
+  source: bronze.synthea_providers.NAME
+  description: "Provider full name \u2014 SCD Type 2 tracked"
+- name: gender
+  type: VARCHAR(10)
+  nullable: true
+  source: bronze.synthea_providers.GENDER
+  description: Provider gender
+- name: specialty
+  type: VARCHAR(200)
+  nullable: true
+  source: bronze.synthea_providers.SPECIALITY
+  description: "Medical specialty \u2014 note source column is SPECIALITY (typo preserved\
+    \ from source) \u2014 SCD Type 2 tracked"
+- name: address
+  type: VARCHAR(200)
+  nullable: true
+  source: bronze.synthea_providers.ADDRESS
+  description: Street address
+- name: city
+  type: VARCHAR(100)
+  nullable: true
+  source: bronze.synthea_providers.CITY
+  description: City
+- name: state
+  type: VARCHAR(2)
+  nullable: true
+  source: bronze.synthea_providers.STATE
+  description: State abbreviation
+- name: zip
+  type: VARCHAR(10)
+  nullable: true
+  source: bronze.synthea_providers.ZIP
+  description: ZIP code
+- name: lat
+  type: DECIMAL(9,6)
+  nullable: true
+  source: bronze.synthea_providers.LAT
+  description: "Latitude \u2014 cast from DOUBLE"
+- name: lon
+  type: DECIMAL(9,6)
+  nullable: true
+  source: bronze.synthea_providers.LON
+  description: "Longitude \u2014 cast from DOUBLE"
+- name: encounter_count
+  type: INTEGER
+  nullable: true
+  source: bronze.synthea_providers.ENCOUNTERS
+  description: Total encounter count
+- name: procedure_count
+  type: INTEGER
+  nullable: true
+  source: bronze.synthea_providers.PROCEDURES
+  description: Total procedure count
+- name: effective_from
+  type: DATE
+  nullable: false
+  source: system
+  description: "SCD Type 2 \u2014 row version start date"
+- name: effective_to
+  type: DATE
+  nullable: false
+  source: system
+  description: "SCD Type 2 \u2014 row version end date (9999-12-31 for current)"
+- name: is_current
+  type: BOOLEAN
+  nullable: false
+  source: system
+  description: "SCD Type 2 \u2014 TRUE for active version"
+- name: _record_hash
+  type: VARCHAR(64)
+  nullable: false
+  source: system
+  description: SHA-256 hash for change detection
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  source: system
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: VARCHAR
+  nullable: false
+  source: system
+  description: Pipeline run identifier
+partition_by: none
+write_strategy: Delta MERGE INTO on provider_id (SCD Type 2)

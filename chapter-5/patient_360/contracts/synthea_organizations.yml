@@ -1,0 +1,73 @@
+table: synthea_organizations
+layer: bronze
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_organizations.xml
+dq_path: dq_rules/synthea_organizations.yml
+owner: patient_360
+description: Bronze contract for synthea_organizations
+tags:
+- bronze
+columns:
+- name: Id
+  type: VARCHAR
+  nullable: true
+  source: synthea.organizations.Id
+  description: Organization UUID — natural key
+- name: NAME
+  type: VARCHAR
+  nullable: true
+  source: synthea.organizations.NAME
+  description: Organization name
+- name: ADDRESS
+  type: VARCHAR
+  nullable: true
+  source: synthea.organizations.ADDRESS
+  description: Street address
+- name: CITY
+  type: VARCHAR
+  nullable: true
+  source: synthea.organizations.CITY
+  description: City
+- name: STATE
+  type: VARCHAR
+  nullable: true
+  source: synthea.organizations.STATE
+  description: State abbreviation
+- name: ZIP
+  type: VARCHAR
+  nullable: true
+  source: synthea.organizations.ZIP
+  description: ZIP code
+- name: LAT
+  type: DOUBLE
+  nullable: true
+  source: synthea.organizations.LAT
+  description: Latitude — cast to DECIMAL(9,6) in Silver
+- name: LON
+  type: DOUBLE
+  nullable: true
+  source: synthea.organizations.LON
+  description: Longitude — cast to DECIMAL(9,6) in Silver
+- name: PHONE
+  type: VARCHAR
+  nullable: true
+  source: synthea.organizations.PHONE
+  description: Phone number
+- name: REVENUE
+  type: DOUBLE
+  nullable: true
+  source: synthea.organizations.REVENUE
+  description: Annual revenue — cast to DECIMAL(12,2) in Silver
+- name: UTILIZATION
+  type: BIGINT
+  nullable: true
+  source: synthea.organizations.UTILIZATION
+  description: Utilization count
+- name: _source_file
+  type: VARCHAR
+  nullable: true
+  source: system
+  description: Source file path
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'
+source_table: synthea.organizations

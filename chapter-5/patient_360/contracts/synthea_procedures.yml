@@ -1,0 +1,68 @@
+table: synthea_procedures
+layer: bronze
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_procedures.xml
+dq_path: dq_rules/synthea_procedures.yml
+owner: patient_360
+description: Bronze contract for synthea_procedures
+tags:
+- bronze
+columns:
+- name: START
+  type: TIMESTAMP
+  nullable: true
+  source: synthea.procedures.START
+  description: Procedure start datetime
+- name: STOP
+  type: TIMESTAMP
+  nullable: true
+  source: synthea.procedures.STOP
+  description: Procedure stop datetime
+- name: PATIENT
+  type: VARCHAR
+  nullable: true
+  source: synthea.procedures.PATIENT
+  description: FK to patients.Id
+- name: ENCOUNTER
+  type: VARCHAR
+  nullable: true
+  source: synthea.procedures.ENCOUNTER
+  description: FK to encounters.Id
+- name: SYSTEM
+  type: VARCHAR
+  nullable: true
+  source: synthea.procedures.SYSTEM
+  description: Coding system (SNOMED-CT)
+- name: CODE
+  type: BIGINT
+  nullable: true
+  source: synthea.procedures.CODE
+  description: SNOMED-CT procedure code — BIGINT in source, cast to VARCHAR in Silver
+- name: DESCRIPTION
+  type: VARCHAR
+  nullable: true
+  source: synthea.procedures.DESCRIPTION
+  description: Procedure description
+- name: BASE_COST
+  type: DOUBLE
+  nullable: true
+  source: synthea.procedures.BASE_COST
+  description: Procedure base cost — cast to DECIMAL(12,2) in Silver
+- name: REASONCODE
+  type: BIGINT
+  nullable: true
+  source: synthea.procedures.REASONCODE
+  description: Reason SNOMED code — cast to VARCHAR in Silver
+- name: REASONDESCRIPTION
+  type: VARCHAR
+  nullable: true
+  source: synthea.procedures.REASONDESCRIPTION
+  description: Reason description
+- name: _source_file
+  type: VARCHAR
+  nullable: true
+  source: system
+  description: Source file path
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'
+source_table: synthea.procedures

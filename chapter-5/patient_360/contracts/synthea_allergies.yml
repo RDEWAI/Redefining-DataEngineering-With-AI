@@ -1,0 +1,95 @@
+table: synthea_allergies
+layer: bronze
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_allergies.xml
+dq_path: dq_rules/synthea_allergies.yml
+owner: patient_360
+description: Bronze contract for synthea_allergies
+tags:
+- bronze
+columns:
+- name: START
+  type: DATE
+  nullable: true
+  source: synthea.allergies.START
+  description: Allergy onset date
+- name: STOP
+  type: VARCHAR
+  nullable: true
+  source: synthea.allergies.STOP
+  description: Allergy stop date — stored as VARCHAR in source, explicit cast to DATE
+    in Silver
+- name: PATIENT
+  type: VARCHAR
+  nullable: true
+  source: synthea.allergies.PATIENT
+  description: FK to patients.Id
+- name: ENCOUNTER
+  type: VARCHAR
+  nullable: true
+  source: synthea.allergies.ENCOUNTER
+  description: FK to encounters.Id
+- name: CODE
+  type: BIGINT
+  nullable: true
+  source: synthea.allergies.CODE
+  description: SNOMED-CT allergy code — BIGINT in source, cast to VARCHAR in Silver
+- name: SYSTEM
+  type: VARCHAR
+  nullable: true
+  source: synthea.allergies.SYSTEM
+  description: Coding system
+- name: DESCRIPTION
+  type: VARCHAR
+  nullable: true
+  source: synthea.allergies.DESCRIPTION
+  description: Allergy description — PHI Safety Critical, 0% null tolerance [DRD §3.1]
+- name: TYPE
+  type: VARCHAR
+  nullable: true
+  source: synthea.allergies.TYPE
+  description: Allergy type (allergy, intolerance)
+- name: CATEGORY
+  type: VARCHAR
+  nullable: true
+  source: synthea.allergies.CATEGORY
+  description: Allergy category (medication, food, environment)
+- name: REACTION1
+  type: BIGINT
+  nullable: true
+  source: synthea.allergies.REACTION1
+  description: Primary reaction SNOMED code — cast to VARCHAR in Silver
+- name: DESCRIPTION1
+  type: VARCHAR
+  nullable: true
+  source: synthea.allergies.DESCRIPTION1
+  description: Primary reaction description
+- name: SEVERITY1
+  type: VARCHAR
+  nullable: true
+  source: synthea.allergies.SEVERITY1
+  description: Primary reaction severity — 56% NULL rate expected, defaulted to Unknown
+    in Silver [DRD §5.1]
+- name: REACTION2
+  type: BIGINT
+  nullable: true
+  source: synthea.allergies.REACTION2
+  description: Secondary reaction SNOMED code — cast to VARCHAR in Silver
+- name: DESCRIPTION2
+  type: VARCHAR
+  nullable: true
+  source: synthea.allergies.DESCRIPTION2
+  description: Secondary reaction description
+- name: SEVERITY2
+  type: VARCHAR
+  nullable: true
+  source: synthea.allergies.SEVERITY2
+  description: Secondary reaction severity
+- name: _source_file
+  type: VARCHAR
+  nullable: true
+  source: system
+  description: Source file path
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'
+source_table: synthea.allergies

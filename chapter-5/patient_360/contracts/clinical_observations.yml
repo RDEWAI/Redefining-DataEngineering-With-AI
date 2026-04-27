@@ -1,0 +1,77 @@
+table: clinical_observations
+layer: silver
+schema: clinical
+ddl_path: ddl/liquibase/changelogs/clinical_observations.xml
+dq_path: dq_rules/clinical_observations.yml
+owner: patient_360
+description: Silver contract for clinical_observations
+tags:
+- silver
+columns:
+- name: patient_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_observations.PATIENT
+  description: FK to clinical_patients.patient_id
+- name: encounter_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_observations.ENCOUNTER
+  description: FK to clinical_encounters.encounter_id
+- name: observation_date
+  type: TIMESTAMP
+  nullable: false
+  source: bronze.synthea_observations.DATE
+  description: Observation datetime
+- name: category
+  type: VARCHAR(50)
+  nullable: true
+  source: bronze.synthea_observations.CATEGORY
+  description: Observation category (vital-signs, laboratory, etc.)
+- name: loinc_code
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_observations.CODE
+  description: "LOINC code \u2014 already VARCHAR in source"
+- name: observation_description
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_observations.DESCRIPTION
+  description: Observation description
+- name: observation_value
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_observations.VALUE
+  description: "Observation value (VARCHAR \u2014 numeric and text values coexist)"
+- name: units
+  type: VARCHAR(50)
+  nullable: true
+  source: bronze.synthea_observations.UNITS
+  description: Unit of measure
+- name: value_type
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_observations.TYPE
+  description: Value type (numeric, text, etc.)
+- name: ds
+  type: DATE
+  nullable: false
+  source: system
+  description: Ingestion partition date
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  source: system
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: VARCHAR
+  nullable: false
+  source: system
+  description: Pipeline run identifier
+- name: _record_hash
+  type: VARCHAR(64)
+  nullable: false
+  source: system
+  description: SHA-256 hash of business columns
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'

@@ -1,0 +1,112 @@
+table: clinical_allergies
+layer: silver
+schema: clinical
+ddl_path: ddl/liquibase/changelogs/clinical_allergies.xml
+dq_path: dq_rules/clinical_allergies.yml
+owner: patient_360
+description: Silver contract for clinical_allergies
+tags:
+- silver
+columns:
+- name: patient_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_allergies.PATIENT
+  description: FK to clinical_patients.patient_id
+- name: encounter_id
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_allergies.ENCOUNTER
+  description: FK to clinical_encounters.encounter_id
+- name: start_date
+  type: DATE
+  nullable: true
+  source: bronze.synthea_allergies.START
+  description: Allergy onset date
+- name: stop_date
+  type: DATE
+  nullable: true
+  source: bronze.synthea_allergies.STOP
+  business_rule: "CAST(STOP AS DATE) \u2014 source column is VARCHAR, explicit cast\
+    \ required"
+  description: "Allergy stop date \u2014 cast from VARCHAR in source"
+- name: allergy_code
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_allergies.CODE
+  description: "SNOMED-CT allergy code \u2014 cast from BIGINT"
+- name: code_system
+  type: VARCHAR(50)
+  nullable: true
+  source: bronze.synthea_allergies.SYSTEM
+  description: Coding system
+- name: allergy_description
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_allergies.DESCRIPTION
+  business_rule: "NOT NULL \u2014 0% null tolerance. Safety critical [DRD \xA73.1]"
+  description: "Allergy description \u2014 safety critical, never suppressed"
+- name: allergy_type
+  type: VARCHAR(50)
+  nullable: true
+  source: bronze.synthea_allergies.TYPE
+  description: Allergy type (allergy, intolerance)
+- name: allergy_category
+  type: VARCHAR(50)
+  nullable: true
+  source: bronze.synthea_allergies.CATEGORY
+  description: Allergy category (medication, food, environment)
+- name: reaction1_code
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_allergies.REACTION1
+  description: "Primary reaction SNOMED code \u2014 cast from BIGINT"
+- name: reaction1_description
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_allergies.DESCRIPTION1
+  description: Primary reaction description
+- name: severity1
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_allergies.SEVERITY1
+  business_rule: "COALESCE(SEVERITY1, 'Unknown') \u2014 56% NULL rate; display as\
+    \ Unknown per DRD \xA75.1"
+  description: "Primary reaction severity \u2014 defaults to Unknown"
+- name: reaction2_code
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_allergies.REACTION2
+  description: "Secondary reaction SNOMED code \u2014 cast from BIGINT"
+- name: reaction2_description
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_allergies.DESCRIPTION2
+  description: Secondary reaction description
+- name: severity2
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_allergies.SEVERITY2
+  description: Secondary reaction severity
+- name: ds
+  type: DATE
+  nullable: false
+  source: system
+  description: Ingestion partition date
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  source: system
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: VARCHAR
+  nullable: false
+  source: system
+  description: Pipeline run identifier
+- name: _record_hash
+  type: VARCHAR(64)
+  nullable: false
+  source: system
+  description: SHA-256 hash of business columns
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'

@@ -1,0 +1,168 @@
+{
+  "story_id": "STORY-01-006",
+  "story_file": "/Users/asingamaneni/conductor/workspaces/Redefining-DataEngineering-With-AI/spokane/chapter-5/outputs/stories/v1/EPIC-01-foundation-bootstrap/STORY-01-006-runtime-bootstrap.md",
+  "epic_id": "EPIC-01",
+  "plan_version": 1,
+  "status": "planned",
+  "generated_at": "2026-04-27T06:39:39.034225+00:00",
+  "summary": "1 task(s) across ['scaffold'] \u2014 9 AC(s).",
+  "classifier": {
+    "kind": "scaffold",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-01-006",
+    "paths": [
+      "scripts/uc_init.py"
+    ],
+    "by_skill": {
+      "scaffold": [
+        "scripts/uc_init.py"
+      ]
+    },
+    "dispatch_order": [
+      "scaffold"
+    ],
+    "unmatched": [
+      "scripts/uc_init.py"
+    ],
+    "fallback_kind": "scaffold"
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "update-scaffold",
+      "kind": "scaffold",
+      "mode": "update",
+      "paths": [
+        "scripts/uc_init.py"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "started_at": null,
+      "finished_at": null,
+      "artifacts": [],
+      "files_created": 0,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-scaffold",
+      "validator_status": "pending",
+      "notes": ""
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "`java -version` reports 17.x.x [LLD \u00a76.1]",
+      "line": 23,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "`docker compose -f patient_360/_infra/docker/docker-compose.yml up -d` succeeds [LLD \u00a71]",
+      "line": 24,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "UC catalog `unity` and schemas `bronze`/`silver`/`gold` created via `scripts/uc_init.py` [LLD \u00a71]",
+      "line": 25,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 4,
+      "text": "Synthea source seed loaded into DuckDB at chapter-2 path with all 13 source tables [LLD \u00a75.1]",
+      "line": 26,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 5,
+      "text": "`curl http://localhost:8080/api/2.1/unity-catalog/catalogs` returns 200 with `unity` listed [LLD \u00a79.5]",
+      "line": 27,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 6,
+      "text": "`docker compose exec airflow spark-submit --master 'local[2]' --version` reports Spark 4.0.0 [LLD \u00a76.1, story-standards \u00a71]",
+      "line": 28,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 7,
+      "text": "`docker compose exec airflow python -c \"from spark_expectations.core.expectations import SparkExpectations\"` exits 0 [LLD \u00a78.6, story-standards \u00a71]",
+      "line": 29,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 8,
+      "text": "`make smoke-se` invokes `with_expectations(...)` against a real Spark session and `bronze_se_stats` has \u22651 row whose `meta_dq_run_id` matches the smoke run [LLD \u00a78.6.1, story-standards \u00a71]",
+      "line": 30,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 9,
+      "text": "`patient_360/tests/integration/test_se_smoke.py::test_se_stats_populated` passes (pytest -m integration) [LLD \u00a78.6.1]",
+      "line": 31,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

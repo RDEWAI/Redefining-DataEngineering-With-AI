@@ -1,0 +1,63 @@
+table: synthea_careplans
+layer: bronze
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_careplans.xml
+dq_path: dq_rules/synthea_careplans.yml
+owner: patient_360
+description: Bronze contract for synthea_careplans
+tags:
+- bronze
+columns:
+- name: Id
+  type: VARCHAR
+  nullable: true
+  source: synthea.careplans.Id
+  description: Care plan UUID — natural key
+- name: START
+  type: DATE
+  nullable: true
+  source: synthea.careplans.START
+  description: Care plan start date
+- name: STOP
+  type: DATE
+  nullable: true
+  source: synthea.careplans.STOP
+  description: Care plan end date — NULL for active plans
+- name: PATIENT
+  type: VARCHAR
+  nullable: true
+  source: synthea.careplans.PATIENT
+  description: FK to patients.Id
+- name: ENCOUNTER
+  type: VARCHAR
+  nullable: true
+  source: synthea.careplans.ENCOUNTER
+  description: FK to encounters.Id
+- name: CODE
+  type: BIGINT
+  nullable: true
+  source: synthea.careplans.CODE
+  description: Care plan SNOMED code — cast to VARCHAR in Silver
+- name: DESCRIPTION
+  type: VARCHAR
+  nullable: true
+  source: synthea.careplans.DESCRIPTION
+  description: Care plan description
+- name: REASONCODE
+  type: BIGINT
+  nullable: true
+  source: synthea.careplans.REASONCODE
+  description: Reason code — cast to VARCHAR in Silver
+- name: REASONDESCRIPTION
+  type: VARCHAR
+  nullable: true
+  source: synthea.careplans.REASONDESCRIPTION
+  description: Reason description
+- name: _source_file
+  type: VARCHAR
+  nullable: true
+  source: system
+  description: Source file path
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'
+source_table: synthea.careplans

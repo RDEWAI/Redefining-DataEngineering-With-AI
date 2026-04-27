@@ -1,0 +1,120 @@
+{
+  "story_id": "STORY-01-001",
+  "story_file": "/Users/asingamaneni/conductor/workspaces/Redefining-DataEngineering-With-AI/spokane/chapter-5/outputs/stories/v1/EPIC-01-foundation-bootstrap/STORY-01-001-render-scaffold.md",
+  "epic_id": "EPIC-01",
+  "plan_version": 2,
+  "status": "failed",
+  "generated_at": "2026-04-27T06:39:38.498032+00:00",
+  "summary": "1 task(s) across ['scaffold'] \u2014 5 AC(s).",
+  "classifier": {
+    "kind": "scaffold",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-01-001",
+    "paths": [
+      "patient_360/pyproject.toml"
+    ],
+    "by_skill": {
+      "scaffold": [
+        "patient_360/pyproject.toml"
+      ]
+    },
+    "dispatch_order": [
+      "scaffold"
+    ],
+    "unmatched": [],
+    "fallback_kind": null
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "create-scaffold",
+      "kind": "scaffold",
+      "mode": "create",
+      "paths": [
+        "patient_360/pyproject.toml"
+      ],
+      "depends_on": [],
+      "status": "failed",
+      "started_at": "2026-04-27T06:39:52.219698+00:00",
+      "finished_at": "2026-04-27T06:40:12.475009+00:00",
+      "artifacts": [],
+      "files_created": 0,
+      "files_updated": 0,
+      "critical_findings": [
+        "orchestrator unable to dispatch sub-skill via Skill tool from forked subagent \u2014 args not received"
+      ],
+      "validator": "validate-scaffold",
+      "validator_status": "pending",
+      "notes": ""
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "`patient_360/` directory exists at chapter-5 root with full layout per LLD \u00a72.1 [LLD \u00a72.1]",
+      "line": 23,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "`patient_360/pyproject.toml` declares `hatchling` build-backend with `src/patient_360` package [LLD \u00a72.1]",
+      "line": 24,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "`patient_360/Makefile` provides `dev-setup`, `lint`, `test`, `clean` targets [LLD \u00a79.3]",
+      "line": 25,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 4,
+      "text": "`cd patient_360 && make dev-setup` exits 0 [LLD \u00a72.1]",
+      "line": 26,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 5,
+      "text": "`cd patient_360 && uv run pytest --collect-only` exits 0 [LLD \u00a72.4]",
+      "line": 27,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

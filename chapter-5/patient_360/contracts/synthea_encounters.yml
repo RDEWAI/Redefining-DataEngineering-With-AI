@@ -1,0 +1,93 @@
+table: synthea_encounters
+layer: bronze
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_encounters.xml
+dq_path: dq_rules/synthea_encounters.yml
+owner: patient_360
+description: Bronze contract for synthea_encounters
+tags:
+- bronze
+columns:
+- name: Id
+  type: VARCHAR
+  nullable: true
+  source: synthea.encounters.Id
+  description: Encounter UUID — natural key
+- name: START
+  type: TIMESTAMP
+  nullable: true
+  source: synthea.encounters.START
+  description: Encounter start datetime
+- name: STOP
+  type: TIMESTAMP
+  nullable: true
+  source: synthea.encounters.STOP
+  description: Encounter stop datetime — NULL for in-progress encounters
+- name: PATIENT
+  type: VARCHAR
+  nullable: true
+  source: synthea.encounters.PATIENT
+  description: FK to patients.Id
+- name: ORGANIZATION
+  type: VARCHAR
+  nullable: true
+  source: synthea.encounters.ORGANIZATION
+  description: FK to organizations.Id
+- name: PROVIDER
+  type: VARCHAR
+  nullable: true
+  source: synthea.encounters.PROVIDER
+  description: FK to providers.Id
+- name: PAYER
+  type: VARCHAR
+  nullable: true
+  source: synthea.encounters.PAYER
+  description: FK to payers.Id
+- name: ENCOUNTERCLASS
+  type: VARCHAR
+  nullable: true
+  source: synthea.encounters.ENCOUNTERCLASS
+  description: Encounter class (ambulatory, inpatient, emergency, etc.)
+- name: CODE
+  type: BIGINT
+  nullable: true
+  source: synthea.encounters.CODE
+  description: SNOMED-CT code — BIGINT in source, cast to VARCHAR in Silver
+- name: DESCRIPTION
+  type: VARCHAR
+  nullable: true
+  source: synthea.encounters.DESCRIPTION
+  description: Encounter description
+- name: BASE_ENCOUNTER_COST
+  type: DOUBLE
+  nullable: true
+  source: synthea.encounters.BASE_ENCOUNTER_COST
+  description: Base encounter cost — DOUBLE, cast to DECIMAL(12,2) in Silver
+- name: TOTAL_CLAIM_COST
+  type: DOUBLE
+  nullable: true
+  source: synthea.encounters.TOTAL_CLAIM_COST
+  description: Total claim cost — DOUBLE, cast to DECIMAL(12,2) in Silver
+- name: PAYER_COVERAGE
+  type: DOUBLE
+  nullable: true
+  source: synthea.encounters.PAYER_COVERAGE
+  description: Payer coverage amount — DOUBLE, cast to DECIMAL(12,2) in Silver
+- name: REASONCODE
+  type: BIGINT
+  nullable: true
+  source: synthea.encounters.REASONCODE
+  description: Reason SNOMED code — cast to VARCHAR in Silver
+- name: REASONDESCRIPTION
+  type: VARCHAR
+  nullable: true
+  source: synthea.encounters.REASONDESCRIPTION
+  description: Reason description
+- name: _source_file
+  type: VARCHAR
+  nullable: true
+  source: system
+  description: Source file path
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'
+source_table: synthea.encounters

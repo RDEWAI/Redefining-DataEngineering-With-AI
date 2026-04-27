@@ -1,0 +1,173 @@
+table: synthea_claims
+layer: bronze
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_claims.xml
+dq_path: dq_rules/synthea_claims.yml
+owner: patient_360
+description: Bronze contract for synthea_claims
+tags:
+- bronze
+columns:
+- name: Id
+  type: VARCHAR
+  nullable: true
+  source: synthea.claims.Id
+  description: Claim UUID — natural key
+- name: PATIENTID
+  type: VARCHAR
+  nullable: true
+  source: synthea.claims.PATIENTID
+  description: FK to patients.Id
+- name: PROVIDERID
+  type: VARCHAR
+  nullable: true
+  source: synthea.claims.PROVIDERID
+  description: FK to providers.Id
+- name: PRIMARYPATIENTINSURANCEID
+  type: VARCHAR
+  nullable: true
+  source: synthea.claims.PRIMARYPATIENTINSURANCEID
+  description: Primary insurance payer transition ID
+- name: SECONDARYPATIENTINSURANCEID
+  type: VARCHAR
+  nullable: true
+  source: synthea.claims.SECONDARYPATIENTINSURANCEID
+  description: Secondary insurance payer transition ID
+- name: DEPARTMENTID
+  type: BIGINT
+  nullable: true
+  source: synthea.claims.DEPARTMENTID
+  description: Department ID
+- name: PATIENTDEPARTMENTID
+  type: BIGINT
+  nullable: true
+  source: synthea.claims.PATIENTDEPARTMENTID
+  description: Patient department ID
+- name: DIAGNOSIS1
+  type: BIGINT
+  nullable: true
+  source: synthea.claims.DIAGNOSIS1
+  description: Primary diagnosis code — cast to VARCHAR in Silver
+- name: DIAGNOSIS2
+  type: BIGINT
+  nullable: true
+  source: synthea.claims.DIAGNOSIS2
+  description: Secondary diagnosis code
+- name: DIAGNOSIS3
+  type: BIGINT
+  nullable: true
+  source: synthea.claims.DIAGNOSIS3
+  description: Tertiary diagnosis code
+- name: DIAGNOSIS4
+  type: BIGINT
+  nullable: true
+  source: synthea.claims.DIAGNOSIS4
+  description: Quaternary diagnosis code
+- name: DIAGNOSIS5
+  type: BIGINT
+  nullable: true
+  source: synthea.claims.DIAGNOSIS5
+  description: Diagnosis code 5
+- name: DIAGNOSIS6
+  type: BIGINT
+  nullable: true
+  source: synthea.claims.DIAGNOSIS6
+  description: Diagnosis code 6
+- name: DIAGNOSIS7
+  type: BIGINT
+  nullable: true
+  source: synthea.claims.DIAGNOSIS7
+  description: Diagnosis code 7
+- name: DIAGNOSIS8
+  type: BIGINT
+  nullable: true
+  source: synthea.claims.DIAGNOSIS8
+  description: Diagnosis code 8
+- name: REFERRINGPROVIDERID
+  type: VARCHAR
+  nullable: true
+  source: synthea.claims.REFERRINGPROVIDERID
+  description: Referring provider FK
+- name: APPOINTMENTID
+  type: VARCHAR
+  nullable: true
+  source: synthea.claims.APPOINTMENTID
+  description: Appointment ID
+- name: CURRENTILLNESSDATE
+  type: TIMESTAMP
+  nullable: true
+  source: synthea.claims.CURRENTILLNESSDATE
+  description: Current illness date
+- name: SERVICEDATE
+  type: TIMESTAMP
+  nullable: true
+  source: synthea.claims.SERVICEDATE
+  description: Service date
+- name: SUPERVISINGPROVIDERID
+  type: VARCHAR
+  nullable: true
+  source: synthea.claims.SUPERVISINGPROVIDERID
+  description: Supervising provider FK
+- name: STATUS1
+  type: VARCHAR
+  nullable: true
+  source: synthea.claims.STATUS1
+  description: Primary claim status
+- name: STATUS2
+  type: VARCHAR
+  nullable: true
+  source: synthea.claims.STATUS2
+  description: Secondary claim status
+- name: STATUSP
+  type: VARCHAR
+  nullable: true
+  source: synthea.claims.STATUSP
+  description: Patient claim status
+- name: OUTSTANDING1
+  type: DOUBLE
+  nullable: true
+  source: synthea.claims.OUTSTANDING1
+  description: Primary outstanding amount — cast to DECIMAL(12,2) in Silver
+- name: OUTSTANDING2
+  type: DOUBLE
+  nullable: true
+  source: synthea.claims.OUTSTANDING2
+  description: Secondary outstanding amount — cast to DECIMAL(12,2) in Silver
+- name: OUTSTANDINGP
+  type: DOUBLE
+  nullable: true
+  source: synthea.claims.OUTSTANDINGP
+  description: Patient outstanding amount — cast to DECIMAL(12,2) in Silver
+- name: LASTBILLEDDATE1
+  type: TIMESTAMP
+  nullable: true
+  source: synthea.claims.LASTBILLEDDATE1
+  description: Last billed date (primary)
+- name: LASTBILLEDDATE2
+  type: TIMESTAMP
+  nullable: true
+  source: synthea.claims.LASTBILLEDDATE2
+  description: Last billed date (secondary)
+- name: LASTBILLEDDATEP
+  type: TIMESTAMP
+  nullable: true
+  source: synthea.claims.LASTBILLEDDATEP
+  description: Last billed date (patient)
+- name: HEALTHCARECLAIMTYPEID1
+  type: BIGINT
+  nullable: true
+  source: synthea.claims.HEALTHCARECLAIMTYPEID1
+  description: Healthcare claim type ID 1
+- name: HEALTHCARECLAIMTYPEID2
+  type: BIGINT
+  nullable: true
+  source: synthea.claims.HEALTHCARECLAIMTYPEID2
+  description: Healthcare claim type ID 2
+- name: _source_file
+  type: VARCHAR
+  nullable: true
+  source: system
+  description: Source file path
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'
+source_table: synthea.claims

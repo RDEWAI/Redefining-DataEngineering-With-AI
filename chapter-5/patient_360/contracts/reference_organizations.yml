@@ -1,0 +1,97 @@
+table: reference_organizations
+layer: silver
+schema: reference
+ddl_path: ddl/liquibase/changelogs/reference_organizations.xml
+dq_path: dq_rules/reference_organizations.yml
+owner: patient_360
+description: Silver contract for reference_organizations
+tags:
+- silver
+columns:
+- name: organization_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_organizations.Id
+  description: "Organization UUID \u2014 natural key"
+- name: organization_name
+  type: VARCHAR(200)
+  nullable: true
+  source: bronze.synthea_organizations.NAME
+  description: "Organization name \u2014 SCD Type 2 tracked"
+- name: address
+  type: VARCHAR(200)
+  nullable: true
+  source: bronze.synthea_organizations.ADDRESS
+  description: "Street address \u2014 SCD Type 2 tracked"
+- name: city
+  type: VARCHAR(100)
+  nullable: true
+  source: bronze.synthea_organizations.CITY
+  description: City
+- name: state
+  type: VARCHAR(2)
+  nullable: true
+  source: bronze.synthea_organizations.STATE
+  description: State abbreviation
+- name: zip
+  type: VARCHAR(10)
+  nullable: true
+  source: bronze.synthea_organizations.ZIP
+  description: ZIP code
+- name: lat
+  type: DECIMAL(9,6)
+  nullable: true
+  source: bronze.synthea_organizations.LAT
+  description: "Latitude \u2014 cast from DOUBLE"
+- name: lon
+  type: DECIMAL(9,6)
+  nullable: true
+  source: bronze.synthea_organizations.LON
+  description: "Longitude \u2014 cast from DOUBLE"
+- name: phone
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_organizations.PHONE
+  description: Phone number
+- name: revenue
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_organizations.REVENUE
+  description: "Annual revenue \u2014 cast from DOUBLE"
+- name: utilization
+  type: INTEGER
+  nullable: true
+  source: bronze.synthea_organizations.UTILIZATION
+  description: Utilization count
+- name: effective_from
+  type: DATE
+  nullable: false
+  source: system
+  description: "SCD Type 2 \u2014 row version start date"
+- name: effective_to
+  type: DATE
+  nullable: false
+  source: system
+  description: "SCD Type 2 \u2014 row version end date (9999-12-31 for current)"
+- name: is_current
+  type: BOOLEAN
+  nullable: false
+  source: system
+  description: "SCD Type 2 \u2014 TRUE for active version"
+- name: _record_hash
+  type: VARCHAR(64)
+  nullable: false
+  source: system
+  description: SHA-256 hash for change detection
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  source: system
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: VARCHAR
+  nullable: false
+  source: system
+  description: Pipeline run identifier
+partition_by: none
+write_strategy: Delta MERGE INTO on organization_id (SCD Type 2)

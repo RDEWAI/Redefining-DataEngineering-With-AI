@@ -1,0 +1,53 @@
+table: synthea_conditions
+layer: bronze
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_conditions.xml
+dq_path: dq_rules/synthea_conditions.yml
+owner: patient_360
+description: Bronze contract for synthea_conditions
+tags:
+- bronze
+columns:
+- name: START
+  type: DATE
+  nullable: true
+  source: synthea.conditions.START
+  description: Condition onset date
+- name: STOP
+  type: DATE
+  nullable: true
+  source: synthea.conditions.STOP
+  description: Condition resolution date — NULL for active conditions
+- name: PATIENT
+  type: VARCHAR
+  nullable: true
+  source: synthea.conditions.PATIENT
+  description: FK to patients.Id
+- name: ENCOUNTER
+  type: VARCHAR
+  nullable: true
+  source: synthea.conditions.ENCOUNTER
+  description: FK to encounters.Id
+- name: SYSTEM
+  type: VARCHAR
+  nullable: true
+  source: synthea.conditions.SYSTEM
+  description: Coding system (SNOMED-CT)
+- name: CODE
+  type: BIGINT
+  nullable: true
+  source: synthea.conditions.CODE
+  description: SNOMED-CT code — BIGINT in source, cast to VARCHAR in Silver
+- name: DESCRIPTION
+  type: VARCHAR
+  nullable: true
+  source: synthea.conditions.DESCRIPTION
+  description: Condition description
+- name: _source_file
+  type: VARCHAR
+  nullable: true
+  source: system
+  description: Source file path
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'
+source_table: synthea.conditions

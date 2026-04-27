@@ -1,0 +1,95 @@
+table: patient_billing_summary
+layer: gold
+schema: analytics
+ddl_path: ddl/liquibase/changelogs/patient_billing_summary.xml
+dq_path: dq_rules/patient_billing_summary.yml
+owner: patient_360
+description: Gold contract for patient_billing_summary
+tags:
+- gold
+columns:
+- name: encounter_id
+  type: VARCHAR
+  nullable: false
+  description: "Encounter UUID \u2014 natural key"
+- name: patient_id
+  type: VARCHAR
+  nullable: false
+  description: FK to patient_summary.patient_id
+- name: first_name
+  type: VARCHAR(100)
+  nullable: false
+  description: "Patient first name \u2014 denormalized"
+- name: last_name
+  type: VARCHAR(100)
+  nullable: false
+  description: "Patient last name \u2014 denormalized"
+- name: birth_date
+  type: DATE
+  nullable: false
+  description: "Date of birth \u2014 for patient disambiguation [DRD \xA75.4]"
+- name: encounter_class
+  type: VARCHAR(20)
+  nullable: true
+  description: Standardised encounter class
+- name: service_date
+  type: DATE
+  nullable: true
+  description: Service date from claims
+- name: base_encounter_cost
+  type: DECIMAL(12,2)
+  nullable: false
+  description: "Base encounter cost \u2014 COALESCE to 0 per DRD \xA75.1"
+- name: total_claim_cost
+  type: DECIMAL(12,2)
+  nullable: false
+  description: "Total claim cost \u2014 COALESCE to 0 per DRD \xA75.1"
+- name: payer_coverage
+  type: DECIMAL(12,2)
+  nullable: false
+  description: "Payer coverage amount \u2014 COALESCE to 0 per DRD \xA75.1"
+- name: total_visit_cost
+  type: DECIMAL(12,2)
+  nullable: false
+  description: "Total visit cost (base + procedures + medications) per DRD \xA75.2"
+- name: claim_id
+  type: VARCHAR
+  nullable: true
+  description: Associated claim UUID
+- name: primary_payer_id
+  type: VARCHAR
+  nullable: true
+  description: Primary payer ID
+- name: primary_payer_name
+  type: VARCHAR(200)
+  nullable: true
+  description: "Primary payer name \u2014 denormalized"
+- name: secondary_payer_id
+  type: VARCHAR
+  nullable: true
+  description: Secondary payer ID
+- name: secondary_payer_name
+  type: VARCHAR(200)
+  nullable: true
+  description: "Secondary payer name \u2014 denormalized"
+- name: claim_status
+  type: VARCHAR(50)
+  nullable: true
+  description: Claim status (primary)
+- name: outstanding_amount
+  type: DECIMAL(12,2)
+  nullable: true
+  description: Outstanding patient amount
+- name: provider_id
+  type: VARCHAR
+  nullable: true
+  description: Provider ID
+- name: provider_name
+  type: VARCHAR(200)
+  nullable: true
+  description: "Provider name \u2014 denormalized"
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  description: Pipeline processing timestamp
+write_strategy: full overwrite (630,668 rows from claims, joined to 340,532 encounters)

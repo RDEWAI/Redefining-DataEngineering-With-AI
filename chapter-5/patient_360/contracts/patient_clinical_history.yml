@@ -1,0 +1,107 @@
+table: patient_clinical_history
+layer: gold
+schema: analytics
+ddl_path: ddl/liquibase/changelogs/patient_clinical_history.xml
+dq_path: dq_rules/patient_clinical_history.yml
+owner: patient_360
+description: Gold contract for patient_clinical_history
+tags:
+- gold
+columns:
+- name: encounter_id
+  type: VARCHAR
+  nullable: false
+  description: "Encounter UUID \u2014 natural key"
+- name: patient_id
+  type: VARCHAR
+  nullable: false
+  description: FK to patient_summary.patient_id
+- name: first_name
+  type: VARCHAR(100)
+  nullable: false
+  description: "Patient first name \u2014 denormalized for display"
+- name: last_name
+  type: VARCHAR(100)
+  nullable: false
+  description: "Patient last name \u2014 denormalized for display"
+- name: birth_date
+  type: DATE
+  nullable: false
+  description: "Date of birth \u2014 denormalized for age calculation at display time"
+- name: encounter_class
+  type: VARCHAR(20)
+  nullable: true
+  description: Standardised encounter class (INPATIENT, OUTPATIENT, etc.)
+- name: encounter_description
+  type: VARCHAR
+  nullable: true
+  description: Encounter description
+- name: start_date
+  type: TIMESTAMP
+  nullable: false
+  description: Encounter start datetime
+- name: stop_date
+  type: TIMESTAMP
+  nullable: true
+  description: Encounter stop datetime
+- name: encounter_duration_hours
+  type: DECIMAL(10,2)
+  nullable: true
+  description: Duration in hours
+- name: los_days
+  type: INTEGER
+  nullable: true
+  description: Length of stay in days
+- name: is_30_day_readmission
+  type: BOOLEAN
+  nullable: false
+  description: "TRUE if this encounter is a 30-day readmission [DRD \xA75.2]"
+- name: provider_id
+  type: VARCHAR
+  nullable: true
+  description: FK to reference_providers
+- name: provider_name
+  type: VARCHAR(200)
+  nullable: true
+  description: "Provider name \u2014 denormalized for display"
+- name: organization_id
+  type: VARCHAR
+  nullable: true
+  description: FK to reference_organizations
+- name: organization_name
+  type: VARCHAR(200)
+  nullable: true
+  description: "Organization name \u2014 denormalized for display"
+- name: reason_description
+  type: VARCHAR
+  nullable: true
+  description: Encounter reason description
+- name: condition_count
+  type: INTEGER
+  nullable: false
+  description: Number of conditions diagnosed at this encounter
+- name: procedure_count
+  type: INTEGER
+  nullable: false
+  description: Number of procedures performed at this encounter
+- name: medication_count
+  type: INTEGER
+  nullable: false
+  description: Number of medications prescribed at this encounter
+- name: observation_count
+  type: INTEGER
+  nullable: false
+  description: Number of observations recorded at this encounter
+- name: immunization_count
+  type: INTEGER
+  nullable: false
+  description: Number of immunizations administered at this encounter
+- name: active_careplan_count
+  type: INTEGER
+  nullable: false
+  description: Number of active care plans at time of encounter
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  description: Pipeline processing timestamp
+write_strategy: full overwrite (340,532 rows)

@@ -1,0 +1,96 @@
+{
+  "story_id": "STORY-01-003",
+  "story_file": "/Users/asingamaneni/conductor/workspaces/Redefining-DataEngineering-With-AI/spokane/chapter-5/outputs/stories/v1/EPIC-01-foundation-bootstrap/STORY-01-003-schema-contracts.md",
+  "epic_id": "EPIC-01",
+  "plan_version": 1,
+  "status": "planned",
+  "generated_at": "2026-04-27T06:39:38.657300+00:00",
+  "summary": "1 task(s) across ['scaffold'] \u2014 4 AC(s).",
+  "classifier": {
+    "kind": "scaffold",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-01-003",
+    "paths": [],
+    "by_skill": {},
+    "dispatch_order": [],
+    "unmatched": [],
+    "fallback_kind": "scaffold"
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "create-scaffold",
+      "kind": "scaffold",
+      "mode": "create",
+      "paths": [],
+      "depends_on": [],
+      "status": "todo",
+      "started_at": null,
+      "finished_at": null,
+      "artifacts": [],
+      "files_created": 0,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-scaffold",
+      "validator_status": "pending",
+      "notes": "behavioural story \u2014 no path tokens; sub-skill handles AC scope"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "13 Bronze contract files exist under `patient_360/contracts/synthea_*.yml` [DMS \u00a73 Bronze, LLD \u00a72.1]",
+      "line": 23,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "13 Silver contract files exist under `patient_360/contracts/clinical_*.yml`, `reference_*.yml`, `billing_*.yml` [DMS \u00a74 Silver, LLD \u00a75.2]",
+      "line": 24,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "3 Gold contract files exist for `patient_summary`, `patient_clinical_history`, `patient_billing_summary` [DMS \u00a75 Gold, LLD \u00a75.3]",
+      "line": 25,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 4,
+      "text": "Each contract YAML declares `columns:`, `ddl_path:`, `dq_path:` keys [LLD \u00a72.1]",
+      "line": 26,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

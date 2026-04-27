@@ -1,0 +1,63 @@
+table: synthea_observations
+layer: bronze
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_observations.xml
+dq_path: dq_rules/synthea_observations.yml
+owner: patient_360
+description: Bronze contract for synthea_observations
+tags:
+- bronze
+columns:
+- name: DATE
+  type: TIMESTAMP
+  nullable: true
+  source: synthea.observations.DATE
+  description: Observation datetime
+- name: PATIENT
+  type: VARCHAR
+  nullable: true
+  source: synthea.observations.PATIENT
+  description: FK to patients.Id
+- name: ENCOUNTER
+  type: VARCHAR
+  nullable: true
+  source: synthea.observations.ENCOUNTER
+  description: FK to encounters.Id
+- name: CATEGORY
+  type: VARCHAR
+  nullable: true
+  source: synthea.observations.CATEGORY
+  description: Observation category (vital-signs, laboratory, etc.)
+- name: CODE
+  type: VARCHAR
+  nullable: true
+  source: synthea.observations.CODE
+  description: LOINC code — already VARCHAR in source
+- name: DESCRIPTION
+  type: VARCHAR
+  nullable: true
+  source: synthea.observations.DESCRIPTION
+  description: Observation description
+- name: VALUE
+  type: VARCHAR
+  nullable: true
+  source: synthea.observations.VALUE
+  description: Observation value (stored as VARCHAR — numeric and text values mixed)
+- name: UNITS
+  type: VARCHAR
+  nullable: true
+  source: synthea.observations.UNITS
+  description: Unit of measure
+- name: TYPE
+  type: VARCHAR
+  nullable: true
+  source: synthea.observations.TYPE
+  description: Value type (numeric, text, etc.)
+- name: _source_file
+  type: VARCHAR
+  nullable: true
+  source: system
+  description: Source file path
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'
+source_table: synthea.observations

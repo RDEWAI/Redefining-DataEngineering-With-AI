@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+  <include file="changelogs/synthea_allergies.xml" relativeToChangelogFile="true"/>
+  <include file="changelogs/synthea_careplans.xml" relativeToChangelogFile="true"/>
+  <include file="changelogs/synthea_claims.xml" relativeToChangelogFile="true"/>
+  <include file="changelogs/synthea_conditions.xml" relativeToChangelogFile="true"/>
+  <include file="changelogs/synthea_encounters.xml" relativeToChangelogFile="true"/>
+  <include file="changelogs/synthea_immunizations.xml" relativeToChangelogFile="true"/>
+  <include file="changelogs/synthea_medications.xml" relativeToChangelogFile="true"/>
+  <include file="changelogs/synthea_observations.xml" relativeToChangelogFile="true"/>
+  <include file="changelogs/synthea_organizations.xml" relativeToChangelogFile="true"/>
+  <include file="changelogs/synthea_patients.xml" relativeToChangelogFile="true"/>
+  <include file="changelogs/synthea_payers.xml" relativeToChangelogFile="true"/>
+  <include file="changelogs/synthea_procedures.xml" relativeToChangelogFile="true"/>
+  <include file="changelogs/synthea_providers.xml" relativeToChangelogFile="true"/>
+
+</databaseChangeLog>

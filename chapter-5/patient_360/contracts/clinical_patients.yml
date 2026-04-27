@@ -1,0 +1,181 @@
+table: clinical_patients
+layer: silver
+schema: clinical
+ddl_path: ddl/liquibase/changelogs/clinical_patients.xml
+dq_path: dq_rules/clinical_patients.yml
+owner: patient_360
+description: Silver contract for clinical_patients
+tags:
+- silver
+columns:
+- name: patient_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_patients.Id
+  description: "Patient UUID \u2014 natural key"
+- name: birth_date
+  type: DATE
+  nullable: false
+  source: bronze.synthea_patients.BIRTHDATE
+  description: "Date of birth \u2014 PHI"
+- name: death_date
+  type: DATE
+  nullable: true
+  source: bronze.synthea_patients.DEATHDATE
+  description: "Date of death \u2014 NULL for living patients"
+- name: prefix
+  type: VARCHAR(10)
+  nullable: true
+  source: bronze.synthea_patients.PREFIX
+  description: Name prefix
+- name: first_name
+  type: VARCHAR(100)
+  nullable: false
+  source: bronze.synthea_patients.FIRST
+  description: "First name \u2014 PHI"
+- name: middle_name
+  type: VARCHAR(100)
+  nullable: true
+  source: bronze.synthea_patients.MIDDLE
+  description: "Middle name \u2014 PHI"
+- name: last_name
+  type: VARCHAR(100)
+  nullable: false
+  source: bronze.synthea_patients.LAST
+  description: "Last name \u2014 PHI"
+- name: suffix
+  type: VARCHAR(10)
+  nullable: true
+  source: bronze.synthea_patients.SUFFIX
+  description: Name suffix
+- name: maiden_name
+  type: VARCHAR(100)
+  nullable: true
+  source: bronze.synthea_patients.MAIDEN
+  description: "Maiden name \u2014 PHI"
+- name: marital_status
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_patients.MARITAL
+  description: "Marital status (M, S, W, D) \u2014 NULL accepted per DRD \xA73.2"
+- name: race
+  type: VARCHAR(50)
+  nullable: true
+  source: bronze.synthea_patients.RACE
+  description: "Race \u2014 SCD Type 1 (overwrite on change per governance policy\
+    \ \xA76)"
+- name: ethnicity
+  type: VARCHAR(50)
+  nullable: true
+  source: bronze.synthea_patients.ETHNICITY
+  description: "Ethnicity \u2014 SCD Type 1 (overwrite on change per governance policy\
+    \ \xA76)"
+- name: gender
+  type: VARCHAR(10)
+  nullable: true
+  source: bronze.synthea_patients.GENDER
+  business_rule: "Mapped to canonical values: MALE, FEMALE, OTHER, UNKNOWN per data-dictionary\
+    \ \xA75.2"
+  description: Standardised gender (MALE/FEMALE/OTHER/UNKNOWN)
+- name: birth_place
+  type: VARCHAR(200)
+  nullable: true
+  source: bronze.synthea_patients.BIRTHPLACE
+  description: Birth place
+- name: address
+  type: VARCHAR(200)
+  nullable: true
+  source: bronze.synthea_patients.ADDRESS
+  description: "Street address \u2014 PHI, SCD Type 2 tracked"
+- name: city
+  type: VARCHAR(100)
+  nullable: true
+  source: bronze.synthea_patients.CITY
+  description: "City \u2014 SCD Type 2 tracked"
+- name: state
+  type: VARCHAR(2)
+  nullable: true
+  source: bronze.synthea_patients.STATE
+  description: State abbreviation
+- name: county
+  type: VARCHAR(100)
+  nullable: true
+  source: bronze.synthea_patients.COUNTY
+  description: County name
+- name: zip
+  type: VARCHAR(10)
+  nullable: true
+  source: bronze.synthea_patients.ZIP
+  description: "ZIP code \u2014 SCD Type 2 tracked"
+- name: lat
+  type: DECIMAL(9,6)
+  nullable: true
+  source: bronze.synthea_patients.LAT
+  description: "Latitude \u2014 cast from DOUBLE"
+- name: lon
+  type: DECIMAL(9,6)
+  nullable: true
+  source: bronze.synthea_patients.LON
+  description: "Longitude \u2014 cast from DOUBLE"
+- name: healthcare_expenses
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_patients.HEALTHCARE_EXPENSES
+  description: "Total healthcare expenses \u2014 cast from DOUBLE"
+- name: healthcare_coverage
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_patients.HEALTHCARE_COVERAGE
+  description: "Total healthcare coverage \u2014 cast from DOUBLE"
+- name: income
+  type: INTEGER
+  nullable: true
+  source: bronze.synthea_patients.INCOME
+  description: Annual income
+- name: calculated_age
+  type: INTEGER
+  nullable: true
+  source: derived
+  business_rule: "DATEDIFF(year, birth_date, CURRENT_DATE) \u2014 null if birth_date\
+    \ is null [DRD \xA75.2]"
+  description: Patient age as of today
+- name: patient_status
+  type: VARCHAR(10)
+  nullable: false
+  source: derived
+  business_rule: "ALIVE if death_date IS NULL, DECEASED otherwise [data-dictionary\
+    \ \xA75.3]"
+  description: Patient status (ALIVE / DECEASED)
+- name: effective_from
+  type: DATE
+  nullable: false
+  source: system
+  description: "SCD Type 2 \u2014 row version start date"
+- name: effective_to
+  type: DATE
+  nullable: false
+  source: system
+  description: "SCD Type 2 \u2014 row version end date (9999-12-31 for current version)"
+- name: is_current
+  type: BOOLEAN
+  nullable: false
+  source: system
+  description: "SCD Type 2 \u2014 TRUE for the active version"
+- name: _record_hash
+  type: VARCHAR(64)
+  nullable: false
+  source: system
+  description: "SHA-256 hash of all SCD Type 2 tracked columns \u2014 used for change\
+    \ detection"
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  source: system
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: VARCHAR
+  nullable: false
+  source: system
+  description: Pipeline run identifier
+partition_by: none
+write_strategy: Delta MERGE INTO on patient_id (SCD Type 2)

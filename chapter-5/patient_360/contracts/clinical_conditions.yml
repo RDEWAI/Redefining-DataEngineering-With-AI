@@ -1,0 +1,81 @@
+table: clinical_conditions
+layer: silver
+schema: clinical
+ddl_path: ddl/liquibase/changelogs/clinical_conditions.xml
+dq_path: dq_rules/clinical_conditions.yml
+owner: patient_360
+description: Silver contract for clinical_conditions
+tags:
+- silver
+columns:
+- name: patient_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_conditions.PATIENT
+  description: FK to clinical_patients.patient_id
+- name: encounter_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_conditions.ENCOUNTER
+  description: FK to clinical_encounters.encounter_id
+- name: onset_date
+  type: DATE
+  nullable: false
+  source: bronze.synthea_conditions.START
+  description: Condition onset date
+- name: resolution_date
+  type: DATE
+  nullable: true
+  source: bronze.synthea_conditions.STOP
+  description: "Condition resolution date \u2014 NULL for active conditions"
+- name: code_system
+  type: VARCHAR(50)
+  nullable: true
+  source: bronze.synthea_conditions.SYSTEM
+  description: Coding system (SNOMED-CT)
+- name: snomed_code
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_conditions.CODE
+  description: "SNOMED-CT condition code \u2014 cast from BIGINT"
+- name: condition_description
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_conditions.DESCRIPTION
+  description: Condition description
+- name: condition_status
+  type: VARCHAR(10)
+  nullable: false
+  source: derived
+  business_rule: "ACTIVE if resolution_date IS NULL, RESOLVED otherwise [data-dictionary\
+    \ \xA75.4]"
+  description: Condition status (ACTIVE / RESOLVED)
+- name: condition_duration_days
+  type: INTEGER
+  nullable: true
+  source: derived
+  business_rule: "DATEDIFF(day, onset_date, resolution_date) \u2014 null if condition\
+    \ is ongoing [data-dictionary \xA73]"
+  description: "Duration in days \u2014 null for active conditions"
+- name: ds
+  type: DATE
+  nullable: false
+  source: system
+  description: Ingestion partition date
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  source: system
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: VARCHAR
+  nullable: false
+  source: system
+  description: Pipeline run identifier
+- name: _record_hash
+  type: VARCHAR(64)
+  nullable: false
+  source: system
+  description: SHA-256 hash of business columns
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'

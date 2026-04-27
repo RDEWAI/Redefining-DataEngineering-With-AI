@@ -1,0 +1,77 @@
+table: clinical_careplans
+layer: silver
+schema: clinical
+ddl_path: ddl/liquibase/changelogs/clinical_careplans.xml
+dq_path: dq_rules/clinical_careplans.yml
+owner: patient_360
+description: Silver contract for clinical_careplans
+tags:
+- silver
+columns:
+- name: careplan_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_careplans.Id
+  description: "Care plan UUID \u2014 natural key"
+- name: patient_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_careplans.PATIENT
+  description: FK to clinical_patients.patient_id
+- name: encounter_id
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_careplans.ENCOUNTER
+  description: FK to clinical_encounters.encounter_id
+- name: start_date
+  type: DATE
+  nullable: true
+  source: bronze.synthea_careplans.START
+  description: Care plan start date
+- name: stop_date
+  type: DATE
+  nullable: true
+  source: bronze.synthea_careplans.STOP
+  description: "Care plan end date \u2014 NULL for active plans"
+- name: snomed_code
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_careplans.CODE
+  description: "SNOMED-CT care plan code \u2014 cast from BIGINT"
+- name: careplan_description
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_careplans.DESCRIPTION
+  description: Care plan description
+- name: reason_code
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_careplans.REASONCODE
+  description: "Reason code \u2014 cast from BIGINT"
+- name: reason_description
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_careplans.REASONDESCRIPTION
+  description: Reason description
+- name: ds
+  type: DATE
+  nullable: false
+  source: system
+  description: Ingestion partition date
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  source: system
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: VARCHAR
+  nullable: false
+  source: system
+  description: Pipeline run identifier
+- name: _record_hash
+  type: VARCHAR(64)
+  nullable: false
+  source: system
+  description: SHA-256 hash of business columns
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'

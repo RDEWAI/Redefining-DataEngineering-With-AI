@@ -1,0 +1,117 @@
+table: reference_payers
+layer: silver
+schema: reference
+ddl_path: ddl/liquibase/changelogs/reference_payers.xml
+dq_path: dq_rules/reference_payers.yml
+owner: patient_360
+description: Silver contract for reference_payers
+tags:
+- silver
+columns:
+- name: payer_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_payers.Id
+  description: "Payer UUID \u2014 natural key"
+- name: payer_name
+  type: VARCHAR(200)
+  nullable: true
+  source: bronze.synthea_payers.NAME
+  description: "Payer name \u2014 SCD Type 2 tracked"
+- name: ownership
+  type: VARCHAR(50)
+  nullable: true
+  source: bronze.synthea_payers.OWNERSHIP
+  description: Ownership type (Government, Private)
+- name: address
+  type: VARCHAR(200)
+  nullable: true
+  source: bronze.synthea_payers.ADDRESS
+  description: Street address
+- name: city
+  type: VARCHAR(100)
+  nullable: true
+  source: bronze.synthea_payers.CITY
+  description: City
+- name: state
+  type: VARCHAR(2)
+  nullable: true
+  source: bronze.synthea_payers.STATE_HEADQUARTERED
+  description: State where headquartered
+- name: zip
+  type: VARCHAR(10)
+  nullable: true
+  source: bronze.synthea_payers.ZIP
+  description: ZIP code
+- name: phone
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_payers.PHONE
+  description: Phone number
+- name: amount_covered
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_payers.AMOUNT_COVERED
+  description: "Total amount covered \u2014 cast from DOUBLE"
+- name: amount_uncovered
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_payers.AMOUNT_UNCOVERED
+  description: "Total amount uncovered \u2014 cast from DOUBLE"
+- name: revenue
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_payers.REVENUE
+  description: "Total revenue \u2014 cast from DOUBLE"
+- name: covered_encounters
+  type: INTEGER
+  nullable: true
+  source: bronze.synthea_payers.COVERED_ENCOUNTERS
+  description: Count of covered encounters
+- name: uncovered_encounters
+  type: INTEGER
+  nullable: true
+  source: bronze.synthea_payers.UNCOVERED_ENCOUNTERS
+  description: Count of uncovered encounters
+- name: unique_customers
+  type: INTEGER
+  nullable: true
+  source: bronze.synthea_payers.UNIQUE_CUSTOMERS
+  description: Unique customer count
+- name: member_months
+  type: INTEGER
+  nullable: true
+  source: bronze.synthea_payers.MEMBER_MONTHS
+  description: Total member months
+- name: effective_from
+  type: DATE
+  nullable: false
+  source: system
+  description: "SCD Type 2 \u2014 row version start date"
+- name: effective_to
+  type: DATE
+  nullable: false
+  source: system
+  description: "SCD Type 2 \u2014 row version end date (9999-12-31 for current)"
+- name: is_current
+  type: BOOLEAN
+  nullable: false
+  source: system
+  description: "SCD Type 2 \u2014 TRUE for active version"
+- name: _record_hash
+  type: VARCHAR(64)
+  nullable: false
+  source: system
+  description: SHA-256 hash for change detection
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  source: system
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: VARCHAR
+  nullable: false
+  source: system
+  description: Pipeline run identifier
+partition_by: none
+write_strategy: Delta MERGE INTO on payer_id (SCD Type 2)

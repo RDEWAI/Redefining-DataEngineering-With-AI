@@ -1,0 +1,145 @@
+table: patient_summary
+layer: gold
+schema: analytics
+ddl_path: ddl/liquibase/changelogs/patient_summary.xml
+dq_path: dq_rules/patient_summary.yml
+owner: patient_360
+description: Gold contract for patient_summary
+tags:
+- gold
+columns:
+- name: patient_id
+  type: VARCHAR
+  nullable: false
+  description: "Patient UUID \u2014 natural key from source"
+- name: first_name
+  type: VARCHAR(100)
+  nullable: false
+  description: "First name \u2014 PHI (masking applied at application layer per DRD\
+    \ \xA73.5)"
+- name: middle_name
+  type: VARCHAR(100)
+  nullable: true
+  description: "Middle name \u2014 PHI"
+- name: last_name
+  type: VARCHAR(100)
+  nullable: false
+  description: "Last name \u2014 PHI"
+- name: prefix
+  type: VARCHAR(10)
+  nullable: true
+  description: Name prefix
+- name: suffix
+  type: VARCHAR(10)
+  nullable: true
+  description: Name suffix
+- name: birth_date
+  type: DATE
+  nullable: false
+  description: "Date of birth \u2014 PHI"
+- name: death_date
+  type: DATE
+  nullable: true
+  description: "Date of death \u2014 NULL for living patients"
+- name: patient_status
+  type: VARCHAR(10)
+  nullable: false
+  description: ALIVE or DECEASED
+- name: calculated_age
+  type: INTEGER
+  nullable: true
+  description: Age as of today
+- name: gender
+  type: VARCHAR(10)
+  nullable: true
+  description: Standardised gender (MALE/FEMALE/OTHER/UNKNOWN)
+- name: race
+  type: VARCHAR(50)
+  nullable: true
+  description: Race
+- name: ethnicity
+  type: VARCHAR(50)
+  nullable: true
+  description: Ethnicity
+- name: marital_status
+  type: VARCHAR(20)
+  nullable: true
+  description: Marital status
+- name: address
+  type: VARCHAR(200)
+  nullable: true
+  description: "Street address \u2014 role-based display per DRD \xA73.5 (full for\
+    \ physicians, city/state only for nurses)"
+- name: city
+  type: VARCHAR(100)
+  nullable: true
+  description: City
+- name: state
+  type: VARCHAR(2)
+  nullable: true
+  description: State abbreviation
+- name: zip
+  type: VARCHAR(10)
+  nullable: true
+  description: ZIP code
+- name: active_condition_count
+  type: INTEGER
+  nullable: false
+  description: Count of active conditions (condition_status = ACTIVE)
+- name: active_medication_count
+  type: INTEGER
+  nullable: false
+  description: Count of active medications (medication_status = Active)
+- name: has_allergy
+  type: BOOLEAN
+  nullable: false
+  description: TRUE if patient has any recorded allergy
+- name: allergies
+  type: ARRAY<STRUCT<description VARCHAR, severity VARCHAR>>
+  nullable: true
+  complex_type_rationale: "Eliminates a join to clinical_allergies at query time,\
+    \ critical for the 2-second search SLA [DRD \xA74.3]. Bridge table would require\
+    \ join for every patient lookup. Max expected cardinality ~6 allergies per patient\
+    \ (5,607 allergies / 1,003 patients with allergies)."
+  description: "List of patient allergies \u2014 never suppressed; NULL severity shown\
+    \ as Unknown per DRD \xA75.1 and \xA75.4"
+- name: conditions
+  type: ARRAY<STRUCT<snomed_code VARCHAR, description VARCHAR, onset_date DATE>>
+  nullable: true
+  complex_type_rationale: "Eliminates a join to clinical_conditions at query time\
+    \ for the 2-second search SLA [DRD \xA74.3]. Scoped to active conditions only\
+    \ (STOP IS NULL) to bound cardinality. Max expected cardinality ~10 active conditions\
+    \ per patient (53,543 active conditions / 5,503 patients with active conditions).\
+    \ Resolves Open Question #1 from v1.0."
+  description: "List of active conditions with SNOMED code, description, and onset\
+    \ date \u2014 active only (condition_status = ACTIVE)"
+- name: medications
+  type: ARRAY<STRUCT<rxnorm_code VARCHAR, description VARCHAR, status VARCHAR>>
+  nullable: true
+  complex_type_rationale: "Eliminates a join to clinical_medications at query time\
+    \ for the 2-second search SLA [DRD \xA74.3]. Scoped to active medications only\
+    \ (STOP IS NULL) to bound cardinality. Max expected cardinality ~4 active medications\
+    \ per patient (15,174 active medications / 3,900 patients with active medications)."
+  description: "List of active medications with RxNorm code, description, and status\
+    \ \u2014 active only (medication_status = Active)"
+- name: recent_encounter_date
+  type: DATE
+  nullable: true
+  description: Date of most recent encounter
+- name: recent_encounter_class
+  type: VARCHAR(20)
+  nullable: true
+  description: Class of most recent encounter
+- name: encounter_count
+  type: INTEGER
+  nullable: false
+  description: Total lifetime encounter count
+- name: has_30day_readmission_history
+  type: BOOLEAN
+  nullable: false
+  description: TRUE if patient has any 30-day readmission in history
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  description: Pipeline processing timestamp
+write_strategy: full overwrite (small table, 5767 rows)

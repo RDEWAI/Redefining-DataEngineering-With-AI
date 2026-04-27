@@ -1,0 +1,141 @@
+{
+  "story_id": "STORY-01-002",
+  "story_file": "/Users/asingamaneni/conductor/workspaces/Redefining-DataEngineering-With-AI/spokane/chapter-5/outputs/stories/v1/EPIC-01-foundation-bootstrap/STORY-01-002-pipeline-config.md",
+  "epic_id": "EPIC-01",
+  "plan_version": 1,
+  "status": "planned",
+  "generated_at": "2026-04-27T06:39:38.577844+00:00",
+  "summary": "2 task(s) across ['pipeline', 'scaffold'] \u2014 4 AC(s).",
+  "classifier": {
+    "kind": "scaffold",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-01-002",
+    "paths": [
+      "patient_360/src/patient_360/utils/pipeline_config.py",
+      "_infra/cd/config/*.yaml",
+      "patient_360/src/patient_360/utils/logging_config.py",
+      "patient_360/tests/utils/test_pipeline_config.py"
+    ],
+    "by_skill": {
+      "scaffold": [
+        "patient_360/src/patient_360/utils/pipeline_config.py",
+        "patient_360/src/patient_360/utils/logging_config.py",
+        "patient_360/tests/utils/test_pipeline_config.py"
+      ],
+      "pipeline": [
+        "_infra/cd/config/*.yaml"
+      ]
+    },
+    "dispatch_order": [
+      "scaffold",
+      "pipeline"
+    ],
+    "unmatched": [],
+    "fallback_kind": null
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "create-scaffold",
+      "kind": "scaffold",
+      "mode": "create",
+      "paths": [
+        "patient_360/src/patient_360/utils/pipeline_config.py",
+        "patient_360/src/patient_360/utils/logging_config.py",
+        "patient_360/tests/utils/test_pipeline_config.py"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "started_at": null,
+      "finished_at": null,
+      "artifacts": [],
+      "files_created": 0,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-scaffold",
+      "validator_status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "T2",
+      "skill": "create-pipeline",
+      "kind": "pipeline",
+      "mode": "create",
+      "paths": [
+        "_infra/cd/config/*.yaml"
+      ],
+      "depends_on": [
+        "T1"
+      ],
+      "status": "todo",
+      "started_at": null,
+      "finished_at": null,
+      "artifacts": [],
+      "files_created": 0,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-pipeline",
+      "validator_status": "pending",
+      "notes": ""
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "`patient_360/src/patient_360/utils/pipeline_config.py` exposes `load_config(env)` that loads `_infra/cd/config/{env}.yaml` [LLD \u00a77.1, \u00a77.2]",
+      "line": 23,
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "`patient_360/src/patient_360/utils/logging_config.py` exposes `get_logger(name)` returning a configured stdlib logger [LLD \u00a710.1]",
+      "line": 24,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "All 35 parameters from LLD \u00a77.1 are accessible via dotted-path lookup [LLD \u00a77.1]",
+      "line": 25,
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 4,
+      "text": "`patient_360/tests/utils/test_pipeline_config.py` exercises load + override merge",
+      "line": 26,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

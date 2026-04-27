@@ -1,0 +1,83 @@
+table: clinical_procedures
+layer: silver
+schema: clinical
+ddl_path: ddl/liquibase/changelogs/clinical_procedures.xml
+dq_path: dq_rules/clinical_procedures.yml
+owner: patient_360
+description: Silver contract for clinical_procedures
+tags:
+- silver
+columns:
+- name: patient_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_procedures.PATIENT
+  description: FK to clinical_patients.patient_id
+- name: encounter_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_procedures.ENCOUNTER
+  description: FK to clinical_encounters.encounter_id
+- name: start_date
+  type: TIMESTAMP
+  nullable: false
+  source: bronze.synthea_procedures.START
+  description: Procedure start datetime
+- name: stop_date
+  type: TIMESTAMP
+  nullable: true
+  source: bronze.synthea_procedures.STOP
+  description: Procedure stop datetime
+- name: code_system
+  type: VARCHAR(50)
+  nullable: true
+  source: bronze.synthea_procedures.SYSTEM
+  description: Coding system (SNOMED-CT)
+- name: snomed_code
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_procedures.CODE
+  description: "SNOMED-CT procedure code \u2014 cast from BIGINT"
+- name: procedure_description
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_procedures.DESCRIPTION
+  description: Procedure description
+- name: base_cost
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_procedures.BASE_COST
+  business_rule: "COALESCE(BASE_COST, 0) [DRD \xA75.1]"
+  description: Procedure base cost
+- name: reason_code
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_procedures.REASONCODE
+  description: "Reason SNOMED code \u2014 cast from BIGINT"
+- name: reason_description
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_procedures.REASONDESCRIPTION
+  description: Procedure reason
+- name: ds
+  type: DATE
+  nullable: false
+  source: system
+  description: Ingestion partition date
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  source: system
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: VARCHAR
+  nullable: false
+  source: system
+  description: Pipeline run identifier
+- name: _record_hash
+  type: VARCHAR(64)
+  nullable: false
+  source: system
+  description: SHA-256 hash of business columns
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'

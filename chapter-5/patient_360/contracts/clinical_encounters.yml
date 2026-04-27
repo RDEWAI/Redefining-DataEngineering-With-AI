@@ -1,0 +1,144 @@
+table: clinical_encounters
+layer: silver
+schema: clinical
+ddl_path: ddl/liquibase/changelogs/clinical_encounters.xml
+dq_path: dq_rules/clinical_encounters.yml
+owner: patient_360
+description: Silver contract for clinical_encounters
+tags:
+- silver
+columns:
+- name: encounter_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_encounters.Id
+  description: "Encounter UUID \u2014 natural key"
+- name: patient_id
+  type: VARCHAR
+  nullable: false
+  source: bronze.synthea_encounters.PATIENT
+  description: FK to clinical_patients.patient_id
+- name: organization_id
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_encounters.ORGANIZATION
+  description: FK to reference_organizations.organization_id
+- name: provider_id
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_encounters.PROVIDER
+  description: FK to reference_providers.provider_id
+- name: payer_id
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_encounters.PAYER
+  description: FK to reference_payers.payer_id
+- name: encounter_class
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_encounters.ENCOUNTERCLASS
+  business_rule: "UPPER(TRIM(ENCOUNTERCLASS)) mapped to canonical values: INPATIENT,\
+    \ OUTPATIENT, AMBULATORY, EMERGENCY, WELLNESS, URGENTCARE \u2014 null mapped to\
+    \ UNKNOWN [data-dictionary \xA75.1]"
+  description: Standardised encounter class
+- name: snomed_code
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_encounters.CODE
+  description: "SNOMED-CT encounter type code \u2014 cast from BIGINT"
+- name: encounter_description
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_encounters.DESCRIPTION
+  description: Encounter description
+- name: start_date
+  type: TIMESTAMP
+  nullable: false
+  source: bronze.synthea_encounters.START
+  description: Encounter start datetime
+- name: stop_date
+  type: TIMESTAMP
+  nullable: true
+  source: bronze.synthea_encounters.STOP
+  description: "Encounter stop datetime \u2014 NULL for in-progress"
+- name: encounter_duration_hours
+  type: DECIMAL(10,2)
+  nullable: true
+  source: derived
+  business_rule: "DATEDIFF(hour, start_date, stop_date) \u2014 null if stop_date is\
+    \ null [data-dictionary \xA73]"
+  description: Duration of encounter in hours
+- name: los_days
+  type: INTEGER
+  nullable: true
+  source: derived
+  business_rule: "DATEDIFF(day, start_date, stop_date) \u2014 0 for same-day; null\
+    \ if stop_date is null [data-dictionary \xA73]"
+  description: Length of stay in days
+- name: base_encounter_cost
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_encounters.BASE_ENCOUNTER_COST
+  business_rule: "COALESCE(BASE_ENCOUNTER_COST, 0) \u2014 NULL treated as 0 [DRD \xA7\
+    5.1]"
+  description: Base encounter cost
+- name: total_claim_cost
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_encounters.TOTAL_CLAIM_COST
+  business_rule: "COALESCE(TOTAL_CLAIM_COST, 0) \u2014 NULL treated as 0 [DRD \xA7\
+    5.1]"
+  description: Total claim cost
+- name: payer_coverage
+  type: DECIMAL(12,2)
+  nullable: true
+  source: bronze.synthea_encounters.PAYER_COVERAGE
+  business_rule: "COALESCE(PAYER_COVERAGE, 0) \u2014 NULL treated as 0 [DRD \xA75.1]"
+  description: Payer coverage amount
+- name: total_visit_cost
+  type: DECIMAL(12,2)
+  nullable: true
+  source: derived
+  business_rule: "COALESCE(base_encounter_cost,0) + SUM(procedure.base_cost) + SUM(medication.total_cost)\
+    \ \u2014 per DRD \xA75.2"
+  description: Total encounter cost including procedures and medications
+- name: reason_code
+  type: VARCHAR(20)
+  nullable: true
+  source: bronze.synthea_encounters.REASONCODE
+  description: "Reason SNOMED code \u2014 cast from BIGINT"
+- name: reason_description
+  type: VARCHAR
+  nullable: true
+  source: bronze.synthea_encounters.REASONDESCRIPTION
+  description: Encounter reason description
+- name: is_30_day_readmission
+  type: BOOLEAN
+  nullable: false
+  source: derived
+  business_rule: "TRUE if inpatient encounter within 30 calendar days of prior inpatient\
+    \ discharge \u2014 first encounter is never a readmission [DRD \xA75.2, data-dictionary\
+    \ \xA73]"
+  description: 30-day inpatient readmission flag
+- name: ds
+  type: DATE
+  nullable: false
+  source: system
+  description: Ingestion partition date
+- name: _ingested_at
+  type: TIMESTAMP
+  nullable: false
+  source: system
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: VARCHAR
+  nullable: false
+  source: system
+  description: Pipeline run identifier
+- name: _record_hash
+  type: VARCHAR(64)
+  nullable: false
+  source: system
+  description: SHA-256 hash of business columns
+partition_by: ds
+write_strategy: replaceWhere ds = '{ds}'
