@@ -29,11 +29,11 @@ flowchart TB
         UD --> VD
     end
 
-    subgraph pipeline["pipeline"]
+    subgraph pipeline["cicd"]
         direction TB
-        CP["create-pipeline"]
-        UP["update-pipeline"]
-        VP["validate-pipeline"]
+        CP["create-cicd"]
+        UP["update-cicd"]
+        VP["validate-cicd"]
         CP --> VP
         UP --> VP
     end
