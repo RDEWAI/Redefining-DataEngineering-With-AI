@@ -4,39 +4,9 @@
     "name": "RDEWAI"
   },
   "metadata": {
-    "description": "Plugins for Chapter 5 — Full Artifact Chain + Story-Driven Implementation"
+    "description": "Chapter 5 plugins — story decomposition (Scrum Master) and code generation (Developer). Upstream artifact plugins (BA, Architect, Data Modeler, Mapping Analyst, DQ Engineer, Technical Lead) are sourced from chapter-4."
   },
   "plugins": [
-    {
-      "name": "ba-plugin",
-      "source": "./ba-plugin",
-      "description": "Business Analyst Agent for generating, updating, and validating Data Requirements Documents (DRDs)"
-    },
-    {
-      "name": "architect-plugin",
-      "source": "./architect-plugin",
-      "description": "Data Architect Agent for generating, updating, and validating High-Level Design (HLD) documents"
-    },
-    {
-      "name": "data-modeler-plugin",
-      "source": "./data-modeler-plugin",
-      "description": "Data Modeler Agent for generating, updating, and validating Data Model Specifications (DMS)"
-    },
-    {
-      "name": "mapping-analyst-plugin",
-      "source": "./mapping-analyst-plugin",
-      "description": "Mapping Analyst Agent for generating, updating, and validating Source-to-Target Mapping (STM) Excel workbooks"
-    },
-    {
-      "name": "dq-engineer-plugin",
-      "source": "./dq-engineer-plugin",
-      "description": "Data Quality Engineer Agent for generating, updating, and validating Data Quality Specifications (DQS) and Spark-Expectations rules"
-    },
-    {
-      "name": "technical-lead-plugin",
-      "source": "./technical-lead-plugin",
-      "description": "Technical Lead Agent for generating, updating, and validating Low-Level Design (LLD) documents and configuration templates"
-    },
     {
       "name": "scrum-master-plugin",
       "source": "./scrum-master-plugin",

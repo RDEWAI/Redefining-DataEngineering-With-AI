@@ -2,28 +2,27 @@
 
 ## Overview
 
-Chapter 5 is a **self-contained workspace** that runs the entire data-engineering
-pipeline end-to-end — from an initial business request through generated code.
-It ships working copies of the six planning plugins (moved/copied from
-chapter-4) plus two implementation-phase plugins: the Scrum Master (story
-decomposition) and the Developer (code generation).
+Chapter 5 is a **workspace** that runs the entire data-engineering pipeline
+end-to-end — from an initial business request through generated code. It
+ships two implementation-phase plugins: the Scrum Master (story decomposition)
+and the Developer (code generation). The six planning plugins (DRD → LLD)
+are sourced directly from `chapter-4/` — one canonical implementation, used
+from both chapters.
 
 **Artifact chain**: DRD → HLD → DMS → STM → DQS → LLD → **Stories** → **Code**
 
-> Chapter-4 remains the canonical reference implementation for the planning
-> plugins (DRD → LLD). Chapter-5 is the full-loop workspace — planning,
-> backlog, and code — where students iterate.
+> Chapter-4 is the canonical home for the planning plugins (DRD → LLD).
+> Chapter-5 reuses them and adds the Scrum Master and Developer plugins for
+> the full implementation loop.
 
 ## Plugins
 
-All eight plugins live under `chapter-5/` and are registered in
-`chapter-5/.claude-plugin/marketplace.json` under the
-`rdewai-chapter5-plugins` marketplace.
+Chapter-5 ships two plugins (`scrum-master-plugin`, `developer-plugin`) under
+`chapter-5/.claude-plugin/marketplace.json` (`rdewai-chapter5-plugins`).
+The six upstream planning plugins (DRD → LLD) come from
+`chapter-4/.claude-plugin/marketplace.json` (`rdewai-plugins`).
 
-### Planning plugins (DRD → LLD)
-
-These six plugins are working copies of the chapter-4 reference. Each lives
-in its own directory with `skills/`, `hooks/`, `scripts/`, and `agents/`.
+### Planning plugins (DRD → LLD) — sourced from chapter-4
 
 | Plugin | Artifact | Skills |
 |---|---|---|
@@ -34,8 +33,9 @@ in its own directory with `skills/`, `hooks/`, `scripts/`, and `agents/`.
 | `dq-engineer-plugin` | DQS (markdown + SE YAML) | create-dqs, update-dqs, validate-dqs, generate-se-rules, approve-dqs |
 | `technical-lead-plugin` | LLD (markdown + config + DAG + impl-sequence) | create-lld, update-lld, validate-lld, generate-config-template, apply-learnings, approve-lld |
 
-**Inputs**: `inputs/{role}/v{N}/` per role (folder-versioned).
-**Outputs**: `outputs/{artifact}/v{N}/` per artifact (folder-versioned).
+The chapter-5 workspace still uses the same `inputs/{role}/v{N}/` and
+`outputs/{artifact}/v{N}/` folder-versioned layout — only the plugin code
+lives in chapter-4.
 
 ### Scrum Master plugin (Sprint Backlog)
 
@@ -61,13 +61,17 @@ CI/CD pipeline configs, and the Bronze config-driven ingestion framework.
 From the repo root:
 
 ```bash
+# Planning plugins (DRD → LLD) — single source of truth in chapter-4
+/plugin marketplace add ./chapter-4
+/plugin install ba-plugin@rdewai-plugins
+/plugin install architect-plugin@rdewai-plugins
+/plugin install data-modeler-plugin@rdewai-plugins
+/plugin install mapping-analyst-plugin@rdewai-plugins
+/plugin install dq-engineer-plugin@rdewai-plugins
+/plugin install technical-lead-plugin@rdewai-plugins
+
+# Implementation plugins (Stories + Code) — chapter-5
 /plugin marketplace add ./chapter-5
-/plugin install ba-plugin@rdewai-chapter5-plugins
-/plugin install architect-plugin@rdewai-chapter5-plugins
-/plugin install data-modeler-plugin@rdewai-chapter5-plugins
-/plugin install mapping-analyst-plugin@rdewai-chapter5-plugins
-/plugin install dq-engineer-plugin@rdewai-chapter5-plugins
-/plugin install technical-lead-plugin@rdewai-chapter5-plugins
 /plugin install scrum-master-plugin@rdewai-chapter5-plugins
 /plugin install developer-plugin@rdewai-chapter5-plugins
 ```
@@ -76,14 +80,13 @@ From the repo root:
 
 ### Plugins
 
-- `ba-plugin/`
-- `architect-plugin/`
-- `data-modeler-plugin/`
-- `mapping-analyst-plugin/`
-- `dq-engineer-plugin/`
-- `technical-lead-plugin/`
+Local to chapter-5:
 - `scrum-master-plugin/`
 - `developer-plugin/`
+
+Sourced from `chapter-4/`:
+- `ba-plugin/`, `architect-plugin/`, `data-modeler-plugin/`,
+  `mapping-analyst-plugin/`, `dq-engineer-plugin/`, `technical-lead-plugin/`
 
 ### Workspace data
 
@@ -210,8 +213,10 @@ At the end of any skill session where the learnings queue has pending entries,
 run the matching `/apply-learnings` skill (`technical-lead-plugin`,
 `developer-plugin`) before finishing.
 
-The 7 planning plugins each resolve the chapter root via `CHAPTER5_ROOT`
-(with a 3-levels-up fallback from `scripts/check-learnings-queue.py`).
+The planning plugins (sourced from chapter-4) resolve the chapter root via
+`CHAPTER4_ROOT`, so their learnings queues live under `chapter-4/memory/`.
+The chapter-5 plugins (`scrum-master`, `developer`) resolve via
+`CHAPTER5_ROOT` and write to `chapter-5/memory/`.
 
 ## Key Commands
 

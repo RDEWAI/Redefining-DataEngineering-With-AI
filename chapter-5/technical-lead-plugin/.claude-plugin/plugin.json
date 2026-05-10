@@ -1,9 +1,0 @@
-{
-  "name": "technical-lead-plugin",
-  "version": "1.0.0",
-  "description": "Technical Lead Agent for generating, updating, and validating Low-Level Design (LLD) documents, configuration templates, DAG definitions, and implementation sequences",
-  "author": {
-    "name": "RDEWAI"
-  },
-  "keywords": ["technical-lead", "lld", "low-level-design", "dag-specification", "code-architecture", "deployment", "configuration", "monitoring"]
-}
