@@ -50,7 +50,7 @@ Discover and read the latest version of all input documents:
 
    If the user specifies an LLD path via `$ARGUMENTS`, read that file. Otherwise:
    ```bash
-   LATEST_LLD_DIR=$(ls -d outputs/lld/v* | sort -V | tail -1)
+   LATEST_LLD_DIR=$(ls -d ../chapter-4/outputs/lld/v* | sort -V | tail -1)
    ls -t "$LATEST_LLD_DIR"/LLD-*.md | head -1
    ```
    Read the most recently modified LLD in the latest version folder — this is the
@@ -86,19 +86,19 @@ Discover and read the latest version of all input documents:
 
 2. **All upstream artifacts** (for traceability):
    ```bash
-   LATEST_DRD_DIR=$(ls -d outputs/drd/v* | sort -V | tail -1)
+   LATEST_DRD_DIR=$(ls -d ../chapter-4/outputs/drd/v* | sort -V | tail -1)
    ls -t "$LATEST_DRD_DIR"/DRD-*.md | head -1
 
-   LATEST_HLD_DIR=$(ls -d outputs/hld/v* | sort -V | tail -1)
+   LATEST_HLD_DIR=$(ls -d ../chapter-4/outputs/hld/v* | sort -V | tail -1)
    ls -t "$LATEST_HLD_DIR"/HLD-*.md | head -1
 
-   LATEST_DMS_DIR=$(ls -d outputs/dms/v* | sort -V | tail -1)
+   LATEST_DMS_DIR=$(ls -d ../chapter-4/outputs/dms/v* | sort -V | tail -1)
    ls -t "$LATEST_DMS_DIR"/DMS-*.md | head -1
 
-   LATEST_STM_DIR=$(ls -d outputs/stm/v* | sort -V | tail -1)
+   LATEST_STM_DIR=$(ls -d ../chapter-4/outputs/stm/v* | sort -V | tail -1)
    ls -t "$LATEST_STM_DIR"/STM-*.xlsx 2>/dev/null | head -1
 
-   LATEST_DQS_DIR=$(ls -d outputs/dqs/v* | sort -V | tail -1)
+   LATEST_DQS_DIR=$(ls -d ../chapter-4/outputs/dqs/v* | sort -V | tail -1)
    ls -t "$LATEST_DQS_DIR"/DQS-*.md | head -1
    ```
 
@@ -424,32 +424,32 @@ Before ANY work begins, verify all 6 required upstream artifacts are approved.
 
 ```bash
 # Check DRD
-LATEST_DRD_DIR=$(ls -d outputs/drd/v* | sort -V | tail -1)
+LATEST_DRD_DIR=$(ls -d ../chapter-4/outputs/drd/v* | sort -V | tail -1)
 LATEST_DRD=$(ls -t "$LATEST_DRD_DIR"/DRD-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
 echo "Latest DRD: $LATEST_DRD"
 
 # Check HLD
-LATEST_HLD_DIR=$(ls -d outputs/hld/v* | sort -V | tail -1)
+LATEST_HLD_DIR=$(ls -d ../chapter-4/outputs/hld/v* | sort -V | tail -1)
 LATEST_HLD=$(ls -t "$LATEST_HLD_DIR"/HLD-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
 echo "Latest HLD: $LATEST_HLD"
 
 # Check DMS
-LATEST_DMS_DIR=$(ls -d outputs/dms/v* | sort -V | tail -1)
+LATEST_DMS_DIR=$(ls -d ../chapter-4/outputs/dms/v* | sort -V | tail -1)
 LATEST_DMS=$(ls -t "$LATEST_DMS_DIR"/DMS-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
 echo "Latest DMS: $LATEST_DMS"
 
 # Check STM (Excel — use python to read status from Summary sheet)
-LATEST_STM_DIR=$(ls -d outputs/stm/v* | sort -V | tail -1)
+LATEST_STM_DIR=$(ls -d ../chapter-4/outputs/stm/v* | sort -V | tail -1)
 LATEST_STM=$(ls -t "$LATEST_STM_DIR"/STM-*.xlsx 2>/dev/null | grep -v '\.bak$' | head -1)
 echo "Latest STM: $LATEST_STM"
 
 # Check DQS
-LATEST_DQS_DIR=$(ls -d outputs/dqs/v* | sort -V | tail -1)
+LATEST_DQS_DIR=$(ls -d ../chapter-4/outputs/dqs/v* | sort -V | tail -1)
 LATEST_DQS=$(ls -t "$LATEST_DQS_DIR"/DQS-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
 echo "Latest DQS: $LATEST_DQS"
 
 # Check LLD
-LATEST_LLD_DIR=$(ls -d outputs/lld/v* | sort -V | tail -1)
+LATEST_LLD_DIR=$(ls -d ../chapter-4/outputs/lld/v* | sort -V | tail -1)
 LATEST_LLD=$(ls -t "$LATEST_LLD_DIR"/LLD-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
 echo "Latest LLD: $LATEST_LLD"
 ```
@@ -472,12 +472,12 @@ wb.close()
 Status MUST be `Approved` for all upstream artifacts.
 
 **Required upstream artifacts (all must be Approved):**
-- **DRD**: `outputs/drd/v*/DRD-*.md`
-- **HLD**: `outputs/hld/v*/HLD-*.md`
-- **DMS**: `outputs/dms/v*/DMS-*.md`
-- **STM**: `outputs/stm/v*/STM-*.xlsx` (Status in Summary sheet)
-- **DQS**: `outputs/dqs/v*/DQS-*.md`
-- **LLD**: `outputs/lld/v*/LLD-*.md`
+- **DRD**: `../chapter-4/outputs/drd/v*/DRD-*.md`
+- **HLD**: `../chapter-4/outputs/hld/v*/HLD-*.md`
+- **DMS**: `../chapter-4/outputs/dms/v*/DMS-*.md`
+- **STM**: `../chapter-4/outputs/stm/v*/STM-*.xlsx` (Status in Summary sheet)
+- **DQS**: `../chapter-4/outputs/dqs/v*/DQS-*.md`
+- **LLD**: `../chapter-4/outputs/lld/v*/LLD-*.md`
 
 **If ANY upstream artifact is NOT Approved:**
 1. List which artifacts are missing approval and their current status
@@ -488,7 +488,7 @@ Status MUST be `Approved` for all upstream artifacts.
 
 ### Phase 1: Understand the Request
 1. Discover the latest LLD version folder and read the most recent LLD:
-   `ls -d outputs/lld/v* | sort -V | tail -1`
+   `ls -d ../chapter-4/outputs/lld/v* | sort -V | tail -1`
 2. Read all upstream artifacts (DRD, HLD, DMS, STM, DQS) for traceability
 3. Discover the latest scrum master input version folder and read all files:
    `ls -d inputs/stories/v* | sort -V | tail -1`

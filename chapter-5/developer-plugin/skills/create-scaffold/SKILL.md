@@ -148,7 +148,7 @@ story IDs. At each generation step it reads:
 | Project name, chapter name        | Discovery helper (`--mode discover` → `project_name`)               |
 | Directory tree                    | LLD §2.1                                                            |
 | Utility module interface contracts| LLD §2.3                                                            |
-| Config schema                     | LLD §7 + `outputs/lld/v*/config/config-template.yaml`               |
+| Config schema                     | LLD §7 + `../chapter-4/outputs/lld/v*/config/config-template.yaml`  |
 | Table list (for contracts)        | LLD §5.1 Bronze Task Table; DMS §2 layer schemas                    |
 | StructType column definitions     | DMS §2 (the ONLY source — do not invent columns)                    |
 | Infra stack                       | LLD §9.1                                                            |
@@ -429,7 +429,7 @@ an empty `<include>` list and an empty `ddl/liquibase/changelogs/`
 directory. After the render and before Phase 3, populate both from DMS §2.
 
 1. **Extract Bronze table names from DMS §2.** Read the latest
-   `outputs/dms/v*/DMS-*.md`. In §2, each Bronze table has a `### <table>`
+   `../chapter-4/outputs/dms/v*/DMS-*.md`. In §2, each Bronze table has a `### <table>`
    heading and a column table that follows. Collect every table name under
    §2's Bronze subsection (the DMS makes this explicit with a
    `## 2. Bronze Layer` or similar heading). If the DMS layout varies,

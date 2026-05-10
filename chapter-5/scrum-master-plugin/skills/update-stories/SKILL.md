@@ -49,7 +49,7 @@ Discover and read the latest version of all documents:
 
 2. **Latest LLD** (for traceability verification):
    ```bash
-   LATEST_LLD_DIR=$(ls -d outputs/lld/v* | sort -V | tail -1)
+   LATEST_LLD_DIR=$(ls -d ../chapter-4/outputs/lld/v* | sort -V | tail -1)
    ls -t "$LATEST_LLD_DIR"/LLD-*.md | head -1
    ```
 

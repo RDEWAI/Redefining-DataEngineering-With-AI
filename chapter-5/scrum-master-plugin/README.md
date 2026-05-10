@@ -58,8 +58,8 @@ memory/stories/
 
 ## Inputs
 
-- Upstream (primary): `outputs/lld/v{N}/`
-- Upstream (all): `outputs/drd/v{N}/`, `outputs/hld/v{N}/`, `outputs/dms/v{N}/`, `outputs/stm/v{N}/`, `outputs/dqs/v{N}/`
+- Upstream (primary): `../chapter-4/outputs/lld/v{N}/`
+- Upstream (all): `../chapter-4/outputs/drd/v{N}/`, `../chapter-4/outputs/hld/v{N}/`, `../chapter-4/outputs/dms/v{N}/`, `../chapter-4/outputs/stm/v{N}/`, `../chapter-4/outputs/dqs/v{N}/`
 - Role-specific: `inputs/stories/v{N}/` (team capacity, story standards)
 
 ## Outputs

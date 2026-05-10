@@ -271,7 +271,7 @@ def check_yaml_config(
 
 def check_dq_rules_schema(dq_path: Path, findings: Findings) -> None:
     """Accept either the legacy stub (`table` + `rules`) or the Spark
-    Expectations format sourced from `outputs/dqs/.../se-rules/`
+    Expectations format sourced from `../chapter-4/outputs/dqs/.../se-rules/`
     (`product_id` + `dq_env` + `rules`)."""
     try:
         data = yaml.safe_load(dq_path.read_text(encoding="utf-8"))
