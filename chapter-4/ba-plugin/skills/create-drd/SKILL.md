@@ -499,7 +499,7 @@ Every DRD starts with this metadata table:
 
 ### Active Learnings
 
-_No learnings recorded yet. Learnings are added when corrections occur during skill execution._
+- **L-001** (2026-03-27): Always minimize Q&A rounds when inputs are comprehensive and a prior session has already captured key decisions — proceed with sensible defaults instead of re-asking. If the user signals "take all defaults" or equivalent, skip the extended Q&A loop entirely and move straight to drafting. Only raise questions for genuinely ambiguous or missing information not resolvable from inputs or prior session notes under `memory/drd/`.
 
 <!-- Example format:
 - **L-001** (2026-03-20): Always use CAST(col AS DATE) not TO_DATE(col) for date conversions.

@@ -1924,9 +1924,31 @@ When input is empty, ingestion tasks write a zero-row Delta table with schema pr
 
 ## 6. Performance & Optimization
 
+### 6.1 Compute & Local Executor Mode
+
+```yaml
+local_executor_mode: in-airflow-local[*]
+spark_master_url: local[*]
+spark_version: "3.5.1"
+provider_pin: "apache-airflow-providers-apache-spark==4.7.0"
+```
+
+### 6.2 Cluster Sizing
+
 Spark cluster: 4 executors x 4 cores x 8GB each = 128GB total [HLD §5.4].
+
+### 6.3 File & Partition Tuning
+
 Target file size: 128MB per partition. Broadcast join threshold: 10MB.
 Parallelism: 16 partitions default. Cache silver tables used by multiple gold tasks.
+
+### 6.4 Caching Strategy
+
+Cache silver dimension tables consumed by 2+ gold tasks; uncache after gold writes.
+
+### 6.5 Skew & Shuffle Handling
+
+Adaptive Query Execution enabled; skew join hint applied to encounters x patients.
 
 ## 7. Configuration Schema
 

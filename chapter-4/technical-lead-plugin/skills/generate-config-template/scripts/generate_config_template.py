@@ -67,7 +67,7 @@ def _parse_parameter_table(section_content: str) -> list[dict[str, str]]:
             in_table = True
             continue
 
-        cells = [c.strip() for c in stripped.split("|")[1:-1]]
+        cells = [c.strip().strip("*` ") for c in stripped.split("|")[1:-1]]
 
         if not in_table:
             # This is a header row
@@ -80,6 +80,27 @@ def _parse_parameter_table(section_content: str) -> list[dict[str, str]]:
                 params.append(row)
 
     return params
+
+
+def _yaml_scalar(value: str) -> str:
+    """Render a markdown-table cell value as a safe YAML scalar.
+
+    Pure ints / floats / booleans pass through unquoted; everything else is
+    double-quoted so unit suffixes (``2g``, ``30s``), URLs, paths, etc. survive
+    YAML's bare-scalar rules.
+    """
+    import yaml as _yaml
+
+    v = (value or "").strip().strip("*` ")
+    if not v or v.lower() in ("none", "null"):
+        return '""'
+    try:
+        parsed = _yaml.safe_load(v)
+    except _yaml.YAMLError:
+        parsed = v
+    if isinstance(parsed, int | float | bool):
+        return v
+    return '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
 def _categorize_parameter(param_name: str) -> str:
@@ -107,7 +128,7 @@ def _parse_lld_header(content: str) -> dict[str, str]:
         stripped = line.strip()
         if not stripped.startswith("|") or all(c in "|- " for c in stripped):
             continue
-        cells = [c.strip() for c in stripped.split("|")[1:-1]]
+        cells = [c.strip().strip("*` ") for c in stripped.split("|")[1:-1]]
         if len(cells) >= 2 and cells[0].lower() != "field":
             key = cells[0].strip("*` ")
             value = cells[1].strip("*` ")
@@ -153,7 +174,7 @@ def generate_config_yaml(
             yaml_key = re.sub(r"_+", "_", yaml_key).strip("_")
             if description:
                 lines.append(f"  # {description}")
-            lines.append(f"  {yaml_key}: {default_val}")
+            lines.append(f"  {yaml_key}: {_yaml_scalar(default_val)}")
         lines.append("")
 
     return "\n".join(lines)
