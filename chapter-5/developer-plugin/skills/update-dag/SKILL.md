@@ -68,7 +68,7 @@ Emit a `### References` section citing consumed pattern docs + LIBRARIES.md vint
 
 ### Phase 0: Read Current State
 - Read the existing DAG file
-- Read the latest LLD from `{workspace_root}/outputs/lld/v*/` to understand what changed
+- Read the latest LLD from `{workspace_root}/../chapter-4/outputs/lld/v*/` to understand what changed
 - Diff the two to determine the minimal set of edits needed
 
 ### Phase 1: Clarify Changes

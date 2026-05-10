@@ -73,7 +73,7 @@ when present, otherwise falls back to latest `v{N}`):
 
 ```bash
 eval "$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/resolve_versions.py --export)"
-LATEST_LLD_DIR="${LATEST_LLD_DIR:-$(ls -d {workspace_root}/outputs/lld/v* | sort -V | tail -1)}"
+LATEST_LLD_DIR="${LATEST_LLD_DIR:-$(ls -d {workspace_root}/../chapter-4/outputs/lld/v* | sort -V | tail -1)}"
 ```
 
 Confirm the LLD in `$LATEST_LLD_DIR/` has `Status: Approved`.

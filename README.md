@@ -285,10 +285,10 @@ See the [Hands-On Guide](chapter-4/HANDS-ON-GUIDE.md) for the full walkthrough �
 
 ### Chapter 5: Full-Chain Workspace — Planning + Story-Driven Implementation
 
-Chapter 5 is a **self-contained workspace** that runs the entire pipeline
-end-to-end — from business request through generated code. It ships working
-copies of the six Chapter-4 planning plugins plus two implementation-phase
-plugins, eight in total:
+Chapter 5 is a **workspace** that runs the entire pipeline end-to-end — from
+business request through generated code. It ships two implementation-phase
+plugins (Scrum Master, Developer) and reuses the six Chapter-4 planning
+plugins as a single source of truth, eight in total:
 
 ```
 DRD → HLD → DMS → STM → DQS → LLD → Stories → Code
@@ -296,14 +296,16 @@ DRD → HLD → DMS → STM → DQS → LLD → Stories → Code
 
 | Plugin | Role | Output |
 |--------|------|--------|
-| ba-plugin, architect-plugin, data-modeler-plugin, mapping-analyst-plugin, dq-engineer-plugin, technical-lead-plugin | Planning chain | DRD → LLD (working copies of chapter-4) |
+| ba-plugin, architect-plugin, data-modeler-plugin, mapping-analyst-plugin, dq-engineer-plugin, technical-lead-plugin | Planning chain | DRD → LLD (sourced from chapter-4 — `rdewai-plugins` marketplace) |
 | scrum-master-plugin | Scrum Master | Sprint Backlog (Epics & Stories, multi-file markdown) |
 | developer-plugin | Developer | Airflow DAGs, CI/CD pipelines, Bronze ingestion framework |
 
-All plugins are registered under the `rdewai-chapter5-plugins` marketplace.
-Run the full pipeline without leaving the chapter.
+The chapter-5 plugins (`scrum-master`, `developer`) are registered under the
+`rdewai-chapter5-plugins` marketplace; the planning plugins come from the
+`rdewai-plugins` marketplace in chapter-4. From `chapter-5/`, run
+`make install-plugins` to install all eight at once.
 
-See [chapter-5/README.md](chapter-5/README.md) for full details.
+See [chapter-5/CLAUDE.md](chapter-5/CLAUDE.md) for full details.
 
 A **cookiecutter template** is also provided (`templates/cookiecutter-chapter/`) so readers can scaffold their own equivalent chapter project.
 
@@ -372,8 +374,8 @@ make dev-setup
 # Run tests (empty suite passes out of the box)
 make test
 
-# Install the developer plugin
-/plugin install developer-plugin@chapter-5
+# Install all Claude plugins (chapter-4 planning + chapter-5 implementation)
+make install-plugins
 
 # Start generating DAGs from your approved LLD
 /developer-plugin:create-dag

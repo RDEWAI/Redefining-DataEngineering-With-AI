@@ -1,11 +1,14 @@
-.PHONY: help dev-setup test test-unit validate-drd validate-hld validate-dms validate-stm validate-dqs validate-lld validate-stories lint format clean
+.PHONY: help dev-setup install-plugins install-plugins-ch4 install-plugins-ch5 test test-unit validate-drd validate-hld validate-dms validate-stm validate-dqs validate-lld validate-stories lint format clean
 
 help: ##@ Show available commands
 	@echo "Chapter 5: Full Artifact Chain + Story-Driven Implementation"
 	@echo ""
 	@echo "=== Setup ==="
-	@echo "  dev-setup        - Install dependencies with UV"
-	@echo "  clean            - Remove generated files and caches"
+	@echo "  dev-setup            - Install dependencies with UV"
+	@echo "  install-plugins      - Install all Claude plugins (chapter-4 + chapter-5)"
+	@echo "  install-plugins-ch4  - Install only chapter-4 planning plugins"
+	@echo "  install-plugins-ch5  - Install only chapter-5 implementation plugins"
+	@echo "  clean                - Remove generated files and caches"
 	@echo ""
 	@echo "=== Artifact Operations ==="
 	@echo "  validate-drd     - Validate all DRDs in outputs/drd/    (plugin sourced from chapter-4)"
@@ -25,6 +28,32 @@ dev-setup: ##@ Install dependencies
 	@echo "Setting up Chapter 5 development environment..."
 	uv sync
 	@echo "Done. Dependencies installed."
+
+# --- Claude plugin installation -----------------------------------------------
+# Planning plugins live in chapter-4 (rdewai-plugins marketplace).
+# Implementation plugins (scrum-master, developer) live in chapter-5
+# (rdewai-chapter5-plugins marketplace).
+CH4_PLUGINS := ba-plugin architect-plugin data-modeler-plugin mapping-analyst-plugin dq-engineer-plugin technical-lead-plugin
+CH5_PLUGINS := scrum-master-plugin developer-plugin
+
+install-plugins: install-plugins-ch4 install-plugins-ch5 ##@ Install all Claude plugins
+	@echo "All Claude plugins installed."
+
+install-plugins-ch4: ##@ Install chapter-4 planning plugins
+	@echo "Adding chapter-4 marketplace..."
+	claude plugin marketplace add ../chapter-4/
+	@for p in $(CH4_PLUGINS); do \
+		echo "Installing $$p@rdewai-plugins..."; \
+		claude plugin install $$p@rdewai-plugins; \
+	done
+
+install-plugins-ch5: ##@ Install chapter-5 implementation plugins
+	@echo "Adding chapter-5 marketplace..."
+	claude plugin marketplace add ./
+	@for p in $(CH5_PLUGINS); do \
+		echo "Installing $$p@rdewai-chapter5-plugins..."; \
+		claude plugin install $$p@rdewai-chapter5-plugins; \
+	done
 
 test: ##@ Run all tests
 	uv run pytest tests/ -v

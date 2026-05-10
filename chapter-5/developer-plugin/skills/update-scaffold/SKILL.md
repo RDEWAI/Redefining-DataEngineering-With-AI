@@ -103,7 +103,7 @@ Upstream cookiecutter-chapter releases new layers, new Makefile targets,
 or renames directories. This mode reconciles an **existing** project
 against the current template without destroying user edits.
 
-1. **Locate the template**: `{workspace_root}/outputs/lld/v*/templates/cookiecutter-chapter/`
+1. **Locate the template**: `{workspace_root}/../chapter-4/outputs/lld/v*/templates/cookiecutter-chapter/`
    or repo-root `templates/cookiecutter-chapter/`. Capture its version
    (prefer a `VERSION` file inside the template or the git SHA of its
    directory).

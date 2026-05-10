@@ -32,7 +32,18 @@ import sys
 from pathlib import Path
 
 UPSTREAMS = ("lld", "stm", "dqs", "stories")
+# After the chapter-5 → chapter-4 plugin consolidation the planning artifacts
+# (LLD, STM, DQS, plus DMS/HLD/DRD) live under ``chapter-4/outputs/``. Stories
+# stay local to chapter-5 because the scrum-master plugin runs from chapter-5.
+PLANNING_UPSTREAMS = {"lld", "stm", "dqs"}
 LOCKFILE_NAME = "dev-lock.yaml"
+
+
+def upstream_root(ws_root: Path, name: str) -> Path:
+    """Return the ``outputs/<name>`` root for the given upstream artifact."""
+    if name in PLANNING_UPSTREAMS:
+        return ws_root.parent / "chapter-4" / "outputs" / name
+    return ws_root / "outputs" / name
 
 
 def find_workspace_root(start: Path) -> Path:
@@ -67,7 +78,7 @@ def latest_version_dir(base: Path) -> Path | None:
 def resolve_latest(ws_root: Path) -> dict[str, str | None]:
     resolved: dict[str, str | None] = {}
     for name in UPSTREAMS:
-        latest = latest_version_dir(ws_root / "outputs" / name)
+        latest = latest_version_dir(upstream_root(ws_root, name))
         resolved[name] = latest.name if latest else None
     return resolved
 
@@ -132,7 +143,7 @@ def cmd_export(ws_root: Path) -> int:
         version = pinned.get(name) or ""
         if not version:
             continue
-        path = ws_root / "outputs" / name / version
+        path = upstream_root(ws_root, name) / version
         if not path.is_dir():
             continue
         var = f"LATEST_{name.upper()}_DIR"

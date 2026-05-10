@@ -454,13 +454,15 @@ def check_test_modules(project_root: Path, findings: Findings) -> None:
 
 
 def resolve_lld_path(workspace_root: Path) -> Path | None:
-    """Find the latest LLD markdown under ``{workspace_root}/outputs/lld/v*/``.
+    """Find the latest LLD markdown under ``{workspace_root}/../chapter-4/outputs/lld/v*/``.
 
     Prefers a file named ``LLD-*.md`` in the highest-numbered ``v*/`` directory.
     Returns ``None`` when no LLD is found — the caller decides whether that is
     fatal.
     """
-    lld_root = workspace_root / "outputs" / "lld"
+    # Planning artifacts (LLD/DMS/STM/DQS/HLD/DRD) live in chapter-4 after the
+    # chapter-5 → chapter-4 plugin consolidation. Stories remain in chapter-5.
+    lld_root = workspace_root.parent / "chapter-4" / "outputs" / "lld"
     if not lld_root.is_dir():
         return None
     versions = sorted(
@@ -557,7 +559,7 @@ def main() -> int:
         type=Path,
         help=(
             "Path to the approved LLD markdown. Defaults to the latest "
-            "LLD-*.md under {workspace_root}/outputs/lld/v*/."
+            "LLD-*.md under {workspace_root}/../chapter-4/outputs/lld/v*/."
         ),
     )
     args = parser.parse_args()
@@ -617,7 +619,7 @@ def main() -> int:
         lld_path = resolve_lld_path(workspace_root)
         if lld_path is None:
             print(
-                f"error: no LLD markdown found under {workspace_root}/outputs/lld/v*/ "
+                f"error: no LLD markdown found under {workspace_root}/../chapter-4/outputs/lld/v*/ "
                 f"— pass --lld explicitly",
                 file=sys.stderr,
             )

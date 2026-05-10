@@ -56,7 +56,7 @@ Cite each pattern doc consulted, e.g. `Checked against inputs/code/v1/bronze-ing
 ```bash
 uv run python ${CLAUDE_PLUGIN_ROOT}/skills/validate-ingestion/scripts/validate_ingestion.py \
   --project-root {project_root} \
-  --lld "$(ls -t {workspace_root}/outputs/lld/v*/LLD-*.md | grep -v '\.bak$' | head -1)"
+  --lld "$(ls -t {workspace_root}/../chapter-4/outputs/lld/v*/LLD-*.md | grep -v '\.bak$' | head -1)"
 ```
 
 The script returns a non-zero exit code if any CRITICAL issues are found.

@@ -89,7 +89,7 @@ Specifically:
 |---------------------------------------------------|----------------------------------------------------------------------|
 | `src/<project_name>/bronze/**`                    | Ingestion runner, factory, SparkSubmit wrapper, reconciliation task, DLQ writer — whatever LLD §2.3 + §5.1 name |
 | `airflow/configs/**`                              | One YAML per Bronze table from LLD §5.1                              |
-| `dq_rules/**`                                     | Synced from latest `{workspace_root}/outputs/dqs/v*/se-rules/*.yaml` |
+| `dq_rules/**`                                     | Synced from latest `{workspace_root}/../chapter-4/outputs/dqs/v*/se-rules/*.yaml` |
 | `contracts/dq/**`                                 | Per-table DQ thresholds from DQS §5                                  |
 | `ddl/liquibase/changelogs/**`                     | Bronze DDL from DMS §2                                               |
 | `tests/bronze/**`                                 | Bronze unit + integration tests                                      |
@@ -126,7 +126,7 @@ Project-specific facts are read each run — never hardcoded.
 | Bronze table list                    | LLD §5.1 (`Source → Bronze` task table)                                  |
 | Source schema/format per table       | STM `Source-to-Bronze` tab                                               |
 | Per-table `empty_input_behavior`     | LLD §5.1 column — the tables flagged `fail` ARE the critical tables     |
-| Per-table SE rule file               | `ls {workspace_root}/outputs/dqs/v*/se-rules/*.yaml` — discover filenames; do NOT assume any prefix like `se-rules-<domain>-<table>.yaml` |
+| Per-table SE rule file               | `ls {workspace_root}/../chapter-4/outputs/dqs/v*/se-rules/*.yaml` — discover filenames; do NOT assume any prefix like `se-rules-<domain>-<table>.yaml` |
 | Per-table DQ thresholds              | DQS §5                                                                   |
 | Runner/factory/wrapper module names  | LLD §2.3 Module Interface Contracts                                      |
 | Compute knobs (shuffle, cores, mem)  | `config-template.yaml` + LLD §6.1/§6.3                                   |
@@ -245,7 +245,7 @@ if the user explicitly opts to proceed with a draft).
 # Prefer pinned versions from the dev-lock (written by implement-stories).
 # Falls through to the legacy `ls … | tail -1` pattern when no lockfile.
 eval "$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/resolve_versions.py --export)"
-LATEST_LLD_DIR="${LATEST_LLD_DIR:-$(ls -d {workspace_root}/outputs/lld/v* | sort -V | tail -1)}"
+LATEST_LLD_DIR="${LATEST_LLD_DIR:-$(ls -d {workspace_root}/../chapter-4/outputs/lld/v* | sort -V | tail -1)}"
 ls -t "$LATEST_LLD_DIR"/LLD-*.md | grep -v '\.bak$' | head -1
 ```
 
@@ -266,11 +266,11 @@ against the Domain of Ownership.
 - **LLD markdown**: read §2.3 (Module Interface Contracts), §5.1 (Bronze task
   table), §3 (storage layout), §7 (configuration schema). The LLD §5.1 task
   table lists every table to generate a config for.
-- **Config template**: `{workspace_root}/outputs/lld/v{N}/config/config-template.yaml`
+- **Config template**: `{workspace_root}/../chapter-4/outputs/lld/v{N}/config/config-template.yaml`
   — source of truth for default storage paths, ingestion knobs (`ingestion_config_dir`,
   `ingestion_dq_rules_dir`, `ingestion_default_empty_input_behavior`,
   `ingestion_spark_submit_class`), and compute defaults.
-- **STM workbook** (reference only): `{workspace_root}/outputs/stm/v{N}/STM-*.xlsx` →
+- **STM workbook** (reference only): `{workspace_root}/../chapter-4/outputs/stm/v{N}/STM-*.xlsx` →
   `Source-to-Bronze` tab. Column lists inform the per-table YAML schema block.
 - **Existing project tree**: `{project_root}/` — confirm target
   directories (`src/{project_name}/bronze/`, `airflow/configs/`, `contracts/`,
@@ -280,7 +280,7 @@ against the Domain of Ownership.
   from any other example that might hard-code a `TABLE_REGISTRY` — the
   generated runner must be config-driven from `airflow/configs/*.yml`.
 - **DQS SE rules** (source of truth for `dq_rules/`): discover files under
-  `{workspace_root}/outputs/dqs/v{N}/se-rules/*.yaml`. Match each file to a
+  `{workspace_root}/../chapter-4/outputs/dqs/v{N}/se-rules/*.yaml`. Match each file to a
   Bronze table by reading the file's `product_id` (or by filename stem, as
   a fallback). Do NOT assume any filename prefix like
   `se-rules-<domain>-<table>.yaml` — that naming is project-specific.
@@ -338,7 +338,7 @@ Write Python modules to `{project_root}/src/{project_name}/bronze/`
    so local `python -m` runs work without `PYSPARK_SUBMIT_ARGS`. SparkSubmit
    production runs will pick up the same JAR via `--packages`.
    **Metadata column names** match the DQS SE rules in
-   `{workspace_root}/outputs/dqs/v{N}/se-rules/` — underscore prefix is required.
+   `{workspace_root}/../chapter-4/outputs/dqs/v{N}/se-rules/` — underscore prefix is required.
    **`TableConfig` dataclass** must include a `quarantine_path_template` field
    (default `warehouse/{env}/quarantine/bronze/{table}/` per LLD §7) with a
    `resolved_quarantine_path(env)` method. Load it from the per-table YAML
@@ -500,7 +500,7 @@ Notes:
 For `dq_rules/<table>.yml`, sync from the DQS SE rules by discovery:
 
 ```bash
-LATEST_DQS_DIR=$(ls -d {workspace_root}/outputs/dqs/v* | sort -V | tail -1)
+LATEST_DQS_DIR=$(ls -d {workspace_root}/../chapter-4/outputs/dqs/v* | sort -V | tail -1)
 # For each Bronze table from LLD §5.1, locate its SE rule file by reading
 # product_id from each candidate YAML; fall back to filename-stem match.
 for SE_FILE in "$LATEST_DQS_DIR"/se-rules/*.yaml; do

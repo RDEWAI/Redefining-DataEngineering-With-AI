@@ -246,13 +246,13 @@ when present, otherwise falls back to latest `v{N}`):
 
 ```bash
 eval "$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/resolve_versions.py --export)"
-LATEST_LLD_DIR="${LATEST_LLD_DIR:-$(ls -d {workspace_root}/outputs/lld/v* | sort -V | tail -1)}"
+LATEST_LLD_DIR="${LATEST_LLD_DIR:-$(ls -d {workspace_root}/../chapter-4/outputs/lld/v* | sort -V | tail -1)}"
 ```
 
-- Read the latest LLD (`$LATEST_LLD_DIR/LLD-*.md`, under `{workspace_root}/outputs/lld/v*/`) for the canonical directory tree (§2.1), Makefile targets (§9.3), and Decision 13 (cookiecutter).
+- Read the latest LLD (`$LATEST_LLD_DIR/LLD-*.md`, under `{workspace_root}/../chapter-4/outputs/lld/v*/`) for the canonical directory tree (§2.1), Makefile targets (§9.3), and Decision 13 (cookiecutter).
 - Check which deliverables already exist on disk. If ALL exist → tell the user to use `update-scaffold` instead and exit.
 - Check that the cookiecutter template path exists
-  (`{workspace_root}/outputs/lld/v*/templates/cookiecutter-chapter/` or the repo-root
+  (`{workspace_root}/../chapter-4/outputs/lld/v*/templates/cookiecutter-chapter/` or the repo-root
   `templates/cookiecutter-chapter/`).
 
 #### Phase 1.5 — Environment Preflight
@@ -344,7 +344,7 @@ uvx cookiecutter "$COOKIECUTTER_TEMPLATE" --overwrite-if-exists \
 helper, the workspace marker `.workspace.yaml` if present, or — if still
 missing — an `AskUserQuestion` prompt. NEVER default to a specific project
 name in code. `$COOKIECUTTER_TEMPLATE` is located under
-`{workspace_root}/outputs/lld/v*/templates/cookiecutter-chapter/` or the
+`{workspace_root}/../chapter-4/outputs/lld/v*/templates/cookiecutter-chapter/` or the
 repo-root `templates/cookiecutter-chapter/`.
 
 After render, verify every path from LLD §2.1 exists. For any missing
@@ -384,11 +384,11 @@ For **every** table declared in DMS §2 (Bronze/Silver/Gold layer schemas
 — count and names are read at runtime, never hardcoded), emit
 `contracts/<table>.yml` with the StructType-compatible schema from DMS.
 
-If `{workspace_root}/outputs/dms/v*/` contains no DMS markdown, fail with
+If `{workspace_root}/../chapter-4/outputs/dms/v*/` contains no DMS markdown, fail with
 CRITICAL:
 
 ```
-CRITICAL: no DMS found under {workspace_root}/outputs/dms/v*/.
+CRITICAL: no DMS found under {workspace_root}/../chapter-4/outputs/dms/v*/.
   Generate the DMS via /data-modeler-plugin:create-dms before scaffolding.
 ```
 

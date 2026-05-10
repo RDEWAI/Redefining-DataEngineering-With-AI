@@ -77,14 +77,14 @@ when present, otherwise falls back to latest `v{N}`):
 
 ```bash
 eval "$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/resolve_versions.py --export)"
-LATEST_LLD_DIR="${LATEST_LLD_DIR:-$(ls -d {workspace_root}/outputs/lld/v* | sort -V | tail -1)}"
+LATEST_LLD_DIR="${LATEST_LLD_DIR:-$(ls -d {workspace_root}/../chapter-4/outputs/lld/v* | sort -V | tail -1)}"
 ```
 
 Read the latest LLD from `$LATEST_LLD_DIR/` and verify `Status: Approved`.
 If not approved, stop and inform the user.
 
 ### Phase 1: Read Inputs
-- Latest LLD markdown from `{workspace_root}/outputs/lld/v*/`
+- Latest LLD markdown from `{workspace_root}/../chapter-4/outputs/lld/v*/`
 - DAG config from `{project_root}/airflow/configs/` if present
 - Existing DAGs in `{project_root}/airflow/dags/` for patterns
 
