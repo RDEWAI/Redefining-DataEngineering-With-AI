@@ -62,9 +62,15 @@ services:
     image: marquezproject/marquez:0.51.1
     ports: ["5001:5000"]
     environment:
-      MARQUEZ_DB_HOST: marquez-db
-      MARQUEZ_DB_USER: marquez
-      MARQUEZ_DB_PASSWORD: marquez
+      # Marquez 0.51.1 reads POSTGRES_* env vars (NOT MARQUEZ_DB_*).
+      # Using MARQUEZ_DB_HOST makes Marquez ignore the override and
+      # fall back to localhost:5432, crashing on its own loopback.
+      # Verified against marquezproject/marquez docker entrypoint.
+      POSTGRES_HOST: marquez-db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: marquez
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
     depends_on:
       marquez-db:
         condition: service_healthy

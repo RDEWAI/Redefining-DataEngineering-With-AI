@@ -65,11 +65,15 @@ services:
       - "5001:5000"   # API
       - "5002:5001"   # admin
     environment:
-      MARQUEZ_DB_HOST: marquez-db
-      MARQUEZ_DB_PORT: 5432
-      MARQUEZ_DB_NAME: marquez
-      MARQUEZ_DB_USER: marquez
-      MARQUEZ_DB_PASSWORD: marquez
+      # Marquez 0.51.1 reads POSTGRES_* (not MARQUEZ_DB_*) — using the
+      # MARQUEZ_DB_* names causes Marquez to fall back to localhost:5432
+      # and crash at startup with "Connection refused" against its own
+      # container loopback.
+      POSTGRES_HOST: marquez-db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: marquez
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
 
   airflow:
     build:
