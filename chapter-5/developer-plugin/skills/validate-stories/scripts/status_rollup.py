@@ -69,7 +69,8 @@ STORY_SLUG_RULES: list[tuple[str, re.Pattern[str]]] = [
             r"\b(?:ingestion[-_]runner|ingestion[-_]factory|sparksubmit|"
             r"spark[-_]submit|per[-_]table[-_]config|reconciliation[-_]bronze|"
             r"bronze[-_]dlq|perf[-_]partition|partition[-_]shuffle|"
-            r"integration[-_]test[-_]bronze|bronze[-_]ingestion)\b",
+            r"integration[-_]test[-_]bronze|bronze[-_]ingestion|"
+            r"se[-_]runner)\b",
             re.IGNORECASE,
         ),
     ),
@@ -86,7 +87,7 @@ STORY_SLUG_RULES: list[tuple[str, re.Pattern[str]]] = [
         re.compile(
             r"\b(?:scaffold|cookiecutter|config[-_]loader|pipeline[-_]config|"
             r"logging|metrics|delta[-_]helpers|scd2|derived[-_]fields|"
-            r"code[-_]systems|docker[-_]compose|se[-_]runner|reconciliation|"
+            r"code[-_]systems|docker[-_]compose|reconciliation|"
             r"helper|test[-_]infrastructure|contracts[-_]schemas)\b",
             re.IGNORECASE,
         ),
