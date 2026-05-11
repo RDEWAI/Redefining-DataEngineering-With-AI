@@ -1,12 +1,17 @@
-.PHONY: dev-setup test lint format clean validate dev-up dev-down uc-init seed-source-data wait-for-uc spark-smoke
+.PHONY: dev-setup test lint format clean validate dev-up dev-down uc-init uc-ui-source seed-source-data wait-for-uc spark-smoke
 
 UC_HOST ?= http://localhost:8080
-UC_UI_HOST ?= http://localhost:3001
+UC_UI_HOST ?= http://localhost:3000
 UC_CATALOG ?= unity
 UC_SCHEMAS ?= bronze,silver,gold
 DOCKER_COMPOSE ?= docker compose -f _infra/docker/docker-compose.yml
 # In-airflow Spark per LLD §6.1 (local_executor_mode = in-airflow-local[*]).
 SPARK_MASTER ?= local[2]
+# Unity Catalog UI is built from upstream source (LLD §9.1.1 upstream-reality
+# note): no versioned -ui image is published on Docker Hub.
+UC_UI_REPO ?= https://github.com/unitycatalog/unitycatalog
+UC_UI_REF  ?= v0.4.0
+UC_UI_DIR  := _infra/docker/uc-source
 
 dev-setup:
 	uv sync --all-extras
@@ -29,12 +34,24 @@ clean:
 	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null; \
 	find . -name "*.pyc" -delete 2>/dev/null; true
 
-dev-up: ## Bring up the local stack: docker + UC catalog/schemas + source data + spark smoke
+uc-ui-source: ## Vendor the real Unity Catalog UI source from upstream (idempotent)
+	@if [ ! -f $(UC_UI_DIR)/ui/Dockerfile ] \
+	   || grep -q "Placeholder" $(UC_UI_DIR)/ui/Dockerfile 2>/dev/null; then \
+	  echo "Vendoring Unity Catalog $(UC_UI_REF) into $(UC_UI_DIR) ..."; \
+	  rm -rf $(UC_UI_DIR); \
+	  git clone --depth 1 --branch $(UC_UI_REF) $(UC_UI_REPO) $(UC_UI_DIR); \
+	else \
+	  echo "UC UI source already vendored at $(UC_UI_DIR) — skipping."; \
+	fi
+
+dev-up: uc-ui-source ## Bring up the local stack: docker + UC catalog/schemas + spark smoke
 	$(DOCKER_COMPOSE) up -d --build
 	@$(MAKE) wait-for-uc
 	@$(MAKE) uc-init
-	@$(MAKE) seed-source-data
 	@$(MAKE) spark-smoke
+	@echo ""
+	@echo "Note: 'seed-source-data' is NOT part of dev-up. Run it explicitly"
+	@echo "once a runtime-bootstrap story implements it for your source system."
 	@echo ""
 	@echo "Stack is up. Verify with:"
 	@echo "  curl -fsS http://localhost:8081/health      # Airflow"

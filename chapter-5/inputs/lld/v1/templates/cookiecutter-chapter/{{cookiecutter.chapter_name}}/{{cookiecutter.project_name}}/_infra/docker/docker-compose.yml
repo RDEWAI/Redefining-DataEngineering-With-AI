@@ -3,7 +3,7 @@
 #
 # Services:
 #   unity-catalog    : Unity Catalog OSS 0.4.0 (catalog/metastore for Delta on local FS)
-#   unity-catalog-ui : Unity Catalog UI 0.4.0 (browser UI on :3001)
+#   unity-catalog-ui : Unity Catalog UI 0.4.0 (build-from-source; browser UI on :3000)
 #   marquez          : Marquez 0.51.1 (OpenLineage backend)
 #   marquez-db       : Postgres 14 backing Marquez
 #   airflow          : Airflow 3.2.1 standalone — runs DAGs from airflow/dags/
@@ -30,13 +30,19 @@ services:
       retries: 10
 
   unity-catalog-ui:
-    image: unitycatalog/unitycatalog-ui:v0.4.0
+    # LLD §9.1.1 v1.10: Unity Catalog does NOT publish a versioned -ui image
+    # on Docker Hub. Build from a shallow clone of the upstream UC repo at
+    # tag v0.4.0. The clone is performed by `make uc-ui-source` (idempotent),
+    # automatically invoked as a prerequisite of `make dev-up`. No manual
+    # `git clone` step is required.
+    build:
+      context: ./uc-source/ui
     container_name: "{{cookiecutter.project_name}}-uc-ui"
     depends_on:
       unity-catalog:
         condition: service_healthy
     ports:
-      - "3001:3000"
+      - "3000:3000"
     environment:
       UC_URI_PROXY_TARGET: http://server:8080
 
@@ -121,8 +127,9 @@ services:
     image: otel/opentelemetry-collector-contrib:0.107.0
     container_name: "{{cookiecutter.project_name}}-otel"
     ports:
-      - "4317:4317"
-      - "4318:4318"
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+      - "13133:13133"  # health_check extension (curl localhost:13133/)
     volumes:
       - ./observability/otel-config.yaml:/etc/otel/config.yaml
     command: ["--config", "/etc/otel/config.yaml"]
