@@ -180,6 +180,12 @@ def _resolve_files(payload: dict, root: Path) -> list[Path]:
 
 
 def _count_cmp(n: int, payload: dict) -> tuple[str, str]:
+    # Accept `at_least` / `at_most` aliases for `min` / `max` (story authors
+    # frequently use the human-language forms).
+    if "at_least" in payload and "min" not in payload:
+        payload = {**payload, "min": payload["at_least"]}
+    if "at_most" in payload and "max" not in payload:
+        payload = {**payload, "max": payload["at_most"]}
     if "equals" in payload:
         ok = n == payload["equals"]
         return (PASS if ok else FAIL, f"{n} vs equals {payload['equals']}")
@@ -192,7 +198,7 @@ def _count_cmp(n: int, payload: dict) -> tuple[str, str]:
     if "max" in payload:
         ok = n <= payload["max"]
         return (PASS if ok else FAIL, f"{n} vs max {payload['max']}")
-    raise ValueError(f"Need equals|min|max in {payload!r}")
+    raise ValueError(f"Need equals|min|max|at_least|at_most in {payload!r}")
 
 
 def run_verifier(spec: Any, root: Path) -> tuple[str, str, str]:
