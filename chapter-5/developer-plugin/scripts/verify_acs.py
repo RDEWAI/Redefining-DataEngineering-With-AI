@@ -11,6 +11,7 @@ Verifier types (all paths resolve relative to chapter-5 workspace root):
     - file_exists: <path>
     - file_count:   {glob: <pattern>, equals|min|max: <int>}
     - grep:         {file: <path>, pattern: <regex>}                 # >=1 match
+    - grep_absent:  {file|files|glob: ..., pattern: <regex>}         # 0 matches
     - grep_count:   {files: <path|[paths]|glob>, pattern: <regex>,
                      equals|min|max: <int>}
     - pytest:       {node: <path_or_nodeid>, marker: <opt marker>}
@@ -216,7 +217,7 @@ def run_verifier(spec: Any, root: Path) -> tuple[str, str, str]:
 
         if kind == "grep":
             files = _resolve_files(payload, root)
-            pat = re.compile(payload["pattern"])
+            pat = re.compile(payload["pattern"], re.MULTILINE)
             for f in files:
                 if not f.exists():
                     continue
@@ -224,9 +225,20 @@ def run_verifier(spec: Any, root: Path) -> tuple[str, str, str]:
                     return (label, PASS, f"matched in {f.name}")
             return (label, FAIL, "no match")
 
+        if kind == "grep_absent":
+            files = _resolve_files(payload, root)
+            existing = [f for f in files if f.exists()]
+            if not existing:
+                return (label, FAIL, "no files to check")
+            pat = re.compile(payload["pattern"], re.MULTILINE)
+            for f in existing:
+                if pat.search(f.read_text(errors="replace")):
+                    return (label, FAIL, f"pattern found in {f.name}")
+            return (label, PASS, f"absent across {len(existing)} file(s)")
+
         if kind == "grep_count":
             files = _resolve_files(payload, root)
-            pat = re.compile(payload["pattern"])
+            pat = re.compile(payload["pattern"], re.MULTILINE)
             n = 0
             for f in files:
                 if not f.exists():
@@ -237,11 +249,27 @@ def run_verifier(spec: Any, root: Path) -> tuple[str, str, str]:
 
         if kind == "pytest":
             node = payload if isinstance(payload, str) else payload["node"]
-            cmd = ["pytest", str(root / node), "-q", "--no-header", "-x"]
+            abs_node = (root / node).resolve()
+            # Run pytest from the nearest pyproject.toml ancestor of the test
+            # node so `uv run` resolves the right project venv. Generated
+            # sub-projects (e.g. patient_360/) ship their own pyproject.
+            search_start = abs_node.parent if abs_node.is_file() else abs_node
+            cwd = root
+            for cand in [search_start, *search_start.parents]:
+                if (cand / "pyproject.toml").exists():
+                    cwd = cand
+                    break
+                if cand == root:
+                    break
+            try:
+                rel_node = str(abs_node.relative_to(cwd))
+            except ValueError:
+                rel_node = str(abs_node)
+            cmd = ["uv", "run", "pytest", rel_node, "-q", "--no-header", "-x"]
             if isinstance(payload, dict) and payload.get("marker"):
                 cmd += ["-m", payload["marker"]]
-            r = subprocess.run(cmd, capture_output=True, text=True, cwd=root, timeout=120)
-            return (label, PASS if r.returncode == 0 else FAIL, f"pytest exit={r.returncode}")
+            r = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, timeout=120)
+            return (label, PASS if r.returncode == 0 else FAIL, f"pytest exit={r.returncode} (cwd={cwd.name})")
 
         if kind == "validator":
             script = root / (payload if isinstance(payload, str) else payload["script"])

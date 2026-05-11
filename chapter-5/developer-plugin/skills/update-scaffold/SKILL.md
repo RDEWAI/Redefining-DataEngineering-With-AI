@@ -84,6 +84,51 @@ Emit a `### References` section citing the consumed pattern docs + LIBRARIES.md 
 
 ### Phase 0: Resolve Target
 
+**Phase 0.a — Argument resolution (mandatory, runs first).** The Skill-tool
+argument frequently fails to reach forked subagents. Resolve the target by
+checking these sources in order — DO NOT ask the user until all four are
+empty:
+
+1. `$SKILL_ARG` environment variable.
+2. `{workspace_root}/.skill-arg` file — read its contents, then delete the
+   file so it is consumed at most once.
+3. The conversational argument supplied to the skill (the user message).
+4. `$CLAUDE_AUTO_MODE=1` or `{workspace_root}/.auto-mode` marker → resolve
+   to the first un-Done foundation story in backlog order.
+
+Mechanical resolver (copy-paste; `$USER_ARG` is the conversational arg):
+
+```bash
+resolve_skill_arg() {
+  if [ -n "$SKILL_ARG" ]; then echo "$SKILL_ARG"; return; fi
+  if [ -f "{workspace_root}/.skill-arg" ]; then
+    cat "{workspace_root}/.skill-arg"; rm -f "{workspace_root}/.skill-arg"; return
+  fi
+  if [ -n "$1" ]; then echo "$1"; return; fi
+  if [ "$CLAUDE_AUTO_MODE" = "1" ] || [ -f "{workspace_root}/.auto-mode" ]; then
+    echo "__AUTO__"; return
+  fi
+  echo ""
+}
+RESOLVED_ARG=$(resolve_skill_arg "$USER_ARG")
+```
+
+If the conversational argument is a verbose prompt rather than a bare token,
+extract the first match of `STORY-\d{2}-\d{3}|sync-(contracts|infra|template|env)`
+from it before falling through.
+
+**Resolution-source banner (mandatory, every run).** Print as the first line
+of skill output, before any other work:
+
+```
+RESOLVED TARGET: <STORY-NN-NNN | sync-*> (source: <SKILL_ARG | .skill-arg | conversational | __AUTO__>)
+```
+
+Only if `$RESOLVED_ARG` is empty after all four sources — ask via
+`AskUserQuestion` which target applies.
+
+**Phase 0.b — Target semantics:**
+
 - `STORY-NN-NNN` — read the story's AC; for each backtick-quoted path that
   falls under create-scaffold's *Domain of Ownership*, update it in place.
   Route ROUTE-TO for paths owned by other skills.
@@ -95,7 +140,6 @@ Emit a `### References` section citing the consumed pattern docs + LIBRARIES.md 
   versions) from `create-scaffold` Phase 1.5 and offer install prompts
   if prerequisites drifted (e.g. `LIBRARIES.md` bumped Spark major →
   JDK bump needed). No code files are touched in this mode.
-- No arg — ask via `AskUserQuestion` which target applies.
 
 ### Phase 0.5: `sync-template` mode
 

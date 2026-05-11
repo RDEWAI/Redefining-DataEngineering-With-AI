@@ -52,6 +52,30 @@ Rollup 3 only fires after an epic flips to Done. So a reader running
 `/developer-plugin:complete-stories STORY-02-004` gets the full cascade
 automatically when that story is the last missing piece.
 
+## Phase 0.a — Argument Resolution (mandatory, runs first)
+
+The Skill-tool argument frequently fails to reach forked subagents. Resolve
+the target via the shared resolver, which checks four sources in order:
+`$SKILL_ARG` → `{workspace_root}/.skill-arg` → conversational arg → auto-mode.
+
+```bash
+read -r RESOLVED_ARG RESOLVED_SOURCE < <(
+  WORKSPACE_ROOT="{workspace_root}" \
+    bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_skill_arg.sh" "$USER_ARG" | \
+    paste -sd' ' -
+)
+```
+
+Print this banner as the **first line** of skill output:
+
+```
+RESOLVED TARGET: <value> (source: <SKILL_ARG | .skill-arg | conversational | __AUTO__>)
+```
+
+If `$RESOLVED_SOURCE == EMPTY`, fall through to the skill's existing
+clarification step (typically `AskUserQuestion`). DO NOT ask the user before
+running this resolver.
+
 ## Workflow
 
 ### Phase 0: Resolve Target Set

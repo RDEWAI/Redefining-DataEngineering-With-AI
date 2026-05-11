@@ -50,6 +50,30 @@ fi
 
 Cite each pattern doc consulted, e.g. `Checked against inputs/code/v1/airflow-dag-pattern.md §2`.
 
+## Phase 0.a — Argument Resolution (mandatory, runs first)
+
+The Skill-tool argument frequently fails to reach forked subagents. Resolve
+the target via the shared resolver, which checks four sources in order:
+`$SKILL_ARG` → `{workspace_root}/.skill-arg` → conversational arg → auto-mode.
+
+```bash
+read -r RESOLVED_ARG RESOLVED_SOURCE < <(
+  WORKSPACE_ROOT="{workspace_root}" \
+    bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_skill_arg.sh" "$USER_ARG" | \
+    paste -sd' ' -
+)
+```
+
+Print this banner as the **first line** of skill output:
+
+```
+RESOLVED TARGET: <value> (source: <SKILL_ARG | .skill-arg | conversational | __AUTO__>)
+```
+
+If `$RESOLVED_SOURCE == EMPTY`, fall through to the skill's existing
+clarification step (typically `AskUserQuestion`). DO NOT ask the user before
+running this resolver.
+
 ## Checks
 
 ### Automated regression rules (run via `scripts/validate_dag.py`)
