@@ -8,7 +8,7 @@
 | **Story Points** | 3 |
 | **Sprint** | 1 |
 | **Dependencies** | None |
-| **Status** | To Do |
+| **Status** | Done |
 
 <!--
   Story Type vocabulary (required):
@@ -34,15 +34,15 @@ Render the `inputs/lld/v1/templates/cookiecutter-chapter/` cookiecutter template
 ## Acceptance Criteria
 
 
-- [ ] Cookiecutter render produces `patient_360/` directory tree matching LLD §2.1 [LLD §2.1]
+- [x] Cookiecutter render produces `patient_360/` directory tree matching LLD §2.1 [LLD §2.1]
 
-- [ ] `patient_360/pyproject.toml` declares hatchling build, ruff, pytest, and uv-managed deps [LLD §2.1]
+- [x] `patient_360/pyproject.toml` declares hatchling build, ruff, pytest, and uv-managed deps [LLD §2.1]
 
-- [ ] `patient_360/Makefile` exposes `dev-setup`, `lint`, `test`, `clean` targets [LLD §9.3]
+- [x] `patient_360/Makefile` exposes `dev-setup`, `lint`, `test`, `clean` targets [LLD §9.3]
 
-- [ ] `make dev-setup` runs `uv sync --all-extras` and exits 0 [LLD §9.3]
+- [x] `make dev-setup` runs `uv sync --all-extras` and exits 0 [LLD §9.3]
 
-- [ ] `pytest --collect-only` discovers `tests/{bronze,silver,gold}/` with no import errors [LLD §2.4]
+- [x] `pytest --collect-only` discovers `tests/{bronze,silver,gold}/` with no import errors [LLD §2.4]
 
 
 ## Technical Notes
@@ -120,5 +120,7 @@ AC5:
 ## Documentation Updates
 
 
-- [ ] Update patient_360/README.md § "Getting Started" with the cookiecutter render and `make dev-setup` commands
+- [x] Update patient_360/README.md § "Getting Started" with the cookiecutter render and `make dev-setup` commands
 
+
+User-Verified-By: Phani Vemuri 2026-05-11

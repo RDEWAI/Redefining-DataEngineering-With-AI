@@ -7,7 +7,7 @@
 | **Priority** | P1 |
 | **Story Points** | 8 |
 | **Sprint** | 3 |
-| **Dependencies** | STORY-01-002, STORY-01-009 |
+| **Dependencies** | STORY-01-002, STORY-01-009, STORY-01-010 |
 | **Status** | To Do |
 
 <!--
@@ -46,10 +46,12 @@ Implement `src/patient_360/bronze/ingestion_runner.py` per LLD §2.3. The runner
 
 - [ ] Unit tests at `tests/bronze/test_ingestion_runner_unit.py` cover argparse, schema enforcement, and metadata-column additions [LLD §2.4]
 
+- [ ] UC catalog name, schema name, and UC service URI are sourced from the `catalog_bronze_catalog_name` / `catalog_bronze_schema` config keys and the `UC_URI` env var (LLD §7.1) — no hardcoded `unity.bronze` literals; the `{catalog}.{schema}.{table}` triple is composed from config [LLD §7.1, §13 Decision 15]
+
 
 ## Technical Notes
 
-- **Upstream references**: LLD §2.3, §5.1, §13 Decision 15
+- **Upstream references**: LLD §2.3, §5.1, §7.1, §13 Decision 15
 - **Implementation hints**: Read source via DuckDB JDBC or `duckdb` Python connector + `spark.createDataFrame(...)`. Use `spark.read.format('delta')` only for downstream layers.
 
 ## Estimation Support
@@ -84,12 +86,15 @@ AC2:
 AC3:
   - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "_source_batch_id"}
 AC4:
-  - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "saveAsTable.*unity.bronze"}
+  - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "saveAsTable"}
   - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "replaceWhere"}
 AC5:
   - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "se_runner|run_dq"}
 AC6:
   - pytest: {node: "patient_360/tests/bronze/test_ingestion_runner_unit.py"}
+AC7:
+  - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "UC_URI|catalog_bronze_catalog_name|catalog_bronze_schema"}
+  - grep_absent: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "['\"]unity\\.bronze\\."}
 ```
 
 
@@ -98,7 +103,7 @@ AC6:
 ### Prerequisites
 
 
-- STORY-01-002 done; STORY-01-009 done
+- STORY-01-002 done; STORY-01-009 done; STORY-01-010 done (se_runner.py shipped so `run_dq` is callable inline)
 
 
 ### Steps

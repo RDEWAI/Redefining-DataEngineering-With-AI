@@ -38,7 +38,7 @@ Author 13 `airflow/configs/{table}.yml` files (one per Bronze table from LLD §5
 
 - [ ] Six critical tables (`patients`, `encounters`, `allergies`, `organizations`, `providers`, `payers`) have `empty_input_behavior: fail` [LLD §5.1, DRD §1.3]
 
-- [ ] All 13 configs declare `output_table: unity.bronze.synthea_{table}` (UC-managed write target) [LLD §13 Decision 15]
+- [ ] All 13 configs declare `output_table: <catalog>.<schema>.synthea_{table}` resolved from the `catalog_bronze_catalog_name` / `catalog_bronze_schema` config keys (defaults `unity` / `bronze` per LLD §7.1); UC-managed write target [LLD §7.1, §13 Decision 15]
 
 - [ ] Each YAML's `dq_rules_table` resolves to `dq_rules/{table}.yml` [LLD §2.3]
 

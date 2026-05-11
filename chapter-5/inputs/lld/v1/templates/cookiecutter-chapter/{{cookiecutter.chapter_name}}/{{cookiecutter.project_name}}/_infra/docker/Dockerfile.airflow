@@ -15,7 +15,7 @@ USER airflow
 # the YAML rule format our DQ generator emits (see LIBRARIES.md note).
 RUN pip install --no-cache-dir \
         "apache-airflow-providers-apache-spark==6.0.1" \
-        "pyspark==4.0.0" \
+        "pyspark==4.0.2" \
         "delta-spark==4.0.0" \
         "spark-expectations>=2.10.0" \
         "pyyaml" \

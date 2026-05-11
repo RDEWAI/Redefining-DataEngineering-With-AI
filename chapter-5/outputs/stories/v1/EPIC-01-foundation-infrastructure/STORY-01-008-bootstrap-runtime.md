@@ -8,7 +8,7 @@
 | **Story Points** | 5 |
 | **Sprint** | 2 |
 | **Dependencies** | STORY-01-005, STORY-01-006, STORY-01-007 |
-| **Status** | To Do |
+| **Status** | Done |
 
 <!--
   Story Type vocabulary (required):
@@ -34,21 +34,21 @@ Wire `make dev-bootstrap` and `make smoke-se` to: bring up the docker-compose st
 ## Acceptance Criteria
 
 
-- [ ] `java -version` reports 17.x.x [LLD §6.1]
+- [x] `java -version` reports 17.x.x [LLD §6.1]
 
-- [ ] `docker compose -f _infra/docker/docker-compose.yml up -d` succeeds [LLD §1]
+- [x] `docker compose -f _infra/docker/docker-compose.yml up -d` succeeds [LLD §1]
 
-- [ ] UC catalog `unity` and schemas `bronze`/`silver`/`gold` created via `scripts/uc_init.py` [LLD §1]
+- [x] UC catalog `unity` and schemas `bronze`/`silver`/`gold` created via `scripts/uc_init.py` [LLD §1]
 
-- [ ] Synthea source data seeded into local source DB (13 Phase-1 source tables) [LLD §5.1]
+- [x] Synthea source data seeded into local source DB (13 Phase-1 source tables) [LLD §5.1]
 
-- [ ] `curl http://localhost:8080/api/2.1/unity-catalog/catalogs` returns 200 with `unity` listed [LLD §1]
+- [x] `curl http://localhost:8080/api/2.1/unity-catalog/catalogs` returns 200 with `unity` listed [LLD §1]
 
-- [ ] `docker compose exec airflow spark-submit --master 'local[2]' --version` exits 0 and reports Spark 4.0.0 [LLD §6.1]
+- [x] `docker compose exec airflow spark-submit --master 'local[2]' --version` exits 0 and reports Spark 4.0.0 [LLD §6.1]
 
-- [ ] `docker compose exec airflow python -c 'from spark_expectations.core.expectations import SparkExpectations'` exits 0 (proves SE 2.10+ imports — DQ is mandatory) [LLD §6.1]
+- [x] `docker compose exec airflow python -c 'from spark_expectations.core.expectations import SparkExpectations'` exits 0 (proves SE 2.10+ imports — DQ is mandatory) [LLD §6.1]
 
-- [ ] SE end-to-end smoke `pytest -m integration tests/bootstrap/test_se_smoke.py::test_with_expectations_runs_end_to_end` invokes `WrappedDataFrameWriter(...).with_expectations(...)` and asserts `bronze_se_stats` has ≥1 row whose `meta_dq_run_id` matches the run [LLD §8.6.1]
+- [x] SE end-to-end smoke `pytest -m integration tests/bootstrap/test_se_smoke.py::test_with_expectations_runs_end_to_end` invokes `WrappedDataFrameWriter(...).with_expectations(...)` and asserts `bronze_se_stats` has ≥1 row whose `meta_dq_run_id` matches the run [LLD §8.6.1]
 
 
 ## Technical Notes
@@ -140,7 +140,9 @@ AC8:
 ## Documentation Updates
 
 
-- [ ] Update patient_360/README.md § "Bootstrap" with the `make dev-bootstrap` + `make smoke-se` runbook
+- [x] Update patient_360/README.md § "Bootstrap" with the `make dev-bootstrap` + `make smoke-se` runbook
 
-- [ ] Add patient_360/docs/runbooks/bootstrap.md with the eight-step verification checklist
+- [x] Add patient_360/docs/runbooks/bootstrap.md with the eight-step verification checklist
 
+
+User-Verified-By: Phani Vemuri 2026-05-11

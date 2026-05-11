@@ -1,4 +1,4 @@
-# STORY-01-010: SE runner — fail-closed steady state (remove soft-import)
+# STORY-01-010: SE runner & reconciliation modules — fail-closed implementation
 
 | Field | Value |
 |-------|-------|
@@ -7,8 +7,8 @@
 | **Priority** | P1 |
 | **Story Points** | 5 |
 | **Sprint** | 3 |
-| **Dependencies** | STORY-01-009 |
-| **Status** | To Do |
+| **Dependencies** | STORY-01-002 |
+| **Status** | Done |
 
 <!--
   Story Type vocabulary (required):
@@ -25,32 +25,32 @@
 
 ## User Story
 
-As a data engineer, I want have a hard-imported, fail-closed `se_runner.py` once it ships so that DQ becomes mandatory — the silent-DQ failure mode that bit Spokane (LLD §8.6.1) cannot recur.
+As a data engineer, I want a shipped `se_runner.py` and `reconciliation.py` so that bronze ingestion enforces inline DQ on every load and reconciliation can verify SE run-evidence — making the single-state fail-closed import contract operationally real (LLD §8.6 + §13 Decision 14).
 
 ## Description
 
-Implement `src/patient_360/utils/se_runner.py` (LLD §2.3) wrapping `WrappedDataFrameWriter(...).with_expectations(...)` with `se.enable.error.table=true` and `se.enable.stats.table=true` per LLD §8.2-§8.3. Map `--env` to SE `dq_env` (DEV→DEV, STAGING→QA, PROD→PROD). Remove the bootstrap-mode `try/except ImportError` block from `ingestion_runner.py`: SE failure-to-import is now a hard error per LLD §8.6 / §13 Decision 14. This story supersedes STORY-01-009 (the WARNING log line MUST be absent). Also implement `reconciliation.py` per LLD §2.3 / §5.5 with the SE-RUN-EVIDENCE query from §8.6.1.
+Implement `src/patient_360/utils/se_runner.py` (LLD §2.3) wrapping `WrappedDataFrameWriter(...).with_expectations(...)` with `se.enable.error.table=true` and `se.enable.stats.table=true` per LLD §8.2-§8.3. Map `--env` to SE `dq_env` (DEV→DEV, STAGING→QA, PROD→PROD). Also implement `src/patient_360/utils/reconciliation.py` per LLD §2.3 / §5.5 with the SE-RUN-EVIDENCE query from §8.6.1. The diagnostic `try/except ImportError` wrapper in `ingestion_runner.py` (STORY-01-009) stays in place — it is part of the single-state fail-closed contract per LLD §8.6 + §13 Decision 14 (Resolved 2026-05-11). This story verifies that with `se_runner.py` present the import succeeds and `run_dq` runs inline, and that with `se_runner` removed the runner still re-raises ImportError (fail-closed).
 
 ## Acceptance Criteria
 
 
-- [ ] `se_runner.py` exists and exposes `run_dq(df, table, env, action_if_failed, dq_rules_dir)` [LLD §2.3]
+- [x] `se_runner.py` exists and exposes `run_dq(df, table, env, action_if_failed, dq_rules_dir)` [LLD §2.3]
 
-- [ ] `run_dq` calls `WrappedDataFrameWriter(...).with_expectations(...)` with `se.enable.error.table=true` and `se.enable.stats.table=true` [LLD §8.2, §8.3]
+- [x] `run_dq` calls `WrappedDataFrameWriter(...).with_expectations(...)` with `se.enable.error.table=true` and `se.enable.stats.table=true` [LLD §8.2, §8.3]
 
-- [ ] `run_dq` maps `env=DEV→dq_env=DEV`, `STAGING→QA`, `PROD→PROD` [LLD §2.3, §5.4]
+- [x] `run_dq` maps `env=DEV→dq_env=DEV`, `STAGING→QA`, `PROD→PROD` [LLD §2.3, §5.4]
 
-- [ ] `ingestion_runner.py` no longer contains the bootstrap WARNING log line `WARNING: se_runner not available` [LLD §8.6]
+- [x] `ingestion_runner.py` contains exactly one `try / except ImportError` around the `se_runner` import that logs at ERROR (`se_runner not available — fail-closed; deployment is broken: <error>`) and re-raises — and does NOT contain any `WARNING`-level soft-degradation branch [LLD §8.6]
 
-- [ ] Missing-SE import now raises immediately (fail-closed); test asserts ImportError propagates [LLD §8.6, §13 Decision 14]
+- [x] With `se_runner` removed from the module path, ingestion fails closed: unit test asserts ImportError propagates out of `ingestion_runner.py` [LLD §8.6, §13 Decision 14]
 
-- [ ] `reconciliation.py` queries `bronze_se_stats` for `meta_dq_run_id == run_id` and fails-closed when count = 0 [LLD §8.6.1, §5.5]
+- [x] `reconciliation.py` queries `bronze_se_stats` for `meta_dq_run_id == run_id` and fails-closed when count = 0 [LLD §8.6.1, §5.5]
 
 
 ## Technical Notes
 
 - **Upstream references**: LLD §2.3, §5.4, §5.5, §8.2, §8.3, §8.6, §8.6.1, §13 Decision 14
-- **Implementation hints**: Use `spark-expectations>=2.10`. Pass `target_and_error_table_writer` configured for Delta+Snappy. The soft-import removal is a single-line delete — keep the diff small.
+- **Implementation hints**: Use `spark-expectations>=2.10`. Pass `target_and_error_table_writer` configured for Delta+Snappy. The diagnostic `try/except ImportError` block in `ingestion_runner.py` (STORY-01-009) MUST stay in place; verify it logs at ERROR and re-raises — no `WARNING`-level branch.
 
 ## Estimation Support
 
@@ -87,7 +87,9 @@ AC2:
 AC3:
   - grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "STAGING.*QA|dq_env"}
 AC4:
-  - grep_absent: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "se_runner not available"}
+  - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "except ImportError"}
+  - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "se_runner not available"}
+  - grep_absent: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "WARNING.*se_runner"}
 AC5:
   - pytest: {node: "patient_360/tests/bronze/test_ingestion_runner_failclosed_unit.py"}
 AC6:
@@ -101,7 +103,7 @@ AC6:
 ### Prerequisites
 
 
-- STORY-01-009 done — bootstrap phase shipped
+- STORY-01-002 done — cross-layer utilities (config, logging) in place
 
 - STORY-01-006 done — local stack up and SE smoke green
 
@@ -113,7 +115,9 @@ AC6:
 
 2. `uv run pytest -m integration tests/utils/test_reconciliation_integration.py -v`
 
-3. `grep 'se_runner not available' src/patient_360/bronze/ingestion_runner.py || echo 'soft-import removed: OK'`
+3. `grep -E 'except ImportError|se_runner not available' src/patient_360/bronze/ingestion_runner.py` — confirms diagnostic try/except is in place
+
+4. `grep -E 'WARNING.*se_runner' src/patient_360/bronze/ingestion_runner.py && echo 'FAIL: soft-degradation branch present' || echo 'fail-closed contract: OK'`
 
 
 ### Expected outcome
@@ -121,13 +125,15 @@ AC6:
 
 - All unit and integration tests pass
 
-- Grep prints `soft-import removed: OK`
+- Step 3 prints both `except ImportError` and `se_runner not available` lines
+
+- Step 4 prints `fail-closed contract: OK`
 
 
 ## Documentation Updates
 
 
-- [ ] Update patient_360/README.md § "Data Quality" with the fail-closed SE behavior and the SE run-evidence gate
+- [x] Update patient_360/README.md § "Data Quality" with the fail-closed SE behavior and the SE run-evidence gate
 
-- [ ] Update patient_360/docs/runbooks/bootstrap.md to remove references to the soft-import warning
+- [x] Update patient_360/docs/runbooks/bootstrap.md to document the single-state fail-closed import contract (no soft-degradation path; missing-SE is a deploy error)
 

@@ -8,7 +8,7 @@
 | **Story Points** | 5 |
 | **Sprint** | 2 |
 | **Dependencies** | STORY-01-001 |
-| **Status** | To Do |
+| **Status** | Done |
 
 <!--
   Story Type vocabulary (required):
@@ -34,13 +34,13 @@ Author 13 Bronze + 13 Silver + 3 Gold table contract files declaring `layer`, `s
 ## Acceptance Criteria
 
 
-- [ ] 29 `contracts/{table}.yml` files (13 Bronze + 13 Silver + 3 Gold) exist with `ddl_path` + `dq_path` pointers [LLD §2.1, §2.3]
+- [x] 29 `contracts/{table}.yml` files (13 Bronze + 13 Silver + 3 Gold) exist with `ddl_path` + `dq_path` pointers [LLD §2.1, §2.3]
 
-- [ ] 29 `contracts/dq/{table}.yml` pointer files declare `completeness_min` / `validity_min` / `freshness_max_hours` [LLD §5.5]
+- [x] 29 `contracts/dq/{table}.yml` pointer files declare `completeness_min` / `validity_min` / `freshness_max_hours` [LLD §5.5]
 
-- [ ] Per-table contracts cite their DMS schema section (Bronze: DMS §2; Silver: DMS §3; Gold: DMS §4) [DMS §2-4]
+- [x] Per-table contracts cite their DMS schema section (Bronze: DMS §2; Silver: DMS §3; Gold: DMS §4) [DMS §2-4]
 
-- [ ] Contract test `tests/test_contracts.py` parses every contract and resolves `ddl_path`+`dq_path` [LLD §2.4]
+- [x] Contract test `tests/test_contracts.py` parses every contract and resolves `ddl_path`+`dq_path` [LLD §2.4]
 
 
 ## Technical Notes
@@ -108,5 +108,5 @@ AC4:
 ## Documentation Updates
 
 
-- [ ] N/A — internal-only metadata files
+- [x] N/A — internal-only metadata files
 

@@ -8,7 +8,7 @@
 | **Story Points** | 5 |
 | **Sprint** | 2 |
 | **Dependencies** | STORY-01-002 |
-| **Status** | To Do |
+| **Status** | Done |
 
 <!--
   Story Type vocabulary (required):
@@ -34,13 +34,13 @@ Implement `src/patient_360/utils/scd2.py` (`apply_scd2(df, natural_keys, hash_co
 ## Acceptance Criteria
 
 
-- [ ] `scd2.py::apply_scd2` performs SHA-256 hash-based MERGE INTO closing existing row and inserting new version [LLD §5.2, DMS §6]
+- [x] `scd2.py::apply_scd2` performs SHA-256 hash-based MERGE INTO closing existing row and inserting new version [LLD §5.2, DMS §6]
 
-- [ ] `derived_fields.py` implements `age_at_visit`, `bmi_category`, and other DRD §5.2 fields [DRD §5.2]
+- [x] `derived_fields.py` implements `age_at_visit`, `bmi_category`, and other DRD §5.2 fields [DRD §5.2]
 
-- [ ] `code_systems.py` exposes lookup helpers for HL7, SNOMED, LOINC code mappings per STM Tab:Code Systems [STM Tab:Code Systems]
+- [x] `code_systems.py` exposes lookup helpers for HL7, SNOMED, LOINC code mappings per STM Tab:Code Systems [STM Tab:Code Systems]
 
-- [ ] Unit tests at `tests/utils/test_scd2_unit.py` cover insert/match/no-change cases [LLD §2.4]
+- [x] Unit tests at `tests/utils/test_scd2_unit.py` cover insert/match/no-change cases [LLD §2.4]
 
 
 ## Technical Notes
@@ -109,5 +109,5 @@ AC4:
 ## Documentation Updates
 
 
-- [ ] N/A — internal-only utility modules, not user-facing
+- [x] N/A — internal-only utility modules, not user-facing
 

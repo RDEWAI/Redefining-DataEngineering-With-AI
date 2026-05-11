@@ -84,16 +84,14 @@ monitoring:
   monitoring_grafana_endpoint: "http://localhost:3000"
   # Unity Catalog OSS REST API endpoint (local, all envs) [infrastructure-specs.md §4]
   catalog_unity_catalog_url: "http://localhost:8080/api/2.1/unity-catalog"
-  # UC URI consumed by UCSingleCatalog Spark session (Decision 15). Resolved
-  # from the airflow service env (UC_URI) at runtime.
-  catalog_uc_uri: "http://unity-catalog:8080"
-  # UC catalog Bronze tables land in via saveAsTable (Decision 15)
-  catalog_bronze_catalog_name: "unity"
-  # UC schema for Bronze tables
-  catalog_bronze_schema: "bronze"
-  # Legacy default catalog name (Spark fallback when UC is unwired — kept for
-  # tests that bypass UC; do NOT use for Bronze writes — see Decision 15)
+  # Default catalog name registered in UC OSS
   catalog_catalog_name: "spark_catalog"
+  # UC OSS service URI consumed by the Bronze runner via the `UC_URI` env var
+  catalog_uc_uri: "http://unity-catalog:8080"
+  # UC catalog name housing the Bronze schema
+  catalog_bronze_catalog_name: "unity"
+  # UC schema name for Bronze Delta tables
+  catalog_bronze_schema: "bronze"
 
 scheduling:
   # Airflow schedule interval

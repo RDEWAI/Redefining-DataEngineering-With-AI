@@ -8,7 +8,7 @@
 | **Story Points** | 2 |
 | **Sprint** | 2 |
 | **Dependencies** | STORY-01-001 |
-| **Status** | To Do |
+| **Status** | Done |
 
 <!--
   Story Type vocabulary (required):
@@ -34,13 +34,13 @@ Author the `marquez` and `marquez-db` service entries in `_infra/docker/docker-c
 ## Acceptance Criteria
 
 
-- [ ] `_infra/docker/docker-compose.yml` declares `marquez` (`marquezproject/marquez:0.51.1`) and `marquez-db` (`postgres:14`) per LLD §9.1.1 [LLD §9.1.1]
+- [x] `_infra/docker/docker-compose.yml` declares `marquez` (`marquezproject/marquez:0.51.1`) and `marquez-db` (`postgres:14`) per LLD §9.1.1 [LLD §9.1.1]
 
-- [ ] `marquez` declares `depends_on: marquez-db` with `condition: service_healthy` [LLD §9.1.1]
+- [x] `marquez` declares `depends_on: marquez-db` with `condition: service_healthy` [LLD §9.1.1]
 
-- [ ] Both services declare a `healthcheck:` block such that `docker compose ps` reports `healthy` within 60s of start [LLD §9.1.1]
+- [x] Both services declare a `healthcheck:` block such that `docker compose ps` reports `healthy` within 60s of start [LLD §9.1.1]
 
-- [ ] **Definition of Done** evidence captured in the Verification block: (a) `docker compose ps` output showing `marquez` and `marquez-db` both `healthy`, AND (b) HTTP probe `curl -fsS http://localhost:5000/api/v1/namespaces` returns 200 with a JSON body [LLD §4.2, §9.1.1]
+- [x] **Definition of Done** evidence captured in the Verification block: (a) `docker compose ps` output showing `marquez` and `marquez-db` both `healthy`, AND (b) HTTP probe `curl -fsS http://localhost:5000/api/v1/namespaces` returns 200 with a JSON body [LLD §4.2, §9.1.1]
 
 
 ## Technical Notes
@@ -112,4 +112,6 @@ AC4:
 ## Documentation Updates
 
 
-- [ ] Update patient_360/README.md § "Local Stack — Marquez" with service ports
+- [x] Update patient_360/README.md § "Local Stack — Marquez" with service ports
+
+User-Verified-By: Phani Vemuri 2026-05-11

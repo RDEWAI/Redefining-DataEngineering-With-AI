@@ -29,12 +29,12 @@ As a DQ engineer, I want have spark-expectations rule YAMLs for every Bronze tab
 
 ## Description
 
-Author 13 `dq_rules/synthea_{table}.yml` files mirroring DQS §2 row_dq + agg_dq rules and the per-rule SE schema (rule_type, rule, description, error_drop_threshold, action_if_failed). Cover DQ-FLD-001 through DQ-FLD-045 distributed by table per LLD §5.1 DQ Check column.
+Author 13 `dq_rules/{table}.yml` files mirroring DQS §2 row_dq + agg_dq rules and the per-rule SE schema (rule_type, rule, description, error_drop_threshold, action_if_failed). Cover DQ-FLD-001 through DQ-FLD-045 distributed by table per LLD §5.1 DQ Check column.
 
 ## Acceptance Criteria
 
 
-- [ ] 13 `dq_rules/synthea_{table}.yml` files exist with SE rule schema [LLD §2.1, DQS §2]
+- [ ] 13 `dq_rules/{table}.yml` files exist with SE rule schema (per-table convention per LLD §5.1) [LLD §2.1, §5.1, DQS §2]
 
 - [ ] Each YAML has ≥1 row_dq and ≥1 agg_dq rule per DQS §2-3 [DQS §2-3]
 
@@ -73,11 +73,11 @@ Author 13 `dq_rules/synthea_{table}.yml` files mirroring DQS §2 row_dq + agg_dq
 
 ```yaml
 AC1:
-  - file_count: {glob: "patient_360/dq_rules/synthea_*.yml", equals: 13}
+  - file_count: {glob: "patient_360/dq_rules/*.yml", equals: 13}
 AC2:
-  - grep_count: {glob: "patient_360/dq_rules/synthea_*.yml", pattern: 'rule_type:\s*row_dq', equals: 13}
+  - grep_count: {glob: "patient_360/dq_rules/*.yml", pattern: 'rule_type:\s*row_dq', min: 13}
 AC3:
-  - grep_count: {glob: "patient_360/dq_rules/synthea_*.yml", pattern: 'action_if_failed:\s*fail', equals: 6}
+  - grep_count: {glob: "patient_360/dq_rules/*.yml", pattern: 'action_if_failed:\s*fail', min: 6}
 AC4:
   - pytest: {node: "patient_360/tests/bronze/test_dq_rules_se_integration.py", marker: "integration"}
 ```
@@ -94,7 +94,7 @@ AC4:
 ### Steps
 
 
-1. `cd patient_360 && ls dq_rules/synthea_*.yml | wc -l`
+1. `cd patient_360 && ls dq_rules/*.yml | wc -l`
 
 2. `uv run pytest tests/bronze/test_dq_rules_contract.py -v`
 

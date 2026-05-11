@@ -7,7 +7,7 @@
 | **Stories** | 10 |
 | **Total Points** | 37 |
 | **Sprints** | 1-3 |
-| **Status** | Updated - Pending Review |
+| **Status** | Done |
 
 <!--
   Epic Scope vocabulary:
@@ -18,7 +18,7 @@
 
 ## Objective
 
-Provide the project scaffold, cross-layer utilities, contracts, docker-compose stack, and SE bootstrap → fail-closed lifecycle. Every downstream epic depends on this foundation.
+Provide the project scaffold, cross-layer utilities, contracts, docker-compose stack, and SE fail-closed import contract (`se_runner.py` + diagnostic `try/except ImportError` re-raise; reconciliation runner). Every downstream epic depends on this foundation.
 
 
 
@@ -36,7 +36,7 @@ Provide the project scaffold, cross-layer utilities, contracts, docker-compose s
 
 - Runtime bootstrap with SE end-to-end smoke (LLD §8.6.1)
 
-- SE runner (bootstrap → fail-closed) lifecycle
+- SE runner (`se_runner.py`) + reconciliation runner (`reconciliation.py`) with a single-state fail-closed import contract; diagnostic `try/except ImportError` in `ingestion_runner.py` logs at ERROR and re-raises (LLD §8.6, §13 Decision 14)
 
 
 ### Out of Scope
@@ -67,9 +67,9 @@ Provide the project scaffold, cross-layer utilities, contracts, docker-compose s
 
 | STORY-01-008 | Bootstrap local dev runtime (JDK / Docker / UC / Spark / SE end-to-end) | runtime-bootstrap | 5 | 2 | STORY-01-005, STORY-01-006, STORY-01-007 |
 
-| STORY-01-009 | SE runner — bootstrap phase (soft-import with WARNING log) | build | 2 | 3 | STORY-01-002 |
+| STORY-01-009 | SE runner — diagnostic ImportError try/except (log + re-raise) | build | 2 | 3 | STORY-01-002 |
 
-| STORY-01-010 | SE runner — fail-closed steady state (remove soft-import) | build | 5 | 3 | STORY-01-009 |
+| STORY-01-010 | SE runner & reconciliation modules — fail-closed implementation | build | 5 | 3 | STORY-01-002 |
 
 
 
@@ -77,17 +77,17 @@ Provide the project scaffold, cross-layer utilities, contracts, docker-compose s
 ## Acceptance Criteria (Epic-Level)
 
 
-- [ ] All 10 EPIC-01 stories Done with green tests [LLD §2.4]
+- [x] All 10 EPIC-01 stories Done with green tests [LLD §2.4]
 
-- [ ] `make dev-bootstrap && make smoke-se` succeeds end-to-end on a clean laptop [LLD §1, §6.1, §8.6.1]
+- [x] `make dev-bootstrap && make smoke-se` succeeds end-to-end on a clean laptop [LLD §1, §6.1, §8.6.1]
 
-- [ ] `bronze_se_stats` populated from the smoke run; reconciliation_bronze fail-closed query verified [LLD §8.6.1]
+- [x] `bronze_se_stats` populated from the smoke run; reconciliation_bronze fail-closed query verified [LLD §8.6.1]
 
 
 ## Risks & Assumptions
 
 
-- Phased contract risk: STORY-01-009 (bootstrap) and STORY-01-010 (fail-closed) MUST be sequenced via Depends-On so the WARNING-log AC and the WARNING-absent AC do not collide.
+- Single-state fail-closed import contract (LLD §8.6 + §13 Decision 14): STORY-01-009 wires the diagnostic `try/except ImportError` (logs at ERROR + re-raises) and STORY-01-010 ships `se_runner.py` + `reconciliation.py`. Neither story introduces a soft-degradation path — missing-SE is a deploy error. Stories are complementary (no ordering dependency); however, STORY-01-010 unit tests assert that `ingestion_runner.py` still propagates ImportError, so both must be merged together to keep the runner consistent.
 
 - Shared `docker-compose.yml` co-authorship: STORY-01-005, STORY-01-006, and STORY-01-007 all edit the same file; merge serially in dependency order. The full six-service stack is only validated end-to-end in STORY-01-007 (which lands `make dev-up` / `make dev-down`).
 

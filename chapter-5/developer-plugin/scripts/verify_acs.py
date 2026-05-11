@@ -12,6 +12,7 @@ Verifier types (all paths resolve relative to chapter-5 workspace root):
     - file_count:   {glob: <pattern>, equals|min|max: <int>}
     - grep:         {file: <path>, pattern: <regex>}                 # >=1 match
     - grep_absent:  {file|files|glob: ..., pattern: <regex>}         # 0 matches
+                    (alias: forbidden_grep — same behavior)
     - grep_count:   {files: <path|[paths]|glob>, pattern: <regex>,
                      equals|min|max: <int>}
     - pytest:       {node: <path_or_nodeid>, marker: <opt marker>}
@@ -231,7 +232,7 @@ def run_verifier(spec: Any, root: Path) -> tuple[str, str, str]:
                     return (label, PASS, f"matched in {f.name}")
             return (label, FAIL, "no match")
 
-        if kind == "grep_absent":
+        if kind in ("grep_absent", "forbidden_grep"):
             files = _resolve_files(payload, root)
             existing = [f for f in files if f.exists()]
             if not existing:

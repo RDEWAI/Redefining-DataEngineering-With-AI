@@ -8,7 +8,7 @@
 | **Story Points** | 5 |
 | **Sprint** | 1 |
 | **Dependencies** | STORY-01-001 |
-| **Status** | To Do |
+| **Status** | Done |
 
 <!--
   Story Type vocabulary (required):
@@ -34,15 +34,15 @@ Implement `src/patient_360/utils/pipeline_config.py` (loads `_infra/cd/config/{e
 ## Acceptance Criteria
 
 
-- [ ] `pipeline_config.py` resolves DEV/STAGING/PROD profiles from `_infra/cd/config/{env}.yaml` per LLD §7.2 [LLD §7.2]
+- [x] `pipeline_config.py` resolves DEV/STAGING/PROD profiles from `_infra/cd/config/{env}.yaml` per LLD §7.2 [LLD §7.2]
 
-- [ ] `logging_config.py` emits JSON logs with `pipeline_run_id`, `task_id`, `ds` fields [LLD §10.1]
+- [x] `logging_config.py` emits JSON logs with `pipeline_run_id`, `task_id`, `ds` fields [LLD §10.1]
 
-- [ ] `metrics.py` exposes `record_counter`, `record_gauge`, `record_histogram` wrapping OpenTelemetry [LLD §10.1]
+- [x] `metrics.py` exposes `record_counter`, `record_gauge`, `record_histogram` wrapping OpenTelemetry [LLD §10.1]
 
-- [ ] `delta_helpers.py` provides `build_spark_session()` returning a SparkSession with UCSingleCatalog wired (LLD §13 Decision 12) [LLD §13]
+- [x] `delta_helpers.py` provides `build_spark_session()` returning a SparkSession with UCSingleCatalog wired (LLD §13 Decision 12) [LLD §13]
 
-- [ ] Unit test suite at `tests/utils/` exits 0 with ≥90% coverage [LLD §2.4]
+- [x] Unit test suite at `tests/utils/` exits 0 with ≥90% coverage [LLD §2.4]
 
 
 ## Technical Notes
@@ -115,5 +115,5 @@ AC5:
 ## Documentation Updates
 
 
-- [ ] Update patient_360/README.md § "Configuration" with the env-override resolution flow
+- [x] Update patient_360/README.md § "Configuration" with the env-override resolution flow
 

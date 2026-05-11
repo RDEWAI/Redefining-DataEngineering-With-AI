@@ -8,7 +8,7 @@
 | **Story Points** | 3 |
 | **Sprint** | 2 |
 | **Dependencies** | STORY-01-001, STORY-01-005, STORY-01-006 |
-| **Status** | To Do |
+| **Status** | Done |
 
 <!--
   Story Type vocabulary (required):
@@ -34,17 +34,17 @@ Author the `airflow` and `otel-collector` service entries in `_infra/docker/dock
 ## Acceptance Criteria
 
 
-- [ ] `_infra/docker/Dockerfile.airflow` installs JDK 17, Spark 4.0.0, Airflow 3.2.1, and `spark-expectations>=2.10` per LLD §6.1 [LLD §6.1]
+- [x] `_infra/docker/Dockerfile.airflow` installs JDK 17, Spark 4.0.0, Airflow 3.2.1, and `spark-expectations>=2.10` per LLD §6.1 [LLD §6.1]
 
-- [ ] `_infra/docker/docker-compose.yml` declares `airflow` (built from `Dockerfile.airflow`) and `otel-collector` (`otel/opentelemetry-collector-contrib:0.107.0`) per LLD §9.1.1 [LLD §9.1.1]
+- [x] `_infra/docker/docker-compose.yml` declares `airflow` (built from `Dockerfile.airflow`) and `otel-collector` (`otel/opentelemetry-collector-contrib:0.107.0`) per LLD §9.1.1 [LLD §9.1.1]
 
-- [ ] `airflow` declares `depends_on:` `unity-catalog` and `marquez` with `condition: service_healthy`, and `otel-collector` with `condition: service_started` (otel image is distroless — see Description) [LLD §9.1.1]
+- [x] `airflow` declares `depends_on:` `unity-catalog` and `marquez` with `condition: service_healthy`, and `otel-collector` with `condition: service_started` (otel image is distroless — see Description) [LLD §9.1.1]
 
-- [ ] `airflow` declares a `healthcheck:` block such that `docker compose ps` reports it `healthy` within 120s of start. `otel-collector` MUST NOT declare a `healthcheck:`; verify it via `curl localhost:13133/` from the host [LLD §9.1.1]
+- [x] `airflow` declares a `healthcheck:` block such that `docker compose ps` reports it `healthy` within 120s of start. `otel-collector` MUST NOT declare a `healthcheck:`; verify it via `curl localhost:13133/` from the host [LLD §9.1.1]
 
-- [ ] `make dev-up` brings the full six-service stack up, waits for healthy, runs `scripts/uc_init.py`, and exits 0; `make dev-down` tears it down cleanly [LLD §9.3]
+- [x] `make dev-up` brings the full six-service stack up, waits for healthy, runs `scripts/uc_init.py`, and exits 0; `make dev-down` tears it down cleanly [LLD §9.3]
 
-- [ ] **Definition of Done** evidence captured in the Verification block: (a) `docker compose ps` output showing the five healthcheck-bearing services (`unity-catalog`, `unity-catalog-ui`, `marquez-db`, `marquez`, `airflow`) `healthy` and `otel-collector` `running`, AND (b) HTTP probe `curl -fsS http://localhost:8081/health` (Airflow webserver) returning 200 AND `curl -fsS http://localhost:13133/` (otel-collector health_check extension, probed from host) returning 200 [LLD §6.1, §9.1.1]
+- [x] **Definition of Done** evidence captured in the Verification block: (a) `docker compose ps` output showing the five healthcheck-bearing services (`unity-catalog`, `unity-catalog-ui`, `marquez-db`, `marquez`, `airflow`) `healthy` and `otel-collector` `running`, AND (b) HTTP probe `curl -fsS http://localhost:8081/health` (Airflow webserver) returning 200 AND `curl -fsS http://localhost:13133/` (otel-collector health_check extension, probed from host) returning 200 [LLD §6.1, §9.1.1]
 
 
 ## Technical Notes
@@ -135,4 +135,6 @@ AC6:
 ## Documentation Updates
 
 
-- [ ] Update patient_360/README.md § "Local Stack" with `make dev-up` / `make dev-down` flow and the six-service port table
+- [x] Update patient_360/README.md § "Local Stack" with `make dev-up` / `make dev-down` flow and the six-service port table
+
+User-Verified-By: Phani Vemuri 2026-05-11

@@ -8,7 +8,7 @@
 | **Story Points** | 2 |
 | **Sprint** | 2 |
 | **Dependencies** | STORY-01-001 |
-| **Status** | To Do |
+| **Status** | Done |
 
 <!--
   Story Type vocabulary (required):
@@ -34,13 +34,13 @@ Author the `unity-catalog` and `unity-catalog-ui` service entries in `_infra/doc
 ## Acceptance Criteria
 
 
-- [ ] `_infra/docker/docker-compose.yml` declares `unity-catalog` (image `unitycatalog/unitycatalog:v0.4.0`) and `unity-catalog-ui` (`build:` context `_infra/docker/uc-source/ui/`) per LLD §9.1.1; `_infra/docker/uc-source/` is a shallow clone of `unitycatalog/unitycatalog` at tag `v0.4.0` [LLD §9.1.1]
+- [x] `_infra/docker/docker-compose.yml` declares `unity-catalog` (image `unitycatalog/unitycatalog:v0.4.0`) and `unity-catalog-ui` (`build:` context `_infra/docker/uc-source/ui/`) per LLD §9.1.1; `_infra/docker/uc-source/` is a shallow clone of `unitycatalog/unitycatalog` at tag `v0.4.0` [LLD §9.1.1]
 
-- [ ] Both UC services declare a `healthcheck:` block such that `docker compose ps` reports `healthy` within 60s of start [LLD §9.1.1]
+- [x] Both UC services declare a `healthcheck:` block such that `docker compose ps` reports `healthy` within 60s of start [LLD §9.1.1]
 
-- [ ] `scripts/uc_init.py` creates UC catalog `unity` and schemas `bronze` / `silver` / `gold` and is idempotent on re-run [LLD §1]
+- [x] `scripts/uc_init.py` creates UC catalog `unity` and schemas `bronze` / `silver` / `gold` and is idempotent on re-run [LLD §1]
 
-- [ ] **Definition of Done** evidence captured in the Verification block: (a) `docker compose ps` output showing `unity-catalog` and `unity-catalog-ui` both `healthy`, AND (b) HTTP probe `curl -fsS http://localhost:8080/api/2.1/unity-catalog/catalogs` returns 200 with `unity` listed [LLD §1, §9.1.1]
+- [x] **Definition of Done** evidence captured in the Verification block: (a) `docker compose ps` output showing `unity-catalog` and `unity-catalog-ui` both `healthy`, AND (b) HTTP probe `curl -fsS http://localhost:8080/api/2.1/unity-catalog/catalogs` returns 200 with `unity` listed [LLD §1, §9.1.1]
 
 
 ## Technical Notes
@@ -122,4 +122,6 @@ AC4:
 ## Documentation Updates
 
 
-- [ ] Update patient_360/README.md § "Local Stack — Unity Catalog" with service ports and `uc_init.py` flow
+- [x] Update patient_360/README.md § "Local Stack — Unity Catalog" with service ports and `uc_init.py` flow
+
+User-Verified-By: Phani Vemuri 2026-05-11

@@ -68,8 +68,11 @@ services:
       marquez-db:
         condition: service_healthy
     ports:
-      - "5001:5000"   # API
-      - "5002:5001"   # admin
+      # Host port 5000 is reserved by macOS AirPlay Receiver on macOS 12+ —
+      # bind to 5001 by default. Override via `MARQUEZ_API_HOST_PORT` /
+      # `MARQUEZ_ADMIN_HOST_PORT` in .env if needed. See developer-plugin L-005.
+      - "${MARQUEZ_API_HOST_PORT:-5001}:5000"   # API
+      - "${MARQUEZ_ADMIN_HOST_PORT:-5002}:5001" # admin
     environment:
       # Marquez 0.51.1 reads POSTGRES_* (not MARQUEZ_DB_*) — using the
       # MARQUEZ_DB_* names causes Marquez to fall back to localhost:5432
@@ -132,7 +135,10 @@ services:
       - ../../uc-warehouse:/tmp/uc-warehouse
     command: ["standalone"]
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
+      # Airflow 3.x moved the health endpoint from /health to
+      # /api/v2/monitor/health. /health returns 404 on 3.x and the container
+      # is marked unhealthy forever. See developer-plugin L-006.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/v2/monitor/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10

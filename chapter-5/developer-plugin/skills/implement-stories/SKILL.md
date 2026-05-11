@@ -458,6 +458,67 @@ if CRITICAL) and save.
 When every task has `status == "done"`, set plan `status = "implemented"`.
 If any task `status == "failed"`, set plan `status = "failed"`.
 
+**Step 3.4 — Post-dispatch handbook validator gate (tight loop).**
+
+The AC verifier in Step 3.5 only checks what each story's Verification
+block names. Pattern-handbook rules (env-driven paths, hard imports,
+required test modules, etc.) live in the matching `validate-*` skill and
+are invisible to the AC verifier. To catch them at write-time rather than
+at end-of-batch, run the handbook validator immediately after each
+create-/update- dispatch and treat its CRITICAL output as a story failure.
+
+Validator scripts (callable directly, no Skill fork required):
+
+| `skill_kind` | Validator script (relative to plugin root) |
+|--------------|--------------------------------------------|
+| `ingestion`  | `skills/validate-ingestion/scripts/validate_ingestion.py` |
+| `dag`        | `skills/validate-dag/scripts/validate_dag.py`             |
+| `scaffold`   | _SKILL.md-only_ — invoke `/developer-plugin:validate-scaffold` via Skill |
+| `pipeline`   | _SKILL.md-only_ — invoke `/developer-plugin:validate-pipeline` via Skill |
+
+For `ingestion` dispatches:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-ingestion/scripts/validate_ingestion.py \
+  --project-root <project-root> 2>&1 | tee /tmp/handbook-<story>-<task>.txt
+```
+
+For `dag` dispatches (positional path; use `--all` to recurse the project):
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-dag/scripts/validate_dag.py \
+  <project-root> --all 2>&1 | tee /tmp/handbook-<story>-<task>.txt
+```
+
+Parse the last line: `Result: PASS` or `Result: FAIL`.
+
+- **`Result: PASS`** — set `tasks[i].handbook_validator = "pass"`; continue
+  to Step 3.5 (AC verification).
+- **`Result: FAIL`** — extract every line under `CRITICAL: <n> issue(s)`
+  up to the next blank line. For each:
+    1. Append the line (verbatim) to `tasks[i].critical_findings`.
+    2. Set `tasks[i].handbook_validator = "fail"` AND
+       `tasks[i].status = "failed"` (overrides the prior `done`).
+    3. Set plan `status = "failed"`.
+    4. Halt the story (same semantics as an AC inline-FAIL — do not run
+       Step 3.5 for this task, do not dispatch subsequent groups for the
+       same story). Continue with the next story in the batch unless
+       `--stop-on-critical-batch` is passed.
+    5. Log the row: `STORY-NN-NNN | <skill> | handbook FAIL: <n> CRITICAL | STOPPED`.
+
+For `scaffold` and `pipeline` dispatches (no callable script), the
+fallback is to dispatch the matching `/developer-plugin:validate-<kind>`
+skill via the Skill tool and parse its final summary line the same way
+(`Result: PASS|FAIL` + CRITICAL extraction). Record the same fields on
+the task. When neither a script nor a Skill is available, set
+`handbook_validator = "skipped"` and emit one trailer-line warning per
+story affected.
+
+Persist the plan JSON after the validator runs. This gate runs **before**
+the AC verifier so a handbook FAIL halts the story without waiting for
+the AC pass — most handbook violations would otherwise leak past the AC
+verifier and only surface during the end-of-batch `validate-stories` run.
+
 **Step 3.5 — Post-dispatch AC verification (tight loop).**
 
 After each sub-skill returns and the plan is saved, run the AC verifier
@@ -525,12 +586,14 @@ For each story in order:
 
 ### Phase 4: Hand-off
 
-Print the final table. Immediately above the next-step line, emit one
-**inline-validation summary** line tallying the Step 3.5 verdicts across
-all stories in the batch:
+Print the final table. Immediately above the next-step line, emit two
+**inline-validation summary** lines — one for the Step 3.4 handbook
+validator verdicts, one for the Step 3.5 AC verifier verdicts — tallied
+across all stories in the batch:
 
 ```
-Inline validation: <N> PASS, <M> FAIL (<first-failing-story AC#>, ...), <K> SKIPPED (no verification block)
+Handbook validator: <N> PASS, <M> FAIL (<story>:<critical-headline>, ...), <K> SKIPPED (no script or skill)
+Inline AC verification: <N> PASS, <M> FAIL (<first-failing-story AC#>, ...), <K> SKIPPED (no verification block)
 ```
 
 Then end with the exact next-step line:

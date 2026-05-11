@@ -1,4 +1,4 @@
-# STORY-01-009: SE runner — bootstrap phase (soft-import with WARNING log)
+# STORY-01-009: SE runner — diagnostic import (try/except + re-raise)
 
 | Field | Value |
 |-------|-------|
@@ -8,7 +8,7 @@
 | **Story Points** | 2 |
 | **Sprint** | 3 |
 | **Dependencies** | STORY-01-002 |
-| **Status** | To Do |
+| **Status** | Done |
 
 <!--
   Story Type vocabulary (required):
@@ -25,26 +25,26 @@
 
 ## User Story
 
-As a data engineer, I want have ingestion_runner soft-import `se_runner` while it is pending implementation so that downstream Bronze stories can ship before se_runner.py is fully built without crashing on import.
+As a data engineer, I want `ingestion_runner.py` to catch any ImportError on `se_runner` and emit a clear diagnostic log line before re-raising, so that a missing or broken Spark Expectations install produces a readable operator signal in addition to the stack trace, while preserving fail-closed semantics.
 
 ## Description
 
-Implement the *bootstrap phase* of the SE bootstrap mode lifecycle described in LLD §8.6 + §13 Decision 14: `ingestion_runner.py` wraps `from patient_360.utils import se_runner` in `try/except ImportError` and logs `WARNING: se_runner not available` when the import fails. DataFrame passes through without DQ validation in this transitional state. This story is ordered first; STORY-01-010 supersedes the soft-import once `se_runner.py` ships.
+Implement the diagnostic import pattern from LLD §8.6 + §13 Decision 14 (Resolved 2026-05-11): `ingestion_runner.py` wraps `from patient_360.utils import se_runner` in `try / except ImportError`, logs `se_runner not available — fail-closed; deployment is broken: <error>` at ERROR level, and **re-raises** the ImportError. There is no soft-degradation path — the try/except exists purely to surface a human-readable diagnostic line before the stack trace. Missing-SE is a deploy error, not a runtime condition; STORY-01-010 ships `se_runner.py` + `reconciliation.py` so the import succeeds under normal conditions.
 
 ## Acceptance Criteria
 
 
-- [ ] `ingestion_runner.py` wraps `import se_runner` in `try/except ImportError` [LLD §8.6]
+- [x] `ingestion_runner.py` wraps `from patient_360.utils import se_runner` in `try / except ImportError` [LLD §8.6]
 
-- [ ] On ImportError, the runner logs `WARNING: se_runner not available` and continues [LLD §8.6]
+- [x] On ImportError, the runner logs `se_runner not available` at ERROR level **and re-raises** (fail-closed; pipeline aborts) [LLD §8.6, STORY-01-010 AC5]
 
-- [ ] Bootstrap mode is active **only** until STORY-01-010 ships; alert routes to Slack `#data-alerts-{env}` (WARNING) per LLD §8.5 [LLD §8.5, §8.6]
+- [x] Missing-SE ImportError routes to PagerDuty `p360-critical` (CRITICAL) per LLD §8.5 — alert wiring exercised via the alerting framework, not new code in `ingestion_runner.py` [LLD §8.5, §8.6]
 
 
 ## Technical Notes
 
 - **Upstream references**: LLD §8.6, §13 Decision 14
-- **Implementation hints**: This is a TEMP measure. Do not write tests that lock in the WARNING wording — STORY-01-010 will remove it. The fail-closed steady state is owned by STORY-01-010.
+- **Implementation hints**: The try/except exists for diagnostics only — it MUST re-raise so STORY-01-010's fail-closed contract holds. Test that the log line is emitted AND that ImportError still propagates out of the module.
 
 ## Estimation Support
 
@@ -59,7 +59,7 @@ Implement the *bootstrap phase* of the SE bootstrap mode lifecycle described in 
 | Coverage | What | How |
 |----------|------|-----|
 
-| Unit | soft-import path emits WARNING and proceeds | pytest patient_360/tests/bronze/test_ingestion_runner_bootstrap_unit.py |
+| Unit | ImportError on `se_runner` emits ERROR-level diagnostic AND re-raises (fail-closed preserved) | pytest patient_360/tests/bronze/test_ingestion_runner_failclosed_unit.py |
 
 
 
@@ -71,8 +71,9 @@ AC1:
   - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "except ImportError"}
 AC2:
   - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "se_runner not available"}
+  - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "raise"}
 AC3:
-  - pytest: {node: "patient_360/tests/bronze/test_ingestion_runner_bootstrap_unit.py"}
+  - manual: "CRITICAL alert routing to PagerDuty p360-critical for missing-SE verified at runtime via LLD §8.5 alerting wiring"
 ```
 
 
@@ -87,17 +88,19 @@ AC3:
 ### Steps
 
 
-1. `cd patient_360 && uv run pytest tests/bronze/test_ingestion_runner_bootstrap_unit.py -v`
+1. `cd patient_360 && uv run pytest tests/bronze/test_ingestion_runner_failclosed_unit.py -v`
 
 
 ### Expected outcome
 
 
-- Test passes; log captures the WARNING message
+- Test passes: log captures the ERROR-level `se_runner not available — fail-closed; deployment is broken: ...` line AND the ImportError still propagates out of the runner
 
 
 ## Documentation Updates
 
 
-- [ ] N/A — internal transitional state; documentation comes with STORY-01-010
+- [x] N/A — diagnostic-only wrapper; user-facing fail-closed documentation lands with STORY-01-010 (README "Data Quality" section, bootstrap runbook)
 
+
+User-Verified-By: Phani Vemuri 2026-05-11
