@@ -1,0 +1,161 @@
+{
+  "story_id": "STORY-01-002",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/outputs/stories/v1/EPIC-01-foundation-infrastructure/STORY-01-002-cross-layer-utils.md",
+  "epic_id": "EPIC-01",
+  "plan_version": 2,
+  "status": "planned",
+  "generated_at": "2026-05-11T04:52:23.996352+00:00",
+  "summary": "2 task(s) across ['pipeline', 'scaffold'] \u2014 5 AC(s).",
+  "classifier": {
+    "kind": "scaffold",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-01-002",
+    "paths": [
+      "pipeline_config.py",
+      "_infra/cd/config/*.yaml",
+      "logging_config.py",
+      "metrics.py",
+      "delta_helpers.py"
+    ],
+    "by_skill": {
+      "scaffold": [
+        "pipeline_config.py",
+        "logging_config.py",
+        "metrics.py",
+        "delta_helpers.py"
+      ],
+      "pipeline": [
+        "_infra/cd/config/*.yaml"
+      ]
+    },
+    "dispatch_order": [
+      "scaffold",
+      "pipeline"
+    ],
+    "unmatched": [
+      "pipeline_config.py",
+      "logging_config.py",
+      "metrics.py",
+      "delta_helpers.py"
+    ],
+    "fallback_kind": "scaffold"
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "create-scaffold",
+      "kind": "scaffold",
+      "mode": "create",
+      "paths": [
+        "pipeline_config.py",
+        "logging_config.py",
+        "metrics.py",
+        "delta_helpers.py"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "started_at": null,
+      "finished_at": null,
+      "artifacts": [],
+      "files_created": 0,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-scaffold",
+      "validator_status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "T2",
+      "skill": "create-pipeline",
+      "kind": "pipeline",
+      "mode": "create",
+      "paths": [
+        "_infra/cd/config/*.yaml"
+      ],
+      "depends_on": [
+        "T1"
+      ],
+      "status": "todo",
+      "started_at": null,
+      "finished_at": null,
+      "artifacts": [],
+      "files_created": 0,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-pipeline",
+      "validator_status": "pending",
+      "notes": ""
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "`pipeline_config.py` resolves DEV/STAGING/PROD profiles from `_infra/cd/config/{env}.yaml` per LLD \u00a77.2 [LLD \u00a77.2]",
+      "line": 37,
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "`logging_config.py` emits JSON logs with `pipeline_run_id`, `task_id`, `ds` fields [LLD \u00a710.1]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "`metrics.py` exposes `record_counter`, `record_gauge`, `record_histogram` wrapping OpenTelemetry [LLD \u00a710.1]",
+      "line": 41,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 4,
+      "text": "`delta_helpers.py` provides `build_spark_session()` returning a SparkSession with UCSingleCatalog wired (LLD \u00a713 Decision 12) [LLD \u00a713]",
+      "line": 43,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 5,
+      "text": "Unit test suite at `tests/utils/` exits 0 with \u226590% coverage [LLD \u00a72.4]",
+      "line": 45,
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

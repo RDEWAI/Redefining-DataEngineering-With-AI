@@ -1,0 +1,99 @@
+{
+  "story_id": "STORY-01-009",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/outputs/stories/v1/EPIC-01-foundation-infrastructure/STORY-01-009-se-runner-bootstrap.md",
+  "epic_id": "EPIC-01",
+  "plan_version": 2,
+  "status": "implemented",
+  "generated_at": "2026-05-10T23:36:29.389212+00:00",
+  "summary": "1 task(s) across ['ingestion'] \u2014 3 AC(s).",
+  "classifier": {
+    "kind": "ingestion",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-01-009",
+    "paths": [
+      "ingestion_runner.py"
+    ],
+    "by_skill": {
+      "ingestion": [
+        "ingestion_runner.py"
+      ]
+    },
+    "dispatch_order": [
+      "ingestion"
+    ],
+    "unmatched": [
+      "ingestion_runner.py"
+    ],
+    "fallback_kind": "ingestion"
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "create-ingestion",
+      "kind": "ingestion",
+      "mode": "create",
+      "paths": [
+        "ingestion_runner.py"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "started_at": "2026-05-10T23:36:38.905957+00:00",
+      "finished_at": "2026-05-10T23:38:33.971544+00:00",
+      "artifacts": [
+        "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/patient_360/src/patient_360/bronze/ingestion_runner.py",
+        "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/patient_360/tests/bronze/test_ingestion_runner_bootstrap_unit.py"
+      ],
+      "files_created": 2,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-ingestion",
+      "validator_status": "pass",
+      "notes": ""
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "`ingestion_runner.py` wraps `import se_runner` in `try/except ImportError` [LLD \u00a78.6]",
+      "line": 37,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "On ImportError, the runner logs `WARNING: se_runner not available` and continues [LLD \u00a78.6]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "Bootstrap mode is active **only** until STORY-01-010 ships; alert routes to Slack `#data-alerts-{env}` (WARNING) per LLD \u00a78.5 [LLD \u00a78.5, \u00a78.6]",
+      "line": 41,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}
