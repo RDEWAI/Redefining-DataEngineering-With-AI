@@ -30,6 +30,18 @@ The stack is started with `make uc-start` and stopped with `make uc-stop`.
   Receiver claiming `5000`. The container port stays `5000` (internal).
 - **Pinned image tags** — use `LIBRARIES.md` versions; never rely on
   `:latest` in committed compose files.
+- **Distroless images get NO `healthcheck:` block** — minimal/distroless
+  images (notably `otel/opentelemetry-collector-contrib`, gcr.io/distroless/*,
+  scratch-based images) have no `/bin/sh`, no `wget`, no `curl`. Any
+  `healthcheck:` using `CMD-SHELL` or any binary not present in the image
+  will fail with `exec: "/bin/sh": stat /bin/sh: no such file or directory`
+  and the container will report `unhealthy` forever, blocking every
+  `depends_on: {condition: service_healthy}` consumer. Rule: if the
+  image is distroless, **omit `healthcheck:` entirely** and have
+  consumers use `condition: service_started`. Verify the service from
+  the host (e.g. `curl localhost:13133/` for the otel-collector's
+  `health_check` extension). This applies to `otel-collector` in every
+  generated project.
 
 ## Illustrative snippet
 
