@@ -75,10 +75,18 @@ the target via the shared resolver, which checks four sources in order:
 `$SKILL_ARG` → `{workspace_root}/.skill-arg` → conversational arg → auto-mode.
 
 ```bash
+# Step 1: capture the user's conversational input. Substitute the
+# bracketed text below with the EXACT message the user supplied after
+# the skill name; if no message was supplied, leave it as an empty
+# string. This is the ONLY substitution this skill requires.
+CONV_ARG='<<EXACT_CONVERSATIONAL_TEXT_FROM_USER_OR_EMPTY_STRING>>'
+
+# Step 2: run the shared resolver. It auto-discovers the workspace
+# from $PWD, so no {workspace_root} substitution is required. Output is
+# two lines on stdout: the resolved value, then the source token.
 read -r RESOLVED_ARG RESOLVED_SOURCE < <(
-  WORKSPACE_ROOT="{workspace_root}" \
-    bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_skill_arg.sh" "$USER_ARG" | \
-    paste -sd' ' -
+  bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_skill_arg.sh" "$CONV_ARG" \
+    | paste -sd' ' -
 )
 ```
 
@@ -227,3 +235,13 @@ Parse the JSON output. For each AC in `acs[]`:
 This phase is the **only** place this skill flips its overall result
 from OK to FAILED. Skills that ignore it leave gaps the orchestrator
 cannot see.
+
+
+## Learnings & Corrections
+
+### Active Learnings
+
+- **L-001** (2026-05-11): Always: In Airflow 3.x, resolve the active DAG via airflow.sdk.definitions._internal.contextmanager.DagContext.get_current() and pass explicitly to factories rather than relying on contextual binding.
+- **L-002** (2026-05-12): Always: Dev DAG defaults: max_active_tasks=1 and catchup=False. Document that production raises these only after the SE stats table has been seeded by at least one successful run.
+- **L-003** (2026-05-12): Always: Any task that touches Spark must use SparkSubmitOperator (own JVM). PythonOperator with build_spark_session inside the callable is forbidden under Airflow 3.x.
+- **L-004** (2026-05-12): Always: Use 2-part FQNs (schema.table) throughout when spark_catalog is the default catalog. The catalog name (unity/spark_catalog) never appears in writer or query code; it is only relevant for catalog config.

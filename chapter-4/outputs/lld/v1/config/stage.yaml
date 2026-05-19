@@ -10,12 +10,12 @@ pipeline:
   version: "1.0"
 
 compute:
-  # Spark driver memory
-  compute_spark_driver_memory: "2g"
+  # Spark driver memory (DEV default; STAGING 4g, PROD 8g)
+  compute_spark_driver_memory: "1g"
   # Spark driver cores
   compute_spark_driver_cores: 1
-  # Spark executor memory
-  compute_spark_executor_memory: "2g"
+  # Spark executor memory (DEV default; STAGING 4g, PROD 8g)
+  compute_spark_executor_memory: "1g"
   # Spark executor cores
   compute_spark_executor_cores: 1
   # Initial executor count

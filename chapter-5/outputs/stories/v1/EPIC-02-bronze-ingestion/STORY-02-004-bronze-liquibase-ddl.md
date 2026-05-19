@@ -29,14 +29,14 @@ As a data engineer, I want have one Liquibase changelog per Bronze table referen
 
 ## Description
 
-Author 13 `ddl/liquibase/changelogs/{table}.xml` files (one per Bronze table). Each declares the Bronze Delta table DDL per DMS §2 with metadata columns (`ds`, `_ingested_at`, `_source_batch_id`). Add a `master-changelog.xml` that includes all 13. Include rollback statements for each changeset.
+Author 13 `ddl/liquibase/changelogs/{table}.xml` files (one per Bronze table). Each declares the Bronze Delta table DDL per DMS §2 with metadata columns (`ds`, `_ingested_at`, `_source_batch_id`). Include rollback statements for each changeset. Per LLD §9.1 the `master-changelog.xml` is **project-wide** (Bronze + Silver + Gold = 29 tables across DMS §2/§3/§4) — this story authors the 13 Bronze per-table changelogs and ensures the project-wide `master-changelog.xml` includes them; downstream Silver/Gold stories add their own includes. The aggregate include count in `master-changelog.xml` after this story is at least 13 (Bronze rows present) and grows to 29 once Silver + Gold complete.
 
 ## Acceptance Criteria
 
 
 - [ ] 13 `ddl/liquibase/changelogs/{table}.xml` files exist for Bronze tables [LLD §9.1, DMS §2]
 
-- [ ] `master-changelog.xml` includes all 13 Bronze changelogs [LLD §9.1]
+- [ ] Project-wide `master-changelog.xml` includes all 29 project changelogs (Bronze + Silver + Gold) per LLD §9.1; this story owns the 13 Bronze include entries (DMS §2), with Silver (+13, DMS §3) and Gold (+3, DMS §4) include entries authored by their own layer stories [LLD §9.1, DMS §2/§3/§4]
 
 - [ ] Each changeset has a `<rollback>` element [LLD §9.1]
 
@@ -72,7 +72,11 @@ AC1:
   - file_count: {glob: "patient_360/ddl/liquibase/changelogs/synthea_*.xml", equals: 13}
 AC2:
   - file_exists: "patient_360/ddl/liquibase/master-changelog.xml"
-  - grep_count: {file: "patient_360/ddl/liquibase/master-changelog.xml", pattern: '<include\s+file=', equals: 13}
+  # master-changelog.xml is project-wide per LLD §9.1 (Bronze + Silver + Gold = 29 includes total).
+  # This story is the Bronze layer's contribution: 13 Bronze include entries MUST be present.
+  # The full 29-include count is verified once Silver + Gold layer stories complete.
+  - grep_count: {file: "patient_360/ddl/liquibase/master-changelog.xml", pattern: 'changelogs/synthea_', greater_or_equal: 13}
+  - grep_count: {file: "patient_360/ddl/liquibase/master-changelog.xml", pattern: '<include\s+file=', greater_or_equal: 13}
 AC3:
   - grep_count: {glob: "patient_360/ddl/liquibase/changelogs/synthea_*.xml", pattern: "<rollback>", equals: 13}
 ```

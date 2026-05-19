@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+  <changeSet id="create-silver-billing_claims" author="patient_360">
+    <sql splitStatements="false"><![CDATA[
+CREATE TABLE IF NOT EXISTS silver.billing_claims (
+    -- Columns stubbed; run update-scaffold sync-contracts to populate from DMS.
+    ds DATE NOT NULL,
+    _ingested_at TIMESTAMP NOT NULL,
+    _source_batch_id STRING NOT NULL,
+    _source_file STRING
+) USING DELTA
+PARTITIONED BY (ds)
+]]></sql>
+  </changeSet>
+
+</databaseChangeLog>

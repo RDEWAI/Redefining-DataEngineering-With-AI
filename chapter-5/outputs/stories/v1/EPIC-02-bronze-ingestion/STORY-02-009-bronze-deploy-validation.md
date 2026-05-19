@@ -29,7 +29,7 @@ As a data engineer, I want apply 13 Bronze Liquibase changelogs locally and veri
 
 ## Description
 
-Run `liquibase update` against local Postgres (Marquez backing DB used as a local target) to apply the 13 Bronze changelogs, then redeploy the DAG via `_infra/cd/airflow-sync.sh` and re-trigger `patient360_hourly_v1`. Verify Liquibase changelog table records all 13 changesets and the DAG run completes.
+Run `liquibase update` against local Postgres (Marquez backing DB used as a local target) to apply the 13 Bronze changelogs, then redeploy the DAG via `_infra/cd/airflow-sync.sh` and re-trigger `patient360_hourly_v1`. Verify Liquibase changelog table records all 13 changesets and the DAG run completes producing path-based Delta outputs under `${PATIENT360_PROJECT_ROOT}/warehouse/{env}/bronze/`. **No UC-managed write expectations** — Bronze writes are path-based Delta per LLD §13 Decision 15 (revoked 2026-05-12); the deploy smoke must not assert against `unity.bronze.*` catalog entries.
 
 ## Acceptance Criteria
 
@@ -38,7 +38,7 @@ Run `liquibase update` against local Postgres (Marquez backing DB used as a loca
 
 - [ ] `_infra/cd/airflow-sync.sh` re-syncs the DAG and Airflow `dags list-import-errors` reports none [LLD §9.1, §9.3]
 
-- [ ] Re-triggered DAG run completes successfully end-to-end [LLD §9.3]
+- [ ] Re-triggered DAG run completes successfully end-to-end and produces path-based Delta outputs under `${PATIENT360_PROJECT_ROOT}/warehouse/{env}/bronze/synthea_*/_delta_log/`; deploy smoke does **NOT** assert UC-managed write targets [LLD §9.3, §13 Decision 12/15]
 
 
 ## Technical Notes
@@ -73,6 +73,7 @@ AC2:
   - pytest: {node: "patient_360/tests/integration/test_bronze_deploy.py::test_airflow_sync_no_errors", marker: "integration"}
 AC3:
   - pytest: {node: "patient_360/tests/integration/test_bronze_deploy.py::test_dag_retrigger", marker: "integration"}
+  - forbidden_grep: {file: "patient_360/tests/integration/test_bronze_deploy.py", pattern: "unity\\.bronze\\.|/api/2\\.1/unity-catalog/tables", reason: "Bronze writes are path-based Delta per LLD §13 Decision 15 (revoked 2026-05-12); deploy smoke must not assert UC-managed write targets"}
 ```
 
 

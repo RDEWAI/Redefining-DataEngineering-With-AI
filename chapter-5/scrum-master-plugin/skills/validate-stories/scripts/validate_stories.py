@@ -1092,6 +1092,79 @@ def check_integration_se_evidence(
     return results
 
 
+# --- Per-story: Liquibase master-changelog scope (LIQUIBASE-MASTER-SCOPE-001) ---
+#
+# LLD §9.1 mandates a single project-wide `master-changelog.xml` that includes
+# every per-table changelog across Bronze + Silver + Gold. A layer-scoped
+# deploy-validation story that asserts the master includes only its own
+# layer's tables (e.g. "all 13 Bronze changelogs") contradicts §9.1 and will
+# halt the developer-plugin orchestrator (validate-ingestion + complete-stories).
+#
+# Spokane case (2026-05-11): STORY-02-004 AC2 read "master-changelog.xml
+# includes all 13 Bronze changelogs" — on-disk file correctly contained 29
+# (Bronze+Silver+Gold), so AC2 failed verification even though the artifact
+# was LLD-compliant. The "13" came from an illustrative example in
+# create-stories SKILL.md that the LLM applied verbatim.
+
+_MASTER_CHANGELOG_LAYER_SCOPED_PHRASES = (
+    re.compile(
+        r"master[-_]changelog(?:\.xml)?[^.]{0,80}?\ball\s+\d+\s+(?:Bronze|Silver|Gold)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"master[-_]changelog(?:\.xml)?[^.]{0,80}?\b(?:Bronze|Silver|Gold)[-_\s]*(?:only|scoped|specific)",
+        re.IGNORECASE,
+    ),
+)
+
+
+def check_liquibase_master_scope(story_file: Path) -> list[ValidationResult]:
+    """LIQUIBASE-MASTER-SCOPE-001 (CRITICAL): a story's AC or Verification
+    block scopes `master-changelog.xml` to a single layer (e.g. "all 13
+    Bronze changelogs"). LLD §9.1 mandates the master spans all
+    Bronze+Silver+Gold tables.
+    """
+    results: list[ValidationResult] = []
+    try:
+        content = story_file.read_text(encoding="utf-8")
+    except OSError:
+        return results
+
+    ac_body = _get_section_content(content, "Acceptance Criteria") or ""
+    verif_body = _get_section_content(content, "Verification") or ""
+    combined = ac_body + "\n" + verif_body
+
+    if "master-changelog" not in combined.lower():
+        return results
+
+    for pat in _MASTER_CHANGELOG_LAYER_SCOPED_PHRASES:
+        m = pat.search(combined)
+        if m:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.CRITICAL,
+                    section=f"{story_file.parent.name}/{story_file.name}",
+                    message=(
+                        f"AC/Verification scopes `master-changelog.xml` to a "
+                        f"single layer (matched: {m.group(0)!r}). LLD §9.1 "
+                        f"mandates a project-wide master spanning all "
+                        f"Bronze+Silver+Gold tables."
+                    ),
+                    suggestion=(
+                        "Rewrite the AC as: \"master-changelog.xml includes "
+                        "all N project changelogs (Bronze + Silver + Gold) "
+                        "per LLD §9.1\" where N is the total table count "
+                        "across all three layers. Update the corresponding "
+                        "grep_count / include count in the Verification block "
+                        "to match. Per-table changelog counts (file_count) "
+                        "are layer-scoped and remain unchanged."
+                    ),
+                )
+            )
+            break
+    return results
+
+
 # --- Backlog-level: cross-story AC contradiction (AC-CONTRADICTION-001) ---
 #
 # Spokane case (2026-04-26): STORY-02-001 AC4 used `grep` for
@@ -1716,6 +1789,7 @@ def validate_stories_dir(directory: Path) -> ValidationReport:
             report.results.extend(check_user_test_section(story_file, stype))
             report.results.extend(check_documentation_updates(story_file, stype))
             report.results.extend(check_integration_test_automated(story_file, stype))
+            report.results.extend(check_liquibase_master_scope(story_file))
             story_content = story_file.read_text(encoding="utf-8")
             report.results.extend(
                 check_placeholders(

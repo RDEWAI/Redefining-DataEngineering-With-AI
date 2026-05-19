@@ -7,7 +7,7 @@
 | **Stories** | 10 |
 | **Total Points** | 37 |
 | **Sprints** | 1-3 |
-| **Status** | Done |
+| **Status** | In Progress |
 
 <!--
   Epic Scope vocabulary:

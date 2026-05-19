@@ -187,6 +187,10 @@ def _count_cmp(n: int, payload: dict) -> tuple[str, str]:
         payload = {**payload, "min": payload["at_least"]}
     if "at_most" in payload and "max" not in payload:
         payload = {**payload, "max": payload["at_most"]}
+    if "greater_or_equal" in payload and "min" not in payload:
+        payload = {**payload, "min": payload["greater_or_equal"]}
+    if "less_or_equal" in payload and "max" not in payload:
+        payload = {**payload, "max": payload["less_or_equal"]}
     if "equals" in payload:
         ok = n == payload["equals"]
         return (PASS if ok else FAIL, f"{n} vs equals {payload['equals']}")
@@ -199,7 +203,7 @@ def _count_cmp(n: int, payload: dict) -> tuple[str, str]:
     if "max" in payload:
         ok = n <= payload["max"]
         return (PASS if ok else FAIL, f"{n} vs max {payload['max']}")
-    raise ValueError(f"Need equals|min|max|at_least|at_most in {payload!r}")
+    raise ValueError(f"Need equals|min|max|at_least|at_most|greater_or_equal|less_or_equal in {payload!r}")
 
 
 def run_verifier(spec: Any, root: Path) -> tuple[str, str, str]:

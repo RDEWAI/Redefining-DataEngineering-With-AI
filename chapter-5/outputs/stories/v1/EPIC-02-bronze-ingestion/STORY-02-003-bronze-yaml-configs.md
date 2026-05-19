@@ -29,7 +29,7 @@ As a data engineer, I want have one declarative ingestion YAML per Bronze source
 
 ## Description
 
-Author 13 `airflow/configs/{table}.yml` files (one per Bronze table from LLD §5.1). Each declares `source_table` (e.g., `synthea.patients`), `schema_ref` (StructType class path), `output_table` (`unity.bronze.synthea_{table}`), `dq_rules_table` (defaults to table name; resolved to `dq_rules/{table}.yml`), `empty_input_behavior`, metadata columns, `timeout`, and `retries`. Critical tables (`patients`, `encounters`, `allergies`, `organizations`, `providers`, `payers`) override `empty_input_behavior` to `fail` per LLD §5.1; others default to `write_empty`.
+Author 13 `airflow/configs/{table}.yml` files (one per Bronze table from LLD §5.1). Each declares `source.type` (`csv` by default per LLD §5.1 source-selection rule; `duckdb` only for the six small reference tables whose raw CSV is < 100 MB — organizations, providers, payers, careplans, allergies, immunizations), `source.path` or `source.table`, `output_path` (`${PATIENT360_PROJECT_ROOT}/warehouse/{env}/bronze/{table}/` — path-based Delta per LLD §13 Decision 15 revoked 2026-05-12), `dq_rules_table` (defaults to table name; resolved to `dq_rules/{table}.yml`), `empty_input_behavior`, metadata columns, `timeout`, and `retries`. Critical tables (`patients`, `encounters`, `allergies`, `organizations`, `providers`, `payers`) override `empty_input_behavior` to `fail` per LLD §5.1; others default to `write_empty`.
 
 ## Acceptance Criteria
 
@@ -38,9 +38,11 @@ Author 13 `airflow/configs/{table}.yml` files (one per Bronze table from LLD §5
 
 - [ ] Six critical tables (`patients`, `encounters`, `allergies`, `organizations`, `providers`, `payers`) have `empty_input_behavior: fail` [LLD §5.1, DRD §1.3]
 
-- [ ] All 13 configs declare `output_table: <catalog>.<schema>.synthea_{table}` resolved from the `catalog_bronze_catalog_name` / `catalog_bronze_schema` config keys (defaults `unity` / `bronze` per LLD §7.1); UC-managed write target [LLD §7.1, §13 Decision 15]
+- [ ] All 13 configs declare `output_path: ${PATIENT360_PROJECT_ROOT}/warehouse/{env}/bronze/synthea_{table}/` (path-based Delta); **no** `output_table: unity.bronze.*` (3-part UC FQN retired per LLD §13 Decision 12 + 15 revoked 2026-05-12) [LLD §13 Decision 12/15, §9.1]
 
 - [ ] Each YAML's `dq_rules_table` resolves to `dq_rules/{table}.yml` [LLD §2.3]
+
+- [ ] `source.type` is `csv` by default; `duckdb` appears in at most the six reference-table configs (organizations, providers, payers, careplans, allergies, immunizations) per LLD §5.1 source-selection rule [LLD §5.1]
 
 
 ## Technical Notes
@@ -75,9 +77,13 @@ AC1:
 AC2:
   - grep_count: {glob: "patient_360/airflow/configs/*.yml", pattern: 'empty_input_behavior:\s*fail', equals: 6}
 AC3:
-  - grep_count: {glob: "patient_360/airflow/configs/*.yml", pattern: 'output_table:\s*unity.bronze', equals: 13}
+  - grep_count: {glob: "patient_360/airflow/configs/*.yml", pattern: 'output_path:.*warehouse/.*/bronze/', min: 13}
+  - forbidden_grep: {glob: "patient_360/airflow/configs/*.yml", pattern: 'output_table:\s*unity\.bronze', reason: "3-part unity.bronze.<table> FQN retired per LLD §13 Decision 12/15 (revoked 2026-05-12)"}
 AC4:
   - pytest: {node: "patient_360/tests/bronze/test_configs_contract.py"}
+AC5:
+  - grep_count: {glob: "patient_360/airflow/configs/*.yml", pattern: 'type:\s*csv', min: 7}
+  - grep_count: {glob: "patient_360/airflow/configs/*.yml", pattern: 'type:\s*duckdb', max: 6}
 ```
 
 

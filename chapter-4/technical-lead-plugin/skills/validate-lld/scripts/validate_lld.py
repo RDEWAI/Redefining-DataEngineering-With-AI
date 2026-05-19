@@ -760,8 +760,29 @@ def check_bronze_uc_wiring(sections: dict[str, str]) -> list[ValidationResult]:
     `saveAsTable("unity.bronze.<table>")`. Path-based writes leave UC
     empty until manual external-table registration — and the gap recurs
     every DAG run.
+
+    Revocation guard (2026-05-12): if §13 Decision 15 or Decision 12 carries
+    a "Revoked" / "Reverted" marker AND a same-day matching note in §2.3,
+    skip this check — the LLD has explicitly reversed the UC-managed Bronze
+    write contract. Validation falls back to the path-based Delta path being
+    legal for chapter-5's local Delta+Hive(Derby) runtime.
     """
     results: list[ValidationResult] = []
+
+    decision_log = sections.get("13. Decision Log", "")
+    # Match Decision 12 or 15 followed (within ~600 chars) by a Status: Revoked /
+    # Reverted marker, OR a title that already says "Revoked" / "Reverted".
+    revocation_marker = re.search(
+        r"Decision\s*1[25][^\n]{0,400}(Revoked|Reverted)"
+        r"|Decision\s*1[25][\s\S]{0,600}?\*\*Status\*\*:\s*(Revoked|Reverted)",
+        decision_log,
+        flags=re.IGNORECASE,
+    )
+    if revocation_marker:
+        # Decision 12 or 15 has been explicitly revoked — skip the UC wiring
+        # enforcement entirely. The downstream developer-plugin rule
+        # `UC-WIRING-001` is retired in lock-step.
+        return results
 
     # Inspect §2 Code Architecture (where §2.3 module contracts live) and
     # §5 Task Implementation Details (where output paths land).

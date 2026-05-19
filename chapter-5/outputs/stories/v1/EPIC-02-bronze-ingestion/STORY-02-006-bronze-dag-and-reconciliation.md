@@ -29,7 +29,7 @@ As a data engineer, I want have `airflow/dags/patient360_hourly_v1.py` import th
 
 ## Description
 
-Author `patient_360/airflow/dags/patient360_hourly_v1.py` per LLD §4. The DAG calls `build_bronze_taskgroup(dag, 'airflow/configs')` then a `reconciliation_bronze` PythonOperator that runs the SE run-evidence query (LLD §8.6.1) — fail-closed when `bronze_se_stats` has 0 rows for the current `meta_dq_run_id`. Schedule = `0 * * * *`, `max_active_runs=1`, `concurrency=16`.
+Author `patient_360/airflow/dags/patient360_hourly_v1.py` per LLD §4. The DAG calls `build_bronze_taskgroup(dag, 'airflow/configs')` then a `reconciliation_bronze` **`SparkSubmitOperator`** task that runs the SE run-evidence query (LLD §8.6.1) — fail-closed when `bronze_se_stats` has 0 rows for the current `meta_dq_run_date`. Per LLD §4.2 (2026-05-12 pivot), any task that touches Spark MUST use `SparkSubmitOperator` (Airflow 3.x embedded PySpark hangs on classloader collisions). Schedule = `0 * * * *`; DEV defaults (LLD §4.1 — 2026-05-12 pivot) `max_active_tasks=1`, `catchup=False`, `max_active_runs=1`. STAGING/PROD scale up per LLD §4.1.
 
 ## Acceptance Criteria
 
@@ -38,9 +38,9 @@ Author `patient_360/airflow/dags/patient360_hourly_v1.py` per LLD §4. The DAG c
 
 - [ ] DAG calls `build_bronze_taskgroup(dag, 'airflow/configs')` to render the 13-task Bronze TaskGroup [LLD §4.2]
 
-- [ ] `reconciliation_bronze` task runs after Bronze TaskGroup and queries `bronze_se_stats` per LLD §8.6.1 [LLD §5.5, §8.6.1]
+- [ ] `reconciliation_bronze` task is a **`SparkSubmitOperator`** (NOT `PythonOperator`) and runs after the Bronze TaskGroup, executing the SE run-evidence query against `bronze_se_stats` per LLD §8.6.1 [LLD §4.2, §5.5, §8.6.1]
 
-- [ ] `max_active_runs=1`, `concurrency=16`, `catchup=True`, `default_timeout=60` per LLD §4.1 [LLD §4.1]
+- [ ] DEV DAG defaults: `max_active_runs=1`, `max_active_tasks=1`, `catchup=False`, `default_timeout=60` per LLD §4.1 (2026-05-12 pivot) [LLD §4.1]
 
 - [ ] `developer-plugin:validate-dag` passes against the rendered DAG [LLD §2.4]
 
@@ -78,9 +78,12 @@ AC2:
 AC3:
   - grep: {file: "patient_360/airflow/dags/patient360_hourly_v1.py", pattern: "reconciliation_bronze"}
   - grep: {file: "patient_360/airflow/dags/patient360_hourly_v1.py", pattern: "bronze_se_stats"}
+  - grep: {file: "patient_360/airflow/dags/patient360_hourly_v1.py", pattern: "SparkSubmitOperator"}
+  - forbidden_grep: {file: "patient_360/airflow/dags/patient360_hourly_v1.py", pattern: "PythonOperator\\([^)]*reconciliation_bronze|reconciliation_bronze[^)]*PythonOperator", reason: "reconciliation_bronze must be SparkSubmitOperator per LLD §4.2 (2026-05-12 pivot)"}
 AC4:
   - grep: {file: "patient_360/airflow/dags/patient360_hourly_v1.py", pattern: "max_active_runs.*1"}
-  - grep: {file: "patient_360/airflow/dags/patient360_hourly_v1.py", pattern: "concurrency.*16"}
+  - grep: {file: "patient_360/airflow/dags/patient360_hourly_v1.py", pattern: "max_active_tasks.*1"}
+  - grep: {file: "patient_360/airflow/dags/patient360_hourly_v1.py", pattern: "catchup.*False"}
 AC5:
   - pytest: {node: "patient_360/tests/bronze/test_dag_unit.py"}
 ```

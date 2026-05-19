@@ -8,7 +8,7 @@
 | **Story Points** | 5 |
 | **Sprint** | 1 |
 | **Dependencies** | STORY-01-001 |
-| **Status** | Done |
+| **Status** | In Progress |
 
 <!--
   Story Type vocabulary (required):
@@ -29,7 +29,7 @@ As a data engineer, I want have a tested config loader and reusable utility modu
 
 ## Description
 
-Implement `src/patient_360/utils/pipeline_config.py` (loads `_infra/cd/config/{env}.yaml` and applies env overrides per LLD §7.2), `logging_config.py` (structured JSON logging), `metrics.py` (OpenTelemetry counter/gauge wrappers), and `delta_helpers.py` (Delta MERGE / replaceWhere helpers and SparkSession factory using UCSingleCatalog per LLD §13 Decision 12). Provide unit tests for each module.
+Implement `src/patient_360/utils/pipeline_config.py` (loads `_infra/cd/config/{env}.yaml` and applies env overrides per LLD §7.2), `logging_config.py` (structured JSON logging), `metrics.py` (OpenTelemetry counter/gauge wrappers), and `delta_helpers.py` (Delta MERGE / replaceWhere helpers and SparkSession factory wiring the default `spark_catalog` with `org.apache.spark.sql.delta.catalog.DeltaCatalog` + an embedded Hive metastore on Derby with a persistent JDBC URL per LLD §13 Decision 12 — revoked & replaced 2026-05-12). All path resolution uses `${PATIENT360_PROJECT_ROOT}` per LLD §9.1. Provide unit tests for each module.
 
 ## Acceptance Criteria
 
@@ -40,7 +40,7 @@ Implement `src/patient_360/utils/pipeline_config.py` (loads `_infra/cd/config/{e
 
 - [x] `metrics.py` exposes `record_counter`, `record_gauge`, `record_histogram` wrapping OpenTelemetry [LLD §10.1]
 
-- [x] `delta_helpers.py` provides `build_spark_session()` returning a SparkSession with UCSingleCatalog wired (LLD §13 Decision 12) [LLD §13]
+- [ ] `delta_helpers.py` provides `build_spark_session()` returning a SparkSession with `spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog` and `javax.jdo.option.ConnectionURL=jdbc:derby:${PATIENT360_PROJECT_ROOT}/warehouse/{env}/metastore_db;create=true` (Hive metastore on Derby, persistent JDBC URL). **No** `UCSingleCatalog` wiring (revoked & replaced per LLD §13 Decision 12 — 2026-05-12) [LLD §13 Decision 12, §9.1]
 
 - [x] Unit test suite at `tests/utils/` exits 0 with ≥90% coverage [LLD §2.4]
 
@@ -48,7 +48,7 @@ Implement `src/patient_360/utils/pipeline_config.py` (loads `_infra/cd/config/{e
 ## Technical Notes
 
 - **Upstream references**: LLD §2.1, §7.2, §10.1, §13
-- **Implementation hints**: Use `pyyaml` for config parsing and `opentelemetry-api`/`opentelemetry-sdk` for metrics. Set spark conf `spark.sql.catalog.spark_catalog=io.unitycatalog.spark.UCSingleCatalog`.
+- **Implementation hints**: Use `pyyaml` for config parsing and `opentelemetry-api`/`opentelemetry-sdk` for metrics. Set spark conf `spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog`, `spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension`, and `javax.jdo.option.ConnectionURL=jdbc:derby:${PATIENT360_PROJECT_ROOT}/warehouse/{env}/metastore_db;create=true`.
 
 ## Estimation Support
 
@@ -80,7 +80,10 @@ AC3:
   - grep: {file: "patient_360/src/patient_360/utils/metrics.py", pattern: "record_counter"}
 AC4:
   - file_exists: "patient_360/src/patient_360/utils/delta_helpers.py"
-  - grep: {file: "patient_360/src/patient_360/utils/delta_helpers.py", pattern: "UCSingleCatalog"}
+  - grep: {file: "patient_360/src/patient_360/utils/delta_helpers.py", pattern: "DeltaCatalog"}
+  - grep: {file: "patient_360/src/patient_360/utils/delta_helpers.py", pattern: "jdbc:derby"}
+  - grep: {file: "patient_360/src/patient_360/utils/delta_helpers.py", pattern: "PATIENT360_PROJECT_ROOT"}
+  - forbidden_grep: {file: "patient_360/src/patient_360/utils/delta_helpers.py", pattern: "UCSingleCatalog", reason: "UCSingleCatalog incompatible with Airflow 3.x embedded Spark; replaced by DeltaCatalog + Hive (Derby) per LLD §13 Decision 12 (2026-05-12)"}
 AC5:
   - pytest: {node: "patient_360/tests/utils/"}
 ```
@@ -109,7 +112,7 @@ AC5:
 
 - All tests pass
 
-- DEV config dict prints with `compute.spark_driver_memory: 2g`
+- DEV config dict prints with `compute.spark_driver_memory: 1g` (revised per LLD §6.1 — 2026-05-12 pivot)
 
 
 ## Documentation Updates

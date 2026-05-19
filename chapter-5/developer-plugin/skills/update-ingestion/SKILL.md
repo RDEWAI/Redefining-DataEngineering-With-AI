@@ -76,10 +76,18 @@ the target via the shared resolver, which checks four sources in order:
 `$SKILL_ARG` → `{workspace_root}/.skill-arg` → conversational arg → auto-mode.
 
 ```bash
+# Step 1: capture the user's conversational input. Substitute the
+# bracketed text below with the EXACT message the user supplied after
+# the skill name; if no message was supplied, leave it as an empty
+# string. This is the ONLY substitution this skill requires.
+CONV_ARG='<<EXACT_CONVERSATIONAL_TEXT_FROM_USER_OR_EMPTY_STRING>>'
+
+# Step 2: run the shared resolver. It auto-discovers the workspace
+# from $PWD, so no {workspace_root} substitution is required. Output is
+# two lines on stdout: the resolved value, then the source token.
 read -r RESOLVED_ARG RESOLVED_SOURCE < <(
-  WORKSPACE_ROOT="{workspace_root}" \
-    bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_skill_arg.sh" "$USER_ARG" | \
-    paste -sd' ' -
+  bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_skill_arg.sh" "$CONV_ARG" \
+    | paste -sd' ' -
 )
 ```
 
@@ -124,6 +132,7 @@ Map the request to exactly one scenario:
 | E. Runner/factory logic change | LLD §2.3 interface contract changed | Edit `ingestion_runner.py` / `ingestion_factory.py` / `spark_submit_wrapper.py` in place; preserve public function signatures unless the LLD explicitly renames them. |
 | F. DQ rules refresh | New DQS version published under `{workspace_root}/../chapter-4/outputs/dqs/v{N}/se-rules/` | Re-sync `dq_rules/{table}.yml` from the matching SE YAML. Discover files via `ls {workspace_root}/../chapter-4/outputs/dqs/v*/se-rules/*.yaml` and match to tables by `product_id` (or filename stem) — do NOT assume any filename prefix. Runner/configs stay untouched. |
 | G. SE runner change | LLD §2.3 `se_runner.py` interface updated (new parameter, dq_env mapping change, quarantine routing change) | Edit `src/{project_name}/utils/se_runner.py`. Re-verify `_DQ_ENV_MAP`, `user_conf` wiring keys, and `_ensure_stats_table` logic. Update `run_inline_dq` call site in `ingestion_runner.py` if the `run_dq` signature changed. |
+| H. Bronze Liquibase changelog | Story AC references `ddl/liquibase/changelogs/{bronze-name}.xml` (per LLD §9.1 + DMS §2). The Bronze table-name pattern (prefix, namespace) is declared in DMS §2 — read it; never hardcode a prefix. | For each Bronze table in DMS §2, emit / update `ddl/liquibase/changelogs/{bronze_table_name}.xml` (filename from DMS, or from the `ddl_path` in `contracts/{table}.yml`). Each changelog has one `<changeSet id="create-bronze-{bronze_table_name}" author="{project_name}">` containing the `CREATE TABLE IF NOT EXISTS {bronze_schema}.{bronze_table_name}` SQL **with columns hydrated from DMS §2** (NOT a stub) plus the LLD §2.3 metadata columns named in that section (typically `ds DATE NOT NULL`, `_ingested_at TIMESTAMP NOT NULL`, `_source_batch_id STRING NOT NULL` — read the LLD to confirm). `{bronze_schema}` comes from the project's config (`catalog.bronze.schema` or equivalent — never hardcode). MUST include a `<rollback>` element with `<sql>DROP TABLE IF EXISTS {bronze_schema}.{bronze_table_name}</sql>` so Liquibase can reverse the migration (LLD §9.1 hard rule). The XML namespace is `http://www.liquibase.org/xml/ns/dbchangelog`. Do NOT touch `ddl/liquibase/master-changelog.xml` or `ddl/liquibase/liquibase.properties` — those are cross-layer plumbing owned by `update-scaffold`. After emitting Bronze changelogs, ROUTE-OUT a follow-up note that `update-scaffold sync-liquibase` needs to be run to register the new includes in the master. |
 
 Ambiguous request? Call `AskUserQuestion` with the candidate scenarios as
 options before editing.
@@ -160,6 +169,7 @@ Every code or config change must keep `tests/bronze/` green. Use this map:
 | E. Runner/factory logic change | Add or update unit tests in `test_ingestion_runner.py` for the new branch; never leave a new conditional uncovered. |
 | F. DQ rules refresh | No test edit needed — `test_per_table_configs.py::test_se_rules_have_three_envs` covers the schema. |
 | G. SE runner change | Add or update tests in `test_ingestion_runner.py` covering the new branch (e.g. new `dq_env` mapping entry, changed `run_dq` call signature). |
+| H. Bronze Liquibase changelog | Author / refresh `tests/bronze/test_liquibase_changelogs.py`. Use `xml.etree.ElementTree` (no external deps) parametrized over the Bronze changelog glob (derive the prefix/pattern from DMS §2 or from `contracts/{table}.yml::ddl_path`; never hardcode). Assert: file count matches LLD §5.1 Bronze table count; every changelog parses as XML under the Liquibase namespace; every `<changeSet>` has a `<rollback>` sibling (AC3 hard requirement per LLD §9.1). The test must NOT assert the project-wide master-changelog count — that is the scaffold layer's concern. |
 
 Run `uv run pytest tests/bronze/ -v` locally before reporting completion.
 

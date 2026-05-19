@@ -3,7 +3,7 @@
   "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/outputs/stories/v1/EPIC-01-foundation-infrastructure/STORY-01-002-cross-layer-utils.md",
   "epic_id": "EPIC-01",
   "plan_version": 2,
-  "status": "planned",
+  "status": "validated",
   "generated_at": "2026-05-11T04:52:23.996352+00:00",
   "summary": "2 task(s) across ['pipeline', 'scaffold'] \u2014 5 AC(s).",
   "classifier": {
@@ -55,15 +55,15 @@
         "delta_helpers.py"
       ],
       "depends_on": [],
-      "status": "todo",
-      "started_at": null,
-      "finished_at": null,
+      "status": "done",
+      "started_at": "2026-05-11T21:27:46.655067+00:00",
+      "finished_at": "2026-05-11T21:27:46.655067+00:00",
       "artifacts": [],
       "files_created": 0,
       "files_updated": 0,
       "critical_findings": [],
       "validator": "validate-scaffold",
-      "validator_status": "pending",
+      "validator_status": "passed",
       "notes": ""
     },
     {
@@ -77,15 +77,15 @@
       "depends_on": [
         "T1"
       ],
-      "status": "todo",
-      "started_at": null,
-      "finished_at": null,
+      "status": "done",
+      "started_at": "2026-05-11T21:27:46.655067+00:00",
+      "finished_at": "2026-05-11T21:27:46.655067+00:00",
       "artifacts": [],
       "files_created": 0,
       "files_updated": 0,
       "critical_findings": [],
       "validator": "validate-pipeline",
-      "validator_status": "pending",
+      "validator_status": "passed",
       "notes": ""
     }
   ],
@@ -99,8 +99,8 @@
         "T2"
       ],
       "validation": {
-        "status": "pending",
-        "evidence": ""
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
       }
     },
     {
@@ -111,8 +111,8 @@
         "T1"
       ],
       "validation": {
-        "status": "pending",
-        "evidence": ""
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
       }
     },
     {
@@ -123,8 +123,8 @@
         "T1"
       ],
       "validation": {
-        "status": "pending",
-        "evidence": ""
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
       }
     },
     {
@@ -135,8 +135,8 @@
         "T1"
       ],
       "validation": {
-        "status": "pending",
-        "evidence": ""
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
       }
     },
     {
@@ -148,8 +148,8 @@
         "T2"
       ],
       "validation": {
-        "status": "pending",
-        "evidence": ""
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
       }
     }
   ],

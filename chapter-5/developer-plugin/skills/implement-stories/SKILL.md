@@ -80,18 +80,28 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-stories/scripts/status_rollup.py \
 ```
 
 The JSON output includes `skill_kind` — one of `scaffold`, `dag`,
-`ingestion`, `pipeline`, or `unknown` — plus `confidence` (`high` / `low`)
-and a `reasons[]` list citing the AC matches that produced the verdict.
+`ingestion`, `pipeline`, `integration-test`, `deploy-validation`, or
+`unknown` — plus `confidence` (`high` / `low`) and a `reasons[]` list
+citing the AC matches that produced the verdict.
 
 Map `skill_kind` to the generator by literal convention (no lookup):
 
-| `skill_kind` | create skill        | update skill        | validate skill        |
-|--------------|---------------------|---------------------|-----------------------|
-| `scaffold`   | `create-scaffold`   | `update-scaffold`   | `validate-scaffold`   |
-| `dag`        | `create-dag`        | `update-dag`        | `validate-dag`        |
-| `ingestion`  | `create-ingestion`  | `update-ingestion`  | `validate-ingestion`  |
-| `pipeline`   | `create-pipeline`   | `update-pipeline`   | `validate-pipeline`   |
-| `unknown`    | — (see Phase 2 Step 3) | —                | —                     |
+| `skill_kind`         | create skill                | update skill                  | validate skill        |
+|----------------------|-----------------------------|-------------------------------|-----------------------|
+| `scaffold`           | `create-scaffold`           | `update-scaffold`             | `validate-scaffold`   |
+| `dag`                | `create-dag`                | `update-dag`                  | `validate-dag`        |
+| `ingestion`          | `create-ingestion`          | `update-ingestion`            | `validate-ingestion`  |
+| `pipeline`           | `create-pipeline`           | `update-pipeline`             | `validate-pipeline`   |
+| `integration-test`   | `create-integration-test`   | `create-integration-test` (re-emit; idempotent) | `validate-stories` (story-scoped AC verifier) |
+| `deploy-validation`  | `create-deploy-validation`  | `create-deploy-validation` (re-emit; idempotent) | `validate-stories` (story-scoped AC verifier) |
+| `unknown`            | — (see Phase 2 Step 3)      | —                             | —                     |
+
+**Story-type → skill-kind shortcut.** When the story's `Story Type`
+metadata is `integration-test` or `deploy-validation`, route to the
+matching kind directly — the AC text for those story types is mostly
+runtime behaviour (no path tokens), so the classifier's path-matching
+will not find an owner. Use the story-type cell as authoritative for
+those two kinds.
 
 If `skill_kind == "unknown"` OR `confidence == "low"`, stop the batch and
 ask the user via `AskUserQuestion`, showing the `reasons[]` so they can
@@ -110,45 +120,51 @@ detection is the invoked skill's responsibility.
 **FIRST — resolve the effective argument. Do this before any other Phase 0 step.**
 
 The argument passed via the `Skill` tool may not reach this forked subagent.
-Check these sources in order; stop at the first non-empty hit:
+The shared resolver script auto-discovers the workspace root and checks
+four sources in order; stop at the first non-empty hit:
 
 1. `$SKILL_ARG` environment variable.
-2. `{workspace_root}/.skill-arg` file — read its contents, then delete
-   the file so it is consumed at most once.
+2. `<workspace>/.skill-arg` file — consumed (deleted after read).
 3. The conversational argument supplied to the skill.
 4. **Auto-mode default** — if `$CLAUDE_AUTO_MODE=1` OR
-   `{workspace_root}/.auto-mode` exists → **resolve the latest backlog and
+   `<workspace>/.auto-mode` exists → **resolve the latest backlog and
    implement the first un-Done epic** (as returned by
-   `status_rollup.py` in backlog order). Epic numbers are not assumed to
-   be meaningful across projects; the ordering is the one the backlog
-   itself declares. This is the skill's full-mode default and never
-   requires user input.
+   `status_rollup.py` in backlog order).
 5. Only if ALL four above are empty, ask the user via `AskUserQuestion`.
 
-You MUST NOT ask the user until sources 1–4 have been checked. Auto-mode
-detection is a hard override — if the marker exists, proceed with the
-default target and do not ask.
+You MUST NOT ask the user until sources 1–4 have been checked.
 
-Mechanical resolver (copy-paste; `$USER_ARG` is the conversational arg):
+**Mechanical resolver — execute exactly this bash block (no placeholders
+to substitute, no edits to the script invocation; the only line you fill
+in is `CONV_ARG`):**
 
 ```bash
-resolve_skill_arg() {
-  if [ -n "$SKILL_ARG" ]; then echo "$SKILL_ARG"; return; fi
-  if [ -f "{workspace_root}/.skill-arg" ]; then
-    cat "{workspace_root}/.skill-arg"; rm -f "{workspace_root}/.skill-arg"; return
-  fi
-  # caller supplies conversational arg as $1
-  if [ -n "$1" ]; then echo "$1"; return; fi
-  if [ "$CLAUDE_AUTO_MODE" = "1" ] || [ -f "{workspace_root}/.auto-mode" ]; then
-    echo "__AUTO__"; return
-  fi
-  echo ""
-}
-RESOLVED_ARG=$(resolve_skill_arg "$USER_ARG")
+# Step 1 — capture the user's conversational argument. Substitute the
+# bracketed text below with the EXACT message the user supplied after the
+# skill name; if they supplied no message, leave it as an empty string.
+CONV_ARG='<<EXACT_CONVERSATIONAL_TEXT_FROM_USER_OR_EMPTY_STRING>>'
+
+# Step 2 — run the shared resolver. It auto-discovers the workspace from
+# $PWD, so no {workspace_root} substitution is required. Output is two
+# lines on stdout: the resolved value, then the source token.
+read -r RESOLVED_ARG RESOLVED_SOURCE < <(
+  bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_skill_arg.sh" "$CONV_ARG" \
+    | paste -sd' ' -
+)
 ```
 
 If `$RESOLVED_ARG` is `__AUTO__`, expand it into the first un-Done epic
-in the backlog and proceed without asking.
+in the backlog and proceed without asking. If `$RESOLVED_SOURCE` is
+`EMPTY`, the resolver writes a diagnostic block to stderr listing every
+location it probed — surface that diagnostic to the user verbatim
+before asking via `AskUserQuestion`, so they can see exactly what was
+missing instead of guessing.
+
+**Hard rule: before declaring "no argument supplied", you MUST have
+actually invoked `bash resolve_skill_arg.sh "$CONV_ARG"` and quoted its
+output. Inventing a four-bullet checklist of "sources I checked"
+without running the script is forbidden — that pattern has caused
+multiple silent argument-loss bugs in this session.**
 
 **Resolution-source banner (mandatory, every run).** As the *first
 line* of skill output, before any other work, print exactly which
@@ -650,3 +666,20 @@ Next: /developer-plugin:validate-stories EPIC-02
 ## Learnings & Corrections
 
 _No learnings recorded yet._
+
+
+## Learnings & Corrections
+
+### Active Learnings
+
+- **L-001** (2026-05-11): Always: When a forked skill returns asking for a target, the orchestrator should retry with the conversational arg explicitly OR detect that .skill-arg was not consumed (file still present after invocation) and surface a CRITICAL halt rather than silently moving on.
+- **L-002** (2026-05-11): Always: When story AC glob conflicts with LLD/project convention, halt and recommend scrum-master:update-stories rather than rename project-wide
+- **L-003** (2026-05-11): Always: When a path appears under a glob pattern like `contracts/{table}.yml` inside an AC line that describes ingestion behaviour, treat it as a reference dependency, not a scaffold deliverable; DELIVERABLE-OWNERS.yaml should distinguish contracts paths only when the AC explicitly says create/update/author/define.
+- **L-004** (2026-05-11): Always: When AC Verification uses grep_count equals:N where N == file count, but each file legitimately contains multiple matches, the verification spec is wrong; flag to scrum-master for spec correction rather than reduce real rule content.
+- **L-005** (2026-05-11): Always: When extract-deliverables sees a backtick-quoted path that already exists AND is referenced in an AC as a source/input (e.g. "uses StructType from contracts/{table}.yml"), do not emit a scaffold task. Only emit a task for the skill that owns the AC verb ("adds", "writes", "calls", "creates").
+- **L-006** (2026-05-11): Always: When the handbook validator (Step 3.4) reports CRITICAL issues, intersect each finding against the current task's paths/groups before halting. CRITICALs that name paths owned by sibling stories (not in this task's .skill-paths) should be recorded as out-of-scope and not halt the current story. Halt only when a finding cites a path the current task was responsible for.
+- **L-007** (2026-05-11): Always: When the handbook validator runs after a story dispatch, filter its CRITICAL findings to ones touching the current story task paths before halting. Project-wide deficiencies that belong to later, not-yet-dispatched stories must not halt the current story.
+- **L-008** (2026-05-11): Always: When a story routes to a skill that immediately ROUTE-OUTs based on its hard rules, the registry has a gap. Either (a) extend a skill to own that path class explicitly, or (b) add a new specialized skill (e.g. create-liquibase). Until then, orchestrator should detect double-route-out and either fall back to direct edits or block the batch with a clear error rather than thrashing between skills.
+- **L-009** (2026-05-11): Always: Stories whose deliverables live under tests/integration/, docs/runbooks/, or deploy-validation scripts have no current owning skill. Either: (a) add an integration-test domain to update-ingestion or update-dag, (b) introduce a dedicated create-integration-test / create-runbook skill, or (c) flag such stories as manual at backlog-generation time so implement-stories does not attempt to dispatch them.
+- **L-010** (2026-05-11): Always: Step 3.4 handbook validator should distinguish story-scope failures from project-wide pre-existing failures. Consider scoping the validator to the dispatched .skill-paths set, or whitelist pre-existing findings via a baseline file, so a story does not get halted by failures unrelated to its deliverables.
+- **L-011** (2026-05-11): Always: When adding new skill folders to a plugin mid-session, document the reload step (e.g. /plugin reload or marketplace refresh) in the create-role-plugin / skill-scaffolding handbook. implement-stories should surface this with a clear actionable error rather than silently failing dispatch when a fallback_kind resolves to an existing-but-unregistered skill.

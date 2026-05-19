@@ -1,0 +1,31 @@
+table: synthea_immunizations
+layer: bronze
+dms_section: "DMS \xA72"
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_immunizations.xml
+dq_path: dq_rules/synthea_immunizations.yml
+owner: Patient 360 Data Engineering
+description: "Bronze table synthea_immunizations; see DMS \xA72 for the authoritative\
+  \ column-level schema."
+tags:
+- bronze
+- patient_360
+columns:
+- name: DATE
+  type: timestamp
+  nullable: true
+- name: PATIENT
+  type: string
+  nullable: true
+- name: ENCOUNTER
+  type: string
+  nullable: true
+- name: CODE
+  type: string
+  nullable: true
+- name: DESCRIPTION
+  type: string
+  nullable: true
+- name: BASE_COST
+  type: double
+  nullable: true

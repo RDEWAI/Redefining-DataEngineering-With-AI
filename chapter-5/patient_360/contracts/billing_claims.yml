@@ -1,0 +1,18 @@
+# Contract for billing_claims (silver).
+# Schema source of truth: DMS §3.
+table: billing_claims
+layer: silver
+dms_section: DMS §3
+schema: silver
+
+ddl_path: ddl/liquibase/changelogs/billing_claims.xml
+dq_path: dq_rules/billing_claims.yml
+
+owner: "Patient 360 Data Engineering"
+description: "Silver table billing_claims; see DMS §3 for the authoritative column-level schema."
+tags: ["silver", "patient_360"]
+
+# Column-level annotations are derived from DMS §3. The DDL file
+# (linked via ddl_path) is the canonical schema definition; update-scaffold
+# sync-contracts populates this section from the DMS.
+columns: []

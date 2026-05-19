@@ -917,6 +917,14 @@ Every LLD starts with this metadata table:
 
 ### Active Learnings
 
+- **L-003** (2026-05-12): Always: For local-FS educational dev stacks the LLD must NOT mandate UCSingleCatalog as the Spark write path. Either (a) recommend Spark's built-in Hive metastore (Derby) with DeltaCatalog and keep UC as a read-only UI demo, or (b) defer UC integration to a separate chapter that assumes cloud storage + creds.
+- **L-004** (2026-05-12): Always: Bronze contract columns come from the source system (DuckDB DESCRIBE / CSV header). DMS owns Silver and Gold. The LLD must make this split explicit and instruct create-scaffold to populate Bronze contracts via a sync-from-source script.
+- **L-005** (2026-05-12): Always: LLD §4.1 must default to max_active_tasks=1 and catchup=False in dev. Concurrency raises only allowed after the first successful run seeds the shared SE stats/error tables.
+- **L-006** (2026-05-12): Always: LLD §6.1 DEV defaults should be 1g driver / 1g executor for local docker-compose stacks. Memory sizing must call out the host RAM assumption explicitly.
+- **L-007** (2026-05-12): Always: LLD §9.1 must mandate an explicit project-root env var (e.g. PATIENT360_PROJECT_ROOT) that all runtime path resolution anchors against. docker-compose env block exports it.
+- **L-008** (2026-05-12): Always: Under Airflow 3.x every task that touches Spark MUST be a SparkSubmitOperator (own JVM). PythonOperator with an in-process SparkSession is forbidden in §4.2 of the LLD.
+- **L-009** (2026-05-12): Always: LLD §8.6.1 SE-RUN-EVIDENCE invariant must filter on meta_dq_run_date (= Airflow ds), not meta_dq_run_id. The audit anchor is 'SE ran today', not 'SE ran for this Airflow run instance'.
+
 - **L-000** (default): Never invent file paths — every path referenced in the LLD (§2, §3, §4, §5, §7, §9) must exist in the cookiecutter scaffold at `inputs/lld/v{N}/templates/cookiecutter-chapter/{{cookiecutter.chapter_name}}/{{cookiecutter.project_name}}/`, or be logged as an explicit deviation in Section 13 (Decision Log) with rationale.
 
 <!-- Example format:

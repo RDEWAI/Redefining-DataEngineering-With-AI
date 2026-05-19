@@ -1,0 +1,18 @@
+# Contract for clinical_encounters (silver).
+# Schema source of truth: DMS §3.
+table: clinical_encounters
+layer: silver
+dms_section: DMS §3
+schema: silver
+
+ddl_path: ddl/liquibase/changelogs/clinical_encounters.xml
+dq_path: dq_rules/clinical_encounters.yml
+
+owner: "Patient 360 Data Engineering"
+description: "Silver table clinical_encounters; see DMS §3 for the authoritative column-level schema."
+tags: ["silver", "patient_360"]
+
+# Column-level annotations are derived from DMS §3. The DDL file
+# (linked via ddl_path) is the canonical schema definition; update-scaffold
+# sync-contracts populates this section from the DMS.
+columns: []

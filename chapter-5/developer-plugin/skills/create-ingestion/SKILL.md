@@ -640,3 +640,14 @@ Story: STORY-02-002 — Generic Ingestion Runner | Result: 5/5 AC PASS
 Module/Config             | Path                                              | Action
 ingestion_runner.py       | src/{project_name}/bronze/ingestion_runner.py     | created
 ```
+
+
+## Learnings & Corrections
+
+### Active Learnings
+
+- **L-001** (2026-05-12): Always: Default per-table YAML source.type=csv (let Spark read natively). Reserve duckdb source type for tables <100MB. Document the OOM risk.
+- **L-002** (2026-05-12): Always: Airflow 3.x SparkSubmitOperator dropped the driver_cores kwarg. Forward the value via spark.driver.cores in the conf dict.
+- **L-003** (2026-05-12): Always wrap the input df in a no-arg lambda: decorated = se.with_expectations(...)(lambda: df); validated = decorated().
+- **L-004** (2026-05-12): Always: spark-expectations always writes a stats table — there is no disable flag. Design the metastore to accept saveAsTable from SE (Hive/Derby works; UCSingleCatalog does not).
+- **L-005** (2026-05-12): Always: SE evidence check filters on meta_dq_run_date (= Airflow ds) only — NOT on meta_dq_run_id. The contract proves 'DQ ran for today's data', not 'DQ ran for this exact Airflow run'.

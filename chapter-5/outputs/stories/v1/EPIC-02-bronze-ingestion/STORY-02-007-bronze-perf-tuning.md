@@ -29,18 +29,20 @@ As a data engineer, I want apply LLD §6.3 / §6.5 partition + shuffle tuning to
 
 ## Description
 
-Wire `spark.sql.shuffle.partitions=8` (DEV) / 16 (STAGING) / 32 (PROD) and `spark.sql.autoBroadcastJoinThreshold=50m` per LLD §6.3 / §6.4. Set `synthea_observations` to 8 target partitions (LLD §6.5 partition tuning); other Bronze tables to 1-2 partitions. Verify `replaceWhere ds = '{ds}'` prunes correctly via Spark UI / explain plan. Add a benchmark assertion that `ingest_observations` finishes within the LLD-stated 5 min on DEV.
+Wire `spark.sql.shuffle.partitions=8` (DEV) / 16 (STAGING) / 32 (PROD) and `spark.sql.autoBroadcastJoinThreshold=50m` per LLD §6.3 / §6.4. Set DEV Spark memory to `spark_driver_memory: 1g` and `spark_executor_memory: 1g` per LLD §6.1 + §7 (2026-05-12 pivot — was 2g/2g; reduced to avoid OOM on the 8GB Docker host shared with UC + Marquez + Postgres + Airflow). Set `synthea_observations` to 8 target partitions (LLD §6.5 partition tuning); other Bronze tables to 1-2 partitions. Verify `replaceWhere ds = '{ds}'` prunes correctly via Spark UI / explain plan. Add a benchmark assertion that `ingest_observations` finishes within the LLD-stated 5 min on DEV.
 
 ## Acceptance Criteria
 
 
-- [ ] `compute.spark_shuffle_partitions` set per env (8/16/32) in `_infra/cd/config/{env}.yaml` per LLD §6.3 [LLD §6.3]
+- [x] `compute.spark_shuffle_partitions` set per env (8/16/32) in `_infra/cd/config/{env}.yaml` per LLD §6.3 [LLD §6.3]
 
-- [ ] `synthea_observations` write produces ~8 output partitions per `ds` per LLD §6.5 [LLD §6.5]
+- [x] `synthea_observations` write produces ~8 output partitions per `ds` per LLD §6.5 [LLD §6.5]
 
 - [ ] `replaceWhere` prune verified by `EXPLAIN EXTENDED` showing partition filter pushdown [LLD §3.3, §4.5]
 
-- [ ] Benchmark: ingest_observations completes in < 5 min on DEV (1 executor, 2g) per LLD §4.4 [LLD §4.4]
+- [ ] DEV `compute.spark_driver_memory: 1g` and `compute.spark_executor_memory: 1g` in `_infra/cd/config/dev.yaml` per LLD §6.1 + §7 (2026-05-12 pivot — was 2g/2g; downsized to fit 8GB Docker host) [LLD §6.1, §7]
+
+- [ ] Benchmark: ingest_observations completes in < 5 min on DEV (1 executor, **1g** driver / 1g executor) per LLD §4.4 + §6.1 [LLD §4.4, §6.1]
 
 
 ## Technical Notes
@@ -75,6 +77,9 @@ AC2:
 AC3:
   - manual: "Spark UI / EXPLAIN EXTENDED check — runtime"
 AC4:
+  - grep: {file: "patient_360/_infra/cd/config/dev.yaml", pattern: 'spark_driver_memory:\s*1g'}
+  - grep: {file: "patient_360/_infra/cd/config/dev.yaml", pattern: 'spark_executor_memory:\s*1g'}
+AC5:
   - pytest: {node: "patient_360/tests/bronze/test_observations_perf.py", marker: "benchmark"}
 ```
 

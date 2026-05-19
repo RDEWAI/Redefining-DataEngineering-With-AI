@@ -8,7 +8,7 @@
 | **Story Points** | 3 |
 | **Sprint** | 2 |
 | **Dependencies** | STORY-01-001, STORY-01-005, STORY-01-006 |
-| **Status** | Done |
+| **Status** | In Progress |
 
 <!--
   Story Type vocabulary (required):
@@ -45,6 +45,8 @@ Author the `airflow` and `otel-collector` service entries in `_infra/docker/dock
 - [x] `make dev-up` brings the full six-service stack up, waits for healthy, runs `scripts/uc_init.py`, and exits 0; `make dev-down` tears it down cleanly [LLD §9.3]
 
 - [x] **Definition of Done** evidence captured in the Verification block: (a) `docker compose ps` output showing the five healthcheck-bearing services (`unity-catalog`, `unity-catalog-ui`, `marquez-db`, `marquez`, `airflow`) `healthy` and `otel-collector` `running`, AND (b) HTTP probe `curl -fsS http://localhost:8081/health` (Airflow webserver) returning 200 AND `curl -fsS http://localhost:13133/` (otel-collector health_check extension, probed from host) returning 200 [LLD §6.1, §9.1.1]
+
+- [ ] The `airflow` service block exports `PATIENT360_PROJECT_ROOT` (and the derived `AIRFLOW_CONFIGS_DIR`, `DQ_RULES_DIR`, `PATIENT360_WAREHOUSE_ROOT`) so every Airflow task resolves paths against the project root rather than CWD (LLD §9.1 — 2026-05-12 pivot) [LLD §9.1]
 
 
 ## Technical Notes
@@ -95,6 +97,9 @@ AC5:
   - grep: {file: "patient_360/Makefile", pattern: "uc_init.py"}
 AC6:
   - manual: "Capture `docker compose ps` output (five services healthy, otel-collector running) AND HTTP probes — `curl -fsS http://localhost:8081/health` (Airflow) returning 200 AND `curl -fsS http://localhost:13133/` (otel-collector, probed from host) returning 200; paste all into the story verification log"
+AC7:
+  - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "PATIENT360_PROJECT_ROOT"}
+  - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "AIRFLOW_CONFIGS_DIR|DQ_RULES_DIR|PATIENT360_WAREHOUSE_ROOT"}
 ```
 
 

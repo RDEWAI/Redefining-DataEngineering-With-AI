@@ -1,0 +1,106 @@
+table: synthea_claims
+layer: bronze
+dms_section: "DMS \xA72"
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_claims.xml
+dq_path: dq_rules/synthea_claims.yml
+owner: Patient 360 Data Engineering
+description: "Bronze table synthea_claims; see DMS \xA72 for the authoritative column-level\
+  \ schema."
+tags:
+- bronze
+- patient_360
+columns:
+- name: Id
+  type: string
+  nullable: true
+- name: PATIENTID
+  type: string
+  nullable: true
+- name: PROVIDERID
+  type: string
+  nullable: true
+- name: PRIMARYPATIENTINSURANCEID
+  type: string
+  nullable: true
+- name: SECONDARYPATIENTINSURANCEID
+  type: string
+  nullable: true
+- name: DEPARTMENTID
+  type: bigint
+  nullable: true
+- name: PATIENTDEPARTMENTID
+  type: bigint
+  nullable: true
+- name: DIAGNOSIS1
+  type: bigint
+  nullable: true
+- name: DIAGNOSIS2
+  type: bigint
+  nullable: true
+- name: DIAGNOSIS3
+  type: bigint
+  nullable: true
+- name: DIAGNOSIS4
+  type: bigint
+  nullable: true
+- name: DIAGNOSIS5
+  type: bigint
+  nullable: true
+- name: DIAGNOSIS6
+  type: bigint
+  nullable: true
+- name: DIAGNOSIS7
+  type: bigint
+  nullable: true
+- name: DIAGNOSIS8
+  type: bigint
+  nullable: true
+- name: REFERRINGPROVIDERID
+  type: string
+  nullable: true
+- name: APPOINTMENTID
+  type: string
+  nullable: true
+- name: CURRENTILLNESSDATE
+  type: timestamp
+  nullable: true
+- name: SERVICEDATE
+  type: timestamp
+  nullable: true
+- name: SUPERVISINGPROVIDERID
+  type: string
+  nullable: true
+- name: STATUS1
+  type: string
+  nullable: true
+- name: STATUS2
+  type: string
+  nullable: true
+- name: STATUSP
+  type: string
+  nullable: true
+- name: OUTSTANDING1
+  type: double
+  nullable: true
+- name: OUTSTANDING2
+  type: double
+  nullable: true
+- name: OUTSTANDINGP
+  type: double
+  nullable: true
+- name: LASTBILLEDDATE1
+  type: timestamp
+  nullable: true
+- name: LASTBILLEDDATE2
+  type: timestamp
+  nullable: true
+- name: LASTBILLEDDATEP
+  type: timestamp
+  nullable: true
+- name: HEALTHCARECLAIMTYPEID1
+  type: bigint
+  nullable: true
+- name: HEALTHCARECLAIMTYPEID2
+  type: bigint
+  nullable: true

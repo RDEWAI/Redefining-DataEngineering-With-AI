@@ -211,7 +211,17 @@ def check_yaml_config(
             findings.critical.append(f"{yaml_path}: missing required key `{key}`")
 
     declared_table = str(data.get("table", "")).strip().lower() or None
-    if declared_table and declared_table != yaml_path.stem.lower():
+    # Accept a source-system prefix (e.g. ``synthea_``) — the LLD task
+    # id is bare (``ingest_allergies``) and the YAML stem is bare, but
+    # the Delta table name carries the source prefix to namespace it
+    # against other source systems. Only flag mismatches that are NOT
+    # a clean ``<prefix>_<stem>`` form.
+    stem = yaml_path.stem.lower()
+    if (
+        declared_table
+        and declared_table != stem
+        and not declared_table.endswith(f"_{stem}")
+    ):
         findings.warning.append(
             f"{yaml_path}: `table: {declared_table}` does not match filename `{yaml_path.stem}`"
         )
@@ -362,25 +372,75 @@ def check_contract_config(
         )
 
 
-def _soft_import_regex(project_name: str) -> re.Pattern[str]:
-    return re.compile(
-        r"try:\s*\n"
-        rf"\s*from\s+{re.escape(project_name)}\.utils\s+import\s+se_runner[^\n]*\n"
-        r"(?:\s*[^\n]*\n){0,6}?"
-        r"\s*except\s+ImportError",
-    )
+def _find_se_runner_try_block(tree: ast.AST, project_name: str) -> ast.Try | None:
+    """Return the top-level ``Try`` whose body imports ``se_runner`` from
+    ``{project_name}.utils``, or ``None`` if no such block exists.
+    """
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Try):
+            continue
+        for stmt in node.body:
+            if isinstance(stmt, ast.ImportFrom):
+                if (
+                    stmt.module == f"{project_name}.utils"
+                    and any(alias.name == "se_runner" for alias in stmt.names)
+                ):
+                    return node
+            elif isinstance(stmt, ast.Import):
+                if any(alias.name == f"{project_name}.utils.se_runner" for alias in stmt.names):
+                    return node
+    return None
 
 
-def check_soft_import_removed(
+def _handler_reraises(handler: ast.ExceptHandler) -> bool:
+    """True if the except block re-raises (bare ``raise`` or ``raise Exc``)
+    on every reachable path — we accept any ``Raise`` anywhere in the handler
+    body as evidence of a fail-closed diagnostic wrapper.
+    """
+    for node in ast.walk(handler):
+        if isinstance(node, ast.Raise):
+            return True
+    return False
+
+
+def _handler_catches_importerror(handler: ast.ExceptHandler) -> bool:
+    """True if the handler catches ``ImportError`` (directly, as part of a
+    tuple, or via the broader ``Exception``/bare-except).
+    """
+    if handler.type is None:
+        return True
+    exc_names: list[str] = []
+    if isinstance(handler.type, ast.Name):
+        exc_names.append(handler.type.id)
+    elif isinstance(handler.type, ast.Tuple):
+        exc_names.extend(elt.id for elt in handler.type.elts if isinstance(elt, ast.Name))
+    return any(name in {"ImportError", "ModuleNotFoundError", "Exception"} for name in exc_names)
+
+
+def check_se_import_wrapper(
     project_root: Path,
     project_name: str,
     findings: Findings,
 ) -> None:
-    """Enforce LLD §8.5 — once ``se_runner.py`` ships the soft-import
-    ``try/except ImportError`` bootstrap block in ``ingestion_runner.py``
-    MUST be removed. Ingestion must fail closed if SE is unavailable post
-    implementation; a missing import is a deployment error, not a graceful
-    degradation.
+    """Enforce LLD §8.6 + §13 Decision 14 (Resolved 2026-05-11).
+
+    Two distinct ``try/except ImportError`` patterns exist around ``se_runner``:
+
+    * **Diagnostic fail-closed wrapper (REQUIRED post-bootstrap)** — the
+      except block logs a readable diagnostic and ``raise``s. A missing SE
+      module is a deployment error, not a runtime condition. Required by
+      LLD §8.6 once ``se_runner.py`` ships.
+    * **Legacy soft-import bootstrap (FORBIDDEN post-bootstrap)** — the
+      except block swallows ``ImportError`` and lets the runner continue
+      without DQ. Only acceptable while ``se_runner.py`` is still pending.
+
+    Decision logic:
+
+    * ``se_runner.py`` shipped + diagnostic wrapper present (re-raises) → OK.
+    * ``se_runner.py`` shipped + soft-import (swallows) → CRITICAL.
+    * ``se_runner.py`` shipped + no wrapper at all → OK (direct import fails
+      loudly on its own).
+    * ``se_runner.py`` missing + wrapper present → INFO (bootstrap mode).
     """
     runner_path = project_root / "src" / project_name / "bronze" / "ingestion_runner.py"
     if not runner_path.exists():
@@ -388,22 +448,57 @@ def check_soft_import_removed(
         return
 
     source = runner_path.read_text(encoding="utf-8")
-    has_soft_import = bool(_soft_import_regex(project_name).search(source))
-    if not has_soft_import:
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        # Syntax issues are reported by check_module_syntax; nothing to do.
         return
 
+    try_block = _find_se_runner_try_block(tree, project_name)
     se_runner_path = project_root / "src" / project_name / "utils" / "se_runner.py"
-    if se_runner_path.exists():
+    se_shipped = se_runner_path.exists()
+
+    if try_block is None:
+        # No wrapper. If SE is shipped, a direct import is fine — it will
+        # raise ImportError on its own. Nothing to flag.
+        return
+
+    matching_handler = next(
+        (h for h in try_block.handlers if _handler_catches_importerror(h)),
+        None,
+    )
+    if matching_handler is None:
+        # try/except around the import but it doesn't catch ImportError —
+        # leave it to the developer; not in scope for this check.
+        return
+
+    reraises = _handler_reraises(matching_handler)
+
+    if se_shipped:
+        if reraises:
+            # Diagnostic fail-closed wrapper — required by LLD §8.6.
+            return
         findings.critical.append(
-            f"{runner_path}: soft-import bootstrap `try/except ImportError` "
-            f"around `se_runner` must be removed — `se_runner.py` is shipped, "
-            f"ingestion must fail closed (LLD §8.5)"
+            f"{runner_path}: legacy soft-import bootstrap `try/except "
+            f"ImportError` around `se_runner` swallows ImportError — "
+            f"`se_runner.py` is shipped, ingestion must fail closed. Either "
+            f"remove the wrapper or add `raise` to the except block to "
+            f"convert it into the diagnostic fail-closed wrapper required "
+            f"by LLD §8.6 / §13 Decision 14."
         )
     else:
         findings.info.append(
-            f"{runner_path}: soft-import bootstrap present; se_runner.py not "
-            f"yet implemented (expected during bootstrap mode, LLD §8.5)"
+            f"{runner_path}: SE import wrapper present; se_runner.py not "
+            f"yet implemented (bootstrap mode, LLD §8.6). The wrapper "
+            f"{'re-raises (diagnostic)' if reraises else 'swallows (legacy soft-import)'}; "
+            f"once `se_runner.py` ships the wrapper must either re-raise "
+            f"or be removed entirely."
         )
+
+
+# Back-compat alias for the previous name; callers and any external test
+# harness that imported the old symbol continue to work.
+check_soft_import_removed = check_se_import_wrapper
 
 
 def check_pyproject_deps(project_root: Path, findings: Findings) -> None:
@@ -514,11 +609,26 @@ def validate(project_root: Path, project_name: str, lld_path: Path) -> Findings:
             if contract_path.exists():
                 check_contract_config(contract_path, project_root, findings)
 
-    check_soft_import_removed(project_root, project_name, findings)
+    check_se_import_wrapper(project_root, project_name, findings)
 
     lld_tables = extract_bronze_tables_from_lld(lld_path)
-    missing = lld_tables - declared_tables
-    extra = declared_tables - lld_tables
+    # Match LLD task names against YAML `table:` values allowing a
+    # source-system prefix on the YAML side (e.g. LLD says
+    # ``ingest_allergies``; YAML declares ``table: synthea_allergies``).
+    # A declared value matches if it equals the LLD name OR ends with
+    # ``_<lld_name>``.
+    yaml_stems = {p.stem.lower() for p in yaml_files}
+
+    def _matches(lld_name: str) -> bool:
+        if lld_name in yaml_stems:
+            return True
+        return any(d == lld_name or d.endswith(f"_{lld_name}") for d in declared_tables)
+
+    missing = {t for t in lld_tables if not _matches(t)}
+    extra = {
+        d for d in declared_tables
+        if not any(d == t or d.endswith(f"_{t}") for t in lld_tables)
+    }
 
     for table in sorted(missing):
         findings.critical.append(

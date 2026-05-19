@@ -599,6 +599,23 @@ An epic is a **medallion layer epic** when its `LLD Section` metadata cites
    not call out per-layer deploy work, **skip** `deploy-validation` and add this
    note to the epic's Objective section:
    `Deploy: N/A — layer completes at integration-test; system-wide deploy in trailing release epic.`
+
+   **Liquibase scoping rule (MANDATORY when emitting Liquibase ACs):**
+   Liquibase artifacts in this project follow LLD §9.1 — a single project-wide
+   `master-changelog.xml` covers **all** Bronze + Silver + Gold tables, with
+   per-table changelogs under `ddl/liquibase/changelogs/{table}.xml`.
+
+   When a layer-scoped `deploy-validation` story authors Liquibase ACs:
+   - The AC asserting per-table changelog count is **layer-scoped** — it asserts
+     only this layer's table count (e.g., 13 for Bronze, the Silver count for
+     Silver, etc.). Use `file_count` against the layer's table glob.
+   - The AC asserting `master-changelog.xml` include count is **project-wide** —
+     it MUST equal the total table count across Bronze + Silver + Gold per LLD
+     §9.1, NEVER this layer's count alone. Re-read §9.1 to compute the total
+     before emitting the number; do not assume the master spans only one layer.
+   - Never write "`master-changelog.xml` includes all N Bronze changelogs" — the
+     master is project-wide. The correct phrasing is "`master-changelog.xml`
+     includes all N project changelogs (Bronze + Silver + Gold) per LLD §9.1".
 5. Set the epic's `Epic Scope` field to `layer`.
 
 **Example closure sequence (illustrative — derive the actual content from the LLD):**
@@ -612,8 +629,11 @@ EPIC-02 Bronze Ingestion (LLD §5.1)
                  local; assert 13 Bronze Delta tables in UC local with correct schema + metadata
                  cols; reconciliation_bronze passes [LLD §2.4, §5.1, §5.5]
                  Dependencies: STORY-02-NNN (perf)
-  STORY-02-NNN  deploy-validation: Liquibase changelogs for 13 Bronze tables; local DAG
-                 deploy smoke [LLD §9.1]  (emit only if LLD prescribes; otherwise skip)
+  STORY-02-NNN  deploy-validation: per-table Liquibase changelogs for this layer's
+                 Bronze tables (13 files under ddl/liquibase/changelogs/), each
+                 registered in the project-wide master-changelog.xml whose include
+                 count spans ALL Bronze+Silver+Gold tables per LLD §9.1; local DAG
+                 deploy smoke  (emit only if LLD prescribes layer-scoped deploy work)
                  Dependencies: STORY-02-NNN (integration-test)
 ```
 

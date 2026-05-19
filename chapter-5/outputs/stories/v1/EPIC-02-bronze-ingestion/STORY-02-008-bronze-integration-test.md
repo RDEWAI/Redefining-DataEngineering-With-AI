@@ -25,22 +25,22 @@
 
 ## User Story
 
-As a data engineer, I want trigger the `patient360_hourly_v1` Airflow DAG on the local docker-compose stack and validate Bronze data lands in Unity Catalog OSS so that Bronze layer can reach Done independently — we have evidence the DAG runs and DQ produced run-evidence.
+As a data engineer, I want trigger the `patient360_hourly_v1` Airflow DAG on the local docker-compose stack and validate Bronze data lands as path-based Delta tables under the warehouse root so that Bronze layer can reach Done independently — we have evidence the DAG runs and DQ produced run-evidence.
 
 ## Description
 
-Trigger the `patient360_hourly_v1` Airflow DAG on local Airflow against Unity Catalog OSS local. Assert all 13 Bronze Delta tables register in `unity.bronze.*` with correct schema + metadata columns; `reconciliation_bronze` succeeds; SE produced runtime artifacts (`bronze_se_stats` populated, `<table>_error` tables exist) per LLD §8.6.1. Failure modes: empty stats table, missing UC tables, schema drift.
+Trigger the `patient360_hourly_v1` Airflow DAG on local Airflow with Spark wired to the default `spark_catalog` + Hive metastore (Derby) per LLD §13 Decision 12 (revoked & replaced 2026-05-12). Assert all 13 Bronze Delta tables land as path-based Delta under `${PATIENT360_PROJECT_ROOT}/warehouse/{env}/bronze/synthea_*/` (each with a `_delta_log/` directory) with correct metadata columns; `reconciliation_bronze` (a `SparkSubmitOperator` per LLD §4.2) succeeds; SE produced runtime artifacts (`bronze_se_stats` populated, `<table>_error` tables exist) per LLD §8.6.1. The SE run-evidence query filters on `meta_dq_run_date` only — **not** on `meta_dq_run_id` (SE generates its own run id and rejects any Airflow `ts_nodash` override per LLD §8.6.1 — 2026-05-12 pivot). Failure modes: empty stats table, missing Delta paths, schema drift.
 
 ## Acceptance Criteria
 
 
 - [ ] Airflow DAG `patient360_hourly_v1` triggers and Bronze TaskGroup completes successfully on local Airflow [LLD §4.2]
 
-- [ ] 13 Bronze Delta tables visible in Unity Catalog OSS local at `unity.bronze.synthea_*` after the DAG run [LLD §13 Decision 15]
+- [ ] 13 path-based Bronze Delta tables exist under `${PATIENT360_PROJECT_ROOT}/warehouse/{env}/bronze/synthea_*/` (each with a `_delta_log/` directory) after the DAG run; **no** assertion against UC OSS `unity.bronze.*` (UC is UI-demo only per LLD §13 Decision 12 revoked 2026-05-12) [LLD §13 Decision 12/15, §9.1]
 
 - [ ] Each Bronze table has `ds`, `_ingested_at`, `_source_batch_id` metadata columns populated [LLD §2.3]
 
-- [ ] `bronze_se_stats` has ≥1 row whose `meta_dq_run_id` matches the run; `reconciliation_bronze` succeeds (SE run-evidence) [LLD §8.6.1]
+- [ ] `bronze_se_stats` has ≥1 row for the current `meta_dq_run_date`; `reconciliation_bronze` succeeds (SE run-evidence). The evidence query filters on `meta_dq_run_date` **only** (no `meta_dq_run_id = ts_nodash` clause — SE generates its own run id) per LLD §8.6.1 (2026-05-12 pivot) [LLD §8.6.1]
 
 - [ ] `dq_pass_rate` reported in Marquez run facets / Grafana dashboard for the run [LLD §8.6.1, §10.2]
 
@@ -63,11 +63,11 @@ Trigger the `patient360_hourly_v1` Airflow DAG on local Airflow against Unity Ca
 | Coverage | What | How |
 |----------|------|-----|
 
-| Integration | DAG trigger + UC OSS table presence + SE stats populated | pytest -m integration patient_360/tests/integration/test_bronze_uc.py |
+| Integration | DAG trigger + UC OSS table presence + SE stats populated | pytest -m integration patient_360/tests/integration/bronze/test_bronze_uc.py |
 
 | Smoke | Airflow + UC OSS up | make dev-status |
 
-| DQ | bronze_se_stats has run-evidence row | pytest -m integration patient_360/tests/integration/test_bronze_se_evidence.py |
+| DQ | bronze_se_stats has run-evidence row | pytest -m integration patient_360/tests/integration/bronze/test_bronze_se_evidence.py |
 
 | Unit | DAG parses without import errors | pytest patient_360/tests/bronze/test_dag_unit.py |
 
@@ -77,13 +77,16 @@ Trigger the `patient360_hourly_v1` Airflow DAG on local Airflow against Unity Ca
 
 ```yaml
 AC1:
-  - pytest: {node: "patient_360/tests/integration/test_bronze_uc.py::test_dag_run_succeeds", marker: "integration"}
+  - pytest: {node: "patient_360/tests/integration/bronze/test_bronze_uc.py::test_dag_run_succeeds", marker: "integration"}
 AC2:
-  - pytest: {node: "patient_360/tests/integration/test_bronze_uc.py::test_13_bronze_tables_in_uc", marker: "integration"}
+  - pytest: {node: "patient_360/tests/integration/bronze/test_bronze_uc.py::test_13_bronze_delta_paths_exist", marker: "integration"}
+  - forbidden_grep: {file: "patient_360/tests/integration/bronze/test_bronze_uc.py", pattern: "unity\\.bronze\\.|/api/2\\.1/unity-catalog/tables", reason: "UC OSS is UI-demo only per LLD §13 Decision 12 (revoked 2026-05-12); integration test must validate path-based Delta directories, not UC catalog entries"}
 AC3:
-  - pytest: {node: "patient_360/tests/integration/test_bronze_uc.py::test_metadata_columns_populated", marker: "integration"}
+  - pytest: {node: "patient_360/tests/integration/bronze/test_bronze_uc.py::test_metadata_columns_populated", marker: "integration"}
 AC4:
-  - pytest: {node: "patient_360/tests/integration/test_bronze_se_evidence.py::test_se_stats_populated", marker: "integration"}
+  - pytest: {node: "patient_360/tests/integration/bronze/test_bronze_se_evidence.py::test_se_stats_populated", marker: "integration"}
+  - grep: {file: "patient_360/tests/integration/bronze/test_bronze_se_evidence.py", pattern: "meta_dq_run_date"}
+  - forbidden_grep: {file: "patient_360/tests/integration/bronze/test_bronze_se_evidence.py", pattern: "meta_dq_run_id\\s*=\\s*['\"]?\\{?\\s*ts_nodash|meta_dq_run_id\\s*=\\s*['\"]?\\{run_id", reason: "SE rejects Airflow-supplied run_id overrides; evidence query must filter on meta_dq_run_date only per LLD §8.6.1 (2026-05-12 pivot)"}
 AC5:
   - manual: "Marquez UI / Grafana DQ board — visual check"
 ```
@@ -106,7 +109,7 @@ AC5:
 
 2. `docker compose exec airflow airflow dags trigger patient360_hourly_v1`
 
-3. `uv run pytest -m integration tests/integration/test_bronze_uc.py tests/integration/test_bronze_se_evidence.py -v`
+3. `uv run pytest -m integration tests/integration/bronze/test_bronze_uc.py tests/integration/bronze/test_bronze_se_evidence.py -v`
 
 4. Open `http://localhost:5001` (Marquez) and inspect the run lineage
 
@@ -118,7 +121,7 @@ AC5:
 
 - All integration tests pass
 
-- Marquez shows lineage edges from `synthea.*` to `unity.bronze.synthea_*`
+- Marquez shows lineage edges from `synthea.*` to the path-based Delta outputs under `warehouse/{env}/bronze/synthea_*/`
 
 
 ## Documentation Updates

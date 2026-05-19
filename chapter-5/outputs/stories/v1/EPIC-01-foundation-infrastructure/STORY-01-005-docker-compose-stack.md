@@ -8,7 +8,7 @@
 | **Story Points** | 2 |
 | **Sprint** | 2 |
 | **Dependencies** | STORY-01-001 |
-| **Status** | Done |
+| **Status** | In Progress |
 
 <!--
   Story Type vocabulary (required):

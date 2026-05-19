@@ -8,7 +8,7 @@ description: >
   - Refresh scaffold after LLD revision
   - Sync contracts/ against a new DMS version
   - Add a new foundation module to an existing project
-argument-hint: "[STORY-NN-NNN | 'sync-contracts' | 'sync-infra' | 'sync-template' | 'sync-env']"
+argument-hint: "[STORY-NN-NNN | 'sync-contracts' | 'sync-infra' | 'sync-template' | 'sync-env' | 'sync-liquibase']"
 allowed-tools: Read, Edit, Write, Grep, Glob, Bash, AskUserQuestion
 context: fork
 ---
@@ -79,6 +79,7 @@ Emit a `### References` section citing the consumed pattern docs + LIBRARIES.md 
 | LLD §9.1 changed infra layout                   | `update-scaffold` (`sync-infra`)     |
 | Cookiecutter template updated upstream          | `update-scaffold` (`sync-template`)  |
 | Runtime prerequisites drifted (Java, uv, docker)| `update-scaffold` (`sync-env`)       |
+| New layer changelogs added → master out of sync | `update-scaffold` (`sync-liquibase`) |
 
 ## Workflow
 
@@ -132,7 +133,15 @@ Only if `$RESOLVED_ARG` is empty after all four sources — ask via
 - `STORY-NN-NNN` — read the story's AC; for each backtick-quoted path that
   falls under create-scaffold's *Domain of Ownership*, update it in place.
   Route ROUTE-TO for paths owned by other skills.
-- `sync-contracts` — rewrite every `contracts/{table}.yml` from the latest DMS.
+- `sync-contracts` — rewrite every `contracts/{table}.yml`. Bronze
+  contracts (`contracts/synthea_*.yml`) get their `columns:` populated
+  from the actual source schema via
+  `patient_360/scripts/sync_bronze_contracts.py` — Bronze is a landing
+  zone, so the source (DuckDB `synthea.*` tables, loaded by chapter-2's
+  `make load-raw-data`) is the StructType source of truth, not the DMS.
+  Silver / Gold contracts (`clinical_*`, `reference_*`, `billing_*`,
+  `patient_*`) keep using DMS §3 / §4 as their schema source. See
+  Phase 0.7 below.
 - `sync-infra` — reconcile `_infra/docker/`, `pyproject.toml`, and `Makefile` against the latest LLD §9.
 - `sync-template` — reconcile against an updated cookiecutter-chapter
   template. See Phase 0.5 below.
@@ -140,6 +149,10 @@ Only if `$RESOLVED_ARG` is empty after all four sources — ask via
   versions) from `create-scaffold` Phase 1.5 and offer install prompts
   if prerequisites drifted (e.g. `LIBRARIES.md` bumped Spark major →
   JDK bump needed). No code files are touched in this mode.
+- `sync-liquibase` — reconcile the cross-layer Liquibase plumbing
+  (`ddl/liquibase/master-changelog.xml`, `ddl/liquibase/liquibase.properties`)
+  against DMS §2/§3/§4 and what is currently on disk under
+  `ddl/liquibase/changelogs/`. See Phase 0.6 below.
 
 ### Phase 0.5: `sync-template` mode
 
@@ -174,6 +187,99 @@ against the current template without destroying user edits.
 5. **Record** the template version that was applied so the next
    `sync-template` run can detect no-op cases.
 
+### Phase 0.6: `sync-liquibase` mode
+
+LLD §9.1 prescribes a **single project-wide** `master-changelog.xml`
+aggregating every per-table changelog across Bronze + Silver + Gold, plus
+a `liquibase.properties` connection-config file. Per-table changelog
+content is owned by the *layer* skill that knows its DMS section
+(`update-ingestion` for Bronze §2; future silver/gold skills for §3/§4).
+This skill owns the aggregator + properties only.
+
+1. **Resolve the DMS path via the shared helper** (no hardcoded
+   chapter / project names):
+   ```bash
+   eval "$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/resolve_versions.py --export)"
+   LATEST_DMS=$(ls -t "$LATEST_DMS_DIR"/DMS-*.md 2>/dev/null | grep -v '\.bak$' | head -1)
+   ```
+2. **Read the DMS layer table inventory.** Parse DMS §2 (Bronze), §3
+   (Silver), §4 (Gold). The per-layer table-name patterns (prefix,
+   namespace, etc.) are declared in the DMS — never hardcode them. For
+   each layer collect:
+   - The set of table names under that layer.
+   - The filename pattern used for that layer's Liquibase changelogs
+     (taken from the DMS or from the `ddl_path` pointer in each
+     `contracts/{table}.yml`).
+3. **Discover layer changelogs on disk**:
+   ```bash
+   ls {project_root}/ddl/liquibase/changelogs/*.xml 2>/dev/null | sort
+   ```
+   Bucket each filename into a layer using the DMS-derived patterns
+   from step 2. If a file matches no layer pattern, flag it INFO and
+   leave it alone — never assume.
+4. **Cross-check against DMS**: every table declared in DMS §2/§3/§4
+   should have a matching per-table XML on disk. If any are missing,
+   ROUTE-OUT a note pointing to the owning layer skill — do NOT
+   fabricate the per-table content here.
+5. **Idempotent merge of `master-changelog.xml`**:
+   - If the file does not exist, write a fresh `<databaseChangeLog>`
+     root with one `<include file="changelogs/{name}.xml"/>` line per
+     XML found in step 3, ordered Bronze → Silver → Gold then
+     alphabetical within each layer.
+   - If the file exists, parse it, collect existing includes, and add
+     missing entries only. Never reorder or delete user-authored
+     includes (Hard Rule 1).
+6. **`liquibase.properties`**: emit only if missing. Use placeholder
+   `url`, `driver`, `username`, `password` keys keyed by env-var
+   substitution (`${LIQUIBASE_DB_URL}` etc.) so secrets are not
+   committed. Do not overwrite an existing file.
+7. **Update the stale stub comment**: any layer changelog whose stub
+   says `-- run update-scaffold sync-contracts to populate from DMS`
+   has the wrong directive (scaffold doesn't have DMS schemas in
+   scope). If found, REPLACE the directive with `-- run the matching
+   layer skill (update-ingestion for Bronze §2; future silver/gold for
+   §3/§4) to populate columns from DMS.` Do NOT modify any other
+   content in the file.
+
+This mode never touches `ddl/liquibase/changelogs/*.xml` per-table
+content — that is layer-owned.
+
+### Phase 0.7: `sync-contracts` mode
+
+The 13 Bronze contracts (`contracts/synthea_*.yml`) are populated from the
+**source** schema, not the DMS — Bronze is a landing zone that mirrors
+the source as-is. The DMS only specifies the columns that survive into
+Silver/Gold, so it cannot drive Bronze StructType.
+
+Steps:
+
+1. **Locate the source DuckDB**. By convention it's
+   `{repo_root}/data/duckdb/raw.db`, loaded by chapter-2's
+   `make load-raw-data`. From `chapter-5/` that's `../data/duckdb/raw.db`.
+   If the file is missing, halt with a one-line message instructing the
+   user to run `make load-raw-data` from the repo root first.
+
+2. **Run the generator** (it walks `DESCRIBE synthea.<table>` for every
+   `synthea_*.yml` under `contracts/`, maps DuckDB types to the
+   contract type vocabulary, and rewrites the `columns:` block only —
+   preserving every other field):
+
+   ```bash
+   uv run python patient_360/scripts/sync_bronze_contracts.py \
+     --raw-db ../data/duckdb/raw.db \
+     --contracts-dir patient_360/contracts
+   ```
+
+3. **Silver / Gold contracts** are still DMS-driven. Read the DMS §3
+   (Silver) and §4 (Gold) tables and merge their column lists into the
+   matching `contracts/{table}.yml` using the same `Edit`-only,
+   field-preserving pattern. (Out of scope while only Bronze has shipped;
+   add when Silver/Gold create-* skills land.)
+
+4. **Report**: one row per contract (`UPDATED` / `matches` / `SKIP`).
+   The generator already emits this format; capture and forward to the
+   Phase 4 output.
+
 ### Phase 1: Diff
 
 Compute the delta between what LLD/DMS says and what is on disk:
@@ -201,8 +307,14 @@ End with: `Next: /developer-plugin:validate-scaffold <same-arg>`.
 
 1. Never delete a file. Renames are two steps: write the new path, tell the user to remove the old one.
 2. Never overwrite a Python module whose `git blame` shows human edits without `AskUserQuestion` confirmation.
-3. StructType schemas MUST come from DMS — no invented columns.
+3. StructType schemas are derived from a canonical source, never invented:
+   Bronze (`synthea_*`) ← DuckDB source via
+   `scripts/sync_bronze_contracts.py`; Silver / Gold ← DMS §3 / §4.
 4. Do not touch `airflow/dags/`, `src/{project_name}/bronze/`, or `dq_rules/`.
+5. Do not author per-table Liquibase changelog content under
+   `ddl/liquibase/changelogs/`. Those files are owned by layer skills
+   (`update-ingestion` for Bronze; future silver/gold for those layers).
+   This skill only owns `master-changelog.xml` and `liquibase.properties`.
 
 ## Edge Cases
 

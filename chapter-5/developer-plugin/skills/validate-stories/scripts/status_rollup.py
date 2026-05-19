@@ -38,6 +38,7 @@ META_ROW_RE = re.compile(r"^\|\s*\*\*(?P<key>[^*]+)\*\*\s*\|\s*(?P<value>.+?)\s*
 AC_LINE_RE = re.compile(r"^\s*-\s*\[(?P<mark>[ xX])\]\s*(?P<text>.+?)\s*$")
 STORY_ROW_RE = re.compile(
     r"^\|\s*(?P<id>STORY-\d{2}-\d{3})\s*\|\s*(?P<title>[^|]+?)\s*\|"
+    r"(?:\s*(?P<type>[^|]+?)\s*\|)?"
     r"\s*(?P<points>\d+)\s*\|\s*(?P<sprint>[^|]+?)\s*\|"
     r"\s*(?P<deps>[^|]+?)\s*\|\s*$"
 )
@@ -540,6 +541,7 @@ def parse_story(path: Path) -> dict:
         "sprint": meta.get("Sprint", "").strip(),
         "story_points": _to_int(meta.get("Story Points")),
         "priority": meta.get("Priority", "").strip(),
+        "story_type": meta.get("Story Type", "").strip(),
         "depends_on": depends_on,
         "ac_lines": ac_lines,
         "ac_total": len(ac_lines),
@@ -640,6 +642,11 @@ def classify_story(ws: Workspace, story_id: str) -> dict:
     """Return the downstream skill kind for a story.
 
     Resolution order:
+      0. **Story Type metadata cell** — when the story declares its type
+         as ``integration-test`` or ``deploy-validation``, route to the
+         matching skill kind directly. These story types have runtime-
+         behavioural ACs (no path tokens) so the slug / content rules
+         would otherwise mis-classify them.
       1. **Story filename slug** (e.g. ``STORY-02-001-ingestion-runner``) —
          the scrum-master-plugin's hand-authored slug is the single most
          reliable signal for kind.
@@ -653,6 +660,24 @@ def classify_story(ws: Workspace, story_id: str) -> dict:
     """
     story_path = resolve_story_path(ws, story_id)
     story = parse_story(story_path)
+
+    # Signal 0: story-type metadata cell. These types have no reliable
+    # path / slug / AC-text signal, so the metadata is authoritative.
+    STORY_TYPE_DIRECT_KINDS = {
+        "integration-test": "integration-test",
+        "deploy-validation": "deploy-validation",
+    }
+    story_type = story.get("story_type", "").strip().lower()
+    direct_kind = STORY_TYPE_DIRECT_KINDS.get(story_type)
+    if direct_kind:
+        return {
+            "story_id": story["story_id"],
+            "skill_kind": direct_kind,
+            "confidence": "high",
+            "reasons": [f"Story Type metadata = {story_type!r} → {direct_kind}"],
+            "matched_rule_count": 1,
+            "all_matches": {direct_kind: [0]},
+        }
 
     # Signal 1: story filename slug.
     story_slug = story_path.stem  # e.g. STORY-02-001-ingestion-runner

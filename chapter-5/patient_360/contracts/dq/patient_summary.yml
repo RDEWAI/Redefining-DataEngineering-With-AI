@@ -1,0 +1,9 @@
+# DQ contract pointer for patient_summary.
+table: patient_summary
+dq_rules_path: ../../dq_rules/patient_summary.yml
+
+# Severity thresholds for reconciliation tasks (LLD §5.5).
+thresholds:
+  completeness_min: 0.95
+  validity_min: 0.995
+  freshness_max_hours: 25

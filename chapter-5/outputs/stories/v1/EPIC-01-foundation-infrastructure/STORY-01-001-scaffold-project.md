@@ -8,7 +8,7 @@
 | **Story Points** | 3 |
 | **Sprint** | 1 |
 | **Dependencies** | None |
-| **Status** | Done |
+| **Status** | In Progress |
 
 <!--
   Story Type vocabulary (required):
@@ -43,6 +43,10 @@ Render the `inputs/lld/v1/templates/cookiecutter-chapter/` cookiecutter template
 - [x] `make dev-setup` runs `uv sync --all-extras` and exits 0 [LLD §9.3]
 
 - [x] `pytest --collect-only` discovers `tests/{bronze,silver,gold}/` with no import errors [LLD §2.4]
+
+- [ ] Scaffold wires `spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog` + a persistent Hive metastore (Derby) JDBC URL `jdbc:derby:${PATIENT360_PROJECT_ROOT}/warehouse/{env}/metastore_db;create=true` (rendered into the SparkSession factory and `_infra/cd/config/{env}.yaml`) per LLD §13 Decision 12 (revoked & replaced 2026-05-12). **No** `UCSingleCatalog` references remain in scaffold output [LLD §13 Decision 12, §9.1]
+
+- [ ] `_infra/docker/docker-compose.yml` exports `PATIENT360_PROJECT_ROOT` for every Airflow service (scheduler, webserver, worker) so runtime path resolution does not rely on CWD per LLD §9.1 (2026-05-12 pivot) [LLD §9.1]
 
 
 ## Technical Notes
@@ -84,6 +88,12 @@ AC4:
   - manual: "requires uv installed on host"
 AC5:
   - manual: "requires Python env present"
+AC6:
+  - grep: {glob: "patient_360/src/patient_360/**/*.py", pattern: "DeltaCatalog"}
+  - grep: {glob: "patient_360/_infra/cd/config/*.yaml", pattern: "jdbc:derby|metastore_db"}
+  - forbidden_grep: {glob: "patient_360/src/patient_360/**/*.py", pattern: "UCSingleCatalog", reason: "UCSingleCatalog retired per LLD §13 Decision 12 (revoked 2026-05-12); scaffold must wire DeltaCatalog + Hive (Derby)"}
+AC7:
+  - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "PATIENT360_PROJECT_ROOT"}
 ```
 
 
