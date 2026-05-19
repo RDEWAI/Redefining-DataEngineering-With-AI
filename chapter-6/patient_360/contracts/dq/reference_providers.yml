@@ -1,0 +1,9 @@
+# DQ contract pointer for reference_providers.
+table: reference_providers
+dq_rules_path: ../../dq_rules/reference_providers.yml
+
+# Severity thresholds for reconciliation tasks (LLD §5.5).
+thresholds:
+  completeness_min: 0.95
+  validity_min: 0.995
+  freshness_max_hours: 25

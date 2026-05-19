@@ -1,0 +1,16 @@
+{
+  "name": "rdewai-chapter6-plugins",
+  "owner": {
+    "name": "RDEWAI"
+  },
+  "metadata": {
+    "description": "Chapter 6 plugins — atomic chapter. Ships its own copy of developer-plugin extended with Silver and Gold layer skills on top of the chapter-5 Bronze + scaffolding skill set."
+  },
+  "plugins": [
+    {
+      "name": "developer-plugin",
+      "source": "./developer-plugin",
+      "description": "Developer Agent for chapter-6: generates, updates, and validates Bronze, Silver, and Gold layer code (extends the chapter-5 developer-plugin with create-silver / update-silver / validate-silver / create-gold / update-gold / validate-gold). Same slash-command namespace as chapter-5's developer-plugin — install only one at a time."
+    }
+  ]
+}

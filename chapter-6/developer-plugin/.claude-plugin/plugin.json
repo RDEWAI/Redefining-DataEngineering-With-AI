@@ -1,0 +1,9 @@
+{
+  "name": "developer-plugin",
+  "version": "2.0.0",
+  "description": "Developer Agent (chapter-6) — generates, updates, and validates the full Patient 360 Medallion stack: Bronze ingestion framework, Silver SCD2 dimensions + cleansed facts, Gold business aggregates, plus Airflow DAG, CI/CD pipelines, and per-table contracts/DQ rules. Atomic copy of chapter-5 developer-plugin with create-silver/update-silver/validate-silver/create-gold/update-gold/validate-gold added.",
+  "author": {
+    "name": "RDEWAI"
+  },
+  "keywords": ["developer", "airflow", "dags", "cicd", "ingestion", "bronze", "silver", "gold", "scd2", "medallion", "data-engineering", "scrum", "stories", "epic", "acceptance-criteria", "coding-patterns", "library-versions", "refresh-libraries"]
+}
