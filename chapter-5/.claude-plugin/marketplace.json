@@ -1,0 +1,21 @@
+{
+  "name": "rdewai-chapter5-plugins",
+  "owner": {
+    "name": "RDEWAI"
+  },
+  "metadata": {
+    "description": "Chapter 5 plugins — story decomposition (Scrum Master) and code generation (Developer). Upstream artifact plugins (BA, Architect, Data Modeler, Mapping Analyst, DQ Engineer, Technical Lead) are sourced from chapter-4."
+  },
+  "plugins": [
+    {
+      "name": "scrum-master-plugin",
+      "source": "./scrum-master-plugin",
+      "description": "Scrum Master Agent for generating, updating, and validating Sprint Backlog (Epics and Stories) documents"
+    },
+    {
+      "name": "developer-plugin",
+      "source": "./developer-plugin",
+      "description": "Developer Agent for generating, updating, and validating Airflow DAGs, CI/CD pipelines, and the Bronze config-driven ingestion framework"
+    }
+  ]
+}

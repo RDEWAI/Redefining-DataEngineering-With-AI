@@ -1,0 +1,36 @@
+# Bronze ingestion config -- ingest_encounters
+# Generated for STORY-02-003 (LLD §5.1, §4.2, §7.1).
+# Filename stem `encounters` drives the Airflow task id `ingest_encounters`
+# via the factory; the `table:` field below is the Bronze Delta table
+# name (synthea_encounters) used to look up contracts/<table>.yml and
+# dq_rules/<table>.yml.
+table: synthea_encounters
+layer: bronze
+output_path: ${PATIENT360_WAREHOUSE_ROOT}/dev/bronze/synthea_encounters/
+
+source:
+  type: csv
+  path: data/raw_delta/encounters.csv
+  header: true
+
+schema_ref: contracts/synthea_encounters.yml
+contracts_dir: contracts
+
+output_table: unity.bronze.synthea_encounters
+catalog_bronze_catalog_name: unity
+catalog_bronze_schema: bronze
+
+metadata_columns:
+  - ds
+  - _ingested_at
+  - _source_batch_id
+
+empty_input_behavior: fail            # LLD §5.1 -- required for Gold
+dq_rules_table: synthea_encounters
+dq_rules_dir: dq_rules
+se_action_if_failed: fail             # LLD §5.4 fail-closed default
+quarantine_path: warehouse/{env}/quarantine/bronze/synthea_encounters/
+
+timeout_minutes: 30                   # LLD §4.2
+retries: 3
+retry_delay_seconds: 60

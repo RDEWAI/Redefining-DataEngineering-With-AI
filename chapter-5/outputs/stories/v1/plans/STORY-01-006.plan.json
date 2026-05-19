@@ -1,0 +1,106 @@
+{
+  "story_id": "STORY-01-006",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/outputs/stories/v1/EPIC-01-foundation-infrastructure/STORY-01-006-docker-compose-marquez.md",
+  "epic_id": "EPIC-01",
+  "plan_version": 1,
+  "status": "validated",
+  "generated_at": "2026-05-10T21:08:54.972186+00:00",
+  "summary": "1 task(s) across ['scaffold'] \u2014 4 AC(s).",
+  "classifier": {
+    "kind": "scaffold",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-01-006",
+    "paths": [
+      "_infra/docker/docker-compose.yml"
+    ],
+    "by_skill": {
+      "scaffold": [
+        "_infra/docker/docker-compose.yml"
+      ]
+    },
+    "dispatch_order": [
+      "scaffold"
+    ],
+    "unmatched": [],
+    "fallback_kind": null
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "update-scaffold",
+      "kind": "scaffold",
+      "mode": "update",
+      "paths": [
+        "_infra/docker/docker-compose.yml"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "started_at": "2026-05-11T21:27:46.655067+00:00",
+      "finished_at": "2026-05-11T21:27:46.655067+00:00",
+      "artifacts": [],
+      "files_created": 0,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-scaffold",
+      "validator_status": "passed",
+      "notes": ""
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "`_infra/docker/docker-compose.yml` declares `marquez` (`marquezproject/marquez:0.51.1`) and `marquez-db` (`postgres:14`) per LLD \u00a79.1.1 [LLD \u00a79.1.1]",
+      "line": 37,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
+      }
+    },
+    {
+      "index": 2,
+      "text": "`marquez` declares `depends_on: marquez-db` with `condition: service_healthy` [LLD \u00a79.1.1]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
+      }
+    },
+    {
+      "index": 3,
+      "text": "Both services declare a `healthcheck:` block such that `docker compose ps` reports `healthy` within 60s of start [LLD \u00a79.1.1]",
+      "line": 41,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
+      }
+    },
+    {
+      "index": 4,
+      "text": "**Definition of Done** evidence captured in the Verification block: (a) `docker compose ps` output showing `marquez` and `marquez-db` both `healthy`, AND (b) HTTP probe `curl -fsS http://localhost:5000/api/v1/namespaces` returns 200 with a JSON body [LLD \u00a74.2, \u00a79.1.1]",
+      "line": 43,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

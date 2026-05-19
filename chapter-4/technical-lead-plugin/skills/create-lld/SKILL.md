@@ -108,7 +108,44 @@ Discover and read the latest version of all input documents:
    If any input is missing, document the gap in the LLD's Decision Log section
    with `[TO BE DETERMINED - requires input from {source}]`.
 
-7. **Prior session notes** from `memory/lld/` (if any exist)
+7. **Project scaffold template** (REQUIRED — target project layout):
+   ```bash
+   SCAFFOLD_ROOT="$(ls -d inputs/lld/v* | sort -V | tail -1)/templates/cookiecutter-chapter"
+   cat "$SCAFFOLD_ROOT/cookiecutter.json"
+   find "$SCAFFOLD_ROOT"/'{{cookiecutter.chapter_name}}' -type d | sort
+   ```
+   Read `cookiecutter.json` to learn template variables (`chapter_name`,
+   `project_name`, `python_version`, `author_name`). Walk the
+   `{{cookiecutter.chapter_name}}/{{cookiecutter.project_name}}/` tree to
+   learn the standard directory layout the downstream developer agent will
+   scaffold. This is the **target project structure** — every path in the
+   LLD (§2 code modules, §3 storage layout, §4 DAG file path, §5 task
+   targets, §7 config files, §9 deployment assets) MUST match this tree.
+   If the `cookiecutter-chapter` directory is missing, STOP and ask the
+   user to add it before proceeding.
+
+   The standard tree (from the template):
+   ```
+   {project_name}/
+   +-- CLAUDE.md
+   +-- Makefile
+   +-- pyproject.toml
+   +-- src/{project_name}/{bronze,silver,gold,utils}/
+   +-- tests/{bronze,silver,gold}/
+   +-- airflow/{dags,configs}/
+   +-- contracts/                # one *.yml per table
+   +-- contracts/dq/             # per-table DQ contract pointers
+   +-- dq_rules/                 # one *.yml per table (Spark Expectations)
+   +-- ddl/liquibase/            # schema migration changelogs
+   +-- _infra/{ci,cd,docker}/
+   +-- scripts/
+   +-- ui/
+   ```
+
+   Every module, contract, DQ rule, DAG, and infra asset described in the
+   LLD must name a path under this tree — never invent paths.
+
+8. **Prior session notes** from `memory/lld/` (if any exist)
 
 ### Step 2: Assess Gaps Per LLD Section
 
@@ -117,14 +154,15 @@ internal checklist:
 
 | LLD Section | Required Information | Status |
 |---|---|---|
+| **Scaffold Alignment** | Chapter name + project name from cookiecutter, any deviations | ? |
 | **1. Design Overview** | Implementation approach summary, key decisions | ? |
-| **2. Code Architecture** | Project folder structure, coding conventions, templates | ? |
+| **2. Code Architecture** | §2.1 project tree (matches cookiecutter), §2.2 module responsibilities | ? |
 | **3. File Formats & Storage Layout** | Parquet/Delta/Iceberg, compression, partitioning | ? |
 | **4. DAG Specification** | Task inventory, dependencies, scheduling, critical path | ? |
 | **5. Task Implementation Details** | Per-task I/O contracts, transformation refs, DQ checks | ? |
 | **6. Performance & Optimization** | Parallelism, caching, join strategies, memory | ? |
 | **7. Configuration Schema** | All configurable parameters with per-environment defaults | ? |
-| **8. Error Handling** | Retry policies, dead letter queues, alerting thresholds | ? |
+| **8. Error Handling** | Retry policies, SE `_error` table (row_dq), SE stats/detailed tables (agg_dq/query_dq), ingest DLQ (pre-validation parse/schema), alerting thresholds | ? |
 | **9. Deployment** | Environments, promotion process, rollback procedures | ? |
 | **10. Monitoring** | Metrics, dashboards, alerting rules | ? |
 | **11. Upstream Artifact References** | Hub document cross-reference table | ? |
@@ -201,14 +239,19 @@ terminal UI. You can ask 1-4 questions per call, each with 2-4 options.
 - The UI automatically adds an "Other" free-form option — do NOT include one
 
 **What to ask per LLD section gap:**
+- **Scaffold Alignment** → confirm `project_name` and `chapter_name` from the
+  cookiecutter-chapter template (defaults are `patient_360` and `chapter-5`);
+  ask whether any deviations from the scaffold tree are needed. Deviations
+  MUST be captured in §13 Decision Log.
 - **Design Overview** → implementation approach, key architectural constraints
-- **Code Architecture** → project structure preference, framework patterns
+- **Code Architecture** → §2.1 Project Layout tree (rendered from cookiecutter),
+  §2.2 Module Responsibilities per layer, coding conventions
 - **File Formats** → storage format (Parquet, Delta, Iceberg), compression, partitioning
 - **DAG Specification** → task organization, dependencies, scheduling
 - **Task Implementation** → transformation approach, DQ integration points
-- **Performance** → parallelism strategy, caching, join optimization
+- **Performance** → parallelism strategy, caching, join optimization, **and `local_executor_mode`** (`in-airflow-local[*]` / `sidecar-spark` / `external-cluster`). NEVER skip this — leaving it implicit is what produces the "DAG runs but spark-submit fails in the airflow container" failure mode. Ask explicitly via AskUserQuestion if not in upstream inputs.
 - **Configuration Schema** → what should be configurable per environment
-- **Error Handling** → retry strategy, dead letter approach, alerting channels
+- **Error Handling** → retry strategy; confirm SE `_error` table wiring for row_dq drops and SE stats table for agg_dq/query_dq (do NOT add a custom writer for row-level DQ rejections — SE handles this); define the **ingest DLQ** (pre-validation parse/schema/encoding failures only); alerting channels
 - **Deployment** → environment promotion, rollback strategy
 - **Monitoring** → metrics collection, dashboard tooling, alerting thresholds
 
@@ -288,7 +331,11 @@ the LLD is not ready for handoff to the development team.
 - Specify performance optimization strategies (join hints, caching, broadcast)
 
 ### 4. Operability Design
-- Define error handling: retry policies, dead letter queues, quarantine tables
+- Define error handling per failure class:
+  - **Row-level DQ** (`row_dq` with `action_if_failed: drop`) → Spark Expectations auto-writes rejected rows to `<target>_error` (Delta). Do NOT design a custom writer for these.
+  - **Aggregate / query DQ** (`agg_dq`, `query_dq`) → SE stats table + optional `*_agg_dq_detailed` / `*_query_dq_detailed` tables.
+  - **Ingest DLQ** (pre-validation parse/schema/encoding failures that SE never sees) → custom Parquet writer to `warehouse/{env}/dead-letter/{table}/{ds}/` with retention.
+  - **Non-DQ runtime exceptions** → Airflow task retries → DAG failure alert.
 - Specify configuration management: all parameters with per-environment defaults
 - Document deployment procedures: environment promotion, rollback, health checks
 - Define monitoring: metrics to collect, dashboards, alerting rules and thresholds
@@ -406,54 +453,246 @@ Write the LLD in Markdown following the template structure. The LLD has 14 secti
 - A developer should understand what they are building from this section alone
 
 **Section 2 — Code Architecture**
-- Project folder structure with tree diagram
-- Coding conventions and naming patterns (from development-standards.md)
-- Reusable code templates and patterns
-- Testing strategy with coverage targets
-- Reference: "For schema definitions, see DMS §4" — do NOT copy schemas here
+
+This section MUST have two subsections:
+
+**§2.1 Project Layout** — render the cookiecutter scaffold tree literally, with
+the project name and chapter name substituted in. The tree MUST include every
+top-level directory from `cookiecutter-chapter/{{cookiecutter.chapter_name}}/{{cookiecutter.project_name}}/`:
+`src/<project>/{bronze,silver,gold,utils}/`, `tests/{bronze,silver,gold}/`,
+`airflow/{dags,configs}/`, `contracts/` (with `contracts/dq/`), `dq_rules/`,
+`ddl/liquibase/`, `_infra/{ci,cd,docker}/`, `scripts/`. Any deviation from
+the scaffold MUST be called out here and logged in §13.
+
+**§2.2 Module Responsibilities** — a table mapping each scaffold directory to
+the DMS layer (or concern) it implements:
+
+| Scaffold Path | Layer / Concern | Responsibility | DMS Ref |
+|---------------|-----------------|----------------|---------|
+| `src/<project>/bronze/` | Bronze | Ingest raw sources into Delta | DMS §3 |
+| `src/<project>/silver/` | Silver | Cleanse + SCD2 | DMS §4 |
+| `src/<project>/gold/` | Gold | Denormalized analytics tables | DMS §5 |
+| `airflow/dags/` | Orchestration | DAG definitions | — |
+| `contracts/*.yml` | Contracts | Per-table DDL + DQ pointers | DMS §6 |
+| `dq_rules/*.yml` | DQ | Spark Expectations rules | DQS §2 |
+| `ddl/liquibase/` | DDL | Schema migration changelogs | DMS §7 |
+| `_infra/ci/`, `_infra/cd/`, `_infra/docker/` | Infra | CI/CD + container images | — |
+
+Additional: coding conventions from `development-standards.md`, testing
+strategy with coverage targets. For schema definitions, see DMS §4 — do NOT
+copy schemas here.
 
 **Section 3 — File Formats & Storage Layout**
 - Storage format selection (Parquet, Delta, Iceberg) with rationale
 - Compression codec and row group sizing
 - Partitioning strategy per layer (from HLD §4 layer design)
 - Directory naming: `{layer}/{domain}/{table}/year={YYYY}/month={MM}/day={DD}/`
+- Required table: `Layer | Scaffold Path | Format | Partitioning | Retention`.
+  Scaffold paths MUST come from the cookiecutter tree, e.g.
+  `src/<project>/bronze/`, `warehouse/bronze/<table>/` (from
+  `_infra/cd/config/*.yaml` storage block).
 
 **Section 4 — DAG Specification**
-- Task inventory table: Task | Type | Layer | Dependencies | Timeout | Retries
+- Task inventory table: Task | Type | Layer | Dependencies | Timeout | Retries |
+  DAG File (`airflow/dags/<dag_id>.py`) | Config File (`airflow/configs/<dag_id>.yaml`)
 - **Mermaid DAG diagram** (`graph TD`) showing task dependencies
 - Scheduling: cron expression, timezone, concurrency limits
 - Critical path analysis: longest dependency chain
 - Idempotency guarantee per task
+- Every DAG file path MUST be `airflow/dags/<dag_id>.py` and every DAG config
+  path MUST be `airflow/configs/<dag_id>.yaml` — no deviations.
+
+**§2.3 Module Interface Contracts — phased lifecycle hygiene (MANDATORY)**
+
+**Never duplicate phased / temporal lifecycle prose in §2.3 module
+contracts.** §8 Error Handling owns lifecycle states (e.g. SE Bootstrap
+Mode Degradation in §8.6). §2.3 should reference §8.X by section number,
+not restate the lifecycle inline.
+
+If a module legitimately has a transitional state (e.g. `[PENDING
+IMPLEMENTATION]` bootstrap mode that flips to fail-closed once the module
+ships), the §2.3 prose MUST do **one** of:
+
+1. Defer entirely to §8.X with a one-liner: *"For SE Bootstrap Mode
+   Degradation behavior see §8.6 + Decision N."* — preferred.
+2. Wrap any bootstrap-mode prose in an explicit
+   `> **TEMP — bootstrap phase only (Decision N, §8.X):**` callout so a
+   downstream scrum-master agent and the
+   `validate-lld LLD-PHASED-CONTRACT-001` rule recognize it as
+   transitional.
+
+The `LLD-PHASED-CONTRACT-001` rule fires WARNING when §2 / §5 contains
+both bootstrap keywords (`soft-import`, `bootstrap mode`,
+`try/except ImportError`, `PENDING IMPLEMENTATION`) and fail-closed
+keywords (`fail-closed`, `must be removed`, `hard error`) without a TEMP
+marker — the spokane STORY-02-001 vs STORY-02-004 collision (2026-04-26)
+was caused by exactly this anti-pattern.
+
+**§2.3 Module Interface Contracts — Bronze UC wiring (MANDATORY)**
+
+The Bronze runner contract (`src/<project>/bronze/ingestion_runner.py`) MUST
+specify `unity.bronze.<table>` as the **output target**, not a path-based
+Delta location like `warehouse/{env}/bronze/{table}/`. Use `UCSingleCatalog`
++ `saveAsTable("unity.bronze.<table>")` so data lands in Unity Catalog OSS
+at write time. Path-based writes leave UC empty until a manual
+`docker cp` + external-table registration — exactly the gap spokane hit.
+Reference the working snippet at
+`inputs/code/v1/scripts/ingestion_runner.py.snippet`. Add a Decision Log
+entry in §13 documenting this policy: "Bronze writes use UCSingleCatalog
++ saveAsTable; path-based Delta is not the bronze landing format. UC
+wiring is no longer reserved for Silver/Gold."
 
 **Section 5 — Task Implementation Details**
-- Per-task specification table: Task | Input Path | Output Path | Transform Ref | DQ Check
+- Per-task specification table with scaffold-aligned columns:
+
+  | Task ID | Layer | Module Path | Contract File | DQ Rules File | DAG Task Node | Inputs | Outputs | Transform Ref | DQ Check |
+  |---------|-------|-------------|---------------|---------------|---------------|--------|---------|---------------|----------|
+
+  Where:
+  - **Module Path** = `src/<project_name>/{bronze|silver|gold|utils}/<module>.py`
+  - **Contract File** = `contracts/<table>.yml`
+  - **DQ Rules File** = `dq_rules/<table>.yml`
+  - **DAG Task Node** = task node ID in the DAG (matches §4 task inventory)
 - For each task: what happens when input is empty or late
 - Reference STM tab mappings: "Transformation logic per STM Tab:source-to-bronze"
 - Reference DQS rules: "DQ validation per DQS §2 (field-level rules)"
+- Every path in this table MUST exist in (or be creatable under) the
+  cookiecutter scaffold — never invent a path.
 
 **Section 6 — Performance & Optimization**
-- Parallelism settings: executors, cores, memory per task
-- Join strategies: broadcast threshold, sort-merge, shuffle hash
-- Caching: which intermediate results to cache and why
-- Partition tuning: target file sizes (128MB-256MB), repartition points
+
+This section MUST be split into the subsections below. The downstream Scrum
+Master `STORIES-BOOTSTRAP-COVERAGE-001` rule and per-layer `performance-optimization`
+stories cite these subsection numbers, so naming is load-bearing.
+
+**§6.1 Compute & Local Executor Mode (MANDATORY)**
+
+Two declarations every LLD MUST make:
+
+1. **Production compute profile** — executors, cores, memory per task, dynamic
+   allocation min/max, broadcast threshold. Per environment (DEV / STAGING / PROD).
+2. **`local_executor_mode`** — exactly one of:
+   - `in-airflow-local[*]` — pyspark + JDK installed in the Airflow worker image;
+     `--master local[*]`. Simplest stack; no separate Spark service.
+   - `sidecar-spark` — bitnami/spark master+worker pair in docker-compose;
+     `--master spark://spark-master:7077` from the Airflow worker. Most realistic.
+   - `external-cluster` — Airflow worker submits to a remote YARN/k8s cluster;
+     local docker-compose has no Spark service. Requires VPN/auth in dev.
+
+   **Educational default for chapter-5: `in-airflow-local[*]`.** The
+   cookiecutter `Dockerfile.airflow` bakes JDK 17 + PySpark 4.0.0 +
+   delta-spark 4.0.0 + spark-expectations into the image so a single
+   container runs Airflow + Spark together. This is what spokane proved
+   green end-to-end (`run_v8_162157`, 16/16 Bronze tasks). Use the other
+   modes only when the LLD explicitly justifies them.
+
+   Render the decision as a single fenced YAML block so the scrum-master /
+   developer plugins can grep it:
+
+   ```yaml
+   local_executor_mode: in-airflow-local[*]
+   spark_master_url: local[2]
+   spark_version: 4.0.0
+   provider_pin: apache-airflow-providers-apache-spark==6.0.1
+   ```
+
+   This decision drives: (a) the docker-compose service list, (b) the
+   `_PIP_ADDITIONAL_REQUIREMENTS` for the Airflow image, (c) the runtime-bootstrap
+   story's spark-submit AC wording (per `story-standards.md`), and (d) every
+   build story's `--master` argument default. Stories cannot be written without
+   this decision — leaving it implicit is what produces the "DAG runs but
+   spark-submit fails" failure mode.
+
+**§6.2 Join Strategies** — broadcast threshold, sort-merge vs shuffle hash hints, explicit `broadcast()` usage.
+
+**§6.3 Shuffle & Parallelism** — `spark.sql.shuffle.partitions`, `spark.default.parallelism` per environment.
+
+**§6.4 Caching** — which intermediate DataFrames to `.cache()` / `.persist()` and at which storage level; eviction strategy.
+
+**§6.5 Partition Tuning** — target file sizes (128MB-256MB), `repartition`/`coalesce` points, `replaceWhere` predicates for Bronze.
 
 **Section 7 — Configuration Schema**
 - Parameter inventory table: Parameter | Type | Default | Description | Per-Environment
 - Environment overrides: DEV (small), STAGING (medium), PROD (full)
 - Categories: scheduling, compute, storage, retry, alerting
 - This section drives config-template.yaml generation
+- Generated config YAMLs land at `_infra/cd/config/<env>.yaml` in the
+  scaffolded project — reference that destination explicitly so the
+  downstream developer agent knows where to write them.
 
 **Section 8 — Error Handling**
-- Retry policies: max retries, backoff strategy per task type
-- Dead letter / quarantine: where failed records go, retention period
-- Alerting thresholds: what triggers notifications and escalation
-- Circuit breaker patterns for external dependencies
+
+Structure §8 around the four failure classes below. "Dead letter" in this LLD
+refers ONLY to the **ingest DLQ** (pre-validation failures). Row-level DQ
+rejections are handled by Spark Expectations' `_error` table automatically and
+MUST NOT be duplicated by a custom writer.
+
+- **§8.1 Retry Policies** — max retries, backoff strategy per task type; circuit
+  breaker patterns for external dependencies.
+- **§8.2 SE `_error` Table (row_dq)** — for each Bronze/Silver table, name the
+  SE-managed error table (`<target>_error`, Delta) that receives `row_dq` drops
+  when `action_if_failed: drop`. State that this is created/written by Spark
+  Expectations via `se.enable.error.table=true` and `target_and_error_table_writer`;
+  no custom writer is needed. Reference DQS §X for the rule set.
+- **§8.3 SE Stats & Detailed Tables (agg_dq, query_dq)** — name the stats table
+  (e.g., `bronze_se_stats`) plus any enabled `*_agg_dq_detailed` /
+  `*_query_dq_detailed` tables. These carry metrics, not rejected rows.
+- **§8.4 Ingest DLQ (pre-validation)** — ONLY for failures SE never sees:
+  malformed files, encoding errors, missing required columns, pre-validation
+  cast failures. Specify path (`warehouse/{env}/dead-letter/{table}/{ds}/`),
+  format (Parquet), metadata columns (`_rejection_reason`, `_rejected_at`,
+  `_pipeline_run_id`), and retention. If no such failures are expected, state
+  "No ingest DLQ required" with rationale.
+- **§8.5 Alerting Thresholds** — what triggers notifications (SE error drop
+  threshold, DLQ row count, task failure) and escalation routing.
 
 **Section 9 — Deployment**
-- Environment definitions: DEV, STAGING, PROD with resource profiles
-- Promotion process: PR → merge → CI → deploy with approval gates
-- Rollback procedure: detection, revert steps, data re-processing, notification
-- Health checks: what passes before traffic/workload shifts
+
+This section MUST have subsections keyed to the scaffold's `_infra/` tree:
+
+- **§9.1 CI (`_infra/ci/`)** — lint + test + contract validation workflows
+  (e.g., `_infra/ci/github-actions.yml`). Reference the specific workflow
+  files that the developer agent will generate.
+- **§9.2 CD (`_infra/cd/`)** — promotion process (DEV → STAGING → PROD),
+  approval gates, artifact location. Reference `_infra/cd/config/<env>.yaml`
+  for per-environment config.
+- **§9.3 Docker (`_infra/docker/`)** — image definitions (e.g.,
+  `_infra/docker/Dockerfile.bronze`, `_infra/docker/Dockerfile.silver`) and
+  base image strategy.
+
+§9 (Deployment) MUST also include — somewhere within its subsections — a
+**Compose Services** heading with a structured table enumerating every
+service in `_infra/docker/docker-compose.yml`. Place it wherever
+logical for your §9 layout: as `### Compose Services` under §9.1 if
+you use a unified Scaffold Infrastructure Layout, or as `#### §9.3.x
+Compose Services` under §9.3 Docker if you split CI/CD/Docker into
+separate subsections. The validator finds it by heading text, not
+section number.
+
+Required column shape:
+
+```markdown
+### Compose Services
+
+| Service | Image | Role | Port(s) |
+|---------|-------|------|---------|
+| unity-catalog | unitycatalog/unitycatalog:v0.4.0 | Catalog/metastore | 8080 |
+| marquez | marquezproject/marquez:0.51.1 | OpenLineage backend | 5000 |
+| airflow | local-built | Orchestrator (LocalExecutor) | 8081 |
+| otel-collector | otel/opentelemetry-collector-contrib:0.107.0 | Telemetry pipeline | 4317/4318 |
+```
+
+Add a row for every service the project ships (e.g., grafana, prometheus,
+loki for observability stacks; sidecar-spark if the project uses an
+external Spark cluster). The `developer-plugin:validate-scaffold` Area 5
+reads this table at runtime to check that `_infra/docker/docker-compose.yml`
+contains a matching `services:` block — keep names consistent. Services
+the LLD does NOT list are not validated (over-provisioning is acceptable).
+- **§9.4 Schema Migrations (`ddl/liquibase/`)** — changelog file naming,
+  apply order, rollback changelog conventions.
+
+Also: environment definitions (DEV, STAGING, PROD) with resource profiles,
+rollback procedure (detection, revert, re-process, notify), health checks.
 
 **Section 10 — Monitoring**
 - Metrics table: Metric | Type | Collection | Threshold | Alert Channel
@@ -483,6 +722,13 @@ This section exists to avoid duplicating upstream content — the LLD says
 **Section 13 — Decision Log**
 - All major implementation decisions with Options Considered, Rationale, Trade-off
 - Uses the Decision Documentation Standard format (see below)
+- MUST include a bootstrap entry on first creation:
+  > Adopted the `cookiecutter-chapter` scaffold at
+  > `inputs/lld/v{N}/templates/cookiecutter-chapter/` as the target project
+  > layout. All paths in §2–§9 reference this tree.
+- Any deviation from the cookiecutter scaffold (new top-level directory,
+  renamed layer, additional layer) MUST be logged here with rationale and
+  an owner.
 
 **Section 14 — Version History**
 - Document versioning table: Version | Date | Author | Changes
@@ -613,7 +859,7 @@ A complete LLD contains these 14 sections:
 - **5. Task Implementation Details**: Per-task I/O contracts, transformation refs, DQ checks
 - **6. Performance & Optimization**: Parallelism, caching, join strategies, memory allocation
 - **7. Configuration Schema**: All parameters with per-environment defaults
-- **8. Error Handling**: Retry policies, dead letter queues, alerting thresholds
+- **8. Error Handling**: Retry policies, SE `_error` table (row_dq), SE stats/detailed tables (agg_dq/query_dq), ingest DLQ (pre-validation only), alerting thresholds
 - **9. Deployment**: Environments, promotion, rollback, health checks
 - **10. Monitoring**: Metrics, dashboards, alerting rules, SLA tracking
 - **11. Upstream Artifact References**: Hub document cross-reference to DRD, HLD, DMS, STM, DQS
@@ -642,6 +888,9 @@ Every LLD starts with this metadata table:
 | **Last Modified** | {today's date} |
 | **Author** | Technical Lead Agent |
 | **Status** | Draft |
+| **Target Scaffold** | cookiecutter-chapter (inputs/lld/v{N}/templates/cookiecutter-chapter/) |
+| **Project Name** | {project_name from cookiecutter.json} |
+| **Chapter** | {chapter_name from cookiecutter.json} |
 | **DRD Reference** | {DRD filename and version} |
 | **HLD Reference** | {HLD filename and version} |
 | **DMS Reference** | {DMS filename and version} |
@@ -668,7 +917,15 @@ Every LLD starts with this metadata table:
 
 ### Active Learnings
 
-_No learnings recorded yet. Learnings are added when corrections occur during skill execution._
+- **L-003** (2026-05-12): Always: For local-FS educational dev stacks the LLD must NOT mandate UCSingleCatalog as the Spark write path. Either (a) recommend Spark's built-in Hive metastore (Derby) with DeltaCatalog and keep UC as a read-only UI demo, or (b) defer UC integration to a separate chapter that assumes cloud storage + creds.
+- **L-004** (2026-05-12): Always: Bronze contract columns come from the source system (DuckDB DESCRIBE / CSV header). DMS owns Silver and Gold. The LLD must make this split explicit and instruct create-scaffold to populate Bronze contracts via a sync-from-source script.
+- **L-005** (2026-05-12): Always: LLD §4.1 must default to max_active_tasks=1 and catchup=False in dev. Concurrency raises only allowed after the first successful run seeds the shared SE stats/error tables.
+- **L-006** (2026-05-12): Always: LLD §6.1 DEV defaults should be 1g driver / 1g executor for local docker-compose stacks. Memory sizing must call out the host RAM assumption explicitly.
+- **L-007** (2026-05-12): Always: LLD §9.1 must mandate an explicit project-root env var (e.g. PATIENT360_PROJECT_ROOT) that all runtime path resolution anchors against. docker-compose env block exports it.
+- **L-008** (2026-05-12): Always: Under Airflow 3.x every task that touches Spark MUST be a SparkSubmitOperator (own JVM). PythonOperator with an in-process SparkSession is forbidden in §4.2 of the LLD.
+- **L-009** (2026-05-12): Always: LLD §8.6.1 SE-RUN-EVIDENCE invariant must filter on meta_dq_run_date (= Airflow ds), not meta_dq_run_id. The audit anchor is 'SE ran today', not 'SE ran for this Airflow run instance'.
+
+- **L-000** (default): Never invent file paths — every path referenced in the LLD (§2, §3, §4, §5, §7, §9) must exist in the cookiecutter scaffold at `inputs/lld/v{N}/templates/cookiecutter-chapter/{{cookiecutter.chapter_name}}/{{cookiecutter.project_name}}/`, or be logged as an explicit deviation in Section 13 (Decision Log) with rationale.
 
 <!-- Example format:
 - **L-001** (2026-03-20): Always specify empty-input behavior for every DAG task — never assume "skip" is the default.

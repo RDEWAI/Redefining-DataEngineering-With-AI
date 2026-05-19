@@ -1,0 +1,22 @@
+# {{cookiecutter.project_name}} Airflow image (LLD §6.1 local_executor_mode = in-airflow-local[*]).
+# Bakes JDK 17 + PySpark 4.0.0 + Delta + Spark Expectations into the worker
+# image so SparkSubmitOperator can run with `--master local[2]` (no sidecar
+# Spark cluster). Versions match the pins in inputs/code/v1/LIBRARIES.md.
+FROM apache/airflow:3.2.1-python3.11
+
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends openjdk-17-jre-headless procps \
+ && rm -rf /var/lib/apt/lists/*
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
+
+USER airflow
+# spark-expectations>=2.10.0 is MANDATORY — earlier versions don't support
+# the YAML rule format our DQ generator emits (see LIBRARIES.md note).
+RUN pip install --no-cache-dir \
+        "apache-airflow-providers-apache-spark==6.0.1" \
+        "pyspark==4.0.2" \
+        "delta-spark==4.0.0" \
+        "spark-expectations>=2.10.0" \
+        "pyyaml" \
+        "duckdb"

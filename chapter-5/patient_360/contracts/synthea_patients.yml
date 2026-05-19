@@ -1,0 +1,97 @@
+table: synthea_patients
+layer: bronze
+dms_section: "DMS \xA72"
+schema: bronze
+ddl_path: ddl/liquibase/changelogs/synthea_patients.xml
+dq_path: dq_rules/synthea_patients.yml
+owner: Patient 360 Data Engineering
+description: "Bronze table synthea_patients; see DMS \xA72 for the authoritative column-level\
+  \ schema."
+tags:
+- bronze
+- patient_360
+columns:
+- name: Id
+  type: string
+  nullable: true
+- name: BIRTHDATE
+  type: date
+  nullable: true
+- name: DEATHDATE
+  type: date
+  nullable: true
+- name: SSN
+  type: string
+  nullable: true
+- name: DRIVERS
+  type: string
+  nullable: true
+- name: PASSPORT
+  type: string
+  nullable: true
+- name: PREFIX
+  type: string
+  nullable: true
+- name: FIRST
+  type: string
+  nullable: true
+- name: MIDDLE
+  type: string
+  nullable: true
+- name: LAST
+  type: string
+  nullable: true
+- name: SUFFIX
+  type: string
+  nullable: true
+- name: MAIDEN
+  type: string
+  nullable: true
+- name: MARITAL
+  type: string
+  nullable: true
+- name: RACE
+  type: string
+  nullable: true
+- name: ETHNICITY
+  type: string
+  nullable: true
+- name: GENDER
+  type: string
+  nullable: true
+- name: BIRTHPLACE
+  type: string
+  nullable: true
+- name: ADDRESS
+  type: string
+  nullable: true
+- name: CITY
+  type: string
+  nullable: true
+- name: STATE
+  type: string
+  nullable: true
+- name: COUNTY
+  type: string
+  nullable: true
+- name: FIPS
+  type: bigint
+  nullable: true
+- name: ZIP
+  type: string
+  nullable: true
+- name: LAT
+  type: double
+  nullable: true
+- name: LON
+  type: double
+  nullable: true
+- name: HEALTHCARE_EXPENSES
+  type: double
+  nullable: true
+- name: HEALTHCARE_COVERAGE
+  type: double
+  nullable: true
+- name: INCOME
+  type: bigint
+  nullable: true

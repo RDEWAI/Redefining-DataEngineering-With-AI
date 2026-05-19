@@ -1,0 +1,46 @@
+# Illustrative SCD2 merge — do not run as-is; see silver-transform-pattern.md.
+# Generic placeholders: {entity}, {col_a}, {col_b}, {mutable_col}.
+
+from delta.tables import DeltaTable
+from pyspark.sql import functions as F
+
+SCD2_CONFIG = {
+    "dim_{entity}": {
+        "source_table": "bronze.{entity}",
+        "natural_keys": ["{entity}_id"],
+        "tracked_columns": ["{col_a}", "{col_b}"],
+        "scd1_columns": ["{mutable_col}"],
+    },
+}
+
+
+def merge_scd2(spark, dim: str, ds: str) -> None:
+    cfg = SCD2_CONFIG[dim]
+    src = (spark.table(cfg["source_table"])
+                .filter(F.col("ds") == ds)
+                .withColumn("record_hash",
+                            F.sha2(F.concat_ws("|", *cfg["tracked_columns"]), 256)))
+
+    tgt = DeltaTable.forName(spark, f"silver.{dim}")
+    on = " AND ".join(f"t.{k} = s.{k}" for k in cfg["natural_keys"])
+
+    (tgt.alias("t").merge(src.alias("s"), on)
+        .whenMatchedUpdate(
+            condition="t.dim_is_current = true AND t.record_hash <> s.record_hash",
+            set={"end_ts": F.date_sub(F.lit(ds), 1),
+                 "dim_is_current": F.lit(False),
+                 "dw_updated_at": F.current_timestamp()})
+        .whenMatchedUpdate(
+            condition="t.dim_is_current = true",
+            set={c: F.col(f"s.{c}") for c in cfg["scd1_columns"]} |
+                {"dw_updated_at": F.current_timestamp()})
+        .whenNotMatchedInsert(values={
+            "surrogate_key": F.expr("uuid()"),
+            **{k: F.col(f"s.{k}") for k in cfg["natural_keys"]},
+            "start_ts": F.lit(ds),
+            "end_ts": F.lit(None).cast("date"),
+            "dim_is_current": F.lit(True),
+            "record_hash": F.col("s.record_hash"),
+            "dw_created_at": F.current_timestamp(),
+        })
+        .execute())

@@ -1,0 +1,18 @@
+# Contract for clinical_patients (silver).
+# Schema source of truth: DMS §3.
+table: clinical_patients
+layer: silver
+dms_section: DMS §3
+schema: silver
+
+ddl_path: ddl/liquibase/changelogs/clinical_patients.xml
+dq_path: dq_rules/clinical_patients.yml
+
+owner: "Patient 360 Data Engineering"
+description: "Silver table clinical_patients; see DMS §3 for the authoritative column-level schema."
+tags: ["silver", "patient_360"]
+
+# Column-level annotations are derived from DMS §3. The DDL file
+# (linked via ddl_path) is the canonical schema definition; update-scaffold
+# sync-contracts populates this section from the DMS.
+columns: []

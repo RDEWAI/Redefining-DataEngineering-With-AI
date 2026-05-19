@@ -1,0 +1,18 @@
+# Contract for reference_organizations (silver).
+# Schema source of truth: DMS §3.
+table: reference_organizations
+layer: silver
+dms_section: DMS §3
+schema: silver
+
+ddl_path: ddl/liquibase/changelogs/reference_organizations.xml
+dq_path: dq_rules/reference_organizations.yml
+
+owner: "Patient 360 Data Engineering"
+description: "Silver table reference_organizations; see DMS §3 for the authoritative column-level schema."
+tags: ["silver", "patient_360"]
+
+# Column-level annotations are derived from DMS §3. The DDL file
+# (linked via ddl_path) is the canonical schema definition; update-scaffold
+# sync-contracts populates this section from the DMS.
+columns: []

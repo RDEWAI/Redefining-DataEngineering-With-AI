@@ -1,0 +1,112 @@
+# Deliverable → Skill ownership registry.
+#
+# The orchestrator (`/developer-plugin:implement-stories`) reads every
+# backtick-quoted path from a story's Acceptance Criteria, matches each
+# against the `owners` globs below, and groups paths by owning skill. Each
+# skill is then dispatched ONCE with the subset of paths it owns (via
+# `.skill-paths`), in the order given by `dispatch_order`.
+#
+# This file is the single source of truth for path→skill routing. To add
+# new skills (e.g. `create-silver`, `create-gold`, `create-streaming`) or
+# to re-route path classes for a different stack (e.g. Dagster, Flink),
+# edit THIS file — no plugin code change is required.
+#
+# ### Rules
+#
+# - `owners` is ordered by specificity: at load time the orchestrator
+#   sorts by glob string length (descending) so the most-specific pattern
+#   wins for a given path. Ties break by file order (first wins).
+# - Patterns are `fnmatch`-style (shell globs). `**` matches any depth.
+# - `dispatch_order` is the intra-story ordering when a single story's
+#   deliverables span multiple skills. Foundations first, layer code
+#   next, wiring last, CI/CD last of all.
+# - `fallback_skill` (optional): used for unmatched paths. Leave `null` to
+#   fall back to the slug-based classifier's kind instead.
+#
+# ### When extending
+#
+# If you add a new layer / stack component, add its path patterns to
+# `owners` and its kind to `dispatch_order`. Keep more-specific patterns
+# before the broader ones so that longest-match-wins remains intuitive
+# when reviewing the file.
+
+version: 1
+
+owners:
+  # --- ingestion (bronze layer) --------------------------------------------
+  - { glob: "src/*/bronze/**/*.py",             skill: ingestion }
+  - { glob: "src/*/bronze/**/*.yaml",           skill: ingestion }
+  - { glob: "src/*/bronze/**/*.yml",            skill: ingestion }
+  - { glob: "airflow/configs/**/*.yaml",        skill: ingestion }
+  - { glob: "airflow/configs/**/*.yml",         skill: ingestion }
+  - { glob: "dq_rules/**/*.yaml",               skill: ingestion }
+  - { glob: "dq_rules/**/*.yml",                skill: ingestion }
+  - { glob: "contracts/dq/**",                  skill: ingestion }
+  # Bronze per-table changelogs derive from DMS §2 — same source the ingestion
+  # skill already reads. Silver/Gold changelogs (clinical_*.xml, reference_*.xml,
+  # patient_*.xml, billing_*.xml) belong to future silver/gold skills.
+  - { glob: "ddl/liquibase/changelogs/synthea_*.xml",  skill: ingestion }
+  - { glob: "tests/bronze/**",                  skill: ingestion }
+  # Silver / gold land here for now; split them out when dedicated skills exist.
+  - { glob: "src/*/silver/**/*.py",             skill: ingestion }
+  - { glob: "src/*/gold/**/*.py",               skill: ingestion }
+  - { glob: "tests/silver/**",                  skill: ingestion }
+  - { glob: "tests/gold/**",                    skill: ingestion }
+
+  # --- dag (orchestration) -------------------------------------------------
+  - { glob: "airflow/dags/**/*.py",             skill: dag }
+  - { glob: "tests/dags/**",                    skill: dag }
+
+  # --- pipeline (CI) -------------------------------------------------------
+  # CI workflows belong to the pipeline skill. CD scripts (deploy + smoke)
+  # are owned by the deploy-validation skill below — keep CI/CD split.
+  - { glob: ".github/workflows/**",             skill: pipeline }
+  - { glob: ".gitlab-ci.yml",                   skill: pipeline }
+  - { glob: "_infra/ci/**",                     skill: pipeline }
+
+  # --- integration-test ----------------------------------------------------
+  # Layer e2e + SE runtime evidence. Story type: integration-test.
+  - { glob: "tests/integration/**",             skill: integration-test }
+
+  # --- deploy-validation ---------------------------------------------------
+  # Local deploy smoke (Liquibase apply, DAG re-sync, re-trigger). Story
+  # type: deploy-validation. Owns both the shell scripts under _infra/cd/
+  # and the matching smoke tests under tests/integration/.
+  - { glob: "_infra/cd/**",                     skill: deploy-validation }
+
+  # --- scaffold (foundation) ----------------------------------------------
+  # contracts/ (StructType) is scaffold; contracts/dq/ is ingestion (above).
+  - { glob: "contracts/**",                     skill: scaffold }
+  # Liquibase cross-layer plumbing (master aggregator + properties). Per-table
+  # changelogs belong to their respective layer skills (ingestion / silver /
+  # gold). Master-changelog is regenerated from DMS to list every layer's
+  # includes once those changelogs exist on disk.
+  - { glob: "ddl/liquibase/master-changelog.xml", skill: scaffold }
+  - { glob: "ddl/liquibase/liquibase.properties", skill: scaffold }
+  - { glob: "src/*/utils/**/*.py",              skill: scaffold }
+  - { glob: "src/*/__init__.py",                skill: scaffold }
+  - { glob: "src/*/*/__init__.py",              skill: scaffold }
+  - { glob: "tests/utils/**",                   skill: scaffold }
+  - { glob: "tests/conftest.py",                skill: scaffold }
+  - { glob: "tests/*/conftest.py",              skill: scaffold }
+  - { glob: "_infra/docker/**",                 skill: scaffold }
+  - { glob: "docker-compose.yml",               skill: scaffold }
+  - { glob: "docker-compose.yaml",              skill: scaffold }
+  - { glob: "pyproject.toml",                   skill: scaffold }
+  - { glob: "Makefile",                         skill: scaffold }
+  - { glob: "CLAUDE.md",                        skill: scaffold }
+  - { glob: ".gitignore",                       skill: scaffold }
+  # Root-level test files (e.g. contracts loader sweep) belong to scaffold.
+  - { glob: "tests/test_*.py",                  skill: scaffold }
+
+dispatch_order:
+  - scaffold
+  - ingestion
+  - dag
+  - pipeline
+  - integration-test
+  - deploy-validation
+
+# Unmatched paths fall back to the classifier's kind. Set to a specific
+# skill name (e.g. "scaffold") to force a different default.
+fallback_skill: null

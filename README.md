@@ -207,6 +207,9 @@ Redefining-DataEngineering-With-AI/
 ├── chapter-3/                     # Business Analyst Agent (DRD Plugin)
 ├── chapter-4/                     # Multi-Agent Artifact Chain (7 plugins)
 │
+├── templates/
+│   └── cookiecutter-chapter/      # Cookiecutter scaffold for chapter-5+
+│
 ├── scripts/
 │   ├── validate-environment.sh    # Prerequisite validation
 │   ├── add_duckdb_connection.py   # Auto-configure DuckDB in Superset
@@ -246,12 +249,12 @@ A single Claude Code plugin that acts as a **Business Analyst Agent**, generatin
 
 See [chapter-3/README.md](chapter-3/README.md) for full details.
 
-### Chapter 4: Multi-Agent Artifact Chain
+### Chapter 4: Multi-Agent Artifact Chain — Reference Implementation
 
-Seven Claude Code plugins forming a **multi-agent artifact chain** where each role produces a structured artifact that feeds the next:
+Six Claude Code plugins forming a **multi-agent artifact chain** where each role produces a structured artifact that feeds the next:
 
 ```
-DRD → HLD → DMS → STM → DQS → LLD → Stories
+DRD → HLD → DMS → STM → DQS → LLD
 ```
 
 | Plugin | Role | Artifact | Format |
@@ -262,7 +265,10 @@ DRD → HLD → DMS → STM → DQS → LLD → Stories
 | mapping-analyst-plugin | Mapping Analyst | STM (Source-to-Target Mapping) | Excel (.xlsx) |
 | dq-engineer-plugin | DQ Engineer | DQS (Data Quality Specification) | Markdown + SE YAML |
 | technical-lead-plugin | Technical Lead | LLD (Low-Level Design) | Markdown + Config + DAG |
-| scrum-master-plugin | Scrum Master | Sprint Backlog (Epics & Stories) | Markdown (multi-file) |
+
+Chapter-4 is the **canonical reference implementation** for the six planning
+plugins. Sprint-backlog generation and code implementation continue in
+Chapter 5.
 
 See [chapter-4/README.md](chapter-4/README.md) for full details.
 
@@ -275,7 +281,110 @@ See [chapter-4/README.md](chapter-4/README.md) for full details.
 # 2. Follow the step-by-step walkthrough
 ```
 
-See the [Hands-On Guide](chapter-4/HANDS-ON-GUIDE.md) for the full walkthrough — from plugin installation through generating all 7 artifacts.
+See the [Hands-On Guide](chapter-4/HANDS-ON-GUIDE.md) for the full walkthrough — from plugin installation through generating all 6 artifacts.
+
+### Chapter 5: Full-Chain Workspace — Planning + Story-Driven Implementation
+
+Chapter 5 is a **workspace** that runs the entire pipeline end-to-end — from
+business request through generated code. It ships two implementation-phase
+plugins (Scrum Master, Developer) and reuses the six Chapter-4 planning
+plugins as a single source of truth, eight in total:
+
+```
+DRD → HLD → DMS → STM → DQS → LLD → Stories → Code
+```
+
+| Plugin | Role | Output |
+|--------|------|--------|
+| ba-plugin, architect-plugin, data-modeler-plugin, mapping-analyst-plugin, dq-engineer-plugin, technical-lead-plugin | Planning chain | DRD → LLD (sourced from chapter-4 — `rdewai-plugins` marketplace) |
+| scrum-master-plugin | Scrum Master | Sprint Backlog (Epics & Stories, multi-file markdown) |
+| developer-plugin | Developer | Airflow DAGs, CI/CD pipelines, Bronze ingestion framework |
+
+The chapter-5 plugins (`scrum-master`, `developer`) are registered under the
+`rdewai-chapter5-plugins` marketplace; the planning plugins come from the
+`rdewai-plugins` marketplace in chapter-4. From `chapter-5/`, run
+`make install-plugins` to install all eight at once.
+
+See [chapter-5/CLAUDE.md](chapter-5/CLAUDE.md) for full details.
+
+A **cookiecutter template** is also provided (`templates/cookiecutter-chapter/`) so readers can scaffold their own equivalent chapter project.
+
+#### Prerequisites
+
+The project uses `uv` — no separate install needed. Run via `uvx`:
+
+```bash
+# Verify uv is available
+uv --version
+```
+
+#### Generate Your Chapter 5 Directory
+
+```bash
+uvx cookiecutter templates/cookiecutter-chapter/ --overwrite-if-exists
+```
+
+The `--overwrite-if-exists` flag makes the command safe to re-run — it regenerates into an existing directory without errors.
+
+You will be prompted for four values (press Enter to accept defaults):
+
+```
+chapter_name [chapter-5]:      # top-level folder name
+project_name [patient_360]:    # Python package / project name
+python_version [3.12]:         # Python version for pyproject.toml
+author_name [Data Engineer]:   # your name
+```
+
+This generates the following structure:
+
+```
+chapter-5/
+├── inputs/                      # drop Chapter 4 approved artifacts here
+├── outputs/                     # chapter-5 generated outputs
+├── developer-plugin/            # AI developer agent (code + story orchestration)
+│   └── skills/
+│       ├── create-dag/ update-dag/ validate-dag/                 # Airflow DAGs
+│       ├── create-ingestion/ update-ingestion/ validate-ingestion/  # Bronze ingestion
+│       ├── create-pipeline/ update-pipeline/ validate-pipeline/  # CI/CD pipeline
+│       ├── implement-stories/   # dispatch create-/update- per story or epic
+│       ├── validate-stories/    # verify story ACs (read-only)
+│       ├── complete-stories/    # atomic gate — close stories/epics when all ACs pass
+│       └── apply-learnings/     # apply corrections from learnings queue
+└── patient_360/                 # main Python project
+    ├── src/patient_360/         # bronze / silver / gold / utils packages
+    ├── tests/                   # mirrors src/ — bronze / silver / gold
+    ├── airflow/dags/            # Airflow DAG files
+    ├── airflow/configs/         # DAG configuration YAML
+    ├── contracts/               # table contracts (DDL + DQ pointers)
+    ├── dq_rules/                # DQ rule definitions (Spark Expectations)
+    ├── ddl/liquibase/           # schema migration changelogs
+    ├── _infra/docker|ci|cd/     # infrastructure configuration
+    ├── Makefile
+    └── pyproject.toml
+```
+
+#### After Generation
+
+```bash
+cd chapter-5/patient_360
+
+# Install dependencies
+make dev-setup
+
+# Run tests (empty suite passes out of the box)
+make test
+
+# Install all Claude plugins (chapter-4 planning + chapter-5 implementation)
+make install-plugins
+
+# Start generating DAGs from your approved LLD
+/developer-plugin:create-dag
+
+# Or drive it from the Scrum backlog (story/epic/sprint)
+/developer-plugin:implement-stories EPIC-02
+/developer-plugin:validate-stories  EPIC-02
+/developer-plugin:complete-stories  EPIC-02   # blocks unless every child story + AC passes
+```
 
 ---
 

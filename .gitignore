@@ -261,3 +261,17 @@ node_modules/
 
 # MCP configuration (contains API keys - sensitive)
 .mcp.json
+
+# Vendored upstream — Unity Catalog UI source cloned by `make uc-ui-source` /
+# `make dev-up`. Idempotent re-clone from
+# https://github.com/unitycatalog/unitycatalog at the pinned UC_UI_REF.
+# Never commit — it's third-party source, ~10s of MB, and reproducible.
+chapter-5/patient_360/_infra/docker/uc-source/
+patient_360/_infra/docker/uc-source/
+
+# Generated local warehouse (Delta files + _delta_log) and Derby metastore —
+# created at runtime by the Spark / docker-compose stack.
+chapter-5/patient_360/uc-warehouse/
+patient_360/uc-warehouse/
+chapter-5/patient_360/_infra/docker/uc-warehouse/
+chapter-5/patient_360/data/duckdb/

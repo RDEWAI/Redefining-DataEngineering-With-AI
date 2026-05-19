@@ -1,0 +1,78 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart TB
+    IMPL["implement-stories"]
+
+    subgraph scaffold["scaffold"]
+        direction TB
+        CS["create-scaffold"]
+        US["update-scaffold"]
+        VS["validate-scaffold"]
+        CS --> VS
+        US --> VS
+    end
+
+    subgraph ingestion["ingestion"]
+        direction TB
+        CI["create-ingestion"]
+        UI["update-ingestion"]
+        VI["validate-ingestion"]
+        CI --> VI
+        UI --> VI
+    end
+
+    subgraph dag["dag"]
+        direction TB
+        CD["create-dag"]
+        UD["update-dag"]
+        VD["validate-dag"]
+        CD --> VD
+        UD --> VD
+    end
+
+    subgraph pipeline["cicd"]
+        direction TB
+        CP["create-cicd"]
+        UP["update-cicd"]
+        VP["validate-cicd"]
+        CP --> VP
+        UP --> VP
+    end
+
+    VAL_STORIES["validate-stories"]
+    COMPLETE["complete-stories"]
+    APPLY["apply-learnings"]
+
+    IMPL --> scaffold
+    IMPL --> ingestion
+    IMPL --> dag
+    IMPL --> pipeline
+    scaffold --> VAL_STORIES
+    ingestion --> VAL_STORIES
+    dag --> VAL_STORIES
+    pipeline --> VAL_STORIES
+    VAL_STORIES --> COMPLETE
+    COMPLETE --> APPLY
+
+    style IMPL fill:#e6f7ff,stroke:#2c3e50,stroke-width:2px
+    style VAL_STORIES fill:#fff3cd,stroke:#856404,stroke-width:2px
+    style COMPLETE fill:#f8f9fa,stroke:#5c6bc0,stroke-width:2px
+    style APPLY fill:#f8f9fa,stroke:#5c6bc0,stroke-width:2px
+
+    style CS fill:#d4edda,stroke:#155724,stroke-width:2px
+    style US fill:#d4edda,stroke:#155724,stroke-width:2px
+    style CI fill:#d4edda,stroke:#155724,stroke-width:2px
+    style UI fill:#d4edda,stroke:#155724,stroke-width:2px
+    style CD fill:#d4edda,stroke:#155724,stroke-width:2px
+    style UD fill:#d4edda,stroke:#155724,stroke-width:2px
+    style CP fill:#d4edda,stroke:#155724,stroke-width:2px
+    style UP fill:#d4edda,stroke:#155724,stroke-width:2px
+
+    style VS fill:#fff3cd,stroke:#856404,stroke-width:2px
+    style VI fill:#fff3cd,stroke:#856404,stroke-width:2px
+    style VD fill:#fff3cd,stroke:#856404,stroke-width:2px
+    style VP fill:#fff3cd,stroke:#856404,stroke-width:2px
+
+    style scaffold fill:#e8f4f8,stroke:#2196F3,stroke-width:2px
+    style ingestion fill:#e8f4f8,stroke:#2196F3,stroke-width:2px
+    style dag fill:#e8f4f8,stroke:#2196F3,stroke-width:2px
+    style pipeline fill:#e8f4f8,stroke:#2196F3,stroke-width:2px

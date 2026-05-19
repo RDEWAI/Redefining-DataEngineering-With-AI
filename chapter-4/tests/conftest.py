@@ -1,4 +1,5 @@
 """Shared fixtures for DRD and HLD validator tests."""
+# ruff: noqa: E501  # test fixtures embed long markdown tables verbatim
 
 from __future__ import annotations
 
@@ -1816,6 +1817,9 @@ VALID_LLD = """\
 | **DMS Reference** | DMS-2026-03-14-patient-360.md v1.0 |
 | **STM Reference** | STM-2026-03-16-patient-360.xlsx v1.0 |
 | **DQS Reference** | DQS-2026-03-18-patient-360.md v1.0 |
+| **Target Scaffold** | cookiecutter-chapter (see `inputs/lld/v1/templates/cookiecutter-chapter/`) |
+| **Project Name** | patient_360 |
+| **Chapter** | chapter-5 |
 
 ---
 
@@ -1829,19 +1833,40 @@ include Delta Lake for storage format [HLD §5.1], daily batch processing
 
 ## 2. Code Architecture
 
-The project follows a layered structure per development standards.
+### 2.1 Project Layout
+
+The project structure below is the cookiecutter scaffold at
+`inputs/lld/v1/templates/cookiecutter-chapter/`.
 
 ```
-src/
-├── pipelines/
+patient_360/
+├── src/patient_360/
 │   ├── bronze/
 │   ├── silver/
-│   └── gold/
-├── common/
-│   ├── config.py
-│   └── utils.py
-└── tests/
+│   ├── gold/
+│   └── utils/
+├── tests/
+├── airflow/
+│   ├── dags/
+│   └── configs/
+├── contracts/
+├── dq_rules/
+├── ddl/
+│   └── liquibase/
+└── _infra/
+    ├── ci/
+    ├── cd/
+    └── docker/
 ```
+
+### 2.2 Module Responsibilities
+
+| Module Path | DMS Layer | Responsibility |
+|---|---|---|
+| `src/patient_360/bronze/` | Bronze | Ingestion from raw sources. |
+| `src/patient_360/silver/` | Silver | Conformed dimensions/facts. |
+| `src/patient_360/gold/` | Gold | Patient 360 marts. |
+| `src/patient_360/utils/` | Cross-cutting | SparkSession, contracts, DQ. |
 
 Coding conventions follow PEP 8 with Ruff linting. For schema definitions,
 see DMS §4.2. Testing targets 80% coverage with pytest.
@@ -1888,20 +1913,42 @@ graph TD
 
 Each task has explicit I/O contracts per STM Tab:source-to-bronze mappings.
 
-| Task | Input Path | Output Path | Transform Ref | DQ Check |
-|------|-----------|-------------|---------------|----------|
-| ingest_patients | raw/patients.csv | bronze/patients/ | STM src-to-bronze | DQS §2 |
-| cleanse_patients | bronze/patients/ | silver/patients/ | STM brz-to-silver | DQS §2 |
-| build_patient_360 | silver/patients/ | gold/patient_360/ | STM slv-to-gold | DQS §4 |
-| validate_gold | /data/gold/patient_360/ | validation_report | DQS §5 | DQS §5 (DQ-REC-001) |
+| Task ID | Layer | Module Path | Contract File | DQ Rules File | DAG Task Node | Inputs | Outputs | Transform Ref | DQ Check |
+|---|---|---|---|---|---|---|---|---|---|
+| T-B01 | Bronze | `src/patient_360/bronze/patients.py` | `contracts/patients.yml` | `dq_rules/patients.yml` | ingest_patients | raw/patients.csv | bronze/patients/ | STM src-to-bronze | DQS §2 |
+| T-S01 | Silver | `src/patient_360/silver/patient_dim.py` | `contracts/patient_dim.yml` | `dq_rules/patient_dim.yml` | cleanse_patients | bronze/patients/ | silver/patient_dim/ | STM brz-to-silver | DQS §2 |
+| T-G01 | Gold | `src/patient_360/gold/patient_360.py` | `contracts/patient_360.yml` | `dq_rules/patient_360.yml` | build_patient_360 | silver/patient_dim/ | gold/patient_360/ | STM slv-to-gold | DQS §4 |
+| T-G02 | Gold | `src/patient_360/gold/readmission_risk.py` | `contracts/readmission_risk.yml` | `dq_rules/readmission_risk.yml` | validate_gold | gold/patient_360/ | gold/readmission_risk/ | DQS §5 | DQS §5 (DQ-REC-001) |
 
 When input is empty, ingestion tasks write a zero-row Delta table with schema preserved.
 
 ## 6. Performance & Optimization
 
+### 6.1 Compute & Local Executor Mode
+
+```yaml
+local_executor_mode: in-airflow-local[*]
+spark_master_url: local[*]
+spark_version: "3.5.1"
+provider_pin: "apache-airflow-providers-apache-spark==4.7.0"
+```
+
+### 6.2 Cluster Sizing
+
 Spark cluster: 4 executors x 4 cores x 8GB each = 128GB total [HLD §5.4].
+
+### 6.3 File & Partition Tuning
+
 Target file size: 128MB per partition. Broadcast join threshold: 10MB.
 Parallelism: 16 partitions default. Cache silver tables used by multiple gold tasks.
+
+### 6.4 Caching Strategy
+
+Cache silver dimension tables consumed by 2+ gold tasks; uncache after gold writes.
+
+### 6.5 Skew & Shuffle Handling
+
+Adaptive Query Execution enabled; skew join hint applied to encounters x patients.
 
 ## 7. Configuration Schema
 
@@ -1930,6 +1977,25 @@ Alerting: CRITICAL failures page on-call via PagerDuty. WARNING issues post to
 
 Environments: DEV (2 executors, 4GB each), STAGING (4 executors, 8GB each),
 PROD (8 executors, 16GB each).
+
+### 9.1 `_infra/ci/` — Continuous Integration
+
+`_infra/ci/github-actions.yaml` runs `ruff check`, `pytest`, and contract
+validation on every PR.
+
+### 9.2 `_infra/cd/` — Continuous Deployment
+
+`_infra/cd/deploy.yaml` promotes an image tag across envs using per-env YAMLs
+in `_infra/cd/config/{dev,stage,prod}.yaml`.
+
+### 9.3 `_infra/docker/` — Container Images
+
+One image per layer: `_infra/docker/Dockerfile.{bronze,silver,gold}`.
+
+### 9.4 `ddl/liquibase/` — Schema Migrations
+
+`ddl/liquibase/master.xml` includes per-table changelogs under
+`ddl/liquibase/changelogs/`.
 
 Promotion: PR merge → CI tests → DEV deploy → smoke test → STAGING deploy →
 integration test → PROD deploy with manual approval gate.
@@ -2184,310 +2250,3 @@ def placeholder_lld_file(tmp_path: Path) -> Path:
     f = tmp_path / "placeholder-lld.md"
     f.write_text(PLACEHOLDER_LLD, encoding="utf-8")
     return f
-
-
-# ---------------------------------------------------------------------------
-# Stories (Sprint Backlog) fixtures
-# ---------------------------------------------------------------------------
-
-VALID_BACKLOG = """\
-# Sprint Backlog: Patient 360 Data Pipeline
-
-| Field | Value |
-|-------|-------|
-| **Version** | 1.0 |
-| **Created** | 2026-03-23 |
-| **Last Modified** | 2026-03-23 |
-| **Author** | Scrum Master Agent |
-| **Status** | Draft |
-| **LLD Reference** | LLD-2026-03-23-patient-360.md v1.0 |
-
----
-
-## 1. Executive Summary
-
-The Patient 360 sprint backlog decomposes the LLD into 3 epics and 6 stories
-across 3 sprints. Total effort is estimated at 45 story points.
-
----
-
-## 2. Epic Overview
-
-| Epic | Title | Stories | Points | Sprints | LLD Section |
-|------|-------|---------|--------|---------|-------------|
-| EPIC-01 | Infrastructure Setup | 2 | 10 | 1 | §2 |
-| EPIC-02 | Bronze Ingestion | 2 | 15 | 1-2 | §4.1 |
-| EPIC-03 | Silver Transformation | 2 | 20 | 2-3 | §4.2 |
-
-**Total**: 6 stories, 45 points across 3 sprints
-
----
-
-## 3. Dependency Graph
-
-```mermaid
-flowchart LR
-    S01001[STORY-01-001] --> S01002[STORY-01-002]
-    S01002 --> S02001[STORY-02-001]
-    S01002 --> S02002[STORY-02-002]
-    S02001 --> S03001[STORY-03-001]
-    S02002 --> S03002[STORY-03-002]
-```
-
----
-
-## 4. Sprint Plan
-
-### Sprint 1: Foundation
-
-| Story ID | Title | Points | Epic |
-|----------|-------|--------|------|
-| STORY-01-001 | Set up DuckDB environment | 5 | EPIC-01 |
-| STORY-01-002 | Create bronze schemas | 5 | EPIC-01 |
-
-**Sprint Total**: 10 points
-
----
-
-## 5. Traceability Matrix
-
-| Epic / Story | LLD | DMS | STM | DQS | DRD | HLD |
-|-------------|-----|-----|-----|-----|-----|-----|
-| EPIC-01 | §2 | §4.1 | — | — | §2.1 | §4 |
-| STORY-01-001 | §2.1 | §4.1.1 | — | — | §2.1 | §4.1 |
-
----
-
-## 6. Risks & Assumptions
-
-- **Risk**: Sam R. at 50% allocation may delay Bronze stories _(Mitigation: Alex as backup)_
-
-### Assumptions
-
-- All upstream artifacts (DRD through LLD) are approved and stable
-
----
-
-## 7. Version History
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-03-23 | Scrum Master Agent | Initial backlog creation |
-"""
-
-VALID_EPIC = """\
-# EPIC-01: Infrastructure Setup
-
-| Field | Value |
-|-------|-------|
-| **LLD Section** | §2 |
-| **Stories** | 2 |
-| **Total Points** | 10 |
-| **Sprints** | 1 |
-| **Status** | Draft |
-
-## Objective
-
-Set up the DuckDB development environment and create all bronze layer schemas
-required for the Patient 360 data pipeline.
-
-## Scope
-
-### In Scope
-- DuckDB environment configuration
-- Bronze schema DDL for all 18 Synthea tables
-
-### Out of Scope
-- Data loading (covered in EPIC-02)
-
-## Stories
-
-| ID | Title | Points | Sprint | Dependencies |
-|----|-------|--------|--------|-------------|
-| STORY-01-001 | Set up DuckDB environment | 5 | 1 | None |
-| STORY-01-002 | Create bronze schemas | 5 | 1 | STORY-01-001 |
-
-## Acceptance Criteria (Epic-Level)
-
-- [ ] DuckDB environment operational with all required extensions [LLD §2.1]
-- [ ] All 18 bronze tables created matching DMS §4.1 specifications [DMS §4.1]
-
-## Risks & Assumptions
-
-- Assumes DuckDB version compatibility with required extensions
-"""
-
-VALID_STORY = """\
-# STORY-01-001: Set up DuckDB environment
-
-| Field | Value |
-|-------|-------|
-| **Epic** | EPIC-01: Infrastructure Setup |
-| **Priority** | P1 |
-| **Story Points** | 5 |
-| **Sprint** | 1 |
-| **Dependencies** | None |
-| **Status** | Draft |
-
-## User Story
-
-As a data engineer, I want a configured DuckDB environment so that I can begin
-building the Patient 360 data pipeline.
-
-## Description
-
-Set up the DuckDB development environment with all required extensions and
-configurations per the LLD specifications. This includes installing DuckDB,
-configuring the database file location, and verifying connectivity.
-
-## Acceptance Criteria
-
-- [ ] DuckDB installed and accessible via CLI [LLD §2.1]
-- [ ] Database file created at configured path [LLD §2.2]
-- [ ] Required extensions loaded (httpfs, parquet) [LLD §2.3]
-- [ ] Read-only connection verified for source data [DMS §4.1]
-
-## Technical Notes
-
-- Upstream references: LLD §2.1-2.3, HLD §5.1
-- Implementation hints: Use DuckDB 1.1.3 per LLD §5.1 technology table
-
-## Estimation Support
-
-| Artifact | Sections Covered |
-|----------|-----------------|
-| LLD | §2.1 Environment Setup, §2.2 Database Configuration, §2.3 Extensions |
-| HLD | §5.1 Technology Decisions (DuckDB) |
-| DMS | §4.1 Bronze Layer Schema Overview |
-"""
-
-MINIMAL_INVALID_BACKLOG = """\
-# Sprint Backlog: Incomplete
-
-## 1. Executive Summary
-
-Too short.
-"""
-
-EMPTY_SECTIONS_BACKLOG = """\
-# Sprint Backlog: Empty Sections
-
-| Field | Value |
-|-------|-------|
-| **Version** | 1.0 |
-| **Created** | 2026-03-23 |
-| **Author** | Test |
-| **Status** | Draft |
-| **LLD Reference** | test |
-
-## 1. Executive Summary
-
-A short summary sentence here.
-
-## 2. Epic Overview
-
-## 3. Dependency Graph
-
-## 4. Sprint Plan
-
-## 5. Traceability Matrix
-
-## 6. Risks & Assumptions
-
-## 7. Version History
-"""
-
-PLACEHOLDER_BACKLOG = """\
-# Sprint Backlog: With Placeholders
-
-| Field | Value |
-|-------|-------|
-| **Version** | 1.0 |
-| **Created** | 2026-03-23 |
-| **Author** | Test |
-| **Status** | Draft |
-| **LLD Reference** | test |
-
-## 1. Executive Summary
-
-The Patient 360 pipeline [TBD - add details].
-
-## 2. Epic Overview
-
-[TODO: Add epic table]
-
-## 3. Dependency Graph
-
-```mermaid
-flowchart LR
-    A --> B
-```
-
-## 4. Sprint Plan
-
-[TO BE DETERMINED]
-
-## 5. Traceability Matrix
-
-TBD
-
-## 6. Risks & Assumptions
-
-None identified yet.
-
-## 7. Version History
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-03-23 | Test | Initial |
-"""
-
-
-@pytest.fixture
-def valid_backlog_file(tmp_path: Path) -> Path:
-    """Create a valid backlog file for testing."""
-    f = tmp_path / "BACKLOG-2026-03-23-test.md"
-    f.write_text(VALID_BACKLOG, encoding="utf-8")
-    return f
-
-
-@pytest.fixture
-def invalid_backlog_file(tmp_path: Path) -> Path:
-    """Create an invalid (minimal) backlog file for testing."""
-    f = tmp_path / "BACKLOG-invalid.md"
-    f.write_text(MINIMAL_INVALID_BACKLOG, encoding="utf-8")
-    return f
-
-
-@pytest.fixture
-def empty_backlog_sections_file(tmp_path: Path) -> Path:
-    """Create a backlog with empty required sections."""
-    f = tmp_path / "BACKLOG-empty.md"
-    f.write_text(EMPTY_SECTIONS_BACKLOG, encoding="utf-8")
-    return f
-
-
-@pytest.fixture
-def placeholder_backlog_file(tmp_path: Path) -> Path:
-    """Create a backlog with placeholder text."""
-    f = tmp_path / "BACKLOG-placeholder.md"
-    f.write_text(PLACEHOLDER_BACKLOG, encoding="utf-8")
-    return f
-
-
-@pytest.fixture
-def valid_stories_dir(tmp_path: Path) -> Path:
-    """Create a complete valid stories directory structure for testing."""
-    stories_dir = tmp_path / "stories"
-    stories_dir.mkdir()
-
-    # Write backlog index
-    (stories_dir / "BACKLOG-2026-03-23-patient-360.md").write_text(VALID_BACKLOG, encoding="utf-8")
-
-    # Create epic directory with epic and story files
-    epic_dir = stories_dir / "EPIC-01-infrastructure-setup"
-    epic_dir.mkdir()
-    (epic_dir / "EPIC-01.md").write_text(VALID_EPIC, encoding="utf-8")
-    (epic_dir / "STORY-01-001-setup-duckdb.md").write_text(VALID_STORY, encoding="utf-8")
-
-    return stories_dir

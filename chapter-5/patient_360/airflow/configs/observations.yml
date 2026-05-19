@@ -1,0 +1,42 @@
+# Bronze ingestion config -- ingest_observations
+# Generated for STORY-02-003 (LLD §5.1, §4.2, §7.1).
+# Filename stem `observations` drives the Airflow task id `ingest_observations`
+# via the factory; the `table:` field below is the Bronze Delta table
+# name (synthea_observations) used to look up contracts/<table>.yml and
+# dq_rules/<table>.yml.
+table: synthea_observations
+layer: bronze
+output_path: ${PATIENT360_WAREHOUSE_ROOT}/dev/bronze/synthea_observations/
+
+source:
+  type: csv
+  path: data/raw_delta/observations.csv
+  header: true
+
+schema_ref: contracts/synthea_observations.yml
+contracts_dir: contracts
+
+output_table: unity.bronze.synthea_observations
+catalog_bronze_catalog_name: unity
+catalog_bronze_schema: bronze
+
+metadata_columns:
+  - ds
+  - _ingested_at
+  - _source_batch_id
+
+empty_input_behavior: write_empty            # LLD §5.1 default
+dq_rules_table: synthea_observations
+dq_rules_dir: dq_rules
+se_action_if_failed: drop             # LLD §5.4 fail-closed default
+quarantine_path: warehouse/{env}/quarantine/bronze/synthea_observations/
+
+timeout_minutes: 30                   # LLD §4.2
+retries: 3
+retry_delay_seconds: 60
+
+# updated: 2026-05-11 — STORY-02-007 partition tuning (LLD §6.5)
+# synthea_observations (~4.4M rows, ~800 MB) → 8 output partitions per ds,
+# producing ~100 MB Delta files. The runner calls df.repartition(target_partitions)
+# before write when this key is present.
+target_partitions: 8

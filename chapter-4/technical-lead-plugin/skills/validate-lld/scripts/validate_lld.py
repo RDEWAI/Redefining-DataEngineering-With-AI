@@ -220,8 +220,7 @@ def check_design_overview(sections: dict[str, str]) -> list[ValidationResult]:
                 level=ValidationLevel.CRITICAL,
                 section="1. Design Overview",
                 message=(
-                    f"Design Overview has only {len(sentences)} sentence(s);"
-                    " at least 2 required."
+                    f"Design Overview has only {len(sentences)} sentence(s); at least 2 required."
                 ),
                 suggestion=(
                     "Expand the Design Overview to at least 3-5 sentences"
@@ -257,7 +256,7 @@ def check_dag_specification(sections: dict[str, str]) -> list[ValidationResult]:
             ValidationResult(
                 level=ValidationLevel.CRITICAL,
                 section=section_key,
-                message=("DAG Specification has fewer than 3 task rows;" " at least 3 required."),
+                message=("DAG Specification has fewer than 3 task rows; at least 3 required."),
                 suggestion=(
                     "Add rows for all pipeline tasks: ingestion, transformation,"
                     " denormalization, and DQ validation tasks."
@@ -336,6 +335,700 @@ def check_configuration_schema(sections: dict[str, str]) -> list[ValidationResul
     return results
 
 
+DEFAULT_SCAFFOLD_TOP_DIRS = (
+    "src",
+    "tests",
+    "airflow",
+    "contracts",
+    "dq_rules",
+    "ddl",
+    "_infra",
+)
+
+
+def _load_scaffold_dirs(template_root: Path | None) -> tuple[str, ...]:
+    """Read the cookiecutter scaffold tree once and return expected top-level dirs.
+
+    Falls back to DEFAULT_SCAFFOLD_TOP_DIRS if template_root is missing or empty.
+    The template_root is expected to be the directory containing
+    `{{cookiecutter.project_name}}/` (i.e. the chapter-level cookiecutter dir).
+    """
+    if not template_root or not template_root.exists():
+        return DEFAULT_SCAFFOLD_TOP_DIRS
+    project_dirs = list(template_root.glob("*"))
+    if not project_dirs:
+        return DEFAULT_SCAFFOLD_TOP_DIRS
+    inner = project_dirs[0]
+    if not inner.is_dir():
+        return DEFAULT_SCAFFOLD_TOP_DIRS
+    dirs = [p.name for p in inner.iterdir() if p.is_dir()]
+    return tuple(sorted(dirs)) if dirs else DEFAULT_SCAFFOLD_TOP_DIRS
+
+
+def _find_scaffold_root(lld_path: Path) -> Path | None:
+    """Walk up from the LLD and look for `inputs/lld/v*/templates/cookiecutter-chapter/`."""
+    for ancestor in [lld_path.parent, *lld_path.parents]:
+        candidate = list(ancestor.glob("inputs/lld/v*/templates/cookiecutter-chapter"))
+        if candidate:
+            latest = sorted(candidate)[-1]
+            project_dir = next(
+                (p for p in latest.iterdir() if p.is_dir() and p.name.startswith("{{")),
+                None,
+            )
+            if project_dir:
+                inner = next(
+                    (p for p in project_dir.iterdir() if p.is_dir() and p.name.startswith("{{")),
+                    None,
+                )
+                if inner:
+                    return inner.parent
+    return None
+
+
+def _parse_header_metadata(content: str) -> dict[str, str]:
+    """Parse the LLD header metadata table at the top of the file."""
+    header_end = content.find("\n## ")
+    header = content[:header_end] if header_end != -1 else content
+    meta: dict[str, str] = {}
+    for line in header.split("\n"):
+        stripped = line.strip()
+        if not stripped.startswith("|") or all(c in "|- " for c in stripped):
+            continue
+        cells = [c.strip() for c in stripped.split("|")[1:-1]]
+        if len(cells) >= 2 and cells[0].lower() != "field":
+            key = cells[0].strip("*` ")
+            value = cells[1].strip("*` ")
+            meta[key] = value
+    return meta
+
+
+def _extract_table_headers(section_content: str) -> list[str]:
+    """Return the header row cells of the first markdown table in the section."""
+    lines = section_content.strip().split("\n")
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("|") and not all(c in "|- " for c in stripped):
+            if i + 1 < len(lines) and all(c in "|- " for c in lines[i + 1].strip()):
+                return [c.strip().lower() for c in stripped.split("|")[1:-1]]
+    return []
+
+
+def check_scaffold_metadata(content: str) -> list[ValidationResult]:
+    """CRITICAL: metadata must contain Target Scaffold, Project Name, and Chapter rows."""
+    results: list[ValidationResult] = []
+    meta = _parse_header_metadata(content)
+    for field_name in ("Target Scaffold", "Project Name", "Chapter"):
+        if field_name not in meta or not meta[field_name]:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.CRITICAL,
+                    section="Metadata",
+                    message=f'Metadata row "{field_name}" is missing or empty.',
+                    suggestion=(
+                        f'Add a "| **{field_name}** | ... |" row to the header table. '
+                        "Target Scaffold should reference `inputs/lld/v{N}/templates/"
+                        "cookiecutter-chapter/`; Project Name and Chapter must match "
+                        "cookiecutter.json."
+                    ),
+                )
+            )
+    return results
+
+
+def check_scaffold_layout(
+    sections: dict[str, str], scaffold_top_dirs: tuple[str, ...]
+) -> list[ValidationResult]:
+    """CRITICAL: §2.1 Project Layout must list the expected scaffold top-level dirs."""
+    results: list[ValidationResult] = []
+    content = sections.get("2. Code Architecture", "")
+    if not content:
+        return results
+
+    has_subsection = bool(re.search(r"^\s*###\s+2\.1", content, re.MULTILINE))
+    if not has_subsection:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section="2. Code Architecture",
+                message="Missing §2.1 Project Layout subsection.",
+                suggestion=(
+                    "Add a `### 2.1 Project Layout` subsection that renders the "
+                    "cookiecutter scaffold tree as a fenced code block."
+                ),
+            )
+        )
+
+    missing = [d for d in scaffold_top_dirs if d not in content]
+    if missing:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section="2. Code Architecture",
+                message=(
+                    f"§2.1 Project Layout is missing scaffold top-level dirs: {', '.join(missing)}."
+                ),
+                suggestion=(
+                    "Include every cookiecutter top-level directory in the §2.1 tree: "
+                    + ", ".join(scaffold_top_dirs)
+                    + "."
+                ),
+            )
+        )
+    return results
+
+
+def check_task_table_columns(sections: dict[str, str]) -> list[ValidationResult]:
+    """CRITICAL: §5 task table must have the scaffold-aligned column set."""
+    results: list[ValidationResult] = []
+    content = sections.get("5. Task Implementation Details", "")
+    if not content:
+        return results
+    headers = _extract_table_headers(content)
+    required = ["module path", "contract file", "dq rules file", "dag task node"]
+    missing = [h for h in required if h not in headers]
+    if missing:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section="5. Task Implementation Details",
+                message=(
+                    "§5 task table is missing required columns: "
+                    + ", ".join(m.title() for m in missing)
+                    + "."
+                ),
+                suggestion=(
+                    "Task table must include: Task ID | Layer | Module Path | "
+                    "Contract File | DQ Rules File | DAG Task Node | Inputs | Outputs "
+                    "| Transform Ref | DQ Check."
+                ),
+            )
+        )
+    return results
+
+
+def check_scaffold_paths(sections: dict[str, str], content: str) -> list[ValidationResult]:
+    """WARNING: src/, contracts/, dq_rules/ paths in §5 must match scaffold conventions."""
+    results: list[ValidationResult] = []
+    meta = _parse_header_metadata(content)
+    project_name = meta.get("Project Name", "").strip()
+    section_5 = sections.get("5. Task Implementation Details", "")
+    if not section_5:
+        return results
+
+    src_paths = re.findall(r"`(src/[^`]+)`", section_5)
+    if project_name:
+        bad_src = [
+            p
+            for p in src_paths
+            if not re.match(rf"^src/{re.escape(project_name)}/(bronze|silver|gold|utils)/", p)
+        ]
+        if bad_src:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    section="5. Task Implementation Details",
+                    message=(
+                        f"§5 has src/ paths that don't match the scaffold shape "
+                        f"`src/{project_name}/{{bronze|silver|gold|utils}}/`: "
+                        f"{', '.join(bad_src[:5])}" + ("..." if len(bad_src) > 5 else "")
+                    ),
+                    suggestion=(
+                        "Rename modules to live under `src/{project_name}/"
+                        "{bronze|silver|gold|utils}/` or log the deviation in §13 "
+                        "Decision Log."
+                    ),
+                )
+            )
+
+    contract_paths = re.findall(r"`(contracts/[^`]+)`", section_5)
+    bad_contracts = [p for p in contract_paths if not re.match(r"^contracts/[^/]+\.yml$", p)]
+    if bad_contracts:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section="5. Task Implementation Details",
+                message=(
+                    "Contract file paths in §5 don't match `contracts/*.yml`: "
+                    + ", ".join(bad_contracts[:5])
+                ),
+                suggestion="Use one-file-per-table contract paths like `contracts/<table>.yml`.",
+            )
+        )
+
+    dq_paths = re.findall(r"`(dq_rules/[^`]+)`", section_5)
+    bad_dq = [p for p in dq_paths if not re.match(r"^dq_rules/[^/]+\.yml$", p)]
+    if bad_dq:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section="5. Task Implementation Details",
+                message=(
+                    "DQ rules paths in §5 don't match `dq_rules/*.yml`: " + ", ".join(bad_dq[:5])
+                ),
+                suggestion="Use `dq_rules/<table>.yml` per Spark-Expectations convention.",
+            )
+        )
+    return results
+
+
+def check_deployment_infra_paths(sections: dict[str, str]) -> list[ValidationResult]:
+    """WARNING: §9 must reference _infra/ci/, _infra/cd/, _infra/docker/, ddl/liquibase/."""
+    results: list[ValidationResult] = []
+    content = sections.get("9. Deployment", "")
+    if not content:
+        return results
+    required_refs = ["_infra/ci", "_infra/cd", "_infra/docker", "ddl/liquibase"]
+    missing = [r for r in required_refs if r not in content]
+    if missing:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section="9. Deployment",
+                message=("§9 does not reference scaffold infra directories: " + ", ".join(missing)),
+                suggestion=(
+                    "Structure §9 as 9.1 `_infra/ci/`, 9.2 `_infra/cd/`, "
+                    "9.3 `_infra/docker/`, 9.4 `ddl/liquibase/`."
+                ),
+            )
+        )
+    return results
+
+
+# --- Chapter-5 specific checks (added 2026-04-26 after spokane's green Bronze run) ---
+
+VALID_EXECUTOR_MODES = ("in-airflow-local[*]", "sidecar-spark", "external-cluster")
+_LOCAL_EXECUTOR_LINE = re.compile(
+    r"^\s*local_executor_mode\s*:\s*(\S.*?)\s*$",
+    re.MULTILINE,
+)
+_FENCED_YAML_BLOCK = re.compile(r"```ya?ml\s*\n(.*?)\n```", re.DOTALL)
+_BRONZE_RUNNER_HEADING = re.compile(
+    r"(ingestion_runner|Bronze\s+(?:Runner|Ingestion))",
+    re.IGNORECASE,
+)
+_PATH_BASED_BRONZE = re.compile(
+    r"(warehouse/\{?env\}?/bronze|/tmp/uc-warehouse/.*?/bronze|"
+    r"\.format\(\s*[\'\"]delta[\'\"]\s*\)\s*\.save\()",
+    re.IGNORECASE,
+)
+_UC_SAVE_AS_TABLE = re.compile(
+    r"(saveAsTable\([^)]*unity\.bronze|UCSingleCatalog|unity\.bronze\.\w+)",
+    re.IGNORECASE,
+)
+_SE_PIN_BELOW_2_10 = re.compile(
+    r"spark[-_]expectations\s*==\s*[\"']?2\.[0-9](?!\d)",
+    re.IGNORECASE,
+)
+
+# Phased-contract heuristic — sections that describe a temporal lifecycle
+# (e.g. bootstrap → fail-closed) without a TEMP / PENDING marker.
+# `_BOOTSTRAP_KEYWORDS` and `_FAIL_CLOSED_KEYWORDS` are the two halves of
+# the contradiction; `_TEMP_MARKERS` are the markers that tell readers
+# "this is transitional, not permanent."
+_BOOTSTRAP_KEYWORDS = re.compile(
+    r"(soft[- ]import|bootstrap\s+mode|try/except\s+ImportError|" r"PENDING\s+IMPLEMENTATION)",
+    re.IGNORECASE,
+)
+_FAIL_CLOSED_KEYWORDS = re.compile(
+    r"(fail[- ]closed|fail\s+closed|must\s+be\s+removed|hard\s+error|" r"removed\s+from\s+\w+\.py)",
+    re.IGNORECASE,
+)
+_TEMP_MARKERS = re.compile(
+    r"(\*\*TEMP\b|TEMP\s+—|temporary|transitional|conditionally[- ]temporal|"
+    r"bootstrap\s+phase\s+only)",
+    re.IGNORECASE,
+)
+
+
+def check_local_executor_mode(sections: dict[str, str]) -> list[ValidationResult]:
+    """CRITICAL: §6 must declare `local_executor_mode` in a fenced YAML block.
+
+    Added after spokane's first green Bronze run revealed that LLDs without
+    an explicit `local_executor_mode` produce a runtime stack the bootstrap
+    story can't smoke-test (the "DAG runs but spark-submit fails" failure
+    mode the chapter-5 sample-stories now warn against).
+    """
+    results: list[ValidationResult] = []
+    section_key = "6. Performance & Optimization"
+    content = sections.get(section_key, "")
+    if not content:
+        return results
+
+    # The declaration must live inside a fenced YAML block so downstream
+    # plugins can grep it deterministically. A bare `local_executor_mode: foo`
+    # outside a code fence is brittle.
+    yaml_blocks = _FENCED_YAML_BLOCK.findall(content)
+    declared_value: str | None = None
+    for block in yaml_blocks:
+        match = _LOCAL_EXECUTOR_LINE.search(block)
+        if match:
+            declared_value = match.group(1).strip().strip("\"'")
+            break
+
+    if declared_value is None:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section=section_key,
+                message=("§6.1 missing `local_executor_mode` declaration in a fenced YAML block."),
+                suggestion=(
+                    "Add a `### 6.1 Compute & Local Executor Mode` subsection with "
+                    "a fenced ```yaml block declaring `local_executor_mode: "
+                    "<in-airflow-local[*]|sidecar-spark|external-cluster>` plus "
+                    "`spark_master_url`, `spark_version`, `provider_pin`. "
+                    "Educational default for chapter-5 is `in-airflow-local[*]`."
+                ),
+            )
+        )
+        return results
+
+    if declared_value not in VALID_EXECUTOR_MODES:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section=section_key,
+                message=(
+                    f"`local_executor_mode: {declared_value}` is not one of the "
+                    f"three accepted modes: {', '.join(VALID_EXECUTOR_MODES)}."
+                ),
+                suggestion=(
+                    "Pick exactly one mode. `in-airflow-local[*]` bakes Spark into "
+                    "the Airflow image (chapter-5 default). `sidecar-spark` uses "
+                    "bitnami/spark master+worker services. `external-cluster` "
+                    "submits to a remote YARN/k8s cluster."
+                ),
+            )
+        )
+    return results
+
+
+def check_performance_subsections(sections: dict[str, str]) -> list[ValidationResult]:
+    """WARNING: §6 should be split into §6.1–§6.5 subsections.
+
+    Subsection numbering is load-bearing — downstream Scrum Master rules
+    (`STORIES-BOOTSTRAP-COVERAGE-001` and per-layer `performance-optimization`
+    stories) cite §6.1 / §6.2 / §6.3 / §6.4 / §6.5 specifically.
+    """
+    results: list[ValidationResult] = []
+    section_key = "6. Performance & Optimization"
+    content = sections.get(section_key, "")
+    if not content:
+        return results
+
+    expected = {
+        "6.1": "Compute & Local Executor Mode",
+        "6.2": "Join",
+        "6.3": "Shuffle",
+        "6.4": "Caching",
+        "6.5": "Partition",
+    }
+    missing = []
+    for num, hint in expected.items():
+        # Match `### 6.1 ...`, `**§6.1**`, or `§6.1` form. We just need
+        # *some* heading-like marker that the LLD splits §6 into pieces.
+        pattern = re.compile(
+            rf"(?:^\s*###\s*{re.escape(num)}\b|§\s*{re.escape(num)}\b)",
+            re.MULTILINE,
+        )
+        if not pattern.search(content):
+            missing.append(f"{num} {hint}")
+
+    if missing:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section=section_key,
+                message=(
+                    "§6 is missing the load-bearing subsection structure: " + ", ".join(missing)
+                ),
+                suggestion=(
+                    "Split §6 into `### 6.1 Compute & Local Executor Mode`, "
+                    "`### 6.2 Join Strategies`, `### 6.3 Shuffle & Parallelism`, "
+                    "`### 6.4 Caching`, `### 6.5 Partition Tuning`. Downstream "
+                    "rules cite these subsection numbers."
+                ),
+            )
+        )
+    return results
+
+
+def check_bronze_uc_wiring(sections: dict[str, str]) -> list[ValidationResult]:
+    """CRITICAL: Bronze runner contract must use UC saveAsTable, not path-based Delta.
+
+    LLD Decision 15 (added 2026-04-26 after spokane's manual `docker cp` +
+    REST registration workaround) mandates `UCSingleCatalog` +
+    `saveAsTable("unity.bronze.<table>")`. Path-based writes leave UC
+    empty until manual external-table registration — and the gap recurs
+    every DAG run.
+
+    Revocation guard (2026-05-12): if §13 Decision 15 or Decision 12 carries
+    a "Revoked" / "Reverted" marker AND a same-day matching note in §2.3,
+    skip this check — the LLD has explicitly reversed the UC-managed Bronze
+    write contract. Validation falls back to the path-based Delta path being
+    legal for chapter-5's local Delta+Hive(Derby) runtime.
+    """
+    results: list[ValidationResult] = []
+
+    decision_log = sections.get("13. Decision Log", "")
+    # Match Decision 12 or 15 followed (within ~600 chars) by a Status: Revoked /
+    # Reverted marker, OR a title that already says "Revoked" / "Reverted".
+    revocation_marker = re.search(
+        r"Decision\s*1[25][^\n]{0,400}(Revoked|Reverted)"
+        r"|Decision\s*1[25][\s\S]{0,600}?\*\*Status\*\*:\s*(Revoked|Reverted)",
+        decision_log,
+        flags=re.IGNORECASE,
+    )
+    if revocation_marker:
+        # Decision 12 or 15 has been explicitly revoked — skip the UC wiring
+        # enforcement entirely. The downstream developer-plugin rule
+        # `UC-WIRING-001` is retired in lock-step.
+        return results
+
+    # Inspect §2 Code Architecture (where §2.3 module contracts live) and
+    # §5 Task Implementation Details (where output paths land).
+    bronze_runner_sources = [
+        ("2. Code Architecture", sections.get("2. Code Architecture", "")),
+        ("5. Task Implementation Details", sections.get("5. Task Implementation Details", "")),
+    ]
+    for section_key, content in bronze_runner_sources:
+        if not content:
+            continue
+        # Only fire when the section actually discusses a Bronze runner / output.
+        if not _BRONZE_RUNNER_HEADING.search(content) and "bronze" not in content.lower():
+            continue
+        path_based = _PATH_BASED_BRONZE.search(content)
+        uc_wired = _UC_SAVE_AS_TABLE.search(content)
+        if path_based and not uc_wired:
+            results.append(
+                ValidationResult(
+                    level=ValidationLevel.CRITICAL,
+                    section=section_key,
+                    message=(
+                        f"{section_key} describes a Bronze write target as "
+                        "path-based Delta (e.g. `warehouse/{env}/bronze/<table>/`) "
+                        "without any UCSingleCatalog / saveAsTable wiring. "
+                        "Decision 15 forbids path-based Bronze writes."
+                    ),
+                    suggestion=(
+                        "Update the Bronze runner contract to land in "
+                        "`unity.bronze.<table>` via `UCSingleCatalog` + "
+                        "`saveAsTable(...)`. See `inputs/code/v1/scripts/"
+                        "ingestion_runner.py.snippet` for the canonical pattern."
+                    ),
+                )
+            )
+    return results
+
+
+def check_catalog_config(sections: dict[str, str]) -> list[ValidationResult]:
+    """WARNING: §7 Configuration Schema should declare the UC catalog block.
+
+    The Bronze runner reads `catalog.uc_uri`, `catalog.bronze_catalog_name`,
+    `catalog.bronze_schema` from the per-env config. Missing keys mean the
+    generated `_infra/cd/config/<env>.yaml` won't have the values the
+    runner expects.
+    """
+    results: list[ValidationResult] = []
+    section_key = "7. Configuration Schema"
+    content = sections.get(section_key, "")
+    if not content:
+        return results
+
+    expected_keys = ("catalog_uc_uri", "catalog_bronze_catalog_name", "catalog_bronze_schema")
+    # Also accept the dotted form `catalog.uc_uri` etc.
+    missing = []
+    for key in expected_keys:
+        dotted = key.replace("_", ".", 1)
+        if key not in content and dotted not in content:
+            missing.append(key)
+    if missing:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section=section_key,
+                message=(
+                    "§7 Configuration Schema is missing UC catalog parameter(s): "
+                    + ", ".join(missing)
+                ),
+                suggestion=(
+                    "Add rows for `catalog_uc_uri` (e.g. http://unity-catalog:8080), "
+                    "`catalog_bronze_catalog_name` (e.g. `unity`), and "
+                    "`catalog_bronze_schema` (e.g. `bronze`). The Bronze runner "
+                    "consumes these via the `UC_URI` env var."
+                ),
+            )
+        )
+    return results
+
+
+def check_se_version_floor(content: str) -> list[ValidationResult]:
+    """CRITICAL: spark-expectations must not be pinned below 2.10.
+
+    The YAML/JSON rule loader (`spark_expectations.rules.load_rules_from_yaml`)
+    was added in v2.10.0 (PR #300). Earlier 2.x releases (e.g. 2.6.0 — what
+    spokane shipped pre-fix) raise `ModuleNotFoundError` on every generated
+    `se_runner.py` and force a `BRONZE_SKIP_SE=1` bypass that defeats DQ.
+    The `library-imports.yaml` overlay enforces this floor; the LLD must
+    not contradict it.
+    """
+    results: list[ValidationResult] = []
+    offenders: list[str] = []
+    for match in _SE_PIN_BELOW_2_10.finditer(content):
+        offenders.append(match.group(0))
+    if offenders:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.CRITICAL,
+                section="11. Upstream Artifact References",
+                message=(
+                    "LLD pins `spark-expectations` below 2.10: "
+                    + ", ".join(sorted(set(offenders)))
+                    + ". The YAML rule loader the developer-plugin emits "
+                    "requires v2.10.0+ (PR #300)."
+                ),
+                suggestion=(
+                    "Reference `spark-expectations >= 2.10.0` in §11 / "
+                    "`dq_rules/{table}.yml` notes. The `library-imports.yaml` "
+                    "overlay (`min_version: 2.10.0`) is the floor; "
+                    "`refresh-libraries` flags any drift below."
+                ),
+            )
+        )
+    return results
+
+
+def check_phased_contract(sections: dict[str, str]) -> list[ValidationResult]:
+    """LLD-PHASED-CONTRACT-001 (WARNING): a section describing both a
+    bootstrap-mode behavior AND a fail-closed final state without an
+    explicit TEMP / PENDING-IMPLEMENTATION marker on the bootstrap prose
+    will produce contradictory ACs when the scrum-master decomposes it.
+
+    Added after spokane's STORY-02-001 vs STORY-02-004 collision
+    (2026-04-26). LLD §2.3 carried "Runner soft-imports `se_runner` and
+    logs `WARNING: se_runner not available`" prose that read like a
+    permanent contract, while §8.6 mandated fail-closed post-implementation.
+    The scrum-master generated two ACs with `grep` vs `grep_absent`
+    against the same warning string. This rule flags any §2 / §5
+    section repeating the contradiction so authors can either (a)
+    add an explicit TEMP marker or (b) defer the lifecycle prose to
+    §8 and stop duplicating it in §2.
+    """
+    results: list[ValidationResult] = []
+    # §8 owns the lifecycle by design — exempt it. We only flag §2 / §5
+    # because those are the section kinds the scrum-master decomposes
+    # into module-level ACs.
+    candidate_sections = (
+        "2. Code Architecture",
+        "5. Task Implementation Details",
+    )
+    for section_key in candidate_sections:
+        content = sections.get(section_key, "")
+        if not content:
+            continue
+        bootstrap_hits = list(_BOOTSTRAP_KEYWORDS.finditer(content))
+        fail_closed_hits = list(_FAIL_CLOSED_KEYWORDS.finditer(content))
+        if not bootstrap_hits or not fail_closed_hits:
+            continue
+        # Both halves present. Look for ANY TEMP marker in the section.
+        # The point of the rule is "is the lifecycle called out?"; if the
+        # author tagged bootstrap-mode as transitional anywhere in the
+        # section, the scrum-master will see it — even if it's a few
+        # paragraphs away from the first bootstrap keyword.
+        if _TEMP_MARKERS.search(content):
+            continue
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section=section_key,
+                message=(
+                    f"{section_key} mixes bootstrap-mode prose "
+                    f"({bootstrap_hits[0].group(0)!r}) with fail-closed "
+                    f"prose ({fail_closed_hits[0].group(0)!r}) without an "
+                    "explicit TEMP / bootstrap-phase-only marker. The "
+                    "scrum-master will generate contradictory ACs from "
+                    "this section."
+                ),
+                suggestion=(
+                    "Either (a) wrap the bootstrap-mode paragraph in a "
+                    "`> **TEMP — bootstrap phase only (Decision N, §8.X):**` "
+                    "callout so readers see it is transitional, or (b) "
+                    "remove the lifecycle prose from this section entirely "
+                    "and defer to §8 (which owns SE Bootstrap Mode "
+                    "Degradation). Option (b) is preferred — see the §2.3 "
+                    "fix in LLD v1.7."
+                ),
+            )
+        )
+    return results
+
+
+def check_uc_decision_log(sections: dict[str, str]) -> list[ValidationResult]:
+    """INFO: when Bronze is UC-wired, §13 should record Decision 15 (or equivalent).
+
+    Decision 15 = "Bronze writes use UCSingleCatalog + saveAsTable instead of
+    path-based Delta." If §2/§5 mention `unity.bronze.` or
+    `UCSingleCatalog`, §13 should explain *why* (rationale + trade-off) so
+    future maintainers don't drift back to the path-based pattern.
+    """
+    results: list[ValidationResult] = []
+    code_arch = sections.get("2. Code Architecture", "")
+    task_impl = sections.get("5. Task Implementation Details", "")
+    decisions = sections.get("13. Decision Log", "")
+    bronze_uc_referenced = bool(
+        _UC_SAVE_AS_TABLE.search(code_arch) or _UC_SAVE_AS_TABLE.search(task_impl)
+    )
+    if not bronze_uc_referenced:
+        return results
+    decision_recorded = bool(
+        re.search(
+            r"(Decision\s*15|UCSingleCatalog|Bronze\s+UC\s+wiring|"
+            r"saveAsTable\([^)]*unity\.bronze)",
+            decisions,
+            re.IGNORECASE,
+        )
+    )
+    if not decision_recorded:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.INFO,
+                section="13. Decision Log",
+                message=(
+                    "§2 / §5 reference UC-managed Bronze writes but §13 has no "
+                    "Decision 15 (or equivalent) explaining the policy choice."
+                ),
+                suggestion=(
+                    'Add a Decision 15 entry: "Bronze writes use UCSingleCatalog '
+                    '+ saveAsTable(\\"unity.bronze.<table>\\") instead of '
+                    'path-based Delta." Include Options Considered, Rationale '
+                    "(spokane invisible-tables gap), and Trade-off (UC catalog "
+                    "wiring required at session build time)."
+                ),
+            )
+        )
+    return results
+
+
+def check_scaffold_decision_entry(sections: dict[str, str]) -> list[ValidationResult]:
+    """INFO: §13 Decision Log should contain the bootstrap scaffold-adoption entry."""
+    results: list[ValidationResult] = []
+    content = sections.get("13. Decision Log", "")
+    if not content:
+        return results
+    if not re.search(r"cookiecutter[- ]chapter", content, re.IGNORECASE):
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.INFO,
+                section="13. Decision Log",
+                message="§13 does not record the scaffold-adoption bootstrap entry.",
+                suggestion=(
+                    'Add: "Adopted cookiecutter-chapter scaffold at '
+                    'inputs/lld/v{N}/templates/cookiecutter-chapter/ as target project layout."'
+                ),
+            )
+        )
+    return results
+
+
 def check_upstream_references(sections: dict[str, str]) -> list[ValidationResult]:
     """Check that Upstream Artifact References cites all 5 upstream docs."""
     results: list[ValidationResult] = []
@@ -396,7 +1089,13 @@ def check_upstream_traceability(content: str) -> list[ValidationResult]:
 
 
 def check_error_handling(sections: dict[str, str]) -> list[ValidationResult]:
-    """Check that Error Handling mentions retry, dead letter, and alerting."""
+    """Check Error Handling covers the four failure classes.
+
+    Spark Expectations owns row-level DQ rejections via the `<target>_error`
+    table, so the LLD must reference that (not invent a custom writer). The
+    term "dead letter" is reserved for the ingest DLQ covering pre-validation
+    parse/schema/encoding failures that SE never sees.
+    """
     results: list[ValidationResult] = []
     section_key = "8. Error Handling"
     content = sections.get(section_key, "")
@@ -408,21 +1107,41 @@ def check_error_handling(sections: dict[str, str]) -> list[ValidationResult]:
                 section=section_key,
                 message="Error Handling section is empty.",
                 suggestion=(
-                    "Add retry policies, dead letter queue strategy," " and alerting thresholds."
+                    "Cover retry policies; SE `_error` table for row_dq; SE stats"
+                    " table for agg_dq/query_dq; ingest DLQ for pre-validation"
+                    " parse/schema failures; and alerting thresholds."
                 ),
             )
         )
         return results
 
     has_retry = bool(re.search(r"\bretry\b", content, re.IGNORECASE))
-    has_dlq = bool(re.search(r"\b(dead.letter|quarantine|DLQ)\b", content, re.IGNORECASE))
+    has_se_error = bool(
+        re.search(
+            r"(_error\s+table|spark[- ]expectations.{0,40}error|se[._ ]error)",
+            content,
+            re.IGNORECASE,
+        )
+    )
+    has_stats = bool(
+        re.search(r"(stats\s+table|se[._ ]stats|agg_dq|query_dq)", content, re.IGNORECASE)
+    )
+    has_ingest_dlq = bool(
+        re.search(
+            r"(ingest\s+DLQ|dead.letter|pre.validation|parse|schema\s+fail)", content, re.IGNORECASE
+        )
+    )
     has_alert = bool(re.search(r"\balert\b", content, re.IGNORECASE))
 
     missing = []
     if not has_retry:
         missing.append("retry policies")
-    if not has_dlq:
-        missing.append("dead letter/quarantine")
+    if not has_se_error:
+        missing.append("SE `_error` table (row_dq)")
+    if not has_stats:
+        missing.append("SE stats/detailed tables (agg_dq/query_dq)")
+    if not has_ingest_dlq:
+        missing.append("ingest DLQ (pre-validation)")
     if not has_alert:
         missing.append("alerting")
 
@@ -432,7 +1151,33 @@ def check_error_handling(sections: dict[str, str]) -> list[ValidationResult]:
                 level=ValidationLevel.WARNING,
                 section=section_key,
                 message=f"Error Handling is missing: {', '.join(missing)}.",
-                suggestion="Add retry policies, dead letter queue handling, and alerting setup.",
+                suggestion=(
+                    "Structure §8 as: 8.1 Retry, 8.2 SE `_error` table (row_dq),"
+                    " 8.3 SE stats/detailed (agg_dq/query_dq), 8.4 Ingest DLQ"
+                    " (pre-validation only), 8.5 Alerting."
+                ),
+            )
+        )
+
+    # Anti-pattern: a custom writer for row-level DQ rejections duplicates SE's
+    # built-in `_error` table. Flag it so reviewers catch the redundancy.
+    custom_row_dq_writer = re.search(
+        r"custom.{0,20}(writer|dlq|dead.letter).{0,120}(row_dq|row.level\s+DQ|rejected\s+row)",
+        content,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if custom_row_dq_writer:
+        results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                section=section_key,
+                message=("§8 appears to define a custom writer for row-level DQ rejections."),
+                suggestion=(
+                    "Spark Expectations already writes row_dq drops to `<target>_error`"
+                    " automatically (se.enable.error.table=true). Remove the custom"
+                    " writer and reference the SE `_error` table instead. Reserve the"
+                    " ingest DLQ for pre-validation parse/schema failures only."
+                ),
             )
         )
     return results
@@ -468,7 +1213,7 @@ def check_deployment_environments(sections: dict[str, str]) -> list[ValidationRe
                 section=section_key,
                 message="Deployment does not mention both DEV and PROD environments.",
                 suggestion=(
-                    "Add environment-specific deployment details" " for DEV, STAGING, and PROD."
+                    "Add environment-specific deployment details for DEV, STAGING, and PROD."
                 ),
             )
         )
@@ -620,7 +1365,7 @@ def check_rollback(sections: dict[str, str]) -> list[ValidationResult]:
                 section="9. Deployment",
                 message="Deployment section does not mention rollback procedures.",
                 suggestion=(
-                    "Add rollback strategy including detection," " revert, and notification steps."
+                    "Add rollback strategy including detection, revert, and notification steps."
                 ),
             )
         )
@@ -676,9 +1421,7 @@ def check_dag_definition_exists(
                 level=ValidationLevel.INFO,
                 section="4. DAG Specification",
                 message="No dag-definition.yaml found alongside the LLD.",
-                suggestion=(
-                    "Run generate-dag-definition to create the DAG YAML" " from Section 4."
-                ),
+                suggestion=("Run generate-dag-definition to create the DAG YAML from Section 4."),
             )
         )
     return results
@@ -697,7 +1440,7 @@ def check_mermaid_export_exists(
                 section="4. DAG Specification",
                 message="No dag-pipeline.mmd found alongside the LLD.",
                 suggestion=(
-                    "Run generate-dag-definition to export the Mermaid" " diagram from Section 4.3."
+                    "Run generate-dag-definition to export the Mermaid diagram from Section 4.3."
                 ),
             )
         )
@@ -755,28 +1498,47 @@ def validate_lld(file_path: Path) -> ValidationReport:
 
     sections = parse_lld_sections(content)
 
+    # Resolve scaffold top-level dirs (falls back to default tuple if not found)
+    scaffold_root = _find_scaffold_root(file_path)
+    scaffold_top_dirs = _load_scaffold_dirs(scaffold_root)
+
     # CRITICAL checks
     report.results.extend(check_required_sections(sections))
     report.results.extend(check_metadata(content))
+    report.results.extend(check_scaffold_metadata(content))
     report.results.extend(check_design_overview(sections))
     report.results.extend(check_dag_specification(sections))
     report.results.extend(check_task_implementation(sections))
+    report.results.extend(check_task_table_columns(sections))
+    report.results.extend(check_scaffold_layout(sections, scaffold_top_dirs))
     report.results.extend(check_configuration_schema(sections))
     report.results.extend(check_upstream_references(sections))
+    # Chapter-5 specific CRITICAL rules
+    report.results.extend(check_local_executor_mode(sections))
+    report.results.extend(check_bronze_uc_wiring(sections))
+    report.results.extend(check_se_version_floor(content))
 
     # WARNING checks
     report.results.extend(check_upstream_traceability(content))
     report.results.extend(check_error_handling(sections))
     report.results.extend(check_deployment_environments(sections))
+    report.results.extend(check_deployment_infra_paths(sections))
     report.results.extend(check_monitoring_metrics(sections))
     report.results.extend(check_mermaid_diagram(content))
     report.results.extend(check_decision_documentation(content))
     report.results.extend(check_performance_numerics(sections))
+    report.results.extend(check_scaffold_paths(sections, content))
+    # Chapter-5 specific WARNING rules
+    report.results.extend(check_performance_subsections(sections))
+    report.results.extend(check_catalog_config(sections))
+    report.results.extend(check_phased_contract(sections))
 
     # INFO checks
     report.results.extend(check_placeholders(content))
     report.results.extend(check_rollback(sections))
     report.results.extend(check_critical_path(sections))
+    report.results.extend(check_scaffold_decision_entry(sections))
+    report.results.extend(check_uc_decision_log(sections))
     report.results.extend(check_config_template_exists(sections, file_path))
     report.results.extend(check_dag_definition_exists(sections, file_path))
     report.results.extend(check_mermaid_export_exists(sections, file_path))

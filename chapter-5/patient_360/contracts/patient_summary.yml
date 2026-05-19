@@ -1,0 +1,18 @@
+# Contract for patient_summary (gold).
+# Schema source of truth: DMS §4.
+table: patient_summary
+layer: gold
+dms_section: DMS §4
+schema: gold
+
+ddl_path: ddl/liquibase/changelogs/patient_summary.xml
+dq_path: dq_rules/patient_summary.yml
+
+owner: "Patient 360 Data Engineering"
+description: "Gold table patient_summary; see DMS §4 for the authoritative column-level schema."
+tags: ["gold", "patient_360"]
+
+# Column-level annotations are derived from DMS §4. The DDL file
+# (linked via ddl_path) is the canonical schema definition; update-scaffold
+# sync-contracts populates this section from the DMS.
+columns: []

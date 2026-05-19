@@ -1,0 +1,109 @@
+{
+  "story_id": "STORY-02-003",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/outputs/stories/v1/EPIC-02-bronze-ingestion/STORY-02-003-bronze-yaml-configs.md",
+  "epic_id": "EPIC-02",
+  "plan_version": 1,
+  "status": "implemented",
+  "generated_at": "2026-05-11T22:53:55.836058+00:00",
+  "summary": "1 task(s) across ['ingestion'] \u2014 4 AC(s).",
+  "classifier": {
+    "kind": "ingestion",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-02-003",
+    "paths": [
+      "airflow/configs/*.yml",
+      "dq_rules/*.yml"
+    ],
+    "by_skill": {
+      "ingestion": [
+        "airflow/configs/*.yml",
+        "dq_rules/*.yml"
+      ]
+    },
+    "dispatch_order": [
+      "ingestion"
+    ],
+    "unmatched": [],
+    "fallback_kind": null
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "create-ingestion",
+      "kind": "ingestion",
+      "mode": "create",
+      "paths": [
+        "airflow/configs/*.yml",
+        "dq_rules/*.yml"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "started_at": "2026-05-11T23:03:44.819466+00:00",
+      "finished_at": "2026-05-11T23:07:26.632139+00:00",
+      "artifacts": [],
+      "files_created": 14,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-ingestion",
+      "validator_status": "pass",
+      "notes": ""
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "13 `airflow/configs/{table}.yml` files exist (one per LLD \u00a75.1 Bronze task) [LLD \u00a75.1]",
+      "line": 37,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "Six critical tables (`patients`, `encounters`, `allergies`, `organizations`, `providers`, `payers`) have `empty_input_behavior: fail` [LLD \u00a75.1, DRD \u00a71.3]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "All 13 configs declare `output_table: <catalog>.<schema>.synthea_{table}` resolved from the `catalog_bronze_catalog_name` / `catalog_bronze_schema` config keys (defaults `unity` / `bronze` per LLD \u00a77.1); UC-managed write target [LLD \u00a77.1, \u00a713 Decision 15]",
+      "line": 41,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 4,
+      "text": "Each YAML's `dq_rules_table` resolves to `dq_rules/{table}.yml` [LLD \u00a72.3]",
+      "line": 43,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}
