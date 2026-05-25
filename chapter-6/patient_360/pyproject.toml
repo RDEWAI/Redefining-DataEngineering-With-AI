@@ -10,6 +10,12 @@ dependencies = [
     "pyspark[sql]>=4.0",
     "delta-spark>=4.0",
     "spark-expectations>=2.10.0",
+    # httpx is used by scripts/bootstrap_uc_tables.py to POST to the UC OSS
+    # REST API (LLD v1.18 §13 Decision 17). Falls back to stdlib
+    # urllib.request if httpx is unavailable, so the dep is technically
+    # optional -- but pinning it here gives a consistent client across
+    # all envs.
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]

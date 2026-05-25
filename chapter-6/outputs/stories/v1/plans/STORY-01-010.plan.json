@@ -1,0 +1,140 @@
+{
+  "story_id": "STORY-01-010",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/outputs/stories/v1/EPIC-01-foundation-infrastructure/STORY-01-010-se-runner-fail-closed.md",
+  "epic_id": "EPIC-01",
+  "plan_version": 2,
+  "status": "validated",
+  "generated_at": "2026-05-10T23:36:29.431910+00:00",
+  "summary": "1 task(s) across ['ingestion'] \u2014 6 AC(s).",
+  "classifier": {
+    "kind": "ingestion",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-01-010",
+    "paths": [
+      "se_runner.py",
+      "ingestion_runner.py",
+      "reconciliation.py"
+    ],
+    "by_skill": {
+      "ingestion": [
+        "se_runner.py",
+        "ingestion_runner.py",
+        "reconciliation.py"
+      ]
+    },
+    "dispatch_order": [
+      "ingestion"
+    ],
+    "unmatched": [
+      "se_runner.py",
+      "ingestion_runner.py",
+      "reconciliation.py"
+    ],
+    "fallback_kind": "ingestion"
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "update-ingestion",
+      "kind": "ingestion",
+      "mode": "update",
+      "paths": [
+        "se_runner.py",
+        "ingestion_runner.py",
+        "reconciliation.py"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "started_at": "2026-05-10T23:38:38.924240+00:00",
+      "finished_at": "2026-05-10T23:42:45.116155+00:00",
+      "artifacts": [],
+      "files_created": 4,
+      "files_updated": 1,
+      "critical_findings": [],
+      "validator": "validate-ingestion",
+      "validator_status": "passed",
+      "notes": ""
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "`se_runner.py` exists and exposes `run_dq(df, table, env, action_if_failed, dq_rules_dir)` [LLD \u00a72.3]",
+      "line": 37,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
+      }
+    },
+    {
+      "index": 2,
+      "text": "`run_dq` calls `WrappedDataFrameWriter(...).with_expectations(...)` with `se.enable.error.table=true` and `se.enable.stats.table=true` [LLD \u00a78.2, \u00a78.3]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
+      }
+    },
+    {
+      "index": 3,
+      "text": "`run_dq` maps `env=DEV\u2192dq_env=DEV`, `STAGING\u2192QA`, `PROD\u2192PROD` [LLD \u00a72.3, \u00a75.4]",
+      "line": 41,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
+      }
+    },
+    {
+      "index": 4,
+      "text": "`ingestion_runner.py` no longer contains the bootstrap WARNING log line `WARNING: se_runner not available` [LLD \u00a78.6]",
+      "line": 43,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
+      }
+    },
+    {
+      "index": 5,
+      "text": "Missing-SE import now raises immediately (fail-closed); test asserts ImportError propagates [LLD \u00a78.6, \u00a713 Decision 14]",
+      "line": 45,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
+      }
+    },
+    {
+      "index": 6,
+      "text": "`reconciliation.py` queries `bronze_se_stats` for `meta_dq_run_id == run_id` and fails-closed when count = 0 [LLD \u00a78.6.1, \u00a75.5]",
+      "line": 47,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Manual verification by user 2026-05-11"
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

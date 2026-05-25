@@ -12,21 +12,41 @@ chapter-5 cookiecutter template by the `developer-plugin` skills.
 
 ## Bootstrap
 
-One command brings up Docker, creates the Unity Catalog catalog/schemas, and
-runs the project-specific source loader:
+Canonical local bring-up is two commands (LLD v1.17 §13 Decision 17 Revised
+— keeps UC table registration separate from stack startup so contributors
+can re-run table registration after editing `contracts/*.yml` without
+bouncing the docker stack):
 
 ```bash
-make dev-up
+make dev-up && make bootstrap-uc
 ```
 
-This wraps:
+`make dev-up` wraps:
 
 1. `docker compose -f _infra/docker/docker-compose.yml up -d` (Airflow + UC OSS + Marquez + Postgres + Grafana)
 2. Wait for UC OSS REST API to return `200` on `localhost:8080/api/2.1/unity-catalog`
 3. `python scripts/uc_init.py` — creates `unity` catalog + `bronze`/`silver`/`gold` schemas
 4. `make seed-source-data` — **project-specific**; you implement this against your source system (DuckDB / Postgres / S3 / etc.). The generated `runtime-bootstrap` story (typically `STORY-01-NNN`) tells you exactly what to populate.
 
-After `make dev-up` completes, see **Verify** below.
+`make bootstrap-uc` then runs `scripts/bootstrap_uc_tables.py` — a
+one-shot Spark application that boots a SparkSession with
+`UCSingleCatalog` bound to `spark.sql.catalog.${UC_BOOTSTRAP_CATALOG_NAME}`
+(DDL-only — runtime DAG tasks remain `DeltaCatalog` per LLD §13
+Decision 12), reads every populated `contracts/*.yml` directly, and
+issues `CREATE SCHEMA IF NOT EXISTS` + `CREATE TABLE IF NOT EXISTS …
+USING DELTA LOCATION '<warehouse_root>/<env>/<layer>/<domain>/<table>/'`
+per contract. Every statement is `IF NOT EXISTS`, so re-runs are
+idempotent. No Liquibase invocation against UC — the v1.16
+Liquibase-over-UC-JDBC path was abandoned because
+`io.unitycatalog:unitycatalog-jdbc` is not published on Maven Central
+(Decision 17 v1.17, 2026-05-23). Liquibase reverts to its pre-v1.16
+Postgres-only audit-trail role.
+
+Re-run `make bootstrap-uc` any time you edit a contract — no need to bounce
+`make dev-up`. Runtime Spark writers are FORBIDDEN from calling `CREATE
+TABLE`; UC visibility is a deploy-time invariant owned by `bootstrap-uc`.
+
+After `make dev-up && make bootstrap-uc` completes, see **Verify** below.
 
 ## Run
 

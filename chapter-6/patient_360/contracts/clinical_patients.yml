@@ -1,7 +1,10 @@
 # Contract for clinical_patients (silver).
-# Schema source of truth: DMS §3.
+# Schema source of truth: DMS §3 `clinical_patients`.
+# Owner: Patient 360 Data Engineering
+# DQ rules: dq_rules/clinical_patients.yml
 table: clinical_patients
 layer: silver
+domain: clinical
 dms_section: DMS §3
 schema: silver
 
@@ -9,10 +12,45 @@ ddl_path: ddl/liquibase/changelogs/clinical_patients.xml
 dq_path: dq_rules/clinical_patients.yml
 
 owner: "Patient 360 Data Engineering"
-description: "Silver table clinical_patients; see DMS §3 for the authoritative column-level schema."
-tags: ["silver", "patient_360"]
+description: >-
+  Silver SCD Type 2 patient dimension. PHI columns (SSN/DRIVERS/PASSPORT)
+  dropped per DMS §3 / NFR-6. See DMS §6 for SCD2 hash column list.
+tags: ["silver", "scd2", "patient_360", "clinical"]
 
-# Column-level annotations are derived from DMS §3. The DDL file
-# (linked via ddl_path) is the canonical schema definition; update-scaffold
-# sync-contracts populates this section from the DMS.
-columns: []
+# Column-level annotations derived verbatim from DMS §3.
+columns:
+  - {name: patient_id,          type: VARCHAR,         nullable: false, description: "Patient UUID -- natural key"}
+  - {name: birth_date,          type: DATE,            nullable: false, description: "Date of birth -- PHI"}
+  - {name: death_date,          type: DATE,            nullable: true,  description: "Date of death; NULL for living patients"}
+  - {name: prefix,              type: VARCHAR(10),     nullable: true,  description: "Name prefix"}
+  - {name: first_name,          type: VARCHAR(100),    nullable: false, description: "First name -- PHI"}
+  - {name: middle_name,         type: VARCHAR(100),    nullable: true,  description: "Middle name -- PHI"}
+  - {name: last_name,           type: VARCHAR(100),    nullable: false, description: "Last name -- PHI"}
+  - {name: suffix,              type: VARCHAR(10),     nullable: true,  description: "Name suffix"}
+  - {name: maiden_name,         type: VARCHAR(100),    nullable: true,  description: "Maiden name -- PHI"}
+  - {name: marital_status,      type: VARCHAR(20),     nullable: true,  description: "Marital status M/S/W/D"}
+  - {name: race,                type: VARCHAR(50),     nullable: true,  description: "Race -- SCD Type 1"}
+  - {name: ethnicity,           type: VARCHAR(50),     nullable: true,  description: "Ethnicity -- SCD Type 1"}
+  - {name: gender,              type: VARCHAR(10),     nullable: true,  description: "Canonical gender (MALE/FEMALE/OTHER/UNKNOWN)"}
+  - {name: birth_place,         type: VARCHAR(200),    nullable: true,  description: "Birth place"}
+  - {name: address,             type: VARCHAR(200),    nullable: true,  description: "Street address -- PHI, SCD2 tracked"}
+  - {name: city,                type: VARCHAR(100),    nullable: true,  description: "City -- SCD2 tracked"}
+  - {name: state,               type: VARCHAR(2),      nullable: true,  description: "State abbreviation -- SCD2 tracked"}
+  - {name: county,              type: VARCHAR(100),    nullable: true,  description: "County -- SCD2 tracked"}
+  - {name: zip,                 type: VARCHAR(10),     nullable: true,  description: "ZIP code -- SCD2 tracked"}
+  - {name: lat,                 type: "DECIMAL(9,6)",  nullable: true,  description: "Latitude (cast from DOUBLE)"}
+  - {name: lon,                 type: "DECIMAL(9,6)",  nullable: true,  description: "Longitude (cast from DOUBLE)"}
+  - {name: healthcare_expenses, type: "DECIMAL(12,2)", nullable: true,  description: "Total healthcare expenses -- SCD2 tracked"}
+  - {name: healthcare_coverage, type: "DECIMAL(12,2)", nullable: true,  description: "Total healthcare coverage -- SCD2 tracked"}
+  - {name: income,              type: INTEGER,         nullable: true,  description: "Annual income -- SCD2 tracked"}
+  - {name: calculated_age,      type: INTEGER,         nullable: true,  description: "Derived age (DATEDIFF year)"}
+  - {name: patient_status,      type: VARCHAR(10),     nullable: false, description: "ALIVE / DECEASED"}
+  - {name: effective_from,      type: DATE,            nullable: false, description: "SCD2 row-version start date"}
+  - {name: effective_to,        type: DATE,            nullable: false, description: "SCD2 row-version end date (9999-12-31 = current)"}
+  - {name: is_current,          type: BOOLEAN,         nullable: false, description: "SCD2 -- TRUE for active version"}
+  - {name: _record_hash,        type: VARCHAR(64),     nullable: false, description: "SHA-256 hash of SCD2-tracked columns"}
+  - {name: _ingested_at,        type: TIMESTAMP,       nullable: false, description: "Pipeline ingestion timestamp"}
+  - {name: _source_batch_id,    type: VARCHAR,         nullable: false, description: "Pipeline run identifier"}
+
+# Foreign keys: clinical_patients is the parent dimension; no FKs out.
+foreign_keys: []

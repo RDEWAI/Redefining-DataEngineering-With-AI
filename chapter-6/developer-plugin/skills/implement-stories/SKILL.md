@@ -92,6 +92,8 @@ Map `skill_kind` to the generator by literal convention (no lookup):
 | `dag`                | `create-dag`                | `update-dag`                  | `validate-dag`        |
 | `ingestion`          | `create-ingestion`          | `update-ingestion`            | `validate-ingestion`  |
 | `pipeline`           | `create-pipeline`           | `update-pipeline`             | `validate-pipeline`   |
+| `silver`             | `create-silver`             | `update-silver`               | `validate-silver`     |
+| `gold`               | `create-gold`                | `update-gold`                 | `validate-gold`       |
 | `integration-test`   | `create-integration-test`   | `create-integration-test` (re-emit; idempotent) | `validate-stories` (story-scoped AC verifier) |
 | `deploy-validation`  | `create-deploy-validation`  | `create-deploy-validation` (re-emit; idempotent) | `validate-stories` (story-scoped AC verifier) |
 | `unknown`            | — (see Phase 2 Step 3)      | —                             | —                     |
@@ -489,6 +491,8 @@ Validator scripts (callable directly, no Skill fork required):
 |--------------|--------------------------------------------|
 | `ingestion`  | `skills/validate-ingestion/scripts/validate_ingestion.py` |
 | `dag`        | `skills/validate-dag/scripts/validate_dag.py`             |
+| `silver`     | `skills/validate-silver/scripts/validate_silver.py`       |
+| `gold`       | `skills/validate-gold/scripts/validate_gold.py`           |
 | `scaffold`   | _SKILL.md-only_ — invoke `/developer-plugin:validate-scaffold` via Skill |
 | `pipeline`   | _SKILL.md-only_ — invoke `/developer-plugin:validate-pipeline` via Skill |
 

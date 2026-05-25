@@ -1,4 +1,4 @@
-.PHONY: dev-setup test integration-test lint format clean validate dev-up dev-down uc-init uc-ui-source seed-source-data wait-for-uc spark-smoke
+.PHONY: dev-setup test integration-test lint format clean validate dev-up dev-down uc-init uc-ui-source seed-source-data wait-for-uc spark-smoke bootstrap-uc help
 
 UC_HOST ?= http://localhost:8080
 UC_UI_HOST ?= http://localhost:3000
@@ -13,22 +13,22 @@ UC_UI_REPO ?= https://github.com/unitycatalog/unitycatalog
 UC_UI_REF  ?= v0.4.0
 UC_UI_DIR  := _infra/docker/uc-source
 
-dev-setup:
+dev-setup: ## Install dependencies via uv (`uv sync --all-extras`)
 	uv sync --all-extras
 
-test:
+test: ## Run unit tests (excludes the `integration` mark)
 	uv run pytest -m "not integration" tests/ -v
 
-integration-test:
+integration-test: ## Run integration tests (requires docker stack via `make dev-up`)
 	uv run pytest -m integration tests/integration/ -v
 
-lint:
+lint: ## Run ruff linter against src/ and tests/
 	uv run ruff check src/ tests/
 
-format:
+format: ## Auto-format src/ and tests/ with ruff
 	uv run ruff format src/ tests/
 
-validate:
+validate: ## Validate contracts + DQ rules
 	@echo "Running contract + DQ rule validation..."
 	uv run pytest tests/test_contracts.py -v
 
@@ -91,3 +91,35 @@ seed-source-data: ## STUB — projects must implement against their source syste
 	@echo "  See your runtime-bootstrap story (STORY-01-NNN) for the expected" >&2
 	@echo "  source layout and row counts." >&2
 	@exit 1
+
+# ---------------------------------------------------------------------------
+# Deploy-time UC table registration -- LLD v1.18 §13 Decision 17 (Revised
+# 2026-05-23 second pivot -- pure-Python REST client)
+# ---------------------------------------------------------------------------
+# `bootstrap-uc` is kept SEPARATE from `dev-up` so contributors can re-run
+# UC table registration after editing `contracts/*.yml` without bouncing
+# the docker stack. Canonical local bring-up sequence:
+#
+#     make dev-up && make bootstrap-uc
+#
+# Both targets are idempotent. `bootstrap-uc` runs `scripts/bootstrap_uc_tables.py`
+# directly -- a pure-Python httpx client that POSTs to the UC OSS REST API
+# (`/api/2.1/unity-catalog/{schemas,tables}`) for every populated contract.
+# GET-before-POST per object. NO Spark, NO spark-submit, NO JDBC, NO
+# Liquibase invocation for UC. Runtime DAG tasks remain `DeltaCatalog`
+# per LLD §13 Decision 12. The v1.17 Spark-DDL path was abandoned because
+# `io.unitycatalog:unitycatalog-spark_2.13:0.3.0` is binary-incompat with
+# Spark 4.x (NoSuchMethodError on `LogKey.$init$`). The v1.16
+# Liquibase-over-UC-JDBC path was abandoned because
+# `io.unitycatalog:unitycatalog-jdbc` is not published on Maven Central.
+
+ENV ?= dev
+
+bootstrap-uc: ## Register every contract-declared Delta table in UC OSS via REST API (Decision 17 v1.18, idempotent)
+	uv run python scripts/bootstrap_uc_tables.py --env $(ENV) --verbose
+
+help: ## Show available Make targets
+	@awk 'BEGIN { FS = ":.*## "; printf "Available targets:\n\n" } \
+	      /^[a-zA-Z0-9_-]+:.*## / { printf "  %-22s %s\n", $$1, $$2 } \
+	      END { printf "\nDeploy-time: \`make dev-up && make bootstrap-uc\` (Decision 17).\n" }' \
+	    $(MAKEFILE_LIST)

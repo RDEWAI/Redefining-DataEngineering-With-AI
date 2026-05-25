@@ -92,6 +92,14 @@ monitoring:
   catalog_bronze_catalog_name: "unity"
   # UC schema name for Bronze Delta tables
   catalog_bronze_schema: "bronze"
+  # UC catalog name the pure-Python REST bootstrap client targets (Decision 17 v1.18). Env var: UC_BOOTSTRAP_CATALOG_NAME.
+  uc_bootstrap_catalog_name: "unity"
+  # UC OSS REST base URL the bootstrap client GETs/POSTs against (Decision 17 v1.18).
+  # DEV default is host-invocation; override to http://unity-catalog:8080 for in-container invocation.
+  # Env var: UC_BOOTSTRAP_URI.
+  uc_bootstrap_uri: "http://localhost:8080"
+  # HTTP client timeout per REST request (seconds) — Decision 17 v1.18. Env var: UC_BOOTSTRAP_TIMEOUT_SECONDS.
+  uc_bootstrap_timeout_seconds: 30
 
 scheduling:
   # Airflow schedule interval

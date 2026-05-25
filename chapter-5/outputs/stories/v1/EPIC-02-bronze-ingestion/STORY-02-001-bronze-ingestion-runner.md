@@ -50,6 +50,8 @@ Implement `src/patient_360/bronze/ingestion_runner.py` per LLD §2.3. The runner
 
 - [ ] Source reader honors LLD §5.1 source-selection rule: `source.type=csv` is the default; `source.type=duckdb` is allowed only for tables whose raw CSV is < 100 MB (organizations, providers, payers, careplans, allergies, immunizations) [LLD §5.1]
 
+- [ ] Bronze ingestion is idempotent across embedded-metastore resets: re-running the runner against an existing Delta location succeeds without manual cleanup, because `replace_where_write` writes external Delta tables via `.option("path", _external_table_path(table_fqn))` [LLD-DEVIATIONS row 6, 2026-05-20 fix]
+
 
 ## Technical Notes
 
@@ -105,6 +107,9 @@ AC7:
 AC8:
   - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "source\\.type|source_type"}
   - grep: {glob: "patient_360/airflow/configs/*.yml", pattern: "type:\\s*csv"}
+AC9:
+  - grep: {file: "patient_360/src/patient_360/utils/delta_helpers.py", pattern: "\\.option\\(\"path\""}
+  - grep: {file: "patient_360/src/patient_360/utils/delta_helpers.py", pattern: "_external_table_path"}
 ```
 
 

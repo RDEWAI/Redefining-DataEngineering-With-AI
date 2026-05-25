@@ -1,17 +1,20 @@
 """STORY-02-001 — Bronze ingestion runner unit tests.
 
-Covers the three AC categories called out in LLD §2.3 and the story
-acceptance criteria:
+Covers the acceptance criteria for the 2026-05-12 pivot LLD shape:
 
 * AC1 — argparse exposes ``--config-path`` and ``--ds`` (plus ``--env``).
-* AC2 — Schema enforcement loads a ``StructType`` from
-  ``contracts/{table}.yml`` and refuses to start on an empty contract.
+* AC2 — Column contract is derived from the source itself (DuckDB
+  ``DESCRIBE`` for DuckDB sources; CSV header for CSV sources) — no
+  ``StructType`` enforcement from ``contracts/{table}.yml``.
 * AC3 — Metadata columns ``ds`` / ``_ingested_at`` / ``_source_batch_id``
   are appended before write.
-* AC4 — :func:`compose_target_table` builds ``{catalog}.{schema}.{table}``
-  from config keys (no hardcoded ``unity.bronze`` literal).
-* AC7 — ``catalog_bronze_catalog_name`` / ``catalog_bronze_schema`` are
-  the only catalog/schema sources; missing keys raise.
+* AC4 — Bronze write uses path-based Delta under
+  ``${PATIENT360_PROJECT_ROOT}/warehouse/{env}/bronze/<table>/``;
+  ``saveAsTable`` is forbidden.
+* AC7 — SparkSession is built with DeltaCatalog (no UCSingleCatalog) and
+  the warehouse root is resolved via ``PATIENT360_PROJECT_ROOT``.
+* AC8 — Source-type ``csv`` is the default; ``duckdb`` is allowed only
+  for the LLD §5.1 allow-listed small reference tables.
 
 PySpark is required for the metadata-column assertions; if it is missing
 from the local dev env those tests are skipped rather than failing the
@@ -20,6 +23,7 @@ suite (mirrors the convention used in ``tests/silver``).
 
 from __future__ import annotations
 
+import inspect
 import textwrap
 from pathlib import Path
 
@@ -92,64 +96,48 @@ class TestArgparse:
 
 
 # ---------------------------------------------------------------------------
-# AC2 — schema enforcement from contracts/{table}.yml
+# AC2 — source-derived column contract (no StructType enforcement)
 # ---------------------------------------------------------------------------
-class TestContractSchema:
-    def test_build_struct_type_from_contract(self) -> None:
-        from pyspark.sql import types as T
+class TestSourceDerivedContract:
+    def test_csv_header_columns_reads_header_row(self, tmp_path: Path) -> None:
+        csv_path = tmp_path / "patients.csv"
+        csv_path.write_text("id,birthdate,ssn_hash\np1,1990-01-01,abc\n")
+        cols = runner.csv_header_columns(path=csv_path)
+        assert cols == ["id", "birthdate", "ssn_hash"]
 
-        struct = runner.build_struct_type_from_contract(
-            {
-                "table": "synthea_patients",
-                "columns": [
-                    {"name": "id", "type": "string", "nullable": False},
-                    {"name": "birthdate", "type": "date", "nullable": True},
-                    {"name": "ssn_hash", "type": "string"},
-                ],
-            }
+    def test_csv_header_columns_empty_file_raises(self, tmp_path: Path) -> None:
+        csv_path = tmp_path / "empty.csv"
+        csv_path.write_text("")
+        with pytest.raises(ValueError, match="empty"):
+            runner.csv_header_columns(path=csv_path)
+
+    def test_csv_header_columns_strips_whitespace(self, tmp_path: Path) -> None:
+        csv_path = tmp_path / "x.csv"
+        csv_path.write_text(" id , birthdate \np1,1990-01-01\n")
+        assert runner.csv_header_columns(path=csv_path) == ["id", "birthdate"]
+
+    def test_describe_duckdb_columns_requires_query_or_table(self) -> None:
+        # Validation precedes the duckdb import in the runner, so this
+        # exercises pure-Python control flow.
+        with pytest.raises(ValueError, match="query.*table"):
+            runner.describe_duckdb_columns(database=":memory:")
+
+    def test_no_struct_type_enforcement_helpers(self) -> None:
+        # LLD §2.3 (2026-05-12 pivot) — Bronze is a permissive landing zone.
+        # The legacy `build_struct_type_from_contract` / `load_contract_schema`
+        # helpers MUST be removed so a regression to StructType enforcement
+        # is loud at import time.
+        assert not hasattr(runner, "build_struct_type_from_contract")
+        assert not hasattr(runner, "load_contract_schema")
+
+    def test_runner_source_has_no_structtype_reference(self) -> None:
+        # Belt-and-suspenders: the runner module source must not mention
+        # StructType (the forbidden_grep AC2 invariant).
+        src = inspect.getsource(runner)
+        assert "StructType" not in src, (
+            "ingestion_runner.py must not reference StructType "
+            "(LLD §2.3, 2026-05-12 pivot)"
         )
-        assert isinstance(struct, T.StructType)
-        names = [f.name for f in struct.fields]
-        assert names == ["id", "birthdate", "ssn_hash"]
-        # nullable defaults to True when omitted
-        assert struct["ssn_hash"].nullable is True
-        assert struct["id"].nullable is False
-        assert isinstance(struct["birthdate"].dataType, T.DateType)
-
-    def test_empty_columns_raises(self) -> None:
-        with pytest.raises(ValueError, match="schema enforcement is required"):
-            runner.build_struct_type_from_contract(
-                {"table": "synthea_patients", "columns": []}
-            )
-
-    def test_unknown_type_raises(self) -> None:
-        with pytest.raises(ValueError, match="Unsupported type"):
-            runner.build_struct_type_from_contract(
-                {
-                    "table": "x",
-                    "columns": [{"name": "c1", "type": "uuid"}],
-                }
-            )
-
-    def test_load_contract_schema_from_file(self, tmp_path: Path) -> None:
-        from pyspark.sql import types as T
-
-        contracts_dir = tmp_path / "contracts"
-        contracts_dir.mkdir()
-        (contracts_dir / "synthea_patients.yml").write_text(
-            textwrap.dedent(
-                """
-                table: synthea_patients
-                layer: bronze
-                columns:
-                  - {name: id, type: string, nullable: false}
-                  - {name: birthdate, type: date}
-                """
-            ).strip()
-        )
-        struct = runner.load_contract_schema(contracts_dir, "synthea_patients")
-        assert isinstance(struct, T.StructType)
-        assert struct["id"].nullable is False
 
 
 # ---------------------------------------------------------------------------
@@ -203,74 +191,124 @@ class TestMetadataColumns:
 
 
 # ---------------------------------------------------------------------------
-# AC4 / AC7 — fully-qualified target composed from config keys
+# AC4 — path-based Delta output composition (no saveAsTable, no FQN)
 # ---------------------------------------------------------------------------
-class TestComposeTargetTable:
-    def test_composes_from_config_keys(self) -> None:
-        cfg = {
-            "table": "synthea_patients",
-            "catalog_bronze_catalog_name": "unity",
-            "catalog_bronze_schema": "bronze",
-        }
-        assert runner.compose_target_table(cfg) == "unity.bronze.synthea_patients"
+class TestBronzeOutputPath:
+    def test_output_path_uses_project_root_and_env(
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("PATIENT360_PROJECT_ROOT", str(tmp_path))
+        out = runner.bronze_output_path(env="DEV", table="synthea_patients")
+        assert out == str(tmp_path / "warehouse" / "dev" / "bronze" / "synthea_patients")
 
-    def test_alt_catalog_schema_supported(self) -> None:
-        # Confirms catalog/schema are NOT hardcoded — a different catalog
-        # works without code changes (LLD §7.1).
-        cfg = {
-            "table": "synthea_patients",
-            "catalog_bronze_catalog_name": "p360_dev",
-            "catalog_bronze_schema": "bronze_raw",
-        }
-        assert (
-            runner.compose_target_table(cfg)
-            == "p360_dev.bronze_raw.synthea_patients"
+    def test_output_path_lowercases_env(self, monkeypatch, tmp_path: Path) -> None:
+        monkeypatch.setenv("PATIENT360_PROJECT_ROOT", str(tmp_path))
+        out = runner.bronze_output_path(env="PROD", table="synthea_encounters")
+        assert "/warehouse/prod/bronze/synthea_encounters" in out
+
+    def test_output_path_falls_back_to_cwd(self, monkeypatch) -> None:
+        monkeypatch.delenv("PATIENT360_PROJECT_ROOT", raising=False)
+        out = runner.bronze_output_path(env="DEV", table="synthea_payers")
+        assert out.endswith("/warehouse/dev/bronze/synthea_payers")
+
+    def test_compose_target_table_helper_removed(self) -> None:
+        # AC4 forbidden_grep — the legacy 3-part FQN composer must be gone.
+        assert not hasattr(runner, "compose_target_table")
+
+    def test_runner_source_forbids_save_as_table(self) -> None:
+        src = inspect.getsource(runner)
+        assert "saveAsTable" not in src, (
+            "ingestion_runner.py must not use saveAsTable "
+            "(LLD §13 Decision 15, 2026-05-12)"
+        )
+        assert "unity.bronze" not in src, (
+            "ingestion_runner.py must not reference unity.bronze.* "
+            "(LLD §13 Decision 12, 2026-05-12)"
         )
 
-    def test_missing_catalog_key_raises(self) -> None:
-        with pytest.raises(KeyError, match="catalog_bronze_catalog_name"):
-            runner.compose_target_table(
-                {"table": "x", "catalog_bronze_schema": "bronze"}
-            )
-
-    def test_missing_schema_key_raises(self) -> None:
-        with pytest.raises(KeyError, match="catalog_bronze_catalog_name"):
-            runner.compose_target_table(
-                {"table": "x", "catalog_bronze_catalog_name": "unity"}
-            )
+    def test_runner_source_uses_replace_where_save(self) -> None:
+        src = inspect.getsource(runner)
+        assert ".save(" in src
+        assert "replaceWhere" in src
+        assert "warehouse" in src
 
 
 # ---------------------------------------------------------------------------
-# AC7 — UC_URI env var resolution (no hardcoded literal at call site)
+# AC7 — SparkSession wiring is DeltaCatalog + Derby (no UCSingleCatalog)
 # ---------------------------------------------------------------------------
-class TestUcUriResolution:
-    def test_uc_uri_env_var_consumed(self, monkeypatch) -> None:
+class TestSparkSessionWiring:
+    def test_build_spark_delegates_to_helper(self, monkeypatch) -> None:
         captured: dict[str, object] = {}
 
-        def fake_build(*, app_name: str, uc_uri: str):
+        def fake_build(*, app_name: str, env: str):
             captured["app_name"] = app_name
-            captured["uc_uri"] = uc_uri
+            captured["env"] = env
             return object()
 
         monkeypatch.setattr(
             "patient_360.utils.delta_helpers.build_spark_session",
             fake_build,
         )
-        monkeypatch.setenv("UC_URI", "http://uc.test:8080")
-        runner.build_spark(app_name="bronze_ingest_x")
-        assert captured["uc_uri"] == "http://uc.test:8080"
+        runner.build_spark(app_name="bronze_ingest_x", env="STAGING")
+        assert captured["app_name"] == "bronze_ingest_x"
+        assert captured["env"] == "STAGING"
 
-    def test_uc_uri_falls_back_to_default(self, monkeypatch) -> None:
+    def test_build_spark_defaults_to_dev(self, monkeypatch) -> None:
         captured: dict[str, object] = {}
 
-        def fake_build(*, app_name: str, uc_uri: str):
-            captured["uc_uri"] = uc_uri
+        def fake_build(*, app_name: str, env: str):
+            captured["env"] = env
             return object()
 
         monkeypatch.setattr(
             "patient_360.utils.delta_helpers.build_spark_session",
             fake_build,
         )
-        monkeypatch.delenv("UC_URI", raising=False)
         runner.build_spark(app_name="bronze_ingest_x")
-        assert captured["uc_uri"] == runner.DEFAULT_UC_URI
+        assert captured["env"] == "DEV"
+
+    def test_runner_source_forbids_ucsinglecatalog(self) -> None:
+        src = inspect.getsource(runner)
+        assert "UCSingleCatalog" not in src, (
+            "ingestion_runner.py must not reference UCSingleCatalog "
+            "(LLD §13 Decision 12, 2026-05-12)"
+        )
+
+    def test_runner_source_uses_project_root_env(self) -> None:
+        src = inspect.getsource(runner)
+        assert "PATIENT360_PROJECT_ROOT" in src
+
+
+# ---------------------------------------------------------------------------
+# AC8 — source-selection rule (CSV default; DuckDB allow-list only)
+# ---------------------------------------------------------------------------
+class TestSourceSelection:
+    def test_duckdb_allow_list_matches_lld(self) -> None:
+        # LLD §5.1 — DuckDB is only allowed for the six small reference
+        # tables whose raw CSV is < 100 MB.
+        assert runner.DUCKDB_ALLOWED_TABLES == frozenset(
+            {
+                "synthea_organizations",
+                "synthea_providers",
+                "synthea_payers",
+                "synthea_careplans",
+                "synthea_allergies",
+                "synthea_immunizations",
+            }
+        )
+
+    def test_read_source_rejects_duckdb_for_large_table(self) -> None:
+        with pytest.raises(ValueError, match="not in the LLD §5.1 allow-list"):
+            runner.read_source(
+                spark=object(),  # unreachable — error fires before spark use
+                source_cfg={"type": "duckdb", "database": ":memory:", "table": "x"},
+                table="synthea_observations",
+            )
+
+    def test_read_source_rejects_unsupported_type(self) -> None:
+        with pytest.raises(ValueError, match="Unsupported source type"):
+            runner.read_source(
+                spark=object(),
+                source_cfg={"type": "json", "path": "/tmp/x.json"},
+                table="synthea_patients",
+            )

@@ -65,6 +65,27 @@ STORY_SLUG_RULES: list[tuple[str, re.Pattern[str]]] = [
         ),
     ),
     (
+        "silver",
+        re.compile(
+            r"\b(?:silver[-_](?:transform|dimension|fact|scd2|merge)|"
+            r"transform[-_](?:patients|encounters|conditions|medications|"
+            r"observations|allergies|immunizations|procedures|careplans|"
+            r"claims|organizations|providers|payers)|"
+            r"scd2[-_]apply|scd2[-_]helper|silver[-_]dq|reconciliation[-_]silver)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "gold",
+        re.compile(
+            r"\b(?:gold[-_](?:build|builder|summary|history)|"
+            r"build[-_](?:patient[-_]summary|patient[-_]clinical[-_]history|"
+            r"patient[-_]billing[-_]summary)|"
+            r"patient[-_]360[-_]gold|reconciliation[-_]gold)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
         "ingestion",
         re.compile(
             r"\b(?:ingestion[-_]runner|ingestion[-_]factory|sparksubmit|"
@@ -102,7 +123,15 @@ EPIC_SLUG_RULES: list[tuple[str, re.Pattern[str]]] = [
     ),
     (
         "ingestion",
-        re.compile(r"\b(?:bronze|ingestion|silver|gold|consumer)\b", re.IGNORECASE),
+        re.compile(r"\b(?:bronze|ingestion)\b", re.IGNORECASE),
+    ),
+    (
+        "silver",
+        re.compile(r"\bsilver\b", re.IGNORECASE),
+    ),
+    (
+        "gold",
+        re.compile(r"\b(?:gold|consumer)\b", re.IGNORECASE),
     ),
     (
         "pipeline",
@@ -128,6 +157,36 @@ CLASSIFIER_RULES: list[tuple[str, re.Pattern[str]]] = [
             # under airflow/dags/. A bare mention of `dag_id` (e.g. in a log
             # schema) is intentionally excluded — it appears in non-DAG stories.
             r"airflow/dags/[^/\s`]+\.py|_dag\.py\b|" r"TaskGroup|@dag\b|default_args\s*=",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "silver",
+        re.compile(
+            # Silver layer: transform_<table>.py modules, silver/ contracts,
+            # silver/<domain>/ output paths, the apply_scd2 helper.
+            r"/silver/[^/\s`]+\.py|src/patient_360/silver/|"
+            r"warehouse/[^/\s`]+/silver/|"
+            r"transform_(?:patients|encounters|conditions|medications|"
+            r"observations|allergies|immunizations|procedures|careplans|"
+            r"claims|organizations|providers|payers)|"
+            r"clinical_(?:patients|encounters|conditions|medications|"
+            r"observations|allergies|immunizations|procedures|careplans)|"
+            r"reference_(?:organizations|providers|payers)|billing_claims|"
+            r"apply_scd2|scd2\.py",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "gold",
+        re.compile(
+            # Gold layer: build_<table>.py modules, gold/ contracts,
+            # the three Phase 1 Gold tables.
+            r"/gold/[^/\s`]+\.py|src/patient_360/gold/|"
+            r"warehouse/[^/\s`]+/gold/|"
+            r"build_(?:patient_summary|patient_clinical_history|"
+            r"patient_billing_summary)|"
+            r"patient_summary|patient_clinical_history|patient_billing_summary",
             re.IGNORECASE,
         ),
     ),

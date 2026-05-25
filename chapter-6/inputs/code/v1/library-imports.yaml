@@ -1,0 +1,69 @@
+# Curated overlay consumed by /developer-plugin:refresh-libraries when
+# rewriting LIBRARIES.md. The keys here are matched against `Library`
+# rows in LIBRARIES.md (case-insensitive substring match — same logic
+# refresh_libraries.py uses for PyPI/GitHub resolution).
+#
+# Why this file exists: PyPI metadata gives us versions but not canonical
+# import paths. When SE renamed `WrappedDataFrameWriter`'s home or removed
+# `spark_expectations.rules`, generators that hardcoded the imports drifted
+# silently. This overlay is the single human-curated source of truth for
+# "the imports our code generators emit".
+#
+# Schema per library:
+#   min_version       — string. If the resolved version is below this,
+#                       refresh-libraries flags a CRITICAL drift.
+#   canonical_imports — list[str]. Verbatim Python import lines.
+#   spark_jars_packages — list[str]. Optional; for libs with a JAR coordinate.
+#   notes             — string. Free-form context (changelog pointer, etc.).
+
+spark-expectations:
+  min_version: "2.10.0"
+  canonical_imports:
+    - "from spark_expectations.core.expectations import SparkExpectations, WrappedDataFrameWriter"
+    - "from spark_expectations.config.user_config import Constants as user_config"
+    - "from spark_expectations.rules import load_rules_from_yaml"
+  notes: >-
+    The `spark_expectations.rules` package and `WrappedDataFrameWriter`
+    were added in v2.10.0
+    (https://github.com/Nike-Inc/spark-expectations/releases/tag/v2.10.0).
+    Earlier 2.x releases (e.g. 2.6.0) raise `ModuleNotFoundError` on these
+    imports and silently bypass DQ via `BRONZE_SKIP_SE=1` — explicitly
+    forbidden in chapter-5.
+
+pyspark:
+  min_version: "4.0.0"
+  canonical_imports:
+    - "from pyspark.sql import SparkSession, DataFrame"
+    - "from pyspark.sql import functions as F"
+    - "from pyspark.sql.functions import col, lit, current_timestamp"
+  notes: "PyPI publishes 4.x wheels for Python 3.10–3.13."
+
+delta-spark:
+  min_version: "4.0.0"
+  canonical_imports:
+    - "from delta.tables import DeltaTable"
+  spark_jars_packages:
+    - "io.delta:delta-spark_2.13:4.0.0"
+  notes: "Pin matches PySpark 4.0.0 ABI (Scala 2.13)."
+
+apache-airflow-providers-apache-spark:
+  min_version: "6.0.1"
+  canonical_imports:
+    - "from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator"
+  notes: "Targets Airflow 3.x; pairs with the in-airflow PySpark 4.0.0 install."
+
+apache-airflow:
+  min_version: "3.2.1"
+  canonical_imports:
+    - "from airflow.decorators import dag, task, task_group"
+    - "from airflow.models import Variable"
+  notes: "Airflow 3.x is current stable; 2.x is maintenance-only."
+
+unitycatalog:
+  min_version: "0.4.0"
+  spark_jars_packages:
+    - "io.unitycatalog:unitycatalog-spark_2.13:0.4.0"
+  notes: >-
+    Server image tag: unitycatalog/unitycatalog:v0.4.0. UI image:
+    unitycatalog/unitycatalog-ui:v0.4.0 (proxy expects UC server on
+    network alias `server`).

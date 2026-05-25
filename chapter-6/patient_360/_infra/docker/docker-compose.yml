@@ -126,6 +126,9 @@ services:
       # Anchors relative `contracts_dir` / `dq_rules_dir` values in the
       # per-table YAML so spark-submit's CWD does not affect resolution.
       PATIENT360_PROJECT_ROOT: /opt/patient_360
+      # Path-based Delta warehouse root (LLD §9.1, Decision 15 reverted
+      # 2026-05-12). Every layer writes to ${PATIENT360_WAREHOUSE_ROOT}/{env}/{layer}/<table>/.
+      PATIENT360_WAREHOUSE_ROOT: /opt/patient_360/warehouse
       UC_URI: http://unity-catalog:8080
     volumes:
       - ../../airflow/dags:/opt/airflow/dags
@@ -136,6 +139,9 @@ services:
       - ../../dq_rules:/opt/patient_360/dq_rules
       # Dev utilities (bsql launcher, uc_init, sync_bronze_contracts, etc.)
       - ../../scripts:/opt/patient_360/scripts
+      # Pipeline env configs (DEV/STAGING/PROD.yaml + template.yaml) consumed
+      # by patient_360.utils.pipeline_config.load_config().
+      - ../../_infra/cd/config:/opt/patient_360/_infra/cd/config:ro
       # Repo-root data/ (loaded by chapter-2's `make load-raw-data`) — holds
       # `duckdb/raw.db` with the `synthea.*` source tables the per-table
       # YAML configs read from.

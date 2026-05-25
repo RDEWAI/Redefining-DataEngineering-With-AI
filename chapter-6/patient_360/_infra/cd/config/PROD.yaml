@@ -92,6 +92,19 @@ monitoring:
   catalog_bronze_catalog_name: "unity"
   # UC schema name for Bronze Delta tables
   catalog_bronze_schema: "bronze"
+  # [LLD §7.1, Decision 17 v1.18] UC catalog name `scripts/bootstrap_uc_tables.py`
+  # registers every contract-declared schema/table under
+  # (env var: UC_BOOTSTRAP_CATALOG_NAME). Consumed exclusively by the
+  # bootstrap script's REST client -- runtime DAG tasks remain
+  # `DeltaCatalog` per LLD §13 Decision 12.
+  catalog_uc_bootstrap_catalog_name: "unity"
+  # [LLD §7.1, Decision 17 v1.18] UC REST endpoint the bootstrap script
+  # POSTs to (env var: UC_BOOTSTRAP_URI). PROD runs the bootstrap from
+  # inside the compose network, so the in-container hostname resolves.
+  catalog_uc_bootstrap_uri: "http://unity-catalog:8080"
+  # [LLD §7.1, Decision 17 v1.18] Per-request HTTP timeout for the REST
+  # client (env var: UC_BOOTSTRAP_TIMEOUT_SECONDS).
+  catalog_uc_bootstrap_timeout_seconds: 30
 
 scheduling:
   # Airflow schedule interval

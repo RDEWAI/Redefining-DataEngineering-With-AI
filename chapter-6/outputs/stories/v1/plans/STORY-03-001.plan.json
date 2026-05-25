@@ -1,0 +1,139 @@
+{
+  "story_id": "STORY-03-001",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-6/outputs/stories/v1/EPIC-03-silver-dimensions/STORY-03-001-silver-dim-patients.md",
+  "epic_id": "EPIC-03",
+  "plan_version": 6,
+  "status": "validated",
+  "generated_at": "2026-05-20T20:13:28.264413+00:00",
+  "summary": "1 task(s) across ['silver'] \u2014 5 AC(s).",
+  "classifier": {
+    "kind": "ingestion",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-03-001",
+    "paths": [
+      "src/patient_360/silver/transform_patients.py",
+      "dq_rules/clinical_patients.yml"
+    ],
+    "by_skill": {
+      "silver": [
+        "src/patient_360/silver/transform_patients.py",
+        "dq_rules/clinical_patients.yml"
+      ]
+    },
+    "dispatch_order": [
+      "silver"
+    ],
+    "unmatched": [],
+    "fallback_kind": null
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "create-silver",
+      "kind": "silver",
+      "mode": "create",
+      "paths": [
+        "src/patient_360/silver/transform_patients.py",
+        "dq_rules/clinical_patients.yml"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "started_at": "2026-05-20T15:41:09.681641+00:00",
+      "finished_at": "2026-05-20T15:52:19.187140+00:00",
+      "artifacts": [],
+      "files_created": [
+        "patient_360/src/patient_360/silver/transform_patients.py",
+        "patient_360/src/patient_360/utils/scd2.py",
+        "patient_360/dq_rules/clinical_patients.yml",
+        "patient_360/contracts/clinical_patients.yml",
+        "patient_360/tests/silver/test_transform_patients_unit.py",
+        "patient_360/airflow/jobs/run_silver_transform.py"
+      ],
+      "files_updated": [
+        "patient_360/airflow/dags/patient360_hourly_v1.py"
+      ],
+      "critical_findings": [],
+      "validator": "validate-silver",
+      "validator_status": "pass",
+      "notes": "",
+      "handbook_validator": "pass",
+      "handbook_out_of_scope_findings": 39,
+      "ac_results": {
+        "AC1": "PASS",
+        "AC2": "PASS",
+        "AC3": "PASS",
+        "AC4": "PASS",
+        "AC5": "PASS"
+      }
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "`src/patient_360/silver/transform_patients.py` reads `unity.bronze.synthea_patients` (UC-managed; LLD \u00a713 Decision 15) [LLD \u00a75.2, \u00a713]",
+      "line": 37,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "PASS",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "PHI columns dropped at Silver boundary per DMS \u00a73 / NFR-6 [DMS \u00a73, LLD \u00a75.2]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "PASS",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "`apply_scd2(...)` invoked with natural keys + hash columns from DMS \u00a76 [DMS \u00a76, LLD \u00a75.2]",
+      "line": 41,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "PASS",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 4,
+      "text": "Inline SE called with rules from `dq_rules/clinical_patients.yml`; `action_if_failed: fail` per LLD \u00a75.4 [LLD \u00a75.2, \u00a75.4; DQS \u00a72]",
+      "line": 43,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "PASS",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 5,
+      "text": "Unit tests cover hash-changed / hash-same / new-record / PHI-dropped scenarios [LLD \u00a72.4]",
+      "line": 45,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "PASS",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

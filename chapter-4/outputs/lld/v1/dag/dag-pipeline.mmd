@@ -1,4 +1,6 @@
 graph TD
+    BS[bootstrap_se]
+
     subgraph BronzeTG["bronze_ingestion TaskGroup -- Factory-Generated (13 parallel, inline SE)"]
         B01[ingest_patients]
         B02[ingest_encounters]
@@ -48,6 +50,7 @@ graph TD
     LIN[emit_lineage]
     MET[emit_metrics]
 
+    BS --> B01 & B02 & B03 & B04 & B05 & B06 & B07 & B08 & B09 & B10 & B11 & B12 & B13
     B01 & B02 & B03 & B04 & B05 & B06 & B07 & B08 & B09 & B10 & B11 & B12 & B13 --> RC1
     RC1 --> SD1 & SD2 & SD3 & SD4
     SD1 & SD2 & SD3 --> SF1

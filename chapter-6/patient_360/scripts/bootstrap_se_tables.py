@@ -1,10 +1,10 @@
-"""Pre-create the Spark-Expectations stats / errors tables in UC.
+"""Pre-create the Spark-Expectations stats / errors Delta tables.
 
 Why: SE writes per-run stats to a shared Delta table via
-``saveAsTable("unity.bronze.bronze_se_stats")`` with ``mode("append")``.
-On a cold UC + warehouse the first task ends up in CREATE territory.
-Any partial state (e.g. a transient OOM, a UC restart, a network
-hiccup) leaves orphan Delta files at the table path without a UC
+``saveAsTable("bronze.bronze_se_stats")`` with ``mode("append")``.
+On a cold metastore the first task ends up in CREATE territory.
+Any partial state (e.g. a transient OOM, a metastore restart, a Spark
+crash) leaves orphan Delta files at the table path without a metastore
 registration. The next task then fails with
 ``DELTA_CREATE_TABLE_WITH_NON_EMPTY_LOCATION`` and the failure
 cascades to every retry.
@@ -14,8 +14,14 @@ the exact schema SE expects (mirrored from
 ``spark_expectations/sinks/utils/writer.py``). After running it, every
 SE invocation falls into the pure append path — no CREATE race.
 
-Idempotent: ``CREATE TABLE IF NOT EXISTS`` is a no-op when the
-tables already exist.
+Idempotent: ``CREATE SCHEMA IF NOT EXISTS`` + ``CREATE TABLE IF NOT
+EXISTS`` are no-ops when the schema/tables already exist.
+
+Per LLD v1.14 §13 Decision 12 (revised 2026-05-12), the runtime stack
+is DeltaCatalog + embedded Derby Hive metastore — UC OSS is a UI demo
+only. The table location is computed from ``spark.sql.warehouse.dir``
+which `build_spark_session` anchors at
+``${PATIENT360_PROJECT_ROOT}/warehouse/{env}/``.
 """
 
 from __future__ import annotations
@@ -33,10 +39,7 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
-from patient_360.utils.delta_helpers import (
-    _external_table_path,
-    build_spark_session,
-)
+from patient_360.utils.delta_helpers import build_spark_session
 from patient_360.utils.se_runner import SE_ERROR_TABLE, SE_STATS_TABLE
 
 
@@ -111,8 +114,12 @@ _SE_ERRORS_SCHEMA = StructType(
 
 
 def _ensure_table(spark, fqn: str, schema: StructType) -> None:
-    """Create an empty Delta table at the UC external path using the
-    MVP path+DDL pattern (saveAsTable doesn't work with UCSingleCatalog).
+    """Create an empty external Delta table at the warehouse path.
+
+    Uses the path+DDL pattern: write an empty Delta dataset to the
+    location, then ``CREATE TABLE IF NOT EXISTS … USING DELTA
+    LOCATION`` to register it in the Derby Hive metastore. Both steps
+    are idempotent.
     """
     warehouse = spark.conf.get("spark.sql.warehouse.dir")
     parts = fqn.split(".")
@@ -131,6 +138,12 @@ def main() -> int:
     spark = build_spark_session(app_name="bootstrap_se_tables")
     spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
     try:
+        # CREATE SCHEMA IF NOT EXISTS is idempotent. The ingestion runner
+        # does the same on every invocation; mirror it here so the
+        # bootstrap can run against a cold metastore.
+        for fqn in (SE_STATS_TABLE, SE_ERROR_TABLE):
+            schema_name = fqn.split(".")[-2]
+            spark.sql(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
         _ensure_table(spark, SE_STATS_TABLE, _SE_STATS_SCHEMA)
         _ensure_table(spark, SE_ERROR_TABLE, _SE_ERRORS_SCHEMA)
     finally:

@@ -33,6 +33,16 @@ factory so 20 tables don't mean 20 copy-paste DAG files.
   (`{{ ds }}`) expands at execute time and flows into `run_local.py`.
 - **No business logic in DAG files** — DAG is pure orchestration; all
   transforms live in `src/{project}/`.
+- **Shared-state bootstrap is its own task** — any pipeline whose tasks
+  write to a SHARED downstream Delta table (e.g. Spark-Expectations
+  `bronze_se_stats` / `bronze_se_errors`) MUST start with a one-shot
+  `bootstrap_*` `SparkSubmitOperator` that idempotently pre-creates that
+  table (`CREATE SCHEMA IF NOT EXISTS` + `CREATE TABLE IF NOT EXISTS …
+  USING DELTA LOCATION`). Wire it as the root of the DAG, upstream of
+  every TaskGroup that appends to the shared table. Without this, the
+  first task races the CREATE on a cold metastore, and worse, after a
+  container/metastore restart with on-disk Delta data still present,
+  every task fails with `DELTA_CREATE_TABLE_WITH_NON_EMPTY_LOCATION`.
 
 ## Key APIs
 
@@ -53,6 +63,7 @@ from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOpe
 # NEVER hardcode `airflow/configs` (relative) or `airflow/jobs` (relative).
 CONFIGS_DIR = os.environ.get("AIRFLOW_CONFIGS_DIR", "/opt/airflow/configs")
 BRONZE_RUNNER = os.environ.get("BRONZE_RUNNER_APP", "/opt/airflow/jobs/run_bronze_ingestion.py")
+SE_BOOTSTRAP = os.environ.get("SE_BOOTSTRAP_APP", "/opt/patient_360/scripts/bootstrap_se_tables.py")
 
 DEFAULT_ARGS = {
     "owner": "{project}",
@@ -70,6 +81,18 @@ DEFAULT_ARGS = {
     tags=["{project}", "bronze-silver-gold"],
 )
 def {project}_pipeline():
+    # Root task — pre-creates shared SE Delta tables so the bronze
+    # TaskGroup can run at full concurrency without racing the CREATE.
+    bootstrap_se = SparkSubmitOperator(
+        task_id="bootstrap_se",
+        application=SE_BOOTSTRAP,
+        conn_id="spark_default",
+        driver_memory="1g", executor_memory="1g",
+        executor_cores=1, num_executors=1,
+        retries=1, retry_delay=timedelta(seconds=60),
+        execution_timeout=timedelta(minutes=5),
+    )
+
     @task_group(group_id="bronze")
     def bronze_group():
         for table in BRONZE_TABLES:
@@ -90,7 +113,7 @@ def {project}_pipeline():
     @task_group(group_id="gold")
     def gold_group(): ...
 
-    bronze_group() >> silver_group() >> gold_group()
+    bootstrap_se >> bronze_group() >> silver_group() >> gold_group()
 
 dag = {project}_pipeline()
 ```
@@ -134,6 +157,10 @@ full pattern.
 
 ## Common pitfalls
 
+- Omitting the `bootstrap_se` root task — first bronze task races the
+  CREATE of the shared SE stats Delta table; after a metastore restart
+  every task fails with `DELTA_CREATE_TABLE_WITH_NON_EMPTY_LOCATION`.
+  Workarounds like `max_active_tasks=1` are tech debt, not a fix.
 - Hard-coding `ds` (`ds="2026-04-24"`) in the DAG — kills Airflow's
   scheduling model; always template.
 - One DAG per table — turns the UI into thousands of DAGs and makes

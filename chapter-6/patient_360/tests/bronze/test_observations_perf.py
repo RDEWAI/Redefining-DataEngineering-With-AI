@@ -89,8 +89,15 @@ def test_runner_applies_target_partitions(monkeypatch: pytest.MonkeyPatch) -> No
     }
 
     monkeypatch.setattr(runner, "load_yaml", lambda _p: cfg)
-    monkeypatch.setattr(runner, "load_contract_schema", lambda *_a, **_kw: object())
+    # Source-derived contract helpers are introspection-only post 2026-05-12
+    # pivot; stub them so the runner skips the DuckDB DESCRIBE round-trip.
+    monkeypatch.setattr(
+        runner, "describe_duckdb_columns", lambda **_kw: ["c1", "c2"]
+    )
+    monkeypatch.setattr(runner, "csv_header_columns", lambda **_kw: ["c1", "c2"])
     monkeypatch.setattr(runner, "build_spark", lambda **_kw: _StubSpark())
+    # The runner pre-creates the bronze schema before reading; stub it out.
+    _StubSpark.sql = lambda self, _q: None  # type: ignore[assignment]
     monkeypatch.setattr(runner, "read_source", lambda *a, **kw: stub_df)
     monkeypatch.setattr(runner, "add_metadata_columns", lambda df, **_kw: df)
     monkeypatch.setattr(runner.se_runner, "run_dq", lambda df, **_kw: df)

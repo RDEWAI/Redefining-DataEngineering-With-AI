@@ -38,8 +38,15 @@ registry; no new module.
 ## Key APIs
 
 - PySpark 4.1.1 — `spark.read.format("csv").schema(schema).load(path)`
-- Delta 4.2.0 — `df.write.format("delta").mode("overwrite")
+- Delta 4.2.0 — `df.write.format("delta").mode("append")
+  .partitionBy("ds").option("path", external_path)
   .option("replaceWhere", "ds = '2026-04-24'").saveAsTable(table)`
+  — `.option("path", ...)` is **mandatory**: it makes the table external,
+  so re-runs after an embedded-metastore reset re-register from the
+  existing `_delta_log` instead of failing with
+  `DELTA_CREATE_TABLE_WITH_NON_EMPTY_LOCATION`. Compute `external_path`
+  via a shared helper (e.g. `_external_table_path(fqn)`) so the path
+  layout is consistent across Bronze / Silver / Gold.
 - Spark Expectations 2.10.0 — wrapped in runner (see
   `spark-expectations-pattern.md`); invoked after the write, not before,
   so bronze always captures raw data first.
@@ -78,10 +85,13 @@ def ingest(spark, config: dict, ds: str) -> DataFrame:
           .withColumn("ingested_at", F.current_timestamp()))
 
     replace_where = config["write"]["replace_where_template"].format(ds=ds)
+    table_fqn = f'{config["write"]["database"]}.{config["table"]}'
+    external_path = _external_table_path(table_fqn)  # see utils/delta_helpers
     (df.write.format("delta").mode(config["write"]["mode"])
        .partitionBy(*config["write"]["partition_by"])
+       .option("path", external_path)        # MUST — external Delta; survives metastore reset
        .option("replaceWhere", replace_where)
-       .saveAsTable(f'{config["write"]["database"]}.{config["table"]}'))
+       .saveAsTable(table_fqn))
 
     logger.info("Bronze %s: wrote %d rows (ds=%s)",
                 config["table"], df.count(), ds)
@@ -101,6 +111,13 @@ def ingest(spark, config: dict, ds: str) -> DataFrame:
   generic runner.
 - Running SE rules before the write — bronze should always capture raw
   truth; SE runs after and either quarantines or flags, never blocks.
+- Omitting `.option("path", external_path)` on `saveAsTable` — creates a
+  *managed* Delta table under Spark's default warehouse dir. After a
+  container/metastore restart, Derby forgets the table while the on-disk
+  Delta data remains, and the next run fails with
+  `DELTA_CREATE_TABLE_WITH_NON_EMPTY_LOCATION`. Always pass `.option(
+  "path", ...)` so the table is external and the location is the source
+  of truth.
 
 ## References
 

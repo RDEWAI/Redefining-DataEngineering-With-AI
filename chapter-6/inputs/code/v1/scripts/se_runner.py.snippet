@@ -1,0 +1,48 @@
+# Illustrative Spark Expectations runner wrapper — see spark-expectations-pattern.md.
+# Generic placeholders: {project}, {table}.
+
+import logging
+from pathlib import Path
+
+from pyspark.sql import DataFrame, SparkSession
+from spark_expectations.core.expectations import SparkExpectations
+from spark_expectations.config.user_config import Constants as user_config
+
+logger = logging.getLogger(__name__)
+
+
+def run_with_se(spark: SparkSession,
+                df: DataFrame,
+                table: str,
+                rules_yaml: Path,
+                target_table: str,
+                ds: str,
+                product_id: str = "{project}") -> DataFrame:
+    if not rules_yaml.exists():
+        raise FileNotFoundError(f"SE rules file not found: {rules_yaml}")
+
+    stats_table = f"spark_catalog.bronze._se_stats"
+
+    se = SparkExpectations(
+        product_id=product_id,
+        rules_df=spark.read.format("yaml").load(str(rules_yaml)),
+        stats_table=stats_table,
+        debugger=False,
+    )
+
+    target_writer_config = {
+        "mode": "overwrite",
+        "format": "delta",
+        "partitionBy": ["ds"],
+        "options": {"replaceWhere": f"ds = '{ds}'"},
+    }
+
+    validated = se.with_expectations(
+        target_and_error_table_writer=target_writer_config,
+        target_table=target_table,
+        user_conf={user_config.se_notifications_enable_email: False},
+    )(df)
+
+    logger.info("SE %s: validated & wrote to %s (ds=%s)",
+                table, target_table, ds)
+    return validated

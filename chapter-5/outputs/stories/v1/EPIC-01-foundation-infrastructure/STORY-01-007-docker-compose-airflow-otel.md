@@ -48,6 +48,8 @@ Author the `airflow` and `otel-collector` service entries in `_infra/docker/dock
 
 - [ ] The `airflow` service block exports `PATIENT360_PROJECT_ROOT` (and the derived `AIRFLOW_CONFIGS_DIR`, `DQ_RULES_DIR`, `PATIENT360_WAREHOUSE_ROOT`) so every Airflow task resolves paths against the project root rather than CWD (LLD §9.1 — 2026-05-12 pivot) [LLD §9.1]
 
+- [ ] `Dockerfile.airflow` contains a `USER root` block AFTER the JDK install but BEFORE the `USER airflow` pip install that runs `RUN mkdir -p /opt/patient_360/warehouse && chown -R airflow:root /opt/patient_360 && chmod 775 /opt/patient_360`. Without this, the airflow user cannot create `${PATIENT360_PROJECT_ROOT}/warehouse/{env}/` at runtime — Docker auto-creates bind-mount-point parents as root, so the project-root dir is unwritable by uid 50000. Reproduced 2026-05-22: Derby fails with `Failed to create database '/opt/patient_360/warehouse/dev/metastore_db'`. See LLD-DEVIATIONS row 7. [LLD §9.1]
+
 
 ## Technical Notes
 
@@ -100,6 +102,10 @@ AC6:
 AC7:
   - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "PATIENT360_PROJECT_ROOT"}
   - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "AIRFLOW_CONFIGS_DIR|DQ_RULES_DIR|PATIENT360_WAREHOUSE_ROOT"}
+AC8:
+  - grep: {file: "patient_360/_infra/docker/Dockerfile.airflow", pattern: "chown -R airflow:root /opt/patient_360"}
+  - grep: {file: "patient_360/_infra/docker/Dockerfile.airflow", pattern: "mkdir -p /opt/patient_360/warehouse"}
+  - grep: {file: "patient_360/_infra/docker/Dockerfile.airflow", pattern: "chmod 775 /opt/patient_360"}
 ```
 
 

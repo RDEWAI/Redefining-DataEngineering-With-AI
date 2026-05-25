@@ -1,0 +1,120 @@
+{
+  "story_id": "STORY-02-006",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/outputs/stories/v1/EPIC-02-bronze-ingestion/STORY-02-006-bronze-dag-and-reconciliation.md",
+  "epic_id": "EPIC-02",
+  "plan_version": 1,
+  "status": "implemented",
+  "generated_at": "2026-05-11T22:53:55.966482+00:00",
+  "summary": "1 task(s) across ['scaffold'] \u2014 5 AC(s).",
+  "classifier": {
+    "kind": "scaffold",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-02-006",
+    "paths": [
+      "patient360_hourly_v1.py"
+    ],
+    "by_skill": {
+      "scaffold": [
+        "patient360_hourly_v1.py"
+      ]
+    },
+    "dispatch_order": [
+      "scaffold"
+    ],
+    "unmatched": [
+      "patient360_hourly_v1.py"
+    ],
+    "fallback_kind": "scaffold"
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "create-dag",
+      "kind": "scaffold",
+      "mode": "create",
+      "paths": [
+        "patient360_hourly_v1.py"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "started_at": "2026-05-11T23:13:40.695594+00:00",
+      "finished_at": "2026-05-11T23:20:57.784495+00:00",
+      "artifacts": [],
+      "files_created": 5,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-scaffold",
+      "validator_status": "pass",
+      "notes": ""
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "DAG file `patient360_hourly_v1.py` exists with `dag_id='patient360_hourly_v1'`, schedule `0 * * * *` [LLD \u00a74.1]",
+      "line": 37,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "DAG calls `build_bronze_taskgroup(dag, 'airflow/configs')` to render the 13-task Bronze TaskGroup [LLD \u00a74.2]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "`reconciliation_bronze` task runs after Bronze TaskGroup and queries `bronze_se_stats` per LLD \u00a78.6.1 [LLD \u00a75.5, \u00a78.6.1]",
+      "line": 41,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 4,
+      "text": "`max_active_runs=1`, `concurrency=16`, `catchup=True`, `default_timeout=60` per LLD \u00a74.1 [LLD \u00a74.1]",
+      "line": 43,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 5,
+      "text": "`developer-plugin:validate-dag` passes against the rendered DAG [LLD \u00a72.4]",
+      "line": 45,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

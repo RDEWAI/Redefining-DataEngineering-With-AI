@@ -1,9 +1,15 @@
 """STORY-02-005 -- Bronze per-table SE rule YAML contract tests.
 
-Pure YAML / filesystem checks against ``patient_360/dq_rules/*.yml``. No
-Spark required. Mirrors :mod:`test_configs_contract` but enforces the
+Pure YAML / filesystem checks against ``patient_360/dq_rules/synthea_*.yml``.
+No Spark required. Mirrors :mod:`test_configs_contract` but enforces the
 Spark Expectations schema synced from
 ``chapter-4/outputs/dqs/v2/se-rules/se-rules-synthea-<table>.yaml``.
+
+Scope: these tests cover the **Bronze** layer rule files only
+(`synthea_*.yml`). Silver/Gold layer rule files (`clinical_*.yml`,
+`billing_*.yml`, `reference_*.yml`, `patient_*.yml`) live in the same
+directory but are validated by their own layer-scoped contract tests --
+LLD §5.2/§5.3.
 
 Acceptance criteria covered:
 
@@ -64,7 +70,10 @@ REQUIRED_RULE_KEYS: tuple[str, ...] = (
 
 
 def _rule_files() -> list[Path]:
-    return sorted(DQ_RULES_DIR.glob("*.yml"))
+    # Bronze-scoped: only the LLD §5.1 `synthea_<table>.yml` files.
+    # Silver/Gold rule files share this directory but are validated by
+    # their own layer-scoped contract tests (LLD §5.2/§5.3).
+    return sorted(DQ_RULES_DIR.glob("synthea_*.yml"))
 
 
 def _load(path: Path) -> dict:

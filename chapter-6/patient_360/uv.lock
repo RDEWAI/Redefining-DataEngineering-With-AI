@@ -1605,6 +1605,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "delta-spark" },
+    { name = "httpx" },
     { name = "jinja2" },
     { name = "pyspark", extra = ["sql"] },
     { name = "pyyaml" },
@@ -1626,6 +1627,7 @@ requires-dist = [
     { name = "apache-airflow", marker = "extra == 'dev'", specifier = ">=2.9.0" },
     { name = "apache-airflow-providers-apache-spark", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "delta-spark", specifier = ">=4.0" },
+    { name = "httpx", specifier = ">=0.27" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "pyspark", extras = ["sql"], specifier = ">=4.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },

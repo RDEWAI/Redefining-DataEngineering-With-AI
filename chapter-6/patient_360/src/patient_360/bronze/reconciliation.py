@@ -120,7 +120,6 @@ def run_reconciliation_bronze(
     *,
     ds: str,
     ts_nodash: str,
-    uc_uri: str | None = None,
     **_: Any,
 ) -> int:
     """PythonOperator callable for the ``reconciliation_bronze`` task.
@@ -134,23 +133,25 @@ def run_reconciliation_bronze(
         Airflow run identifier (``{{ ts_nodash }}``); used to derive
         ``meta_dq_run_id`` per Decision 16. SE tags each run with
         this id; reconciliation looks it up.
-    uc_uri
-        Optional Unity Catalog OSS URI override. Defaults to the
-        ``UC_URI`` env var or LLD §7 default.
 
     Returns
     -------
     int
         Number of stats rows seen (always >=1 — zero raises).
     """
+    # Direct-edited 2026-05-22 — pending retrofit through STORY-02-006 AC.
+    # LLD v1.15 §13 Decision 12 (revised 2026-05-12) removed UC from the
+    # runtime path; build_spark no longer accepts uc_uri. Reconciliation
+    # tracked under direct-edit debt list — add an AC to STORY-02-006
+    # naming src/patient_360/bronze/reconciliation.py as a deliverable
+    # and re-derive.
+    #
     # Local import keeps this module importable in DAG-parse contexts
     # where pyspark is not on the path (Airflow's DAG parser).
     from patient_360.bronze.ingestion_runner import build_spark
 
     meta_dq_run_id = ts_nodash
-    spark = build_spark(
-        app_name="reconciliation_bronze", uc_uri=uc_uri
-    )
+    spark = build_spark(app_name="reconciliation_bronze")
     try:
         return assert_se_evidence(
             spark, meta_dq_run_id=meta_dq_run_id, ds=ds
