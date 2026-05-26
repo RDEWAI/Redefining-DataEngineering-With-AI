@@ -179,12 +179,12 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - run: uv sync --all-groups
       - name: Bring up local sandbox
-        run: docker compose -f patient_360/_infra/docker/docker-compose.yml up -d --wait
+        run: docker compose -f {project_name}/_infra/docker/docker-compose.yml up -d --wait
       - name: Integration smoke
-        run: uv run pytest patient_360/tests/integration -m "not e2e" --tb=short
+        run: uv run pytest {project_name}/tests/integration -m "not e2e" --tb=short
       - name: Tear down (always — never leak volumes on the runner)
         if: always()
-        run: docker compose -f patient_360/_infra/docker/docker-compose.yml down -v --remove-orphans
+        run: docker compose -f {project_name}/_infra/docker/docker-compose.yml down -v --remove-orphans
 ```
 
 **`_infra/ci/.github/workflows/sandbox-cleanup.yml`**
@@ -201,11 +201,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Invoke shared teardown driver
+        # The driver is bundled INTO the user project at scaffold time
+        # under `_infra/cd/teardown_drivers/` (mirror of the canonical
+        # copy that lives in `developer-plugin/skills/pr-process/scripts/teardown_drivers/`).
+        # CI checks out the user repo — there is no `developer-plugin/`
+        # directory here, so the workflow must reference the project-
+        # local copy, not the plugin path.
         env:
-          PATIENT360_PROJECT_ROOT: ${{ github.workspace }}/patient_360
+          PATIENT360_PROJECT_ROOT: ${{ github.workspace }}/{project_name}
         run: |
-          chmod +x developer-plugin/skills/pr-process/scripts/teardown_drivers/local_docker.sh
-          developer-plugin/skills/pr-process/scripts/teardown_drivers/local_docker.sh --destroy \
+          chmod +x {project_name}/_infra/cd/teardown_drivers/local_docker.sh
+          {project_name}/_infra/cd/teardown_drivers/local_docker.sh --destroy \
             | tee teardown-summary.json
       - uses: actions/upload-artifact@v5
         with:
@@ -255,7 +261,10 @@ jobs:
 
   promote-prod:
     needs: promote-staging
-    if: inputs.target_env == 'PROD'
+    # Tag pushes (refs/tags/v*) must reach prod after staging, AND a manual
+    # workflow_dispatch with target_env=PROD must work. Without the tag
+    # clause `git push --tags` silently lands on STAGING only.
+    if: inputs.target_env == 'PROD' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     environment: production  # GitHub environment with required reviewers
     steps:

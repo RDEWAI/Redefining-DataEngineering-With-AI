@@ -188,10 +188,14 @@ recovered — the rest of the check is identical.
   `<include file="changelogs/..." .../>` entry (i.e. is not the empty
   template skeleton).
 - `ddl/liquibase/changelogs/` contains exactly N `*.xml` files where N
-  is the number of Bronze tables declared in DMS §2–§4 (read at runtime).
+  is the number of **Bronze** tables declared in **DMS §2** (read at
+  runtime). Liquibase ships Bronze DDL only — Silver/Gold tables are
+  Spark-managed Delta tables and don't carry XML changelogs. (Area 5c
+  validates the full Bronze + Silver + Gold contract coverage via
+  StructType YAMLs.)
 - Each changelog's filename, after stripping the LLD's Bronze layer
   prefix (per Area 4's reconciliation rule), matches a Bronze table name
-  from DMS §2–§4. If the LLD declares no prefix for Bronze, treat the
+  from DMS §2. If the LLD declares no prefix for Bronze, treat the
   filenames as flat.
 
 ### Area 5c — Contract graph test (`tests/test_contracts.py`)
@@ -202,7 +206,7 @@ recovered — the rest of the check is identical.
 
 ### Area 5d — Makefile target enumeration
 
-`{project_root}/Makefile` MUST declare these four target stems (matching
+`{project_root}/Makefile` MUST declare these target stems (matching
 the inherited chapter-5/6 Makefile convention; see
 `$PATTERNS_DIR/makefile-conventions.md` for full conventions):
 
@@ -211,16 +215,21 @@ the inherited chapter-5/6 Makefile convention; see
 | `dev-setup` | `uv sync` + first-run prep | **FAIL** |
 | `test` | run `tests/` (unit; e2e gated separately) | **FAIL** |
 | `lint` | ruff (and any other lint tooling) | **FAIL** |
-| `validate-*` | at least one `validate-<artifact>` target (e.g. `validate-silver`, `validate-gold`, `validate-bronze`) | **FAIL** |
+| `validate-*` OR umbrella `validate:` | at least one of: a hyphenated `validate-<artifact>` target (e.g. `validate-silver`, `validate-gold`, `validate-bronze`) OR a single umbrella `validate:` target that fans out to artifact-specific validators in its recipe | **FAIL** |
 
 Check via:
 
 ```bash
-grep -E "^(dev-setup|test|lint|validate-[a-z-]+):" {project_root}/Makefile
+grep -E "^(dev-setup|test|lint|validate(-[a-z-]+)?):" {project_root}/Makefile
 ```
 
-Report each missing target by name. Extra targets are fine and reported
-as INFO only. This check is in-skill rather than fully delegated to the
+A bare `validate:` target counts because many projects roll up the
+per-artifact validators behind a single rollup. The Phase-1 readiness
+gate (`make lint` / `make test`) only depends on the lint/test targets
+being present; `validate-*` enumeration is informational for tooling
+that wants to know which artifacts are validated standalone. Report
+each missing target by name. Extra targets are fine and reported as
+INFO only. This check is in-skill rather than fully delegated to the
 pattern doc so that scaffold-validation works even when the libraries
 cache is missing.
 

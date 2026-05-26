@@ -37,7 +37,10 @@ jobs:
 
   promote-prod:
     needs: promote-staging
-    if: inputs.target_env == 'PROD'
+    # Fires on tag push (the same trigger that fans out staging) OR on an
+    # explicit workflow_dispatch with target_env=PROD. Missing the tag
+    # clause silently skips prod on `git push --tags`.
+    if: inputs.target_env == 'PROD' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     environment: production
     steps:

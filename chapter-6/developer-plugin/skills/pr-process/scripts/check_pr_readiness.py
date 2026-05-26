@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """PR readiness aggregator for the pr-process skill.
 
-Runs seven gates in order and emits a single JSON report. The skill's
-Phase 1 reads the report; the PR body template reads the same report to
-populate the validator-summary table and the teardown-plan block.
+Runs six deterministic script-level gates in order and emits a single
+JSON report. The skill's Phase 1 reads the report; the PR body template
+reads the same report to populate the validator-summary table and the
+teardown-plan block. A seventh "gate" — `/developer-plugin:validate-stories`
+— runs at Skill level after this script (it dispatches to downstream
+validators based on AC kind, which is LLM-driven).
 
 Gates (matches SKILL.md Phase 1):
   1. git tree clean (no uncommitted changes)
@@ -12,7 +15,6 @@ Gates (matches SKILL.md Phase 1):
   4. make lint exits 0
   5. make test exits 0
   6. verify_acs.py reports no FAIL ACs
-  7. /developer-plugin:validate-stories reports PASS
 
 Exit codes:
   0 — PASS (all gates green; ok to open PR)
@@ -33,6 +35,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -125,13 +128,19 @@ def _locate_story(workspace_root: str, story_id: str) -> tuple[GateResult, Path 
             Path(workspace_root).parent / "chapter-5" / "outputs" / "stories",
         ]
         stories_dir = next((c for c in candidates if c.exists()), candidates[0])
-    matches = list(stories_dir.rglob(f"{story_id}-*.md"))
+    # Filter to regular files — rglob can return matching directories
+    # (e.g. a `STORY-NN-NNN-x.md/` dir left over from a rename) which
+    # would crash read_text with IsADirectoryError.
+    matches = [p for p in stories_dir.rglob(f"{story_id}-*.md") if p.is_file()]
     if not matches:
-        matches = list(stories_dir.rglob(f"{story_id}.md"))
+        matches = [p for p in stories_dir.rglob(f"{story_id}.md") if p.is_file()]
     if not matches:
+        # Gate name is `story_approved` on both branches (story_exists is
+        # an internal failure mode of the same gate slot #3) — downstream
+        # consumers and the schema test both key on `story_approved`.
         return (
             GateResult(
-                "story_exists",
+                "story_approved",
                 "FAIL",
                 f"no {story_id}*.md under {stories_dir}",
             ),
@@ -178,51 +187,73 @@ def _run_verify_acs(workspace_root: str, story_id: str) -> tuple[GateResult, lis
     if rc not in (0, 1, 2):
         return GateResult("verify_acs", "WARN", err.strip() or "non-standard exit"), []
     try:
-        payload = json.loads(out or "{}")
+        payload = json.loads(out or "[]")
     except json.JSONDecodeError:
         return GateResult("verify_acs", "WARN", "verify_acs emitted non-JSON"), []
-    ac_list = []
-    for ac in payload.get("acs", []) or []:
+
+    # verify_acs.py emits a TOP-LEVEL LIST of per-story dicts:
+    # [{"story": "STORY-NN-NNN", "overall": "PASS|FAIL|...",
+    #   "has_verification": bool,
+    #   "acs": [{"ac": "AC1", "status": "PASS|FAIL|INDETERMINATE",
+    #            "checks": [{"spec": "...", "status": "...", "detail": "..."}]}]}]
+    # See verify_acs.py:407-430. Find the entry matching our story_id;
+    # if multiple match (shouldn't but tolerate), use the first.
+    stories = payload if isinstance(payload, list) else [payload]
+    entry = next(
+        (s for s in stories if isinstance(s, dict) and s.get("story") == story_id),
+        stories[0] if stories and isinstance(stories[0], dict) else {},
+    )
+    raw_acs = entry.get("acs", []) if isinstance(entry, dict) else []
+
+    ac_list: list[ACResult] = []
+    for ac in raw_acs:
+        if not isinstance(ac, dict):
+            continue
+        checks = ac.get("checks", []) or []
+        # ACResult.spec shows the joined check specs — verify_acs has no
+        # per-AC `spec` field (only per-check). Join with `; ` and cap.
+        joined_spec = "; ".join(c.get("spec", "") for c in checks if isinstance(c, dict))[:200]
+        detail = "; ".join(
+            c.get("detail", "") for c in checks if isinstance(c, dict) and c.get("status") == "FAIL"
+        )[:300]
         ac_list.append(
             ACResult(
-                id=str(ac.get("id", "?")),
-                spec=ac.get("spec", "")[:200],
+                id=str(ac.get("ac", "?")),  # verify_acs uses key `ac`, not `id`
+                spec=joined_spec,
                 status=ac.get("status", "INDETERMINATE"),
-                detail="; ".join(
-                    c.get("detail", "") for c in ac.get("checks", []) if c.get("status") == "FAIL"
-                )[:300],
+                detail=detail,
             )
         )
+
+    # An AC is a hard FAIL only if at least one of its checks failed AND
+    # that check isn't a manual:-prefixed spec (manual checks can't fail
+    # mechanically — treat them as INFO). Iterate the AC's own checks,
+    # not the cross-product of every AC's checks (the previous version's
+    # bug).
+    def _is_hard_fail(ac: dict) -> bool:
+        checks = ac.get("checks", []) or []
+        failing = [c for c in checks if isinstance(c, dict) and c.get("status") == "FAIL"]
+        if not failing:
+            return False
+        return not all(str(c.get("spec", "")).startswith("manual:") for c in failing)
+
     has_fail = any(
-        a.status == "FAIL"
-        and not all(
-            c.get("kind", "").startswith("manual")
-            for c in (ac.get("checks", []) for ac in payload.get("acs", []))
-        )
-        for a in ac_list
+        a.status == "FAIL" and _is_hard_fail(raw)
+        for a, raw in zip(ac_list, raw_acs)
+        if isinstance(raw, dict)
     )
     status = "FAIL" if has_fail else ("WARN" if not ac_list else "PASS")
     detail = f"{sum(1 for a in ac_list if a.status == 'PASS')}/{len(ac_list)} ACs PASS"
     return GateResult("verify_acs", status, detail), ac_list
 
 
-def _validate_stories(workspace_root: str, story_id: str) -> GateResult:
-    plugin_root = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", ""))
-    if not plugin_root.exists():
-        plugin_root = Path(workspace_root) / "developer-plugin"
-    script = plugin_root / "skills" / "validate-stories" / "scripts" / "validate_stories.py"
-    if not script.exists():
-        return GateResult(
-            "validate_stories",
-            "WARN",
-            f"validate_stories.py not found at {script}",
-        )
-    rc, out, err = _run([sys.executable, str(script), "--story", story_id, "--json"])
-    if rc == 0:
-        return GateResult("validate_stories", "PASS")
-    if rc == 2:
-        return GateResult("validate_stories", "WARN", (err or out).strip()[:200])
-    return GateResult("validate_stories", "FAIL", (err or out).strip()[:300])
+# NOTE: the previous validate_stories gate is removed. It tried to invoke
+# `validate_stories.py` inside the validate-stories skill, but that file
+# never existed (the skill ships `status_rollup.py` and depends on the
+# orchestrating Claude to run AC checks via the Skill, not a script).
+# The AC verification it was supposed to perform is fully covered by the
+# `verify_acs` gate (gate 6) which runs the canonical AC verifier from
+# the plugin root. Phase 1 of the pr-process SKILL.md now lists 6 gates.
 
 
 def _files_by_layer(project_root: str, branch: str) -> dict[str, list[str]]:
@@ -262,10 +293,14 @@ def _files_by_layer(project_root: str, branch: str) -> dict[str, list[str]]:
 
 
 def _resolve_epic(story_path: Path) -> tuple[str, str]:
-    # Walk up looking for an EPIC-NN-* directory
+    # Walk up looking for an EPIC-NN-<slug> directory. Return the FULL
+    # directory name (e.g. "EPIC-01-foundation") so labels preserve the
+    # slug — _labels then strips the leading "epic-" to form
+    # `epic-01-foundation`. The previous version split on "-" and kept
+    # only the first 2 segments, dropping the slug entirely.
     for parent in story_path.parents:
         if re.match(r"^EPIC-\d+-", parent.name):
-            return parent.name.split("-")[0] + "-" + parent.name.split("-")[1], str(parent)
+            return parent.name, str(parent)
     return "", ""
 
 
@@ -326,9 +361,8 @@ def aggregate(args) -> ReadinessReport:
     g4 = _make_target(args.project_root, "lint")
     g5 = _make_target(args.project_root, "test")
     g6, acs = _run_verify_acs(args.workspace_root, args.story)
-    g7 = _validate_stories(args.workspace_root, args.story)
 
-    report.gates = [g1, g2, g3, g4, g5, g6, g7]
+    report.gates = [g1, g2, g3, g4, g5, g6]
     report.acs = acs
 
     if story_path is not None:
@@ -381,7 +415,10 @@ def main() -> int:
     report = aggregate(args)
 
     # Persist for the SKILL to read in Phase 2 templating
-    cache = Path("/tmp") / f"pr-readiness-{args.story}.json"
+    # Use the platform tempdir (gettempdir handles Windows + macOS + Linux)
+    # so the aggregator works portably and doesn't clash with other users
+    # on shared CI runners (the story+pid pair makes the path unique).
+    cache = Path(tempfile.gettempdir()) / f"pr-readiness-{args.story}-{os.getpid()}.json"
     cache.write_text(json.dumps(asdict(report), indent=2), encoding="utf-8")
 
     if args.emit == "labels":

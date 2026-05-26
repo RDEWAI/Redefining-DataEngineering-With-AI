@@ -79,7 +79,6 @@ class TestReadinessAggregator:
             "make_lint",
             "make_test",
             "verify_acs",
-            "validate_stories",
         ]
 
     def test_unapproved_story_fails(

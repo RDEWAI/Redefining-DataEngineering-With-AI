@@ -176,7 +176,8 @@ report with an aggregate `result` of `PASS | WARN | FAIL`:
 | 4 | `make lint` exits 0 (ruff clean) | FAIL on non-zero |
 | 5 | `make test` exits 0 (pytest green) | FAIL on non-zero |
 | 6 | `verify_acs.py $STORY_ID --json` reports no FAIL ACs | FAIL on any AC failure |
-| 7 | `/developer-plugin:validate-stories $STORY_ID` reports PASS | FAIL on its CRITICAL |
+
+After the script gates run, the orchestrating Claude session also invokes `/developer-plugin:validate-stories $STORY_ID` as a Skill-level check (it dispatches to downstream validators based on AC kind). That's outside `check_pr_readiness.py` because the Skill is LLM-driven; the script gates 1–6 are the deterministic floor.
 
 If `result == FAIL`: print every failing gate as one CRITICAL line and
 **stop**. Do not open a PR. Append a learnings entry only if the failure
@@ -418,7 +419,7 @@ PASS  story Approved
 PASS  make lint
 PASS  make test (N tests, 0 failures)
 PASS  verify_acs.py — all ACs green
-PASS  validate-stories — clean
+PASS  validate-stories — clean (Skill, runs after script gates)
 
 === Phase 2: Opened PR ===
 PR:    https://github.com/<owner>/<repo>/pull/<N>

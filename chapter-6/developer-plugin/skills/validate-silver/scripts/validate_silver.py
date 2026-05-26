@@ -90,7 +90,11 @@ def check_presence(project_root: Path, tasks: list[dict], findings: Findings) ->
         }
         for rule, path in files.items():
             if not path.is_file():
-                findings.add("CRITICAL", rule, f"{path.relative_to(project_root)} missing for table '{table}'")
+                findings.add(
+                    "CRITICAL",
+                    rule,
+                    f"{path.relative_to(project_root)} missing for table '{table}'",
+                )
 
     # Orphan modules: present in src/ but not in LLD §5.2
     expected = {t["module_table"] for t in tasks if t["module_table"]}
@@ -119,10 +123,16 @@ def check_schema_alignment(
         contract = load_yaml(contract_path)
         if not isinstance(contract, dict):
             continue  # already flagged by R2
-        contract_cols = {col["name"] for col in (contract.get("schema") or []) if isinstance(col, dict) and "name" in col}
+        contract_cols = {
+            col["name"]
+            for col in (contract.get("schema") or [])
+            if isinstance(col, dict) and "name" in col
+        }
         dms_cols = set(extract_dms_columns(dms_path, silver_table))
         if not dms_cols:
-            findings.add("INFO", "R6", f"DMS §3 column list not found for '{silver_table}'; skipping")
+            findings.add(
+                "INFO", "R6", f"DMS §3 column list not found for '{silver_table}'; skipping"
+            )
             continue
         missing = dms_cols - contract_cols
         extra = contract_cols - dms_cols
@@ -200,7 +210,8 @@ def check_scd2_wiring(
                     findings.add(
                         "CRITICAL",
                         "R11",
-                        f"{table}: apply_scd2 hash_columns {sorted(lit)} != DMS §6 {sorted(dms_hash)}",
+                        f"{table}: apply_scd2 hash_columns {sorted(lit)} "
+                        f"!= DMS §6 {sorted(dms_hash)}",
                     )
 
         # R12: SCD2 module must NOT call write_silver_delta
@@ -223,12 +234,15 @@ def check_scd2_wiring(
                     f"{table}: apply_scd2 invoked before run_dq (DQ must precede write)",
                 )
 
-        # R14: never call monotonically_increasing_id
+        # R14: never call monotonically_increasing_id. Upgraded to CRITICAL
+        # to match the SKILL.md — IL-006 is an idempotency-breaking violation,
+        # not stylistic noise. Non-deterministic across executors and re-runs.
         if uses_name(tree, "monotonically_increasing_id"):
             findings.add(
-                "WARNING",
+                "CRITICAL",
                 "R14",
-                f"{table}: uses monotonically_increasing_id (non-deterministic; see IL-006)",
+                f"{table}: uses monotonically_increasing_id (non-deterministic; see IL-006). "
+                "Use xxhash64(natural_key, effective_date) or max(surrogate_key)+row_number().",
             )
 
 
@@ -302,7 +316,11 @@ def _check_se_lambda_wrap(table: str, tree: ast.AST, findings: Findings) -> None
             continue
         fn = node.func
         # Looking for `se.with_expectations(...)(...)` shape — outer call of an inner call
-        if isinstance(fn, ast.Call) and isinstance(fn.func, ast.Attribute) and fn.func.attr == "with_expectations":
+        if (
+            isinstance(fn, ast.Call)
+            and isinstance(fn.func, ast.Attribute)
+            and fn.func.attr == "with_expectations"
+        ):
             if not node.args:
                 continue
             arg = node.args[0]
@@ -310,7 +328,8 @@ def _check_se_lambda_wrap(table: str, tree: ast.AST, findings: Findings) -> None
                 findings.add(
                     "CRITICAL",
                     "R19",
-                    f"{table}: se.with_expectations(...)(...) inner arg must be a no-arg lambda (IL-007)",
+                    f"{table}: se.with_expectations(...)(...) inner arg "
+                    "must be a no-arg lambda (IL-007)",
                 )
 
 
@@ -328,7 +347,11 @@ def check_dag_wiring(project_root: Path, tasks: list[dict], findings: Findings) 
     # Collect TaskGroup constructions by group_id
     group_tasks: dict[str, set[str]] = {}
     for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "TaskGroup":
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "TaskGroup"
+        ):
             kw = call_kwargs(node)
             gid = kw.get("group_id")
             if isinstance(gid, ast.Constant) and isinstance(gid.value, str):
@@ -346,8 +369,16 @@ def check_dag_wiring(project_root: Path, tasks: list[dict], findings: Findings) 
 
     # Quick coverage check: expected task IDs vs actual task_id literals anywhere in file
     src = dag_path.read_text(encoding="utf-8")
-    expected_silver_dim_tasks = {f"transform_{t['module_table']}_silver" for t in tasks if _silver_table_name(t) in SCD2_TABLES}
-    expected_silver_fact_tasks = {f"transform_{t['module_table']}_silver" for t in tasks if _silver_table_name(t) not in SCD2_TABLES}
+    expected_silver_dim_tasks = {
+        f"transform_{t['module_table']}_silver"
+        for t in tasks
+        if _silver_table_name(t) in SCD2_TABLES
+    }
+    expected_silver_fact_tasks = {
+        f"transform_{t['module_table']}_silver"
+        for t in tasks
+        if _silver_table_name(t) not in SCD2_TABLES
+    }
 
     missing_dim = {tid for tid in expected_silver_dim_tasks if tid not in src}
     missing_fact = {tid for tid in expected_silver_fact_tasks if tid not in src}
@@ -357,19 +388,30 @@ def check_dag_wiring(project_root: Path, tasks: list[dict], findings: Findings) 
         findings.add("CRITICAL", "R21", f"DAG missing Silver fact tasks: {sorted(missing_fact)}")
 
     # R22: dependency edge keywords present in source
-    if not all(s in src for s in ["reconciliation_bronze", "silver_dimensions", "silver_facts", "reconciliation_silver"]):
+    if not all(
+        s in src
+        for s in [
+            "reconciliation_bronze",
+            "silver_dimensions",
+            "silver_facts",
+            "reconciliation_silver",
+        ]
+    ):
         findings.add(
             "CRITICAL",
             "R22",
-            "DAG missing one of: reconciliation_bronze, silver_dimensions, silver_facts, reconciliation_silver",
+            "DAG missing one of: reconciliation_bronze, silver_dimensions, "
+            "silver_facts, reconciliation_silver",
         )
 
-    # R23: no PythonOperator allowed for Spark-touching tasks (best-effort: any PythonOperator triggers)
+    # R23: no PythonOperator allowed for Spark-touching tasks
+    # (best-effort: any PythonOperator triggers)
     if python_op_count > 0:
         findings.add(
             "CRITICAL",
             "R23",
-            f"DAG declares {python_op_count} PythonOperator(s); Spark tasks must use SparkSubmitOperator (IL-011)",
+            f"DAG declares {python_op_count} PythonOperator(s); "
+            "Spark tasks must use SparkSubmitOperator (IL-011)",
         )
 
     if operator_count == 0:
@@ -389,7 +431,12 @@ def check_traceability(project_root: Path, tasks: list[dict], findings: Findings
         tree = parse_python(mod_path)
         if tree is not None:
             doc = module_docstring(tree) or ""
-            for needle, rule_id in (("LLD: §5.2", "R25"), ("STM:", "R25"), ("DMS:", "R25"), ("DQS:", "R25")):
+            for needle, rule_id in (
+                ("LLD: §5.2", "R25"),
+                ("STM:", "R25"),
+                ("DMS:", "R25"),
+                ("DQS:", "R25"),
+            ):
                 if needle not in doc:
                     findings.add("WARNING", rule_id, f"{table}: docstring missing '{needle}'")
                     break
@@ -401,7 +448,9 @@ def check_traceability(project_root: Path, tasks: list[dict], findings: Findings
             ddl_path = contract.get("ddl_path")
             dq_path = contract.get("dq_path")
             if isinstance(ddl_path, str) and not (project_root / ddl_path).is_file():
-                findings.add("INFO", "R26", f"{silver_table}: ddl_path -> {ddl_path} does not exist")
+                findings.add(
+                    "INFO", "R26", f"{silver_table}: ddl_path -> {ddl_path} does not exist"
+                )
             if isinstance(dq_path, str) and not (project_root / dq_path).is_file():
                 findings.add("INFO", "R27", f"{silver_table}: dq_path -> {dq_path} does not exist")
 
@@ -411,7 +460,7 @@ def _silver_table_name(task: dict) -> str:
     # contracts/<silver_table>.yml — strip leading "contracts/" and ".yml"
     contract = task.get("contract_path", "").replace("`", "").strip()
     if contract.startswith("contracts/"):
-        contract = contract[len("contracts/"):]
+        contract = contract[len("contracts/") :]
     if contract.endswith(".yml"):
         contract = contract[: -len(".yml")]
     return contract
@@ -437,13 +486,17 @@ def validate_project(project_root: Path) -> Findings:
             dms_path = latest_artifact_file(dms_ver, "DMS")
 
     if lld_path is None:
-        findings.add("CRITICAL", "PRE", "Could not locate latest LLD under chapter-4/outputs/lld/v*/")
+        findings.add(
+            "CRITICAL", "PRE", "Could not locate latest LLD under chapter-4/outputs/lld/v*/"
+        )
         return findings
 
     # Phase 0: approval gate is INFO-only here
     status = extract_metadata_status(lld_path)
     if status and status.lower() != "approved":
-        findings.add("INFO", "PRE", f"LLD status is '{status}' (not Approved) — findings advisory only")
+        findings.add(
+            "INFO", "PRE", f"LLD status is '{status}' (not Approved) — findings advisory only"
+        )
 
     tasks = extract_lld_silver_tasks(lld_path)
     if not tasks:

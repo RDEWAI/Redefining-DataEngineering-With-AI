@@ -125,3 +125,74 @@ def compare(
         missing_goldens=missing,
         extra_artifacts=extras,
     )
+
+
+# ---------------------------------------------------------------------------
+# CLI — invoked by `make eval-update-goldens SKILL=<skill>`.
+#
+# The Makefile target documents this as the canonical re-baseline workflow:
+#   1. Re-run the skill against the fixture to capture fresh artifacts.
+#   2. Copy them over the committed goldens at `evals/goldens/<skill>/`.
+#
+# This module ships step 2 (the file copy) — step 1 is the user's
+# responsibility because every skill's invocation context differs (some
+# need docker, some need upstream LLD artifacts, etc.). Pass the
+# captured artifacts via `--from <dir>`.
+# ---------------------------------------------------------------------------
+
+
+def _cli_update(skill: str, source_dir: Path) -> int:
+    if not source_dir.exists() or not source_dir.is_dir():
+        print(f"--from {source_dir} is not a directory", flush=True)
+        return 1
+    artifacts: dict[str, str] = {}
+    for path in source_dir.rglob("*"):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(source_dir).as_posix()
+        try:
+            artifacts[rel] = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            print(f"skip binary file: {rel}", flush=True)
+            continue
+    if not artifacts:
+        print(f"no readable files under {source_dir}", flush=True)
+        return 1
+    result = compare(skill, artifacts, update_baseline=True)
+    print(
+        f"goldens for {skill}: wrote {len(artifacts)} files under " f"{GOLDENS_ROOT / skill}",
+        flush=True,
+    )
+    return 0 if result.matched else 0  # update mode always succeeds
+
+
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="golden-output diff harness")
+    parser.add_argument(
+        "--update",
+        metavar="SKILL",
+        help="Re-baseline goldens for the named skill (read artifacts from --from)",
+    )
+    parser.add_argument(
+        "--from",
+        dest="source",
+        metavar="DIR",
+        help="Directory holding the fresh artifacts to copy over the goldens",
+    )
+    args = parser.parse_args(argv)
+
+    if args.update:
+        if not args.source:
+            parser.error("--update requires --from <dir>")
+        return _cli_update(args.update, Path(args.source))
+
+    parser.print_help()
+    return 1
+
+
+if __name__ == "__main__":  # pragma: no cover
+    import sys
+
+    sys.exit(main())

@@ -12,6 +12,7 @@ default. Run via `make eval-e2e`.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -63,9 +64,15 @@ def compose_up() -> E2EResult:
 
 
 def run_teardown_destroy(driver: Path) -> tuple[E2EResult, dict]:
+    # Inherit the parent env (PATH, HOME, DOCKER_HOST, etc.) and add our
+    # override. Passing `env={...}` with a single key REPLACES the entire
+    # environment, stripping PATH — the driver then can't find `docker`,
+    # `python3`, or `date`, and exits 66 with a misleading "docker CLI
+    # not installed" diagnostic on hosts where docker is in fact installed.
+    env = {**os.environ, "PATIENT360_PROJECT_ROOT": str(CH6_ROOT / "patient_360")}
     proc = subprocess.run(
         [str(driver), "--destroy"],
-        env={"PATIENT360_PROJECT_ROOT": str(CH6_ROOT / "patient_360")},
+        env=env,
         capture_output=True,
         text=True,
         timeout=120,

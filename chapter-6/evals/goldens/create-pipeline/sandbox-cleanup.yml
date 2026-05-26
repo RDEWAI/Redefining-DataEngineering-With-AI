@@ -9,11 +9,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Invoke shared teardown driver
+        # Driver is bundled into the project under
+        # _infra/cd/teardown_drivers/ at scaffold time (mirrors the
+        # canonical copy under the developer-plugin). The user repo
+        # ships the driver; CI doesn't depend on a plugin install.
         env:
           PATIENT360_PROJECT_ROOT: ${{ github.workspace }}/patient_360
         run: |
-          chmod +x developer-plugin/skills/pr-process/scripts/teardown_drivers/local_docker.sh
-          developer-plugin/skills/pr-process/scripts/teardown_drivers/local_docker.sh --destroy \
+          chmod +x patient_360/_infra/cd/teardown_drivers/local_docker.sh
+          patient_360/_infra/cd/teardown_drivers/local_docker.sh --destroy \
             | tee teardown-summary.json
       - uses: actions/upload-artifact@v5
         with:

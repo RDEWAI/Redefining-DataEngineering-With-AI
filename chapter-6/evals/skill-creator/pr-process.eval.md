@@ -24,7 +24,7 @@ Drive the full PR lifecycle for a story branch and tear down the sandbox on appr
 
 **Expected**:
 - Prints `RESOLVED TARGET: STORY-01-001 (source: …)` as the first line.
-- Phase 1 readiness aggregator runs all 7 gates, prints PASS per gate.
+- Phase 1 readiness aggregator runs all 6 script gates, prints PASS per gate (the 7th — `/developer-plugin:validate-stories` — runs at Skill level after the aggregator).
 - Phase 2 opens a PR via `gh pr create`, body renders from `pr_body.md.j2`, body ends with `<!-- pr-process: managed -->`.
 - Phase 3 polls; on APPROVED + green checks proceeds to Phase 4.
 - Phase 4 invokes `teardown_drivers/local_docker.sh --check` then `--dry-run` then `--destroy`. Final JSON summary recorded at `outputs/pr-process/STORY-01-001.teardown.json`.

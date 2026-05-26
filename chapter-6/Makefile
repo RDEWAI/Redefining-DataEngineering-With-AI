@@ -64,9 +64,14 @@ eval: ##@ Run skill evals (skill-creator + trigger + golden, no docker)
 eval-e2e: ##@ Run end-to-end evals (brings up docker-compose stack)
 	uv run pytest tests/ -v -m e2e
 
-eval-update-goldens: ##@ Re-baseline goldens (set SKILL=<name>)
-	@if [ -z "$(SKILL)" ]; then echo "usage: make eval-update-goldens SKILL=<name>"; exit 1; fi
-	uv run python -c "from evals.harness import golden_diff; print('See evals/README.md — re-baseline by editing goldens/$(SKILL)/* directly or re-running the skill via skill_runner.')"
+eval-update-goldens: ##@ Re-baseline goldens (SKILL=<name> FROM=<dir>)
+	@if [ -z "$(SKILL)" ] || [ -z "$(FROM)" ]; then \
+		echo "usage: make eval-update-goldens SKILL=<name> FROM=<artifacts-dir>"; \
+		echo "  re-runs the skill against your fixture first, then copies the"; \
+		echo "  captured outputs over the committed goldens at evals/goldens/<SKILL>/."; \
+		exit 1; \
+	fi
+	uv run python -m evals.harness.golden_diff --update "$(SKILL)" --from "$(FROM)"
 
 validate-silver: ##@ Validate Silver layer artifacts
 	uv run python developer-plugin/skills/validate-silver/scripts/validate_silver.py --all patient_360/
