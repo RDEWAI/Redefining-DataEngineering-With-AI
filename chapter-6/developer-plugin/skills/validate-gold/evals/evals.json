@@ -1,0 +1,60 @@
+{
+  "skill_name": "validate-gold",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Clean Gold layer",
+      "prompt": "Clean Gold layer \u2014 **Expected**: PASS, \"3 builders present, 3 contracts aligned, 3 DQ files aligned\".",
+      "expected_output": "Output of /developer-plugin:validate-gold matching the SKILL.md phases for scenario Clean Gold layer",
+      "files": [],
+      "expectations": [
+        "Skill validate-gold ran without error",
+        "Output references the SKILL.md sections cited in scenario Clean Gold layer"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Builder missing",
+      "prompt": "Builder missing \u2014 **Setup**: `build_patient_billing_summary.py` deleted.",
+      "expected_output": "Output of /developer-plugin:validate-gold matching the SKILL.md phases for scenario Builder missing",
+      "files": [],
+      "expectations": [
+        "Skill validate-gold ran without error",
+        "Output references the SKILL.md sections cited in scenario Builder missing"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Schema drift",
+      "prompt": "Schema drift \u2014 **Setup**: builder writes a column not in DMS \u00a74.",
+      "expected_output": "Output of /developer-plugin:validate-gold matching the SKILL.md phases for scenario Schema drift",
+      "files": [],
+      "expectations": [
+        "Skill validate-gold ran without error",
+        "Output references the SKILL.md sections cited in scenario Schema drift"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "DQ-after-write violation",
+      "prompt": "DQ-after-write violation \u2014 **Setup**: builder calls `df.write.format('delta')\u2026` before `run_dq()`.",
+      "expected_output": "Output of /developer-plugin:validate-gold matching the SKILL.md phases for scenario DQ-after-write violation",
+      "files": [],
+      "expectations": [
+        "Skill validate-gold ran without error",
+        "Output references the SKILL.md sections cited in scenario DQ-after-write violation"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Bronze import (boundary violation)",
+      "prompt": "Bronze import (boundary violation) \u2014 **Setup**: builder imports `from patient_360.bronze import \u2026`.",
+      "expected_output": "Output of /developer-plugin:validate-gold matching the SKILL.md phases for scenario Bronze import (boundary violation)",
+      "files": [],
+      "expectations": [
+        "Skill validate-gold ran without error",
+        "Output references the SKILL.md sections cited in scenario Bronze import (boundary violation)"
+      ]
+    }
+  ]
+}

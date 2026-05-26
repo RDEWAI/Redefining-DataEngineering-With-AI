@@ -1,0 +1,60 @@
+{
+  "skill_name": "implement-stories",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Single story (silver)",
+      "prompt": "`/developer-plugin:implement-stories STORY-03-005`",
+      "expected_output": "Output of /developer-plugin:implement-stories matching the SKILL.md phases for scenario Single story (silver)",
+      "files": [],
+      "expectations": [
+        "Skill implement-stories ran without error",
+        "Output references the SKILL.md sections cited in scenario Single story (silver)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Comma-list",
+      "prompt": "`/developer-plugin:implement-stories STORY-02-001,STORY-02-002,STORY-02-003`",
+      "expected_output": "Output of /developer-plugin:implement-stories matching the SKILL.md phases for scenario Comma-list",
+      "files": [],
+      "expectations": [
+        "Skill implement-stories ran without error",
+        "Output references the SKILL.md sections cited in scenario Comma-list"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Epic (topo-sorted)",
+      "prompt": "Epic (topo-sorted) \u2014 **Invoke**: `/developer-plugin:implement-stories EPIC-03` \u2192 topo-sorts by Depends On, dispatches.",
+      "expected_output": "Output of /developer-plugin:implement-stories matching the SKILL.md phases for scenario Epic (topo-sorted)",
+      "files": [],
+      "expectations": [
+        "Skill implement-stories ran without error",
+        "Output references the SKILL.md sections cited in scenario Epic (topo-sorted)"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Sprint label",
+      "prompt": "Sprint label \u2014 **Invoke**: `/developer-plugin:implement-stories Sprint 3` \u2192 reads sprint metadata, dispatches all stories tagged with the sprint.",
+      "expected_output": "Output of /developer-plugin:implement-stories matching the SKILL.md phases for scenario Sprint label",
+      "files": [],
+      "expectations": [
+        "Skill implement-stories ran without error",
+        "Output references the SKILL.md sections cited in scenario Sprint label"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Hard rules",
+      "prompt": "Hard rules \u2014 - Never edits story markdown.",
+      "expected_output": "Output of /developer-plugin:implement-stories matching the SKILL.md phases for scenario Hard rules",
+      "files": [],
+      "expectations": [
+        "Skill implement-stories ran without error",
+        "Output references the SKILL.md sections cited in scenario Hard rules"
+      ]
+    }
+  ]
+}

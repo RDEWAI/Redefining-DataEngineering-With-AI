@@ -1,0 +1,52 @@
+{
+  "skill_name": "apply-learnings",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Single pending entry",
+      "prompt": "Single pending entry \u2014 **Setup**: queue has one entry: `{\"skill\":\"create-silver\",\"date\":\"2026-05-23\",\"correction\":\"used monotonically_increasing_id\",\"pattern\":\"never monotonically_increasing_id for SCD2\",\"status\":\"pending\"}`.",
+      "expected_output": "Output of /developer-plugin:apply-learnings matching the SKILL.md phases for scenario Single pending entry",
+      "files": [],
+      "expectations": [
+        "Reflects: \"the correction was about SCD2 surrogate keys\".",
+        "Abstracts: \"non-determinism in surrogate keys breaks SCD2 idempotency\".",
+        "Generalises: \"NEVER use monotonically_increasing_id for SCD2 surrogate keys; use xxhash64 or row_number()\".",
+        "Writes the rule into `developer-plugin/skills/create-silver/SKILL.md` \u00a7 Active Learnings as `L-NNN`.",
+        "Marks the queue entry `status: applied`."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Multiple entries grouped by skill",
+      "prompt": "Multiple entries grouped by skill \u2014 **Expected**: groups entries per skill, processes per-skill in one pass, never lets two L-NNN rules collide on the same number.",
+      "expected_output": "Output of /developer-plugin:apply-learnings matching the SKILL.md phases for scenario Multiple entries grouped by skill",
+      "files": [],
+      "expectations": [
+        "Skill apply-learnings ran without error",
+        "Output references the SKILL.md sections cited in scenario Multiple entries grouped by skill"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Entry that implies LLD change",
+      "prompt": "Entry that implies LLD change \u2014 **Expected**: also appends to `developer-plugin/LLD-DEVIATIONS.md` so the Technical Lead can fold the deviation into the next LLD revision.",
+      "expected_output": "Output of /developer-plugin:apply-learnings matching the SKILL.md phases for scenario Entry that implies LLD change",
+      "files": [],
+      "expectations": [
+        "Skill apply-learnings ran without error",
+        "Output references the SKILL.md sections cited in scenario Entry that implies LLD change"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Hard rules",
+      "prompt": "Hard rules \u2014 - Never deletes a pending entry without writing the corresponding rule (atomic update).",
+      "expected_output": "Output of /developer-plugin:apply-learnings matching the SKILL.md phases for scenario Hard rules",
+      "files": [],
+      "expectations": [
+        "Skill apply-learnings ran without error",
+        "Output references the SKILL.md sections cited in scenario Hard rules"
+      ]
+    }
+  ]
+}

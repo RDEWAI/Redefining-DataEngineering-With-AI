@@ -1,0 +1,60 @@
+{
+  "skill_name": "validate-silver",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Clean Silver layer",
+      "prompt": "Clean Silver layer \u2014 **Expected**: PASS, \"13 transforms present, 4 SCD2 dims, 9 cleansed facts, all contracts aligned\".",
+      "expected_output": "Output of /developer-plugin:validate-silver matching the SKILL.md phases for scenario Clean Silver layer",
+      "files": [],
+      "expectations": [
+        "Skill validate-silver ran without error",
+        "Output references the SKILL.md sections cited in scenario Clean Silver layer"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "SCD2 dim missing apply_scd2 import",
+      "prompt": "SCD2 dim missing apply_scd2 import \u2014 **Expected**: CRITICAL \u2014 \"SCD2 dim must use shared apply_scd2 helper\".",
+      "expected_output": "Output of /developer-plugin:validate-silver matching the SKILL.md phases for scenario SCD2 dim missing apply_scd2 import",
+      "files": [],
+      "expectations": [
+        "Skill validate-silver ran without error",
+        "Output references the SKILL.md sections cited in scenario SCD2 dim missing apply_scd2 import"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Surrogate key uses monotonically_increasing_id",
+      "prompt": "Surrogate key uses monotonically_increasing_id \u2014 **Expected**: CRITICAL \u2014 \"IL-006 violated: never monotonically_increasing_id for SCD2 surrogate keys\".",
+      "expected_output": "Output of /developer-plugin:validate-silver matching the SKILL.md phases for scenario Surrogate key uses monotonically_increasing_id",
+      "files": [],
+      "expectations": [
+        "Skill validate-silver ran without error",
+        "Output references the SKILL.md sections cited in scenario Surrogate key uses monotonically_increasing_id"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "DQ-after-write order",
+      "prompt": "DQ-after-write order \u2014 **Setup**: transform calls `write_silver_delta()` before `run_dq()`.",
+      "expected_output": "Output of /developer-plugin:validate-silver matching the SKILL.md phases for scenario DQ-after-write order",
+      "files": [],
+      "expectations": [
+        "Skill validate-silver ran without error",
+        "Output references the SKILL.md sections cited in scenario DQ-after-write order"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Fact uses apply_scd2",
+      "prompt": "Fact uses apply_scd2 \u2014 **Expected**: CRITICAL \u2014 \"cleansed facts must use write_silver_delta, never apply_scd2\".",
+      "expected_output": "Output of /developer-plugin:validate-silver matching the SKILL.md phases for scenario Fact uses apply_scd2",
+      "files": [],
+      "expectations": [
+        "Skill validate-silver ran without error",
+        "Output references the SKILL.md sections cited in scenario Fact uses apply_scd2"
+      ]
+    }
+  ]
+}

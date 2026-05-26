@@ -104,3 +104,27 @@ repos:
         stages: [pre-push]
         pass_filenames: false
         files: ^chapter-6/
+
+      # Coverage guard: every skill under chapter-6/developer-plugin/skills/
+      # must have a matching eval stub under chapter-6/evals/skill-creator/.
+      # Adding a new skill without an eval stub fails this hook so the
+      # eval rollout's coverage table stays accurate.
+      - id: chapter-6-skill-eval-coverage
+        name: chapter-6-skill-eval-coverage
+        entry: |-
+          bash -c '
+            missing=""
+            for d in chapter-6/developer-plugin/skills/*/; do
+              skill=$(basename "$d")
+              if [ ! -f "chapter-6/evals/skill-creator/${skill}.eval.md" ]; then
+                missing="${missing}${skill}\n"
+              fi
+            done
+            if [ -n "$missing" ]; then
+              printf "ERROR chapter-6: every skill needs an eval stub at chapter-6/evals/skill-creator/<skill>.eval.md\n\nMissing:\n%b\nCreate stubs with status: scaffold (see chapter-6/evals/README.md).\n" "$missing"
+              exit 1
+            fi
+          '
+        language: system
+        pass_filenames: false
+        files: ^chapter-6/(developer-plugin/skills/|evals/skill-creator/)

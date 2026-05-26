@@ -1,0 +1,51 @@
+{
+  "skill_name": "complete-stories",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Single story Done",
+      "prompt": "`/developer-plugin:complete-stories STORY-03-005`",
+      "expected_output": "Output of /developer-plugin:complete-stories matching the SKILL.md phases for scenario Single story Done",
+      "files": [],
+      "expectations": [
+        "Verifies every AC checkbox is checked.",
+        "Verifies dependencies are Done.",
+        "Edits (not writes) the story metadata: `Status: Done`.",
+        "Rolls epic status to In-Progress (or Done if all child stories done)."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "AC unchecked \u2192 blocked",
+      "prompt": "AC unchecked \u2192 blocked \u2014 **Expected**: CRITICAL \u2014 \"STORY-03-005 AC3 unchecked; refusing to mark Done\".",
+      "expected_output": "Output of /developer-plugin:complete-stories matching the SKILL.md phases for scenario AC unchecked \u2192 blocked",
+      "files": [],
+      "expectations": [
+        "Skill complete-stories ran without error",
+        "Output references the SKILL.md sections cited in scenario AC unchecked \u2192 blocked"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Dependency not Done",
+      "prompt": "Dependency not Done \u2014 **Setup**: STORY-03-005 depends on STORY-03-003 which is Status: In-Progress.",
+      "expected_output": "Output of /developer-plugin:complete-stories matching the SKILL.md phases for scenario Dependency not Done",
+      "files": [],
+      "expectations": [
+        "Skill complete-stories ran without error",
+        "Output references the SKILL.md sections cited in scenario Dependency not Done"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Epic-level AC still open",
+      "prompt": "Epic-level AC still open \u2014 **Expected**: CRITICAL \u2014 \"EPIC-03 has open epic AC: <text>; refusing to roll epic up\".",
+      "expected_output": "Output of /developer-plugin:complete-stories matching the SKILL.md phases for scenario Epic-level AC still open",
+      "files": [],
+      "expectations": [
+        "Skill complete-stories ran without error",
+        "Output references the SKILL.md sections cited in scenario Epic-level AC still open"
+      ]
+    }
+  ]
+}

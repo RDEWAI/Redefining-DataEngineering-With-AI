@@ -1,0 +1,41 @@
+{
+  "skill_name": "create-silver",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Story mode, single Silver table",
+      "prompt": "`/developer-plugin:create-silver STORY-03-005` (a story scoped to silver patient transform)",
+      "expected_output": "Output of /developer-plugin:create-silver matching the SKILL.md phases for scenario Story mode, single Silver table",
+      "files": [],
+      "expectations": [
+        "Phase 0 confirms all upstream artifacts are `Approved`.",
+        "Emits `src/patient_360/silver/transform_<table>.py` (SCD2 path).",
+        "Emits `contracts/<silver_table>.yml` + `dq_rules/<silver_table>.yml`.",
+        "Emits `tests/silver/test_transform_<table>_unit.py`.",
+        "Wires `silver_dimensions` TaskGroup into `airflow/dags/patient360_hourly_v1.py`."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Hard rules",
+      "prompt": "Hard rules \u2014 - Never invents columns: only DMS \u00a73 columns appear in the contract and module.",
+      "expected_output": "Output of /developer-plugin:create-silver matching the SKILL.md phases for scenario Hard rules",
+      "files": [],
+      "expectations": [
+        "Skill create-silver ran without error",
+        "Output references the SKILL.md sections cited in scenario Hard rules"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Inherited learnings still applied",
+      "prompt": "Inherited learnings still applied \u2014 - IL-001 (no `pyspark==4.0.0`), IL-006 (no `monotonically_increasing_id`),",
+      "expected_output": "Output of /developer-plugin:create-silver matching the SKILL.md phases for scenario Inherited learnings still applied",
+      "files": [],
+      "expectations": [
+        "Skill create-silver ran without error",
+        "Output references the SKILL.md sections cited in scenario Inherited learnings still applied"
+      ]
+    }
+  ]
+}

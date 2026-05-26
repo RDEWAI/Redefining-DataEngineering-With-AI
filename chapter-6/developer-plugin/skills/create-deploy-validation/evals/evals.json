@@ -1,0 +1,28 @@
+{
+  "skill_name": "create-deploy-validation",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Bronze deploy smoke",
+      "prompt": "`/developer-plugin:create-deploy-validation STORY-02-099` (deploy-validation story)",
+      "expected_output": "Output of /developer-plugin:create-deploy-validation matching the SKILL.md phases for scenario Bronze deploy smoke",
+      "files": [],
+      "expectations": [
+        "Emits `_infra/cd/apply-bronze-liquibase.sh` (idempotent Liquibase update).",
+        "Emits `_infra/cd/sync-bronze-dags.sh` (rsync DAGs into the Airflow container).",
+        "Emits `tests/integration/bronze/test_deploy_smoke.py` (asserts each script exits 0 + re-triggered DAG run completes)."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Hard rules",
+      "prompt": "Hard rules \u2014 - Scripts must be idempotent (re-running them never errors).",
+      "expected_output": "Output of /developer-plugin:create-deploy-validation matching the SKILL.md phases for scenario Hard rules",
+      "files": [],
+      "expectations": [
+        "Skill create-deploy-validation ran without error",
+        "Output references the SKILL.md sections cited in scenario Hard rules"
+      ]
+    }
+  ]
+}

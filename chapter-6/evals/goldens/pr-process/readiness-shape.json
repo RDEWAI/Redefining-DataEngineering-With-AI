@@ -1,0 +1,24 @@
+{
+  "_doc": "Minimum-viable shape of the JSON the readiness aggregator emits. Used by the harness to assert the top-level contract — see test_skill_evals.py::test_pr_process_readiness_golden_shape.",
+  "story": "STORY-NN-NNN",
+  "branch": "feature/STORY-NN-NNN",
+  "workspace_root": "<path>",
+  "project_root": "<path>",
+  "timestamp": "<ISO-8601>",
+  "gates": [
+    {"name": "git_tree_clean", "status": "PASS|WARN|FAIL", "detail": ""},
+    {"name": "branch_state", "status": "PASS|WARN|FAIL", "detail": ""},
+    {"name": "story_approved", "status": "PASS|WARN|FAIL", "detail": ""},
+    {"name": "make_lint", "status": "PASS|WARN|FAIL", "detail": ""},
+    {"name": "make_test", "status": "PASS|WARN|FAIL", "detail": ""},
+    {"name": "verify_acs", "status": "PASS|WARN|FAIL", "detail": ""},
+    {"name": "validate_stories", "status": "PASS|WARN|FAIL", "detail": ""}
+  ],
+  "acs": [],
+  "files_by_layer": {},
+  "validators": [],
+  "teardown_driver": "local-docker|none",
+  "teardown_plan": [],
+  "labels": ["epic-NN-<slug>", "layer:<bronze|silver|gold|infra>", "requires-sandbox-teardown"],
+  "result": "PASS|WARN|FAIL"
+}

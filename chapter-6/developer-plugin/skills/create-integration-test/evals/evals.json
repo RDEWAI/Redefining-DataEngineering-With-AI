@@ -1,0 +1,28 @@
+{
+  "skill_name": "create-integration-test",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Silver integration test",
+      "prompt": "`/developer-plugin:create-integration-test STORY-03-099`",
+      "expected_output": "Output of /developer-plugin:create-integration-test matching the SKILL.md phases for scenario Silver integration test",
+      "files": [],
+      "expectations": [
+        "Emits `tests/integration/silver/test_silver_e2e.py` marked `@pytest.mark.e2e`.",
+        "Triggers the silver TaskGroup via Airflow REST API.",
+        "Asserts Delta tables exist with expected row counts; queries Marquez for lineage; queries Spark Expectations stats table for DQ pass rate."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Hard rules",
+      "prompt": "Hard rules \u2014 - Always tagged `@pytest.mark.e2e` (excluded from `make test` default).",
+      "expected_output": "Output of /developer-plugin:create-integration-test matching the SKILL.md phases for scenario Hard rules",
+      "files": [],
+      "expectations": [
+        "Skill create-integration-test ran without error",
+        "Output references the SKILL.md sections cited in scenario Hard rules"
+      ]
+    }
+  ]
+}

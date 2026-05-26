@@ -75,10 +75,19 @@ For each of the 4 SCD2 dim tables
 - **R11 [CRITICAL]** `hash_columns` list matches DMS §6 for that table
 - **R12 [CRITICAL]** Module does NOT call `write_silver_delta` for SCD2
   tables — that path is mutually exclusive with `apply_scd2`
+- **R12b [CRITICAL]** **Cleansed-fact** modules (the 9 non-SCD2 Silver
+  tables listed in LLD §5.2 — encounters, conditions, medications,
+  observations, allergies, immunizations, procedures, careplans, claims)
+  do NOT call `apply_scd2(...)`. The SCD2 helper is only for the 4
+  mandated dims. A fact calling `apply_scd2` corrupts the grain
+  (one row per natural key vs one row per event) and breaks downstream
+  Gold joins. This is the mirror of R12.
 - **R13 [CRITICAL]** `apply_scd2` is invoked AFTER `run_dq` in source order
   (DQ-before-write contract)
-- **R14 [WARNING]** Module never calls `monotonically_increasing_id()` (per
-  inherited learning IL-006)
+- **R14 [CRITICAL]** Module never calls `monotonically_increasing_id()` (per
+  inherited learning IL-006 — non-deterministic across executors + re-runs,
+  breaks SCD2 idempotency. Use `xxhash64(natural_key, effective_date)` or
+  `max(surrogate_key) + row_number()`).
 
 ## Phase 4 — DQ Gate (every Silver task)
 

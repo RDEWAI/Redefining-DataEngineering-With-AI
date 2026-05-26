@@ -1,0 +1,10 @@
+{
+  "driver": "local-docker",
+  "destroyed": [
+    {"kind": "compose-project", "name": "patient_360"},
+    {"kind": "volume", "name": "patient_360_uc-data"},
+    {"kind": "volume", "name": "patient_360_marquez-db"},
+    {"kind": "network", "name": "patient_360_default"}
+  ],
+  "skipped": []
+}

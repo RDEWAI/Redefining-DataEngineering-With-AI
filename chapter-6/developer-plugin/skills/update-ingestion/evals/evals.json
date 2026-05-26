@@ -1,0 +1,38 @@
+{
+  "skill_name": "update-ingestion",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Add a new column to existing config",
+      "prompt": "`/developer-plugin:update-ingestion patients.yml`",
+      "expected_output": "Output of /developer-plugin:update-ingestion matching the SKILL.md phases for scenario Add a new column to existing config",
+      "files": [],
+      "expectations": [
+        "Skill update-ingestion ran without error",
+        "Output references the SKILL.md sections cited in scenario Add a new column to existing config"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Runner change requires factory update",
+      "prompt": "Runner change requires factory update \u2014 **Setup**: LLD \u00a75.1 changes the partition strategy.",
+      "expected_output": "Output of /developer-plugin:update-ingestion matching the SKILL.md phases for scenario Runner change requires factory update",
+      "files": [],
+      "expectations": [
+        "Skill update-ingestion ran without error",
+        "Output references the SKILL.md sections cited in scenario Runner change requires factory update"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Hard rules",
+      "prompt": "Hard rules \u2014 - Never rewrites unchanged files.",
+      "expected_output": "Output of /developer-plugin:update-ingestion matching the SKILL.md phases for scenario Hard rules",
+      "files": [],
+      "expectations": [
+        "Skill update-ingestion ran without error",
+        "Output references the SKILL.md sections cited in scenario Hard rules"
+      ]
+    }
+  ]
+}

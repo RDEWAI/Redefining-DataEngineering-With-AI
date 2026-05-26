@@ -1,0 +1,21 @@
+name: sandbox-cleanup
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  teardown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Invoke shared teardown driver
+        env:
+          PATIENT360_PROJECT_ROOT: ${{ github.workspace }}/patient_360
+        run: |
+          chmod +x developer-plugin/skills/pr-process/scripts/teardown_drivers/local_docker.sh
+          developer-plugin/skills/pr-process/scripts/teardown_drivers/local_docker.sh --destroy \
+            | tee teardown-summary.json
+      - uses: actions/upload-artifact@v5
+        with:
+          name: teardown-summary-${{ github.event.pull_request.number }}
+          path: teardown-summary.json

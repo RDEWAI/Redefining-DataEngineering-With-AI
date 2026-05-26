@@ -1,0 +1,51 @@
+{
+  "skill_name": "refresh-libraries",
+  "evals": [
+    {
+      "id": 1,
+      "name": "All libraries up to date",
+      "prompt": "`/developer-plugin:refresh-libraries all`",
+      "expected_output": "Output of /developer-plugin:refresh-libraries matching the SKILL.md phases for scenario All libraries up to date",
+      "files": [],
+      "expectations": [
+        "Reads every library row.",
+        "Queries upstream for each.",
+        "Diff is empty.",
+        "Updates only `last_verified:` to today's date; bumps file's minor version."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "One library has a new patch",
+      "prompt": "One library has a new patch \u2014 **Expected**:",
+      "expected_output": "Output of /developer-plugin:refresh-libraries matching the SKILL.md phases for scenario One library has a new patch",
+      "files": [],
+      "expectations": [
+        "Calls AskUserQuestion(`Apply` / `Skip` / `Cancel`).",
+        "On Apply: rewrites the row, updates last_verified, optionally also bumps `pyproject.toml` pin (separate AskUserQuestion)."
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Single library",
+      "prompt": "Single library \u2014 **Invoke**: `/developer-plugin:refresh-libraries pyspark` \u2192 verifies just that row.",
+      "expected_output": "Output of /developer-plugin:refresh-libraries matching the SKILL.md phases for scenario Single library",
+      "files": [],
+      "expectations": [
+        "Skill refresh-libraries ran without error",
+        "Output references the SKILL.md sections cited in scenario Single library"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Hard rules",
+      "prompt": "Hard rules \u2014 - Never auto-applies bumps without user approval.",
+      "expected_output": "Output of /developer-plugin:refresh-libraries matching the SKILL.md phases for scenario Hard rules",
+      "files": [],
+      "expectations": [
+        "Skill refresh-libraries ran without error",
+        "Output references the SKILL.md sections cited in scenario Hard rules"
+      ]
+    }
+  ]
+}

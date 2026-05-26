@@ -1,0 +1,62 @@
+{
+  "skill_name": "pr-process",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Story mode, happy path",
+      "prompt": "`/developer-plugin:pr-process STORY-01-001`",
+      "expected_output": "Output of /developer-plugin:pr-process matching the SKILL.md phases for scenario Story mode, happy path",
+      "files": [],
+      "expectations": [
+        "Prints `RESOLVED TARGET: STORY-01-001 (source: \u2026)` as the first line.",
+        "Phase 1 readiness aggregator runs all 7 gates, prints PASS per gate.",
+        "Phase 2 opens a PR via `gh pr create`, body renders from `pr_body.md.j2`, body ends with `<!-- pr-process: managed -->`.",
+        "Phase 3 polls; on APPROVED + green checks proceeds to Phase 4.",
+        "Phase 4 invokes `teardown_drivers/local_docker.sh --check` then `--dry-run` then `--destroy`. Final JSON summary recorded at `outputs/pr-process/STORY-01-001.teardown.json`."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Readiness fails: lint red",
+      "prompt": "Readiness fails: lint red \u2014 **Setup**: Same as S1 but `make lint` exits 1.",
+      "expected_output": "Output of /developer-plugin:pr-process matching the SKILL.md phases for scenario Readiness fails: lint red",
+      "files": [],
+      "expectations": [
+        "Phase 1 emits `CRITICAL make_lint: \u2026` with the last 10 lines of stderr.",
+        "Skill exits non-zero, no learnings entry appended (lint failure is an expected red gate)."
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Sandbox missing: no driver match",
+      "prompt": "Sandbox missing: no driver match \u2014 **Setup**: Same as S1 but `_infra/docker/docker-compose.yml` does not exist (e.g. a project that doesn't use the local stack).",
+      "expected_output": "Output of /developer-plugin:pr-process matching the SKILL.md phases for scenario Sandbox missing: no driver match",
+      "files": [],
+      "expectations": [
+        "Phase 4 reports WARNING `no driver matched`; **no** destroy runs.",
+        "PR is **not** auto-merged; user is told to add a driver or pick one manually."
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Attach mode",
+      "prompt": "`/developer-plugin:pr-process 42` (a PR number)",
+      "expected_output": "Output of /developer-plugin:pr-process matching the SKILL.md phases for scenario Attach mode",
+      "files": [],
+      "expectations": [
+        "Mode dispatch routes to Phase 3 directly; Phases 1+2 skipped.",
+        "Polls PR #42; on APPROVED runs Phase 4 normally."
+      ]
+    },
+    {
+      "id": 5,
+      "name": "User asked to forget mid-flight",
+      "prompt": "User asked to forget mid-flight \u2014 **Setup**: During Phase 3 the user says \"abort, don't tear down\".",
+      "expected_output": "Output of /developer-plugin:pr-process matching the SKILL.md phases for scenario User asked to forget mid-flight",
+      "files": [],
+      "expectations": [
+        "Skill stops at Phase 4 gate; no destroy runs; logs the abort to the"
+      ]
+    }
+  ]
+}

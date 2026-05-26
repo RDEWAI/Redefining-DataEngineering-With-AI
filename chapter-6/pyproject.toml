@@ -36,3 +36,6 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
+markers = [
+    "e2e: end-to-end tests that bring up the docker-compose stack (slow; gated behind `make eval-e2e`)",
+]

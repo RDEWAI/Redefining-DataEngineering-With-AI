@@ -1,0 +1,27 @@
+{
+  "skill_name": "update-dag",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Add a new task to existing TaskGroup",
+      "prompt": "`/developer-plugin:update-dag airflow/dags/patient360_hourly_v1.py` with instruction \"add transform_<new_table> to silver_facts\"",
+      "expected_output": "Output of /developer-plugin:update-dag matching the SKILL.md phases for scenario Add a new task to existing TaskGroup",
+      "files": [],
+      "expectations": [
+        "Skill update-dag ran without error",
+        "Output references the SKILL.md sections cited in scenario Add a new task to existing TaskGroup"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Hard rules",
+      "prompt": "Hard rules \u2014 - Never converts a `SparkSubmitOperator` to a `PythonOperator` (IL-011).",
+      "expected_output": "Output of /developer-plugin:update-dag matching the SKILL.md phases for scenario Hard rules",
+      "files": [],
+      "expectations": [
+        "Skill update-dag ran without error",
+        "Output references the SKILL.md sections cited in scenario Hard rules"
+      ]
+    }
+  ]
+}

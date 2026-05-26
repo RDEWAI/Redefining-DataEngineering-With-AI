@@ -1,0 +1,23 @@
+name: pr-preview
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: pr-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --all-groups
+      - name: Bring up local sandbox
+        run: docker compose -f patient_360/_infra/docker/docker-compose.yml up -d --wait
+      - name: Integration smoke
+        run: uv run pytest patient_360/tests/integration -m "not e2e" --tb=short
+      - name: Tear down (always — never leak volumes on the runner)
+        if: always()
+        run: docker compose -f patient_360/_infra/docker/docker-compose.yml down -v --remove-orphans

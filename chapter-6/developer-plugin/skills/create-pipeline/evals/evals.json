@@ -1,0 +1,41 @@
+{
+  "skill_name": "create-pipeline",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Fresh project, GitHub Actions",
+      "prompt": "`/developer-plugin:create-pipeline github`",
+      "expected_output": "Output of /developer-plugin:create-pipeline matching the SKILL.md phases for scenario Fresh project, GitHub Actions",
+      "files": [],
+      "expectations": [
+        "Skill clarifies platform (github vs gitlab) via AskUserQuestion if not in arg.",
+        "Edits existing skeletons under `_infra/ci/.github/workflows/{lint,unit-test,integration-test}.yml` rather than overwriting.",
+        "Creates `_infra/ci/.github/workflows/pr-preview.yml` matching the embedded template \u2014 must have `if: always()` teardown.",
+        "Creates `_infra/ci/.github/workflows/sandbox-cleanup.yml` \u2014 must call `teardown_drivers/local_docker.sh --destroy`.",
+        "Creates `_infra/ci/.github/workflows/promote.yml` \u2014 must gate `promote-prod` on `environment: production`."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Existing skeletons are honoured",
+      "prompt": "Existing skeletons are honoured \u2014 **Setup**: `lint.yml` already has caching configured.",
+      "expected_output": "Output of /developer-plugin:create-pipeline matching the SKILL.md phases for scenario Existing skeletons are honoured",
+      "files": [],
+      "expectations": [
+        "Skill create-pipeline ran without error",
+        "Output references the SKILL.md sections cited in scenario Existing skeletons are honoured"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "GitLab platform",
+      "prompt": "`/developer-plugin:create-pipeline gitlab`",
+      "expected_output": "Output of /developer-plugin:create-pipeline matching the SKILL.md phases for scenario GitLab platform",
+      "files": [],
+      "expectations": [
+        "Skill create-pipeline ran without error",
+        "Output references the SKILL.md sections cited in scenario GitLab platform"
+      ]
+    }
+  ]
+}

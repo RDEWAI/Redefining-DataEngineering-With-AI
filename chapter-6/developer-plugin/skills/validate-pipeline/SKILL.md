@@ -87,15 +87,36 @@ running this resolver.
 - Missing required stages: lint, test, deploy
 - Hardcoded secrets or credentials (use environment variables / secrets manager)
 - Deploy stage not gated on `main` branch
+- **`pr-preview.yml` (file basename match)**: missing the teardown step,
+  OR teardown lacks `if: always()`, OR teardown command is not
+  `docker compose ... down -v --remove-orphans`. Any of these can leak
+  named volumes onto the CI runner.
+- **`sandbox-cleanup.yml` (file basename match)**: trigger is not
+  `pull_request: closed`, OR the workflow does not invoke a script
+  under `developer-plugin/skills/pr-process/scripts/teardown_drivers/`.
+  Inline `docker compose down` instead of the shared driver is a
+  CRITICAL: the driver is the only place the teardown contract lives.
+- **`promote.yml` (file basename match)**: the `prod` deploy job lacks
+  `environment: production` (or equivalent GitHub-environment gate),
+  OR it triggers on plain `push: branches: [main]` without a manual
+  `workflow_dispatch` step.
 
 ### WARNING (should fix)
 - No dependency caching configured
 - Test stage does not run `pytest`
 - No artifact upload for test results
+- `pr-preview.yml`: integration-test stage runs against the host
+  ports of the docker-compose stack instead of `localhost` — fragile
+  on shared runners.
+- `sandbox-cleanup.yml`: missing artifact upload of the teardown
+  summary JSON — review trail is harder to reconstruct.
+- `promote.yml`: tag pattern is broader than `v*` (e.g. matches
+  arbitrary tags) — easier to fire promote by accident.
 
 ### INFO (good to know)
 - No parallelism configured for test stage
 - No notification step on failure
+- `pr-preview.yml` does not pin the integration-test marker (`-m "not e2e"`) — slower preview runs.
 
 ## Output Format
 

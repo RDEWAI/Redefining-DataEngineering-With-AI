@@ -358,27 +358,38 @@ Write Python modules to `{project_root}/src/{project_name}/bronze/`
    **`se_action_if_failed`** from the per-table YAML is the fail-closed default
    for rules that omit their own `action_if_failed`; per-rule declarations take
    precedence (LLD §5.4).
-**CRITICAL — UC-managed writes for Bronze (LLD §2.3 / Decision 12).**
+**CRITICAL — Path-based Delta writes for Bronze (LLD §13 Decision 12, revoked
++ replaced 2026-05-12; Decision 15 revised + Decision 17 added 2026-05-23).**
 
-The Bronze runner MUST land tables in Unity Catalog at write time using
-`UCSingleCatalog` + `saveAsTable("unity.bronze.<table>")`. Path-based Delta
-writes (`df.write.format("delta").save("/tmp/...")`) leave UC empty until
-a manual `docker cp` + external-table registration — that's the gap spokane
-hit on its first green run. The skill's Phase 3 generator MUST emit the
-Spark session wiring shown in `inputs/code/v1/scripts/ingestion_runner.py.snippet`:
+Decision 12 (`UCSingleCatalog` + `saveAsTable("unity.bronze.<table>")` at
+runtime) was **revoked** because UC OSS does not behave reliably as the
+Spark catalog for local-FS dev. The Bronze runner MUST write to an
+**external Delta path** and let Unity Catalog registration happen at
+**deploy time** via the REST client (`scripts/bootstrap_uc_tables.py`,
+Decision 17). This matches the chapter-5 inherited learnings
+**IL-002** (never wire `spark.sql.catalog.spark_catalog` to
+`UCSingleCatalog`) and **IL-003** (use Spark's built-in Hive metastore +
+Derby), and chapter-6 STORY-02-001 AC4.
 
-- `spark.sql.catalog.unity = io.unitycatalog.spark.UCSingleCatalog`
-- `spark.sql.catalog.unity.uri = os.environ["UC_URI"]`
-- `spark.sql.defaultCatalog = unity`
-- Plus the Delta extensions / Delta catalog config.
+The skill's Phase 3 generator MUST emit:
 
-Then the write becomes `df.write.mode(...).partitionBy("ds").option("replaceWhere", ...).saveAsTable(f"unity.bronze.{table}")`.
+- Spark session wired to `DeltaCatalog`:
+  `spark.sql.catalog.spark_catalog = org.apache.spark.sql.delta.catalog.DeltaCatalog`
+  plus `spark.sql.catalogImplementation = hive` (IL-003).
+- Bronze write: path-based with `replaceWhere` for partition idempotency:
+  `df.write.format("delta").mode("append").option("replaceWhere", f"ds = '{ds}'").option("path", f"{warehouse_root}/bronze/{table}").save()`
+  (Decision 15 revised, 2026-05-20: external path via `.option("path", ...)`
+  is idempotent across Derby resets).
+- **NO `saveAsTable`** in Bronze runtime code. UC schema/table registration
+  is deploy-time only (Decision 17 — `scripts/bootstrap_uc_tables.py`
+  reads the contract YAMLs, calls the UC REST `POST /api/2.1/unity-catalog/tables`
+  with `table_type = EXTERNAL` + `storage_location` pointing at the
+  same warehouse path the runtime writes to).
 
-The validator (`validate-dag UC-WIRING-001`) rejects any generated
-`src/**/bronze/**.py` file that calls `.save("/tmp/`, `.save("file://`,
-or `.save(<warehouse_path_var>)` instead of `saveAsTable`. The
-`tests/test_uc_wiring.py` regression scan blocks the same pattern from
-being introduced into snippets.
+The validator (`validate-ingestion`) rejects any generated
+`src/**/bronze/**.py` file that imports `UCSingleCatalog` or calls
+`saveAsTable("unity.bronze.…")`. The `tests/test_uc_wiring.py` regression
+scan blocks the same patterns from being reintroduced into snippets.
 
 2. **`ingestion_factory.py`** — `build_bronze_taskgroup(dag, configs_dir=None)`
    scans `<configs_dir>/*.yml` at DAG parse time, returns an Airflow
