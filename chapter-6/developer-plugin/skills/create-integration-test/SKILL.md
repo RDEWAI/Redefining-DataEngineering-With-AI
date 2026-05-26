@@ -56,6 +56,7 @@ LIBRARIES_FILE="$PATTERNS_DIR/LIBRARIES.md"
 - `$PATTERNS_DIR/unity-catalog-pattern.md` — UC REST endpoints used by the test
 - `$PATTERNS_DIR/openlineage-marquez-pattern.md` — Marquez REST endpoints + facet keys
 - `$PATTERNS_DIR/spark-expectations-pattern.md` — SE stats table name + run-evidence schema
+- `$PATTERNS_DIR/docker-compose-conventions.md` — host/port map for Airflow + UC + Marquez. The conftest defaults (`AIRFLOW_API`, `UC_API`, `MARQUEZ_API`) MUST be sourced from this doc, never hardcoded.
 - `$PATTERNS_DIR/LIBRARIES.md` — pinned `requests` / `pytest` versions
 
 ### Library freshness check
@@ -179,7 +180,7 @@ strictly required by the new test module.
 Write `{project_root}/tests/integration/{layer}/test_{layer}_uc.py`. The
 module MUST:
 
-- Carry `pytestmark = pytest.mark.integration` at module scope.
+- Carry `pytestmark = [pytest.mark.integration, pytest.mark.e2e]` at module scope. The `e2e` marker is the canonical name (registered in chapter-6/pyproject.toml; gated behind `make eval-e2e` so it is excluded from `make test`). The `integration` marker is kept for compatibility with the chapter-5 inherited test layout — both must be present so collection works under either invocation.
 - Constant tuple `LAYER_TABLES` derived from the LLD's per-layer task
   inventory (NOT hardcoded; read the LLD at generation time).
 - Constant tuple `METADATA_COLUMNS` populated from the LLD §2.3 (or

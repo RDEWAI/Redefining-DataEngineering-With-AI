@@ -1,0 +1,49 @@
+name: promote
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: Target environment
+        required: true
+        type: choice
+        options: [STAGING, PROD]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v4
+      - run: uv build
+      - id: upload
+        uses: actions/upload-artifact@v5
+        with:
+          name: dist
+          path: dist/
+
+  promote-staging:
+    needs: build
+    if: inputs.target_env == 'STAGING' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/download-artifact@v5
+        with: { name: dist, path: dist/ }
+      - run: echo "deploy dist/ to STAGING (env file _infra/cd/config/STAGING.yaml)"
+
+  promote-prod:
+    needs: promote-staging
+    # Fires on tag push (the same trigger that fans out staging) OR on an
+    # explicit workflow_dispatch with target_env=PROD. Missing the tag
+    # clause silently skips prod on `git push --tags`.
+    if: inputs.target_env == 'PROD' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v5
+        with: { name: dist, path: dist/ }
+      - run: echo "deploy dist/ to PROD (env file _infra/cd/config/PROD.yaml)"

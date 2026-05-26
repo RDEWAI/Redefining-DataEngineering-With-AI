@@ -1,0 +1,49 @@
+{
+  "skill_name": "validate-ingestion",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Clean ingestion layer",
+      "prompt": "Clean ingestion layer \u2014 **Expected**: PASS, \"N source configs present, all schemas aligned with LLD \u00a75.1\".",
+      "expected_output": "Output of /developer-plugin:validate-ingestion matching the SKILL.md phases for scenario Clean ingestion layer",
+      "files": [],
+      "expectations": [
+        "Skill validate-ingestion ran without error",
+        "Output references the SKILL.md sections cited in scenario Clean ingestion layer"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Missing schema in config",
+      "prompt": "Missing schema in config \u2014 **Expected**: CRITICAL \u2014 \"patients.yml missing schema block\".",
+      "expected_output": "Output of /developer-plugin:validate-ingestion matching the SKILL.md phases for scenario Missing schema in config",
+      "files": [],
+      "expectations": [
+        "Skill validate-ingestion ran without error",
+        "Output references the SKILL.md sections cited in scenario Missing schema in config"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Hardcoded path",
+      "prompt": "Hardcoded path \u2014 **Expected**: CRITICAL \u2014 \"absolute path `/opt/...` detected; use PATIENT360_PROJECT_ROOT-anchored relative path (IL-005)\".",
+      "expected_output": "Output of /developer-plugin:validate-ingestion matching the SKILL.md phases for scenario Hardcoded path",
+      "files": [],
+      "expectations": [
+        "Skill validate-ingestion ran without error",
+        "Output references the SKILL.md sections cited in scenario Hardcoded path"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "PythonOperator instead of SparkSubmitOperator",
+      "prompt": "PythonOperator instead of SparkSubmitOperator \u2014 **Expected**: CRITICAL \u2014 \"IL-011: bronze tasks must use SparkSubmitOperator\".",
+      "expected_output": "Output of /developer-plugin:validate-ingestion matching the SKILL.md phases for scenario PythonOperator instead of SparkSubmitOperator",
+      "files": [],
+      "expectations": [
+        "Skill validate-ingestion ran without error",
+        "Output references the SKILL.md sections cited in scenario PythonOperator instead of SparkSubmitOperator"
+      ]
+    }
+  ]
+}

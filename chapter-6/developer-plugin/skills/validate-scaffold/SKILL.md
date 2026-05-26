@@ -147,7 +147,7 @@ Reconciliation rule (set-equality, project-agnostic):
   strip the longest matching layer prefix from the filename to recover
   the **base table name**.
 - Build the union of base names across the contracts directory and
-  assert it covers the full table set declared in DMS §2 (`bronze` +
+  assert it covers the full table set declared in DMS §2–§4 (`bronze` +
   `silver` + `gold`). Extra contracts not in DMS are reported as INFO,
   not FAIL.
 - Each YAML references columns present in the corresponding DMS
@@ -188,7 +188,11 @@ recovered — the rest of the check is identical.
   `<include file="changelogs/..." .../>` entry (i.e. is not the empty
   template skeleton).
 - `ddl/liquibase/changelogs/` contains exactly N `*.xml` files where N
-  is the number of Bronze tables declared in DMS §2 (read at runtime).
+  is the number of **Bronze** tables declared in **DMS §2** (read at
+  runtime). Liquibase ships Bronze DDL only — Silver/Gold tables are
+  Spark-managed Delta tables and don't carry XML changelogs. (Area 5c
+  validates the full Bronze + Silver + Gold contract coverage via
+  StructType YAMLs.)
 - Each changelog's filename, after stripping the LLD's Bronze layer
   prefix (per Area 4's reconciliation rule), matches a Bronze table name
   from DMS §2. If the LLD declares no prefix for Bronze, treat the
@@ -199,6 +203,35 @@ recovered — the rest of the check is identical.
 - `tests/test_contracts.py` exists.
 - `pytest tests/test_contracts.py --collect-only -q` reports at least one
   collected test and no collection errors.
+
+### Area 5d — Makefile target enumeration
+
+`{project_root}/Makefile` MUST declare these target stems (matching
+the inherited chapter-5/6 Makefile convention; see
+`$PATTERNS_DIR/makefile-conventions.md` for full conventions):
+
+| Target | Purpose | Severity if missing |
+|---|---|---|
+| `dev-setup` | `uv sync` + first-run prep | **FAIL** |
+| `test` | run `tests/` (unit; e2e gated separately) | **FAIL** |
+| `lint` | ruff (and any other lint tooling) | **FAIL** |
+| `validate-*` OR umbrella `validate:` | at least one of: a hyphenated `validate-<artifact>` target (e.g. `validate-silver`, `validate-gold`, `validate-bronze`) OR a single umbrella `validate:` target that fans out to artifact-specific validators in its recipe | **FAIL** |
+
+Check via:
+
+```bash
+grep -E "^(dev-setup|test|lint|validate(-[a-z-]+)?):" {project_root}/Makefile
+```
+
+A bare `validate:` target counts because many projects roll up the
+per-artifact validators behind a single rollup. The Phase-1 readiness
+gate (`make lint` / `make test`) only depends on the lint/test targets
+being present; `validate-*` enumeration is informational for tooling
+that wants to know which artifacts are validated standalone. Report
+each missing target by name. Extra targets are fine and reported as
+INFO only. This check is in-skill rather than fully delegated to the
+pattern doc so that scaffold-validation works even when the libraries
+cache is missing.
 
 ### Area 6 — Environment prerequisites
 
@@ -232,7 +265,7 @@ Checks:
   [utils]   utils/<name>.py imports ................ PASS  (per LLD §2.3)
   [tests]   tests/conftest.py ...................... PASS
   [tests]   pytest --collect-only .................. PASS
-  [contracts] <N> YAML files vs DMS §2 ............. PASS
+  [contracts] <N> YAML files vs DMS §2–§4 ............. PASS
   [infra]   docker compose config -q ............... INDETERMINATE (docker unavailable)
   [smoke]   uv sync --all-extras .................... PASS
 

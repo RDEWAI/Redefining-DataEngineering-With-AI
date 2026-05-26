@@ -1,0 +1,49 @@
+{
+  "skill_name": "update-scaffold",
+  "evals": [
+    {
+      "id": 1,
+      "name": "sync-contracts (DMS changed)",
+      "prompt": "`/developer-plugin:update-scaffold sync-contracts`",
+      "expected_output": "Output of /developer-plugin:update-scaffold matching the SKILL.md phases for scenario sync-contracts (DMS changed)",
+      "files": [],
+      "expectations": [
+        "Skill update-scaffold ran without error",
+        "Output references the SKILL.md sections cited in scenario sync-contracts (DMS changed)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "sync-infra (docker-compose drift)",
+      "prompt": "sync-infra (docker-compose drift) \u2014 **Invoke**: `/developer-plugin:update-scaffold sync-infra` \u2192 reconciles `_infra/docker/docker-compose.yml` against docker-compose-conventions.md (pinned image tags, named volumes, port map).",
+      "expected_output": "Output of /developer-plugin:update-scaffold matching the SKILL.md phases for scenario sync-infra (docker-compose drift)",
+      "files": [],
+      "expectations": [
+        "Skill update-scaffold ran without error",
+        "Output references the SKILL.md sections cited in scenario sync-infra (docker-compose drift)"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "sync-template (cookiecutter bump)",
+      "prompt": "sync-template (cookiecutter bump) \u2014 **Invoke**: `/developer-plugin:update-scaffold sync-template` \u2192 applies cookiecutter delta; flags any user-edited file before overwriting.",
+      "expected_output": "Output of /developer-plugin:update-scaffold matching the SKILL.md phases for scenario sync-template (cookiecutter bump)",
+      "files": [],
+      "expectations": [
+        "Skill update-scaffold ran without error",
+        "Output references the SKILL.md sections cited in scenario sync-template (cookiecutter bump)"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Hard rules",
+      "prompt": "Hard rules \u2014 - Never deletes a file.",
+      "expected_output": "Output of /developer-plugin:update-scaffold matching the SKILL.md phases for scenario Hard rules",
+      "files": [],
+      "expectations": [
+        "Skill update-scaffold ran without error",
+        "Output references the SKILL.md sections cited in scenario Hard rules"
+      ]
+    }
+  ]
+}

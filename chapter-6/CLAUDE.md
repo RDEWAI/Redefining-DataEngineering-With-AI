@@ -42,6 +42,20 @@ New in chapter-6 (Silver and Gold layers):
 `create-silver`, `update-silver`, `validate-silver`,
 `create-gold`, `update-gold`, `validate-gold`.
 
+New in chapter-6 v2.1 (post-DE-work lifecycle):
+`pr-process` — opens a PR from a story branch, drives review/approval,
+and tears down the developer sandbox via a pluggable driver
+(`local-docker` shipped; the driver contract in
+[`inputs/code/v1/teardown-pattern.md`](inputs/code/v1/teardown-pattern.md)
+shows how to add `cloud-databricks` / `cloud-eks` drivers).
+
+The CI/CD trio (`create-pipeline` / `update-pipeline` / `validate-pipeline`)
+was extended to own three new workflow files that pair with `pr-process`:
+
+- `_infra/ci/.github/workflows/pr-preview.yml` — PR-triggered preview deploy + always-teardown
+- `_infra/ci/.github/workflows/sandbox-cleanup.yml` — calls the same teardown driver on `pull_request: closed`
+- `_infra/ci/.github/workflows/promote.yml` — tag-driven promote with required-reviewer environment gate
+
 (`apply-learnings` carries chapter-6 changes: single
 `memory/developer/learnings-queue.jsonl` queue, plus cross-reference to
 `developer-plugin/LLD-DEVIATIONS.md` so corrections that imply an LLD

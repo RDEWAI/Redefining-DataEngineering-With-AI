@@ -1,0 +1,49 @@
+{
+  "skill_name": "update-gold",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Story mode (single builder)",
+      "prompt": "`/developer-plugin:update-gold STORY-05-005`",
+      "expected_output": "Output of /developer-plugin:update-gold matching the SKILL.md phases for scenario Story mode (single builder)",
+      "files": [],
+      "expectations": [
+        "Skill update-gold ran without error",
+        "Output references the SKILL.md sections cited in scenario Story mode (single builder)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Diff mode",
+      "prompt": "Diff mode \u2014 **Invoke**: `/developer-plugin:update-gold diff` \u2192 prints `(builder, latest_LLD_sig, current_code_sig, action)` table BEFORE editing, asks AskUserQuestion to confirm.",
+      "expected_output": "Output of /developer-plugin:update-gold matching the SKILL.md phases for scenario Diff mode",
+      "files": [],
+      "expectations": [
+        "Skill update-gold ran without error",
+        "Output references the SKILL.md sections cited in scenario Diff mode"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Full mode",
+      "prompt": "Full mode \u2014 **Invoke**: `/developer-plugin:update-gold full` \u2192 re-emits every Gold builder/contract/DQ file; existing tests on removed columns flagged INFO.",
+      "expected_output": "Output of /developer-plugin:update-gold matching the SKILL.md phases for scenario Full mode",
+      "files": [],
+      "expectations": [
+        "Skill update-gold ran without error",
+        "Output references the SKILL.md sections cited in scenario Full mode"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Silver ripple-effect warning",
+      "prompt": "Silver ripple-effect warning \u2014 **Setup**: `clinical_patients_silver` schema renamed a column.",
+      "expected_output": "Output of /developer-plugin:update-gold matching the SKILL.md phases for scenario Silver ripple-effect warning",
+      "files": [],
+      "expectations": [
+        "Skill update-gold ran without error",
+        "Output references the SKILL.md sections cited in scenario Silver ripple-effect warning"
+      ]
+    }
+  ]
+}

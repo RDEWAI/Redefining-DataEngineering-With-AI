@@ -100,11 +100,37 @@ running this resolver.
 ### Phase 1: Read Current State
 Read the existing pipeline file and understand its current structure.
 
+The skill recognises six pipeline file shapes — edits to each follow the
+conventions in `create-pipeline` so the two skills stay in sync:
+
+| File | Owner | Triggers |
+|---|---|---|
+| `lint.yml` | create-scaffold (skeleton) → update-pipeline edits | push, PR |
+| `unit-test.yml` | create-scaffold (skeleton) → update-pipeline edits | push, PR |
+| `integration-test.yml` | create-scaffold (skeleton) → update-pipeline edits | push, PR (labeled) |
+| `pr-preview.yml` | create-pipeline (creates) → update-pipeline edits | `pull_request: opened/synchronize/reopened` |
+| `sandbox-cleanup.yml` | create-pipeline (creates) → update-pipeline edits | `pull_request: closed` |
+| `promote.yml` | create-pipeline (creates) → update-pipeline edits | tag push, `workflow_dispatch` |
+
 ### Phase 2: Clarify
 Use `AskUserQuestion` to confirm the exact change needed.
 
 ### Phase 3: Apply Edits
 Edit in-place. Add a comment with the change date and rationale.
+
+**Hard rules per workflow:**
+
+- `pr-preview.yml` — the teardown step must remain `if: always()` so a
+  failed test never leaks named volumes onto the runner. Never remove
+  it or move it behind a conditional.
+- `sandbox-cleanup.yml` — it must call the shared teardown driver at
+  `developer-plugin/skills/pr-process/scripts/teardown_drivers/<name>.sh`
+  (or successor). Never replace the driver invocation with inline
+  `docker compose down` — the driver is the single source of truth for
+  what gets destroyed and how.
+- `promote.yml` — the `promote-prod` job must remain gated on
+  `environment: production`. Never delete the environment line or swap
+  it for `if:` conditions alone.
 
 ### Phase 4: Validate
 Invoke `/developer-plugin:validate-pipeline` on the updated file.

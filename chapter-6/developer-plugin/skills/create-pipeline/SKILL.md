@@ -125,9 +125,13 @@ Those are create-scaffold's domain. This skill:
 
 - May **edit** the three skeletons to add deploy steps, env matrices, or
   caching — never re-create them from scratch.
-- **Creates** every other pipeline file: `deploy-*.yml`, `release-*.yml`,
-  `promote-*.yml`, `_infra/ci/.gitlab-ci.yml` (if GitLab), and any
-  platform-specific config (Astronomer, MWAA).
+- **Creates** every other pipeline file:
+  - `_infra/ci/.github/workflows/pr-preview.yml` — PR-triggered preview deploy
+  - `_infra/ci/.github/workflows/sandbox-cleanup.yml` — PR-closed teardown
+  - `_infra/ci/.github/workflows/promote.yml` — main-tag promote with manual gate
+  - `_infra/ci/.github/workflows/deploy-*.yml` / `release-*.yml`
+  - `_infra/ci/.gitlab-ci.yml` (if GitLab)
+  - Platform-specific config (Astronomer, MWAA)
 
 Write targets:
 - **GitHub Actions**: new files under `{project_root}/_infra/ci/.github/workflows/` (but not the three skeleton names listed above — edit those, don't overwrite).
@@ -138,6 +142,140 @@ Guidelines:
 - Run `uv run pytest tests/` in the test stage (or invoke `make test`).
 - Run `uv run ruff check src/` in the lint stage (or invoke `make lint`).
 - Deploy stage only runs on `main` branch.
+- `pr-preview.yml` MUST bring up the docker-compose stack, run the
+  integration smoke, then **always** tear it back down with
+  `docker compose down -v --remove-orphans` (use an `always()` step) so a
+  failed test does not leak named volumes onto the runner.
+- `sandbox-cleanup.yml` triggers on `pull_request.closed` (whether merged
+  or not) and calls the same teardown driver the local `pr-process`
+  skill invokes — see `inputs/code/v1/teardown-pattern.md`.
+- `promote.yml` gates the `prod` environment behind a `workflow_dispatch`
+  approval step (`environment: production`) so a `main` push alone never
+  reaches prod without a human approval.
+
+#### Workflow file templates
+
+Write the three PR-lifecycle workflows verbatim from these templates,
+substituting `{project_name}` from workspace discovery. Pin every action
+SHA to a major tag per `ci-cd-pattern.md`.
+
+**`_infra/ci/.github/workflows/pr-preview.yml`**
+
+```yaml
+name: pr-preview
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: pr-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --all-groups
+      - name: Bring up local sandbox
+        run: docker compose -f {project_name}/_infra/docker/docker-compose.yml up -d --wait
+      - name: Integration smoke
+        run: uv run pytest {project_name}/tests/integration -m "not e2e" --tb=short
+      - name: Tear down (always — never leak volumes on the runner)
+        if: always()
+        run: docker compose -f {project_name}/_infra/docker/docker-compose.yml down -v --remove-orphans
+```
+
+**`_infra/ci/.github/workflows/sandbox-cleanup.yml`**
+
+```yaml
+name: sandbox-cleanup
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  teardown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Invoke shared teardown driver
+        # The driver is bundled INTO the user project at scaffold time
+        # under `_infra/cd/teardown_drivers/` (mirror of the canonical
+        # copy that lives in `developer-plugin/skills/pr-process/scripts/teardown_drivers/`).
+        # CI checks out the user repo — there is no `developer-plugin/`
+        # directory here, so the workflow must reference the project-
+        # local copy, not the plugin path.
+        env:
+          PATIENT360_PROJECT_ROOT: ${{ github.workspace }}/{project_name}
+        run: |
+          chmod +x {project_name}/_infra/cd/teardown_drivers/local_docker.sh
+          {project_name}/_infra/cd/teardown_drivers/local_docker.sh --destroy \
+            | tee teardown-summary.json
+      - uses: actions/upload-artifact@v5
+        with:
+          name: teardown-summary-${{ github.event.pull_request.number }}
+          path: teardown-summary.json
+```
+
+**`_infra/ci/.github/workflows/promote.yml`**
+
+```yaml
+name: promote
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: Target environment
+        required: true
+        type: choice
+        options: [STAGING, PROD]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v4
+      - run: uv build
+      - id: upload
+        uses: actions/upload-artifact@v5
+        with:
+          name: dist
+          path: dist/
+
+  promote-staging:
+    needs: build
+    if: inputs.target_env == 'STAGING' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/download-artifact@v5
+        with: { name: dist, path: dist/ }
+      - run: echo "deploy dist/ to STAGING (env file _infra/cd/config/STAGING.yaml)"
+
+  promote-prod:
+    needs: promote-staging
+    # Tag pushes (refs/tags/v*) must reach prod after staging, AND a manual
+    # workflow_dispatch with target_env=PROD must work. Without the tag
+    # clause `git push --tags` silently lands on STAGING only.
+    if: inputs.target_env == 'PROD' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: production  # GitHub environment with required reviewers
+    steps:
+      - uses: actions/download-artifact@v5
+        with: { name: dist, path: dist/ }
+      - run: echo "deploy dist/ to PROD (env file _infra/cd/config/PROD.yaml)"
+```
+
+The `production` environment must be configured in the repo settings
+with at least one required reviewer; the workflow alone cannot enforce
+that — the deploy step relies on GitHub's environment protection.
 
 ### Phase 3: Validate
 Invoke `/developer-plugin:validate-pipeline` on the generated files.

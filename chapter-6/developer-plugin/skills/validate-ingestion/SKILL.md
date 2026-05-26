@@ -114,7 +114,22 @@ The script returns a non-zero exit code if any CRITICAL issues are found.
 - Per-table YAML `metadata_columns` missing any of `ds`, `_ingested_at`,
   `_source_batch_id` — the DQS SE rules reference the underscored names
 - Hardcoded credentials, connection strings, or absolute filesystem paths
-  in runner / factory / wrapper
+  in runner / factory / wrapper. Inherited learning **IL-005** is the
+  authority: every relative YAML path (`contracts_dir`, `dq_rules_dir`,
+  `source.path`) and every code path that references a filesystem
+  location MUST be anchored against the `PATIENT360_PROJECT_ROOT`
+  environment variable. Airflow workers run with `CWD=/opt/airflow`,
+  so relative paths that resolve against CWD break inside the container.
+  The validator flags any string matching `/opt/`, `/Users/`, `/home/`,
+  or `C:\` in runner/factory/wrapper source as CRITICAL — the only
+  acceptable absolute path is one constructed at runtime from
+  `os.environ["PATIENT360_PROJECT_ROOT"]`.
+- A bronze task is wired with `PythonOperator` instead of
+  `SparkSubmitOperator`. Spark-touching tasks MUST use a separate JVM
+  via SparkSubmitOperator (inherited learning **IL-011**); the Airflow
+  3.x task-SDK collides with in-process py4j subprocess management and
+  fails with `_start_update_server() missing 1 required positional
+  argument: 'is_unix_domain_sock'`.
 - `pyproject.toml` runtime dependencies missing any of `pyspark`,
   `delta-spark`, `spark-expectations`, or `pyyaml`
 - Any of the three required test modules missing:

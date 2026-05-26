@@ -1,0 +1,40 @@
+{
+  "skill_name": "create-ingestion",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Story mode (single source)",
+      "prompt": "`/developer-plugin:create-ingestion STORY-02-003` (scope: `patients` CSV)",
+      "expected_output": "Output of /developer-plugin:create-ingestion matching the SKILL.md phases for scenario Story mode (single source)",
+      "files": [],
+      "expectations": [
+        "Emits `airflow/configs/bronze/patients.yml` (config-driven runner input) with schema + DQ pointer.",
+        "Emits or reuses `src/patient_360/bronze/runner.py`, `factory.py`, `spark_submit_wrapper.py`.",
+        "DAG TaskGroup `bronze_ingestion` wired with one SparkSubmit task per source.",
+        "Idempotent: re-running on an existing config either edits in place or no-ops if unchanged."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Full mode",
+      "prompt": "Full mode \u2014 **Invoke**: `/developer-plugin:create-ingestion full` \u2192 emits configs for every Bronze source declared in LLD \u00a75.1.",
+      "expected_output": "Output of /developer-plugin:create-ingestion matching the SKILL.md phases for scenario Full mode",
+      "files": [],
+      "expectations": [
+        "Skill create-ingestion ran without error",
+        "Output references the SKILL.md sections cited in scenario Full mode"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Hard rules",
+      "prompt": "Hard rules \u2014 - Anchors all relative paths against `PATIENT360_PROJECT_ROOT` (IL-005).",
+      "expected_output": "Output of /developer-plugin:create-ingestion matching the SKILL.md phases for scenario Hard rules",
+      "files": [],
+      "expectations": [
+        "Skill create-ingestion ran without error",
+        "Output references the SKILL.md sections cited in scenario Hard rules"
+      ]
+    }
+  ]
+}

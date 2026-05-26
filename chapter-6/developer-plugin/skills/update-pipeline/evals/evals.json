@@ -1,0 +1,49 @@
+{
+  "skill_name": "update-pipeline",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Add caching to lint.yml",
+      "prompt": "`/developer-plugin:update-pipeline _infra/ci/.github/workflows/lint.yml` plus instruction \"add uv cache\"",
+      "expected_output": "Output of /developer-plugin:update-pipeline matching the SKILL.md phases for scenario Add caching to lint.yml",
+      "files": [],
+      "expectations": [
+        "Skill update-pipeline ran without error",
+        "Output references the SKILL.md sections cited in scenario Add caching to lint.yml"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Cannot remove `if: always()` from pr-preview.yml",
+      "prompt": "ask the skill to \"simplify the teardown step in pr-preview.yml\"",
+      "expected_output": "Output of /developer-plugin:update-pipeline matching the SKILL.md phases for scenario Cannot remove `if: always()` from pr-preview.yml",
+      "files": [],
+      "expectations": [
+        "Skill update-pipeline ran without error",
+        "Output references the SKILL.md sections cited in scenario Cannot remove `if: always()` from pr-preview.yml"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Cannot inline `docker compose down` into sandbox-cleanup.yml",
+      "prompt": "Cannot inline `docker compose down` into sandbox-cleanup.yml \u2014 **Setup**: user requests \"just run docker compose down here so we don't need the driver\".",
+      "expected_output": "Output of /developer-plugin:update-pipeline matching the SKILL.md phases for scenario Cannot inline `docker compose down` into sandbox-cleanup.yml",
+      "files": [],
+      "expectations": [
+        "Skill update-pipeline ran without error",
+        "Output references the SKILL.md sections cited in scenario Cannot inline `docker compose down` into sandbox-cleanup.yml"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Bumping action SHAs across all workflows",
+      "prompt": "\"update actions/checkout to v6 everywhere\"",
+      "expected_output": "Output of /developer-plugin:update-pipeline matching the SKILL.md phases for scenario Bumping action SHAs across all workflows",
+      "files": [],
+      "expectations": [
+        "Skill update-pipeline ran without error",
+        "Output references the SKILL.md sections cited in scenario Bumping action SHAs across all workflows"
+      ]
+    }
+  ]
+}

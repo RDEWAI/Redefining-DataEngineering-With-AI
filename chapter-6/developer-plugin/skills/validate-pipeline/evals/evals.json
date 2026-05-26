@@ -1,0 +1,49 @@
+{
+  "skill_name": "validate-pipeline",
+  "evals": [
+    {
+      "id": 1,
+      "name": "pr-preview.yml missing always-teardown",
+      "prompt": "pr-preview.yml missing always-teardown \u2014 **Setup**: `pr-preview.yml` has a teardown step but no `if: always()`.",
+      "expected_output": "Output of /developer-plugin:validate-pipeline matching the SKILL.md phases for scenario pr-preview.yml missing always-teardown",
+      "files": [],
+      "expectations": [
+        "Skill validate-pipeline ran without error",
+        "Output references the SKILL.md sections cited in scenario pr-preview.yml missing always-teardown"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "sandbox-cleanup.yml inlines docker compose down",
+      "prompt": "sandbox-cleanup.yml inlines docker compose down \u2014 **Setup**: `sandbox-cleanup.yml` has a `run: docker compose -f \u2026 down -v` step but does NOT call the shared driver under `teardown_drivers/`.",
+      "expected_output": "Output of /developer-plugin:validate-pipeline matching the SKILL.md phases for scenario sandbox-cleanup.yml inlines docker compose down",
+      "files": [],
+      "expectations": [
+        "Skill validate-pipeline ran without error",
+        "Output references the SKILL.md sections cited in scenario sandbox-cleanup.yml inlines docker compose down"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "promote.yml lacks environment gate",
+      "prompt": "promote.yml lacks environment gate \u2014 **Setup**: `promote.yml` has a `promote-prod` job with `if: github.ref == 'refs/heads/main'` but no `environment: production`.",
+      "expected_output": "Output of /developer-plugin:validate-pipeline matching the SKILL.md phases for scenario promote.yml lacks environment gate",
+      "files": [],
+      "expectations": [
+        "Skill validate-pipeline ran without error",
+        "Output references the SKILL.md sections cited in scenario promote.yml lacks environment gate"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "All clean",
+      "prompt": "All clean \u2014 **Expected**: report PASS, no findings.",
+      "expected_output": "Output of /developer-plugin:validate-pipeline matching the SKILL.md phases for scenario All clean",
+      "files": [],
+      "expectations": [
+        "Skill validate-pipeline ran without error",
+        "Output references the SKILL.md sections cited in scenario All clean"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "skill_name": "validate-dag",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Clean DAG",
+      "prompt": "Clean DAG \u2014 **Expected**: PASS, \"no import errors, 5 TaskGroups, 23 tasks, all SparkSubmit, max_active_tasks=1\".",
+      "expected_output": "Output of /developer-plugin:validate-dag matching the SKILL.md phases for scenario Clean DAG",
+      "files": [],
+      "expectations": [
+        "Skill validate-dag ran without error",
+        "Output references the SKILL.md sections cited in scenario Clean DAG"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Import error",
+      "prompt": "Import error \u2014 **Setup**: typo in `from airflow.providers.apache.spark...`.",
+      "expected_output": "Output of /developer-plugin:validate-dag matching the SKILL.md phases for scenario Import error",
+      "files": [],
+      "expectations": [
+        "Skill validate-dag ran without error",
+        "Output references the SKILL.md sections cited in scenario Import error"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Non-SparkSubmit task",
+      "prompt": "Non-SparkSubmit task \u2014 **Expected**: CRITICAL \u2014 \"transform_patient_silver uses PythonOperator (IL-011 violation)\".",
+      "expected_output": "Output of /developer-plugin:validate-dag matching the SKILL.md phases for scenario Non-SparkSubmit task",
+      "files": [],
+      "expectations": [
+        "Skill validate-dag ran without error",
+        "Output references the SKILL.md sections cited in scenario Non-SparkSubmit task"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Missing catchup=False",
+      "prompt": "Missing catchup=False \u2014 **Expected**: WARNING \u2014 \"DAG missing catchup=False; backfill avalanche risk (IL-014)\".",
+      "expected_output": "Output of /developer-plugin:validate-dag matching the SKILL.md phases for scenario Missing catchup=False",
+      "files": [],
+      "expectations": [
+        "Skill validate-dag ran without error",
+        "Output references the SKILL.md sections cited in scenario Missing catchup=False"
+      ]
+    }
+  ]
+}

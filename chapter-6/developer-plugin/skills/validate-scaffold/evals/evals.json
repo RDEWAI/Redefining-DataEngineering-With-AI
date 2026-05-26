@@ -1,0 +1,49 @@
+{
+  "skill_name": "validate-scaffold",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Clean scaffold",
+      "prompt": "Clean scaffold \u2014 **Expected**: PASS, \"uv sync OK, imports OK, pytest --collect-only OK\".",
+      "expected_output": "Output of /developer-plugin:validate-scaffold matching the SKILL.md phases for scenario Clean scaffold",
+      "files": [],
+      "expectations": [
+        "Skill validate-scaffold ran without error",
+        "Output references the SKILL.md sections cited in scenario Clean scaffold"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Missing Make target",
+      "prompt": "Missing Make target \u2014 **Expected**: CRITICAL \u2014 \"Makefile missing target: validate-silver\".",
+      "expected_output": "Output of /developer-plugin:validate-scaffold matching the SKILL.md phases for scenario Missing Make target",
+      "files": [],
+      "expectations": [
+        "Skill validate-scaffold ran without error",
+        "Output references the SKILL.md sections cited in scenario Missing Make target"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Schema drift",
+      "prompt": "Schema drift \u2014 **Expected**: CRITICAL \u2014 \"src/<project>/contracts/patients.py StructType field count \u2260 DMS \u00a73.patients\".",
+      "expected_output": "Output of /developer-plugin:validate-scaffold matching the SKILL.md phases for scenario Schema drift",
+      "files": [],
+      "expectations": [
+        "Skill validate-scaffold ran without error",
+        "Output references the SKILL.md sections cited in scenario Schema drift"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "uv sync fails",
+      "prompt": "uv sync fails \u2014 **Expected**: CRITICAL \u2014 \"uv sync exit 1; LIBRARIES.md likely out of date or pyproject.toml malformed\".",
+      "expected_output": "Output of /developer-plugin:validate-scaffold matching the SKILL.md phases for scenario uv sync fails",
+      "files": [],
+      "expectations": [
+        "Skill validate-scaffold ran without error",
+        "Output references the SKILL.md sections cited in scenario uv sync fails"
+      ]
+    }
+  ]
+}

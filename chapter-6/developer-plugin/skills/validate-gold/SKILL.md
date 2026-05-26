@@ -64,6 +64,13 @@ For each builder, for every SCD2 dim input
   Spark Column types)
 - **G10 [CRITICAL]** Builder does NOT import `apply_scd2` (Gold never
   performs SCD2 writes — LLD §5.3 implication)
+- **G10a [CRITICAL]** Builder does NOT import from
+  `{project_name}.bronze.*` — Gold reads from Silver only (LLD §5.3
+  layer boundary). Check via grep for `from {project_name}.bronze`
+  and `from {project_name}.bronze import` patterns; any hit is a
+  medallion-boundary violation and a hard fail. Routing Gold straight
+  through Bronze skips Silver's SCD2 + cleansed-fact conformance and
+  bypasses the inline DQ gate, so this rule is CRITICAL, not WARNING.
 
 ## Phase 4 — DQ Gate (every Gold task)
 

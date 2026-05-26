@@ -1,0 +1,41 @@
+{
+  "skill_name": "create-scaffold",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Fresh project",
+      "prompt": "`/developer-plugin:create-scaffold full`",
+      "expected_output": "Output of /developer-plugin:create-scaffold matching the SKILL.md phases for scenario Fresh project",
+      "files": [],
+      "expectations": [
+        "Renders cookiecutter template into `<project>/`.",
+        "Emits `pyproject.toml` with pinned LIBRARIES.md versions.",
+        "Emits `Makefile` with `dev-setup`, `test`, `lint`, `validate-*` targets.",
+        "Emits `_infra/docker/docker-compose.yml` per docker-compose-conventions.md.",
+        "Emits skeleton workflow files: `lint.yml`, `unit-test.yml`, `integration-test.yml` (NOT pr-preview/sandbox-cleanup/promote \u2014 those are `create-pipeline`)."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Story mode (one new module)",
+      "prompt": "Story mode (one new module) \u2014 **Invoke**: `/developer-plugin:create-scaffold STORY-01-002` \u2192 adds only the module/utility named by the story's deliverables.",
+      "expected_output": "Output of /developer-plugin:create-scaffold matching the SKILL.md phases for scenario Story mode (one new module)",
+      "files": [],
+      "expectations": [
+        "Skill create-scaffold ran without error",
+        "Output references the SKILL.md sections cited in scenario Story mode (one new module)"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Hard rules",
+      "prompt": "Hard rules \u2014 - Ownership split with create-pipeline: only the THREE skeleton workflows above; everything else is create-pipeline's domain.",
+      "expected_output": "Output of /developer-plugin:create-scaffold matching the SKILL.md phases for scenario Hard rules",
+      "files": [],
+      "expectations": [
+        "Skill create-scaffold ran without error",
+        "Output references the SKILL.md sections cited in scenario Hard rules"
+      ]
+    }
+  ]
+}

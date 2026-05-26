@@ -1,0 +1,61 @@
+{
+  "skill_name": "validate-stories",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Single story, all ACs pass",
+      "prompt": "`/developer-plugin:validate-stories STORY-03-005`",
+      "expected_output": "Output of /developer-plugin:validate-stories matching the SKILL.md phases for scenario Single story, all ACs pass",
+      "files": [],
+      "expectations": [
+        "Reads the story's `## Verification` block.",
+        "For each AC: static heuristic (keyword/path) + invokes downstream validator (validate-silver / validate-ingestion / validate-dag).",
+        "Returns PASS with `N/N ACs green`."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "One AC fails",
+      "prompt": "One AC fails \u2014 **Expected**: CRITICAL per failing AC: `CRITICAL STORY-NN-NNN AC<N>: <check.spec> \u2014 <check.detail>`.",
+      "expected_output": "Output of /developer-plugin:validate-stories matching the SKILL.md phases for scenario One AC fails",
+      "files": [],
+      "expectations": [
+        "Skill validate-stories ran without error",
+        "Output references the SKILL.md sections cited in scenario One AC fails"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Manual AC indeterminate",
+      "prompt": "Manual AC indeterminate \u2014 **Expected**: INFO line (manual checks can't fail mechanically).",
+      "expected_output": "Output of /developer-plugin:validate-stories matching the SKILL.md phases for scenario Manual AC indeterminate",
+      "files": [],
+      "expectations": [
+        "Skill validate-stories ran without error",
+        "Output references the SKILL.md sections cited in scenario Manual AC indeterminate"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Epic-level ACs",
+      "prompt": "Epic-level ACs \u2014 **Invoke**: `/developer-plugin:validate-stories EPIC-03` \u2192 validates epic-level ACs after all stories pass.",
+      "expected_output": "Output of /developer-plugin:validate-stories matching the SKILL.md phases for scenario Epic-level ACs",
+      "files": [],
+      "expectations": [
+        "Skill validate-stories ran without error",
+        "Output references the SKILL.md sections cited in scenario Epic-level ACs"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Plan JSON update",
+      "prompt": "Plan JSON update \u2014 **Expected**: updates `<story>.plan.json` (written by implement-stories); never edits story markdown.",
+      "expected_output": "Output of /developer-plugin:validate-stories matching the SKILL.md phases for scenario Plan JSON update",
+      "files": [],
+      "expectations": [
+        "Skill validate-stories ran without error",
+        "Output references the SKILL.md sections cited in scenario Plan JSON update"
+      ]
+    }
+  ]
+}

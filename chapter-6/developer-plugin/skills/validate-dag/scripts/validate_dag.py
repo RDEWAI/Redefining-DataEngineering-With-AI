@@ -12,9 +12,15 @@ Bronze run exposed three recurring code-generation bugs:
   (``BRONZE_RUNNER_APP``, ``AIRFLOW_CONFIGS_DIR``, ...) with absolute
   ``/opt/airflow/`` defaults.
 - ``UC-WIRING-001`` — any Bronze runner under ``src/**/bronze/**.py``
-  using ``df.write.format("delta").save(...)`` instead of
-  ``saveAsTable("unity.bronze.<table>")`` is rejected. Path-based writes
-  leave Unity Catalog empty (LLD Decision 15).
+  that uses ``saveAsTable("unity.bronze.<table>")`` or imports
+  ``UCSingleCatalog`` is rejected. Decision 12 (UC-managed Bronze writes
+  via UCSingleCatalog) was REVOKED 2026-05-12; Decision 15 was revised
+  2026-05-20 to use external Delta paths via ``.option("path", ...)``;
+  Decision 17 (2026-05-23) moved UC registration to deploy-time
+  ``scripts/bootstrap_uc_tables.py`` via the UC REST API. The runtime
+  contract is now: path-based ``.format("delta").save()`` with
+  ``.option("path", …)``, NO ``saveAsTable`` in Bronze, and NO
+  ``UCSingleCatalog`` wiring (IL-002 + IL-003 forbid it on Spark 4.x).
 
 Usage:
     python validate_dag.py <file>
@@ -78,10 +84,16 @@ RUN_LOCAL_LITERAL = re.compile(
 CONFIGS_DIR_LITERAL = re.compile(
     r"""configs_dir\s*=\s*['"]airflow/configs['"]""",
 )
-# UC-WIRING-001: `format("delta").save(...)` — path-based Bronze writes.
-PATH_BASED_DELTA_WRITE = re.compile(
-    r'\.format\(\s*[\'"]delta[\'"]\s*\)\s*(?:\.[a-zA-Z_]+\([^)]*\)\s*)*\.save\s*\(',
-    re.DOTALL,
+# UC-WIRING-001 (Decision 17, replaces revoked Decision 12): the FORBIDDEN
+# pattern is the UC-managed write — `saveAsTable("unity.bronze.…")` and
+# the `UCSingleCatalog` import that backed it. Path-based `.save()` is the
+# REQUIRED runtime path now; UC table registration happens at deploy time
+# via the REST client in `scripts/bootstrap_uc_tables.py`.
+SAVE_AS_UNITY_BRONZE = re.compile(
+    r'\.saveAsTable\(\s*[fr]?[\'"]unity\.bronze\.',
+)
+UC_SINGLE_CATALOG_IMPORT = re.compile(
+    r"(?:from\s+\S+\s+import\s+UCSingleCatalog|UCSingleCatalog\s*[\(\.])",
 )
 # Bronze-runner detection: any path containing /bronze/ — Silver/Gold may
 # legitimately use path-based writes for ad-hoc dumps.
@@ -158,7 +170,7 @@ def check_file(path: Path) -> list[Finding]:
                     ),
                 )
             )
-        if is_bronze and PATH_BASED_DELTA_WRITE.search(line):
+        if is_bronze and SAVE_AS_UNITY_BRONZE.search(line):
             findings.append(
                 Finding(
                     level=Level.CRITICAL,
@@ -166,15 +178,41 @@ def check_file(path: Path) -> list[Finding]:
                     file=str(path),
                     line=lineno,
                     message=(
-                        "Path-based Delta write in a Bronze runner — Unity "
-                        "Catalog won't see the table until a manual external-"
-                        "table registration. LLD Decision 15 forbids this."
+                        '`saveAsTable("unity.bronze.…")` in a Bronze runner — '
+                        "Decision 12 (UC-managed runtime writes) was REVOKED "
+                        "2026-05-12. Bronze must write to external Delta paths "
+                        "and let UC registration happen at deploy-time "
+                        "(Decision 17 / scripts/bootstrap_uc_tables.py)."
                     ),
                     suggestion=(
-                        'Replace `.save(...)` with `.saveAsTable(f"unity.bronze.'
-                        '{table}")` and ensure the SparkSession is built with '
-                        "UCSingleCatalog (see `inputs/code/v1/scripts/"
-                        "ingestion_runner.py.snippet`)."
+                        'Replace `.saveAsTable(f"unity.bronze.{table}")` with '
+                        '`.format("delta").mode("append")'
+                        '.option("replaceWhere", f"ds = \'{ds}\'")'
+                        '.option("path", f"{warehouse}/bronze/{table}").save()`. '
+                        "UC table registration is performed by "
+                        "`scripts/bootstrap_uc_tables.py` at deploy-time."
+                    ),
+                )
+            )
+        if is_bronze and UC_SINGLE_CATALOG_IMPORT.search(line):
+            findings.append(
+                Finding(
+                    level=Level.CRITICAL,
+                    rule="UC-WIRING-001",
+                    file=str(path),
+                    line=lineno,
+                    message=(
+                        "`UCSingleCatalog` in a Bronze runner — IL-002 forbids "
+                        "wiring `spark.sql.catalog.spark_catalog` to "
+                        "UCSingleCatalog on local-FS dev (Spark 4.x). Use "
+                        "DeltaCatalog plus Spark's built-in Hive metastore."
+                    ),
+                    suggestion=(
+                        "Remove the `UCSingleCatalog` wiring. Set "
+                        "`spark.sql.catalog.spark_catalog = "
+                        "org.apache.spark.sql.delta.catalog.DeltaCatalog` and "
+                        "`spark.sql.catalogImplementation = hive` (IL-003) in "
+                        "the SparkSession builder."
                     ),
                 )
             )

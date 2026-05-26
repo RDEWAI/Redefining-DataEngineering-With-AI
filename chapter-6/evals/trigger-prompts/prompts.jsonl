@@ -1,0 +1,40 @@
+{"prompt": "open a PR for STORY-01-001 and drive review", "expected_skill": "pr-process", "rationale": "PR lifecycle phrasing — must not match create-pipeline or implement-stories"}
+{"prompt": "the silver branch is ready, can you push it for review and clean up the local sandbox after approval", "expected_skill": "pr-process", "rationale": "Post-DE-work lifecycle — PR + sandbox teardown"}
+{"prompt": "destroy the local docker stack after the PR is approved", "expected_skill": "pr-process", "rationale": "Teardown phrasing — must beat create-pipeline / update-pipeline"}
+{"prompt": "check if STORY-01-001 is ready to ship", "expected_skill": "pr-process", "rationale": "Readiness gate is Phase 1 of pr-process"}
+{"prompt": "tear down the sandbox now that the PR was approved", "expected_skill": "pr-process", "rationale": "Phase 4 teardown — direct phrasing"}
+{"prompt": "scaffold a CI/CD pipeline for this project with lint, test, and deploy stages", "expected_skill": "create-pipeline", "rationale": "Pipeline generation — must not match update-pipeline"}
+{"prompt": "generate GitHub Actions workflows including the PR-preview and sandbox-cleanup jobs", "expected_skill": "create-pipeline", "rationale": "Multi-workflow generation"}
+{"prompt": "create a promote workflow that gates prod on a manual approval", "expected_skill": "create-pipeline", "rationale": "promote.yml is owned by create-pipeline"}
+{"prompt": "add a new caching step to the existing lint workflow", "expected_skill": "update-pipeline", "rationale": "Incremental edit to existing workflow"}
+{"prompt": "change the deploy step in promote.yml to also push to staging", "expected_skill": "update-pipeline", "rationale": "Modify existing workflow"}
+{"prompt": "tweak the unit-test matrix to include python 3.13", "expected_skill": "update-pipeline", "rationale": "Existing workflow edit"}
+{"prompt": "lint this pipeline file and tell me if anything is missing", "expected_skill": "validate-pipeline", "rationale": "Validation phrasing"}
+{"prompt": "check whether pr-preview.yml has the teardown step with if always", "expected_skill": "validate-pipeline", "rationale": "Specific workflow validation"}
+{"prompt": "is the promote workflow protected by an environment gate", "expected_skill": "validate-pipeline", "rationale": "Validation question"}
+{"prompt": "generate the silver layer transforms from the approved LLD and DMS", "expected_skill": "create-silver", "rationale": "Silver generation — must not match create-gold"}
+{"prompt": "build the SCD2 helper and per-table silver transform modules", "expected_skill": "create-silver", "rationale": "Silver-specific scd2 phrasing"}
+{"prompt": "wire the silver_dimensions task group into the DAG", "expected_skill": "create-silver", "rationale": "Silver DAG wiring"}
+{"prompt": "translate the LLD silver tasks into PySpark modules", "expected_skill": "create-silver", "rationale": "Silver code generation"}
+{"prompt": "build the patient_summary gold table", "expected_skill": "create-gold", "rationale": "Gold-specific table name"}
+{"prompt": "generate the consumer aggregates from silver", "expected_skill": "create-gold", "rationale": "Silver-to-Gold pattern"}
+{"prompt": "the DMS gold section changed, update the builders", "expected_skill": "update-gold", "rationale": "Update phrasing"}
+{"prompt": "lint the gold builders against the latest LLD", "expected_skill": "validate-gold", "rationale": "Validation phrasing"}
+{"prompt": "the STM bronze-to-silver mapping changed, update the transforms", "expected_skill": "update-silver", "rationale": "Update phrasing"}
+{"prompt": "lint the silver transforms for SCD2 violations", "expected_skill": "validate-silver", "rationale": "Validation phrasing"}
+{"prompt": "scaffold the bronze ingestion runner and configs", "expected_skill": "create-ingestion", "rationale": "Bronze ingestion generation"}
+{"prompt": "add a new column to the patients bronze config", "expected_skill": "update-ingestion", "rationale": "Update phrasing — existing bronze config"}
+{"prompt": "lint the bronze configs against the LLD ingestion section", "expected_skill": "validate-ingestion", "rationale": "Validation phrasing"}
+{"prompt": "generate the airflow DAG from the LLD", "expected_skill": "create-dag", "rationale": "DAG generation"}
+{"prompt": "add a task to silver_dimensions task group", "expected_skill": "update-dag", "rationale": "DAG edit"}
+{"prompt": "lint the dag for import errors", "expected_skill": "validate-dag", "rationale": "DAG validation"}
+{"prompt": "scaffold the project skeleton with pyproject and Makefile", "expected_skill": "create-scaffold", "rationale": "Scaffold generation"}
+{"prompt": "regenerate the StructType contracts from the DMS", "expected_skill": "update-scaffold", "rationale": "sync-contracts mode"}
+{"prompt": "smoke test the scaffold with uv sync and pytest collect", "expected_skill": "validate-scaffold", "rationale": "Scaffold smoke"}
+{"prompt": "build the deploy smoke for the silver layer", "expected_skill": "create-deploy-validation", "rationale": "Deploy validation generation"}
+{"prompt": "write the end-to-end test that triggers the airflow DAG", "expected_skill": "create-integration-test", "rationale": "Integration test generation"}
+{"prompt": "implement story 03-005 by dispatching to the right downstream skill", "expected_skill": "implement-stories", "rationale": "Story orchestration"}
+{"prompt": "verify the code satisfies every AC of story 03-005", "expected_skill": "validate-stories", "rationale": "AC verification"}
+{"prompt": "mark story 03-005 done and roll the epic status up", "expected_skill": "complete-stories", "rationale": "Story completion"}
+{"prompt": "apply the pending learnings from the queue", "expected_skill": "apply-learnings", "rationale": "Learnings application"}
+{"prompt": "refresh the library versions in LIBRARIES.md", "expected_skill": "refresh-libraries", "rationale": "Library refresh"}

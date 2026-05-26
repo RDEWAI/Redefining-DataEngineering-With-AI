@@ -1,4 +1,4 @@
-.PHONY: help dev-setup install-plugins install-plugins-ch4 install-plugins-ch6 test test-unit validate-silver validate-gold lint format clean
+.PHONY: help dev-setup install-plugins install-plugins-ch4 install-plugins-ch6 test test-unit validate-silver validate-gold lint format clean eval eval-e2e eval-update-goldens
 
 help: ##@ Show available commands
 	@echo "Chapter 6: Silver and Gold Layer Implementation"
@@ -16,6 +16,9 @@ help: ##@ Show available commands
 	@echo ""
 	@echo "=== Testing & Quality ==="
 	@echo "  test                 - Run all tests"
+	@echo "  eval                 - Run skill evals (skill-creator + trigger + golden, no docker)"
+	@echo "  eval-e2e             - Run end-to-end evals (brings up docker-compose stack)"
+	@echo "  eval-update-goldens  - Re-baseline goldens (SKILL=<name>, e.g. SKILL=create-pipeline)"
 	@echo "  lint                 - Run ruff linter"
 	@echo "  format               - Auto-format code"
 
@@ -53,7 +56,22 @@ install-plugins-ch6: ##@ Install chapter-6 developer-plugin
 	done
 
 test: ##@ Run all tests
-	uv run pytest tests/ -v
+	uv run pytest tests/ -v -m "not e2e"
+
+eval: ##@ Run skill evals (skill-creator + trigger + golden, no docker)
+	uv run pytest tests/test_skill_evals.py tests/test_pipeline_skill_templates.py -v
+
+eval-e2e: ##@ Run end-to-end evals (brings up docker-compose stack)
+	uv run pytest tests/ -v -m e2e
+
+eval-update-goldens: ##@ Re-baseline goldens (SKILL=<name> FROM=<dir>)
+	@if [ -z "$(SKILL)" ] || [ -z "$(FROM)" ]; then \
+		echo "usage: make eval-update-goldens SKILL=<name> FROM=<artifacts-dir>"; \
+		echo "  re-runs the skill against your fixture first, then copies the"; \
+		echo "  captured outputs over the committed goldens at evals/goldens/<SKILL>/."; \
+		exit 1; \
+	fi
+	uv run python -m evals.harness.golden_diff --update "$(SKILL)" --from "$(FROM)"
 
 validate-silver: ##@ Validate Silver layer artifacts
 	uv run python developer-plugin/skills/validate-silver/scripts/validate_silver.py --all patient_360/

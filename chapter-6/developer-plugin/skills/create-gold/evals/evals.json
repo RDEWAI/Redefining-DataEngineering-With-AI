@@ -1,0 +1,41 @@
+{
+  "skill_name": "create-gold",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Story mode, single Gold table",
+      "prompt": "`/developer-plugin:create-gold STORY-05-002` (scope: `patient_summary`)",
+      "expected_output": "Output of /developer-plugin:create-gold matching the SKILL.md phases for scenario Story mode, single Gold table",
+      "files": [],
+      "expectations": [
+        "Phase 0 confirms upstream artifacts `Approved`.",
+        "Emits `src/patient_360/gold/build_patient_summary.py` reading from Silver, writing Delta to `gold/patient_summary/`.",
+        "Emits `contracts/patient_summary.yml` with DMS \u00a74 columns verbatim.",
+        "Emits `dq_rules/patient_summary.yml` (`agg_dq` + `query_dq` from DQS \u00a73).",
+        "Wires `gold_aggregations` TaskGroup in `airflow/dags/patient360_hourly_v1.py` with `silver_facts >> gold_aggregations >> reconciliation_gold`."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Full mode",
+      "prompt": "Full mode \u2014 **Invoke**: `/developer-plugin:create-gold full` \u2192 emits all 3 Gold tables (`patient_summary`, `patient_clinical_history`, `patient_billing_summary`) in topo order.",
+      "expected_output": "Output of /developer-plugin:create-gold matching the SKILL.md phases for scenario Full mode",
+      "files": [],
+      "expectations": [
+        "Skill create-gold ran without error",
+        "Output references the SKILL.md sections cited in scenario Full mode"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Hard rules",
+      "prompt": "Hard rules \u2014 - Never invents columns: every Gold column traces to DMS \u00a74 or a documented derivation in STM.",
+      "expected_output": "Output of /developer-plugin:create-gold matching the SKILL.md phases for scenario Hard rules",
+      "files": [],
+      "expectations": [
+        "Skill create-gold ran without error",
+        "Output references the SKILL.md sections cited in scenario Hard rules"
+      ]
+    }
+  ]
+}

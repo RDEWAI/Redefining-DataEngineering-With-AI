@@ -1,0 +1,49 @@
+{
+  "skill_name": "update-silver",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Story mode (single transform)",
+      "prompt": "`/developer-plugin:update-silver STORY-03-007`",
+      "expected_output": "Output of /developer-plugin:update-silver matching the SKILL.md phases for scenario Story mode (single transform)",
+      "files": [],
+      "expectations": [
+        "Skill update-silver ran without error",
+        "Output references the SKILL.md sections cited in scenario Story mode (single transform)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Diff mode",
+      "prompt": "Diff mode \u2014 **Invoke**: `/developer-plugin:update-silver diff` \u2192 table of `(table, latest_sig, current_sig, action)`, AskUserQuestion before editing.",
+      "expected_output": "Output of /developer-plugin:update-silver matching the SKILL.md phases for scenario Diff mode",
+      "files": [],
+      "expectations": [
+        "Skill update-silver ran without error",
+        "Output references the SKILL.md sections cited in scenario Diff mode"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Full mode",
+      "prompt": "Full mode \u2014 **Invoke**: `/developer-plugin:update-silver full` \u2192 re-emits every transform; preserves user-added test data; never deletes SCD2 helper.",
+      "expected_output": "Output of /developer-plugin:update-silver matching the SKILL.md phases for scenario Full mode",
+      "files": [],
+      "expectations": [
+        "Skill update-silver ran without error",
+        "Output references the SKILL.md sections cited in scenario Full mode"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Gold ripple-effect",
+      "prompt": "Gold ripple-effect \u2014 **Setup**: SCD2 hash-column list for `clinical_patients` changes.",
+      "expected_output": "Output of /developer-plugin:update-silver matching the SKILL.md phases for scenario Gold ripple-effect",
+      "files": [],
+      "expectations": [
+        "Skill update-silver ran without error",
+        "Output references the SKILL.md sections cited in scenario Gold ripple-effect"
+      ]
+    }
+  ]
+}

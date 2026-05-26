@@ -1,0 +1,2354 @@
+{
+  "metadata": {
+    "skill_name": "chapter-6-developer-plugin",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-05-26T01:35:37Z",
+    "evals_run": [
+      "apply-learnings",
+      "complete-stories",
+      "create-dag",
+      "create-deploy-validation",
+      "create-gold",
+      "create-ingestion",
+      "create-integration-test",
+      "create-pipeline",
+      "create-scaffold",
+      "create-silver",
+      "implement-stories",
+      "pr-process",
+      "refresh-libraries",
+      "update-dag",
+      "update-gold",
+      "update-ingestion",
+      "update-pipeline",
+      "update-scaffold",
+      "update-silver",
+      "validate-dag",
+      "validate-gold",
+      "validate-ingestion",
+      "validate-pipeline",
+      "validate-scaffold",
+      "validate-silver",
+      "validate-stories"
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": "apply-learnings",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 71.813,
+        "tokens": 35556,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill describes Reflect-Abstract-Generalize-Write pattern",
+          "passed": true,
+          "evidence": "metrics.cited_RAGW=True"
+        },
+        {
+          "text": "Skill says it appends to the matching SKILL.md's Active Learnings section as L-NNN",
+          "passed": true,
+          "evidence": "metrics.l_nnn_id_proposed='L-001'"
+        },
+        {
+          "text": "Skill marks queue entries as 'applied' after writing the rule",
+          "passed": true,
+          "evidence": "keyword hits 3/6"
+        },
+        {
+          "text": "Skill cross-references LLD-DEVIATIONS.md when a correction implies an LLD change",
+          "passed": true,
+          "evidence": "metrics.lld_deviations_referenced=True"
+        },
+        {
+          "text": "Skill never deletes a queue entry without writing the rule",
+          "passed": true,
+          "evidence": "keyword hits 3/6"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "complete-stories",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 57.559,
+        "tokens": 39706,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill verifies every AC checkbox is checked before marking Done",
+          "passed": true,
+          "evidence": "metrics.checks_ac_checkboxes=True"
+        },
+        {
+          "text": "Skill verifies dependencies are Done",
+          "passed": true,
+          "evidence": "metrics.checks_dependencies=True"
+        },
+        {
+          "text": "Skill uses Edit (not Write) to flip the Status field",
+          "passed": true,
+          "evidence": "metrics.uses_edit_not_write=True"
+        },
+        {
+          "text": "Skill rolls up the epic status only when every child story is Done",
+          "passed": true,
+          "evidence": "metrics.epic_rollup_described=True"
+        },
+        {
+          "text": "Skill blocks if any epic-level AC is still open",
+          "passed": true,
+          "evidence": "metrics.blocks_on_open_epic_ac=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-dag",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 73.313,
+        "tokens": 48369,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "DAG uses SparkSubmitOperator exclusively (IL-011)",
+          "passed": true,
+          "evidence": "metrics.spark_submit_only=True"
+        },
+        {
+          "text": "DAG sets max_active_tasks=1 and catchup=False (IL-014)",
+          "passed": true,
+          "evidence": "metrics.max_active_tasks_1=True"
+        },
+        {
+          "text": "DAG resolves via DagContext.get_current() and passes dag= explicitly to TaskGroups (IL-013)",
+          "passed": true,
+          "evidence": "metrics.dagcontext_pattern=True"
+        },
+        {
+          "text": "driver_cores is forwarded via conf['spark.driver.cores'], not as kwarg (IL-012)",
+          "passed": true,
+          "evidence": "metrics.driver_cores_via_conf=True"
+        },
+        {
+          "text": "TaskGroups topologically ordered: bronze >> silver_dimensions/silver_facts >> gold",
+          "passed": true,
+          "evidence": "metrics.topological_edges_correct=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-deploy-validation",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 63.1,
+        "tokens": 36678,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Emits _infra/cd/apply-silver-liquibase.sh (or equivalent idempotent script)",
+          "passed": true,
+          "evidence": "keyword hits 5/6"
+        },
+        {
+          "text": "Emits _infra/cd/sync-silver-dags.sh (or equivalent)",
+          "passed": true,
+          "evidence": "keyword hits 3/4"
+        },
+        {
+          "text": "Emits tests/integration/silver/test_deploy_smoke.py",
+          "passed": true,
+          "evidence": "keyword hits 5/5"
+        },
+        {
+          "text": "Scripts are idempotent (re-running doesn't error)",
+          "passed": true,
+          "evidence": "keyword hits 4/5"
+        },
+        {
+          "text": "Tests assert each script exits 0 AND Airflow reports no DAG import errors",
+          "passed": true,
+          "evidence": "keyword hits 7/8"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-gold",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 58.739,
+        "tokens": 36054,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Emits src/patient_360/gold/build_patient_summary.py",
+          "passed": true,
+          "evidence": "keyword hits 1/3"
+        },
+        {
+          "text": "Reads only from Silver \u2014 never imports from patient_360.bronze",
+          "passed": true,
+          "evidence": "metrics.reads_silver_only=True"
+        },
+        {
+          "text": "DQ gate runs BEFORE the write (cites LLD \u00a78.2)",
+          "passed": true,
+          "evidence": "metrics.dq_before_write=True"
+        },
+        {
+          "text": "Emits contracts/patient_summary.yml matching DMS \u00a74 column list",
+          "passed": true,
+          "evidence": "metrics.contract_aligned_dms=True"
+        },
+        {
+          "text": "Wires gold_aggregations TaskGroup with silver_facts >> gold_aggregations dependency",
+          "passed": true,
+          "evidence": "metrics.dag_wiring_described=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-ingestion",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 71.407,
+        "tokens": 50779,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Emits airflow/configs/bronze/patients.yml with schema + DQ pointer",
+          "passed": true,
+          "evidence": "metrics.yaml_config_described=True"
+        },
+        {
+          "text": "Reuses or emits src/patient_360/bronze/{runner,factory,spark_submit_wrapper}.py",
+          "passed": true,
+          "evidence": "keyword hits 5/7"
+        },
+        {
+          "text": "All relative paths anchored against PATIENT360_PROJECT_ROOT (IL-005)",
+          "passed": true,
+          "evidence": "metrics.project_root_anchoring=True"
+        },
+        {
+          "text": "Uses SparkSubmitOperator (IL-011)",
+          "passed": true,
+          "evidence": "metrics.spark_submit_only=True"
+        },
+        {
+          "text": "DQ runs inline BEFORE the Bronze write",
+          "passed": true,
+          "evidence": "metrics.dq_inline_before_write=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-integration-test",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.6,
+        "passed": 3,
+        "failed": 2,
+        "total": 5,
+        "time_seconds": 83.7,
+        "tokens": 40812,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Test file tagged with @pytest.mark.e2e (excluded from default make test)",
+          "passed": false,
+          "evidence": "metrics.e2e_marker_present=False"
+        },
+        {
+          "text": "Reads docker-compose port map from inputs/code/v*/docker-compose-conventions.md, not hardcoded",
+          "passed": false,
+          "evidence": "metrics.docker_ports_indirect=False"
+        },
+        {
+          "text": "Asserts Delta tables exist with expected row counts",
+          "passed": true,
+          "evidence": "keyword hits 4/6"
+        },
+        {
+          "text": "Queries Marquez for OpenLineage events",
+          "passed": true,
+          "evidence": "metrics.queries_marquez=True"
+        },
+        {
+          "text": "Queries Spark Expectations stats table for DQ pass rate",
+          "passed": true,
+          "evidence": "metrics.queries_se_stats=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-pipeline",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 64.433,
+        "tokens": 37753,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "All three workflow YAMLs produced (pr-preview, sandbox-cleanup, promote)",
+          "passed": true,
+          "evidence": "keyword hits 6/7"
+        },
+        {
+          "text": "pr-preview.yml teardown step has 'if: always()'",
+          "passed": true,
+          "evidence": "keyword hits 3/3"
+        },
+        {
+          "text": "sandbox-cleanup.yml invokes the shared driver under teardown_drivers/, not inline docker compose down",
+          "passed": true,
+          "evidence": "keyword hits 6/9"
+        },
+        {
+          "text": "promote.yml's prod job has 'environment: production'",
+          "passed": true,
+          "evidence": "keyword hits 3/3"
+        },
+        {
+          "text": "Action SHAs are pinned to major versions (e.g. @v5), not @main",
+          "passed": true,
+          "evidence": "keyword hits 4/4"
+        },
+        {
+          "text": "Project name 'patient_360' substituted, no other project hardcoded",
+          "passed": true,
+          "evidence": "keyword hits 3/6"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-scaffold",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 62.529,
+        "tokens": 47170,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Emits pyproject.toml with pinned LIBRARIES.md versions",
+          "passed": true,
+          "evidence": "metrics.pyproject_pinned=True"
+        },
+        {
+          "text": "Emits Makefile with dev-setup/test/lint/validate-* targets",
+          "passed": true,
+          "evidence": "metrics.makefile_targets=True"
+        },
+        {
+          "text": "Emits _infra/docker/docker-compose.yml matching conventions",
+          "passed": true,
+          "evidence": "metrics.docker_compose_emitted=True"
+        },
+        {
+          "text": "Emits StructType contracts from DMS schemas",
+          "passed": true,
+          "evidence": "metrics.structtype_emitted=True"
+        },
+        {
+          "text": "Emits ONLY lint.yml, unit-test.yml, integration-test.yml skeletons \u2014 NOT pr-preview/sandbox-cleanup/promote (those are create-pipeline's)",
+          "passed": true,
+          "evidence": "metrics.scaffold_ownership_correct=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-silver",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 70.1,
+        "tokens": 42895,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Phase 0 upstream approval gate described (LLD/DMS/STM/DQS Approved)",
+          "passed": true,
+          "evidence": "keyword hits 4/5"
+        },
+        {
+          "text": "apply_scd2 signature includes target_path (per LLD-DEVIATIONS #1)",
+          "passed": true,
+          "evidence": "keyword hits 4/5"
+        },
+        {
+          "text": "DQ runs BEFORE the MERGE (LLD \u00a78.2 cited)",
+          "passed": true,
+          "evidence": "keyword hits 2/3"
+        },
+        {
+          "text": "Inherited learning IL-006 cited (no monotonically_increasing_id)",
+          "passed": true,
+          "evidence": "keyword hits 4/5"
+        },
+        {
+          "text": "At least 3 IL-NNN inherited learnings cited",
+          "passed": true,
+          "evidence": "keyword hits 2/5"
+        },
+        {
+          "text": "Module structure includes TABLE/DOMAIN constants and a transform(spark, env, ds) function",
+          "passed": true,
+          "evidence": "keyword hits 6/9"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "implement-stories",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 54.855,
+        "tokens": 46298,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill parses STORY-03-005 \u2192 EPIC-03 \u2192 routes to create-silver or update-silver",
+          "passed": true,
+          "evidence": "metrics.dispatches_by_epic=True"
+        },
+        {
+          "text": "Skill writes a .plan.json file per story (read by validate-stories)",
+          "passed": true,
+          "evidence": "metrics.writes_plan_json=True"
+        },
+        {
+          "text": "Skill never edits story markdown directly",
+          "passed": true,
+          "evidence": "metrics.preserves_story_markdown=True"
+        },
+        {
+          "text": "Skill stops the batch on first AC self-check FAIL",
+          "passed": true,
+          "evidence": "metrics.stops_on_ac_fail=True"
+        },
+        {
+          "text": "Skill topo-sorts by Depends On for epic / sprint inputs",
+          "passed": true,
+          "evidence": "keyword hits 2/4"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "pr-process",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 156.9,
+        "tokens": 62202,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill walks through all 4 named phases (Readiness, Open PR, Drive Review, Sandbox Teardown)",
+          "passed": true,
+          "evidence": "keyword hits 7/9"
+        },
+        {
+          "text": "check_pr_readiness.py is invoked and produces JSON with the 7 gates",
+          "passed": true,
+          "evidence": "keyword hits 2/4"
+        },
+        {
+          "text": "local_docker.sh --check and --dry-run are run and outputs shown",
+          "passed": true,
+          "evidence": "keyword hits 4/5"
+        },
+        {
+          "text": "Teardown command includes 'down -v --remove-orphans'",
+          "passed": true,
+          "evidence": "keyword hits 3/4"
+        },
+        {
+          "text": "PR body rendered from pr_body.md.j2 ends with '<!-- pr-process: managed -->'",
+          "passed": true,
+          "evidence": "keyword hits 4/4"
+        },
+        {
+          "text": "Driver is referred to as 'pluggable' or 'driver contract' is named",
+          "passed": true,
+          "evidence": "keyword hits 3/6"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "refresh-libraries",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 80.146,
+        "tokens": 40523,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill calls AskUserQuestion before applying any version bump",
+          "passed": true,
+          "evidence": "metrics.asks_before_apply=True"
+        },
+        {
+          "text": "Skill cites the upstream source consulted (context7, PyPI, GitHub)",
+          "passed": true,
+          "evidence": "metrics.cites_upstream_source=True"
+        },
+        {
+          "text": "Skill updates last_verified timestamp in LIBRARIES.md",
+          "passed": true,
+          "evidence": "metrics.updates_last_verified=True"
+        },
+        {
+          "text": "Skill keeps LIBRARIES.md and pyproject.toml decisions separate (two AskUserQuestion gates)",
+          "passed": true,
+          "evidence": "metrics.two_gates_separate=True"
+        },
+        {
+          "text": "Skill never auto-applies bumps without user approval",
+          "passed": true,
+          "evidence": "metrics.no_auto_apply=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "update-dag",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 46.75,
+        "tokens": 33175,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill applies incremental edit; preserves existing tasks",
+          "passed": true,
+          "evidence": "metrics.incremental_edit=True"
+        },
+        {
+          "text": "Skill keeps SparkSubmitOperator (IL-011) for the new task",
+          "passed": true,
+          "evidence": "metrics.spark_submit_only=True"
+        },
+        {
+          "text": "Skill preserves dependency edges in the TaskGroup",
+          "passed": true,
+          "evidence": "metrics.preserves_dependencies=True"
+        },
+        {
+          "text": "Skill bumps the file's version comment",
+          "passed": true,
+          "evidence": "metrics.bumps_version_comment=True"
+        },
+        {
+          "text": "Skill says it re-runs validate-dag after the edit",
+          "passed": true,
+          "evidence": "metrics.re_runs_validate=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "update-gold",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 49.238,
+        "tokens": 32697,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill applies incremental edit to build_patient_summary.py only",
+          "passed": true,
+          "evidence": "metrics.incremental_edit=True"
+        },
+        {
+          "text": "Skill preserves unchanged builders",
+          "passed": true,
+          "evidence": "metrics.preserves_unchanged=True"
+        },
+        {
+          "text": "Skill increments the file-level version comment per the 3-scenario rule",
+          "passed": true,
+          "evidence": "metrics.version_increment_rule=True"
+        },
+        {
+          "text": "Skill warns about ripple to dq_rules / contracts if applicable",
+          "passed": true,
+          "evidence": "metrics.warns_ripple=True"
+        },
+        {
+          "text": "Skill requires Silver re-`Approved` if Silver changed",
+          "passed": true,
+          "evidence": "metrics.requires_silver_approved=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "update-ingestion",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 77.75,
+        "tokens": 39826,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill edits patients.yml schema block in place",
+          "passed": true,
+          "evidence": "metrics.in_place_edit=True"
+        },
+        {
+          "text": "Skill preserves other config entries",
+          "passed": true,
+          "evidence": "metrics.preserves_other_entries=True"
+        },
+        {
+          "text": "Skill bumps the file's version field",
+          "passed": true,
+          "evidence": "metrics.bumps_version_comment=True"
+        },
+        {
+          "text": "Skill never rewrites unchanged files",
+          "passed": true,
+          "evidence": "metrics.no_unchanged_rewrites=True"
+        },
+        {
+          "text": "Skill re-validates with /developer-plugin:validate-ingestion after edit",
+          "passed": true,
+          "evidence": "metrics.re_validates=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "update-pipeline",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 70.673,
+        "tokens": 34321,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill refuses task (1) and explains the consequence of removing if:always()",
+          "passed": true,
+          "evidence": "keyword hits 3/5"
+        },
+        {
+          "text": "Skill quotes the matching SKILL.md hard rule",
+          "passed": true,
+          "evidence": "keyword hits 1/2"
+        },
+        {
+          "text": "For task (2), skill describes a mechanical refactor across files",
+          "passed": true,
+          "evidence": "keyword hits 3/5"
+        },
+        {
+          "text": "Skill notes that update-pipeline preserves existing structure, only changes the action version",
+          "passed": true,
+          "evidence": "keyword hits 4/8"
+        },
+        {
+          "text": "Skill states that validate-pipeline runs after the edit",
+          "passed": true,
+          "evidence": "keyword hits 1/3"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "update-scaffold",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 51.921,
+        "tokens": 38155,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill regenerates only the affected StructType file under src/<project>/contracts/",
+          "passed": true,
+          "evidence": "metrics.scoped_regenerate=True"
+        },
+        {
+          "text": "Skill preserves user-added comments where possible",
+          "passed": true,
+          "evidence": "metrics.preserves_user_comments=True"
+        },
+        {
+          "text": "Skill never deletes files",
+          "passed": true,
+          "evidence": "metrics.no_deletes=True"
+        },
+        {
+          "text": "Skill uses Edit (not Write) for files that may have been user-edited",
+          "passed": true,
+          "evidence": "metrics.uses_edit_not_write=True"
+        },
+        {
+          "text": "Skill targets the sync-contracts mode explicitly",
+          "passed": true,
+          "evidence": "metrics.sync_mode_named=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "update-silver",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 55.114,
+        "tokens": 33547,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill edits src/patient_360/silver/transform_clinical_patients.py only",
+          "passed": true,
+          "evidence": "keyword hits 4/4"
+        },
+        {
+          "text": "Skill preserves the SCD2 helper",
+          "passed": true,
+          "evidence": "metrics.preserves_scd2_helper=True"
+        },
+        {
+          "text": "Skill bumps the file-level version comment",
+          "passed": true,
+          "evidence": "metrics.bumps_version_comment=True"
+        },
+        {
+          "text": "Skill warns about Gold ripple (patient_summary + patient_clinical_history read this dim)",
+          "passed": true,
+          "evidence": "keyword hits 3/5"
+        },
+        {
+          "text": "Skill re-emits the contract YAML if schema changed",
+          "passed": true,
+          "evidence": "metrics.re_emits_contract=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "validate-dag",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 60.817,
+        "tokens": 33829,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill checks for SparkSubmitOperator-only (IL-011) and flags PythonOperator as CRITICAL",
+          "passed": true,
+          "evidence": "metrics.flags_python_operator=True"
+        },
+        {
+          "text": "Skill checks for catchup=False and max_active_tasks=1 (IL-014) \u2014 flags missing as WARNING",
+          "passed": true,
+          "evidence": "keyword hits 6/8"
+        },
+        {
+          "text": "Skill reports findings in CRITICAL / WARNING / INFO tiers",
+          "passed": true,
+          "evidence": "keyword hits 4/5"
+        },
+        {
+          "text": "Skill reports the count of TaskGroups and tasks",
+          "passed": true,
+          "evidence": "keyword hits 2/4"
+        },
+        {
+          "text": "Skill describes the import-error check (tries to load the DAG)",
+          "passed": true,
+          "evidence": "keyword hits 3/4"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "validate-gold",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 52.413,
+        "tokens": 32980,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill flags missing builder for any DMS \u00a74 declared table as CRITICAL",
+          "passed": true,
+          "evidence": "metrics.flags_missing_builder=True"
+        },
+        {
+          "text": "Skill flags schema drift (column not in DMS) as CRITICAL",
+          "passed": true,
+          "evidence": "metrics.flags_schema_drift=True"
+        },
+        {
+          "text": "Skill flags DQ-after-write (DQ not before MERGE/WRITE) as CRITICAL",
+          "passed": true,
+          "evidence": "metrics.flags_dq_order=True"
+        },
+        {
+          "text": "Skill flags Bronze imports in Gold builders as CRITICAL (LLD \u00a75.3 boundary)",
+          "passed": true,
+          "evidence": "metrics.flags_layer_boundary=True"
+        },
+        {
+          "text": "Skill is read-only \u2014 never edits anything",
+          "passed": true,
+          "evidence": "metrics.read_only=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "validate-ingestion",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 49.939,
+        "tokens": 34543,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill flags missing schema block as CRITICAL",
+          "passed": true,
+          "evidence": "metrics.flags_missing_schema=True"
+        },
+        {
+          "text": "Skill flags hardcoded absolute paths (not PATIENT360_PROJECT_ROOT-anchored) as CRITICAL (IL-005)",
+          "passed": true,
+          "evidence": "keyword hits 5/7"
+        },
+        {
+          "text": "Skill flags PythonOperator usage as CRITICAL (IL-011 \u2014 must be SparkSubmitOperator)",
+          "passed": true,
+          "evidence": "metrics.flags_python_operator=True"
+        },
+        {
+          "text": "Skill reports per-source schema alignment with LLD \u00a75.1",
+          "passed": true,
+          "evidence": "keyword hits 1/4"
+        },
+        {
+          "text": "Skill reports in CRITICAL / WARNING / INFO tiers",
+          "passed": true,
+          "evidence": "keyword hits 2/4"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "validate-pipeline",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 60.103,
+        "tokens": 33827,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Flags sandbox-cleanup.yml's inline docker-compose down as CRITICAL (should use shared driver)",
+          "passed": true,
+          "evidence": "keyword hits 5/7"
+        },
+        {
+          "text": "Flags missing if:always() in pr-preview.yml as CRITICAL",
+          "passed": true,
+          "evidence": "keyword hits 4/5"
+        },
+        {
+          "text": "Flags missing environment:production in promote.yml as CRITICAL",
+          "passed": true,
+          "evidence": "keyword hits 5/6"
+        },
+        {
+          "text": "Reports findings in CRITICAL / WARNING / INFO tiers",
+          "passed": true,
+          "evidence": "keyword hits 2/5"
+        },
+        {
+          "text": "References the SKILL.md's documented checks",
+          "passed": true,
+          "evidence": "keyword hits 2/3"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "validate-scaffold",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.6,
+        "passed": 3,
+        "failed": 2,
+        "total": 5,
+        "time_seconds": 56.093,
+        "tokens": 36169,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill runs uv sync and reports the result",
+          "passed": true,
+          "evidence": "metrics.runs_uv_sync=True"
+        },
+        {
+          "text": "Skill runs an import smoke against src/patient_360/__init__.py",
+          "passed": true,
+          "evidence": "metrics.runs_imports=True"
+        },
+        {
+          "text": "Skill runs pytest --collect-only and reports the count",
+          "passed": true,
+          "evidence": "metrics.runs_pytest_collect=True"
+        },
+        {
+          "text": "Skill checks Makefile targets exist (lint, test, validate-silver, validate-gold, etc.)",
+          "passed": false,
+          "evidence": "metrics.checks_makefile_targets=False"
+        },
+        {
+          "text": "Skill compares StructType field counts against DMS \u00a73 \u2014 flags drift as CRITICAL",
+          "passed": false,
+          "evidence": "metrics.checks_field_counts=False"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "validate-silver",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 46.496,
+        "tokens": 34056,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill flags missing apply_scd2 import in SCD2 dim transforms as CRITICAL",
+          "passed": true,
+          "evidence": "metrics.flags_missing_scd2_import=True"
+        },
+        {
+          "text": "Skill flags monotonically_increasing_id usage as CRITICAL (IL-006)",
+          "passed": true,
+          "evidence": "metrics.flags_monotonic_id=True"
+        },
+        {
+          "text": "Skill flags DQ-after-write as CRITICAL (LLD \u00a78.2)",
+          "passed": true,
+          "evidence": "metrics.flags_dq_order=True"
+        },
+        {
+          "text": "Skill flags facts using apply_scd2 as CRITICAL (facts must use write_silver_delta)",
+          "passed": true,
+          "evidence": "metrics.flags_fact_misuse=True"
+        },
+        {
+          "text": "Skill is read-only \u2014 produces only a report, no edits",
+          "passed": true,
+          "evidence": "metrics.read_only=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "validate-stories",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 106.2,
+        "tokens": 50273,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill reads the story's ## Verification block",
+          "passed": true,
+          "evidence": "metrics.reads_verification_block=True"
+        },
+        {
+          "text": "Skill runs a static heuristic AC scan (keyword/path checks)",
+          "passed": true,
+          "evidence": "metrics.runs_static_scan=True"
+        },
+        {
+          "text": "Skill invokes the downstream validator(s) (validate-silver / validate-ingestion / validate-dag) based on AC kind",
+          "passed": true,
+          "evidence": "metrics.invokes_downstream=True"
+        },
+        {
+          "text": "Skill updates the story's .plan.json file (written by implement-stories)",
+          "passed": true,
+          "evidence": "keyword hits 2/4"
+        },
+        {
+          "text": "Skill never edits the story markdown directly",
+          "passed": true,
+          "evidence": "keyword hits 4/5"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "apply-learnings",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 41.845,
+        "tokens": 26041,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill describes Reflect-Abstract-Generalize-Write pattern",
+          "passed": true,
+          "evidence": "metrics.cited_RAGW=True"
+        },
+        {
+          "text": "Skill says it appends to the matching SKILL.md's Active Learnings section as L-NNN",
+          "passed": true,
+          "evidence": "metrics.l_nnn_id_proposed='L-001'"
+        },
+        {
+          "text": "Skill marks queue entries as 'applied' after writing the rule",
+          "passed": true,
+          "evidence": "keyword hits 2/6"
+        },
+        {
+          "text": "Skill cross-references LLD-DEVIATIONS.md when a correction implies an LLD change",
+          "passed": true,
+          "evidence": "metrics.lld_deviations_referenced=True"
+        },
+        {
+          "text": "Skill never deletes a queue entry without writing the rule",
+          "passed": true,
+          "evidence": "keyword hits 4/6"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "complete-stories",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 43.879,
+        "tokens": 25953,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill verifies every AC checkbox is checked before marking Done",
+          "passed": true,
+          "evidence": "metrics.checks_ac_checkboxes=True"
+        },
+        {
+          "text": "Skill verifies dependencies are Done",
+          "passed": true,
+          "evidence": "metrics.checks_dependencies=True"
+        },
+        {
+          "text": "Skill uses Edit (not Write) to flip the Status field",
+          "passed": true,
+          "evidence": "metrics.uses_edit_not_write=True"
+        },
+        {
+          "text": "Skill rolls up the epic status only when every child story is Done",
+          "passed": true,
+          "evidence": "metrics.epic_rollup_described=True"
+        },
+        {
+          "text": "Skill blocks if any epic-level AC is still open",
+          "passed": true,
+          "evidence": "metrics.blocks_on_open_epic_ac=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-dag",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 43.479,
+        "tokens": 26192,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "DAG uses SparkSubmitOperator exclusively (IL-011)",
+          "passed": true,
+          "evidence": "metrics.spark_submit_only=True"
+        },
+        {
+          "text": "DAG sets max_active_tasks=1 and catchup=False (IL-014)",
+          "passed": true,
+          "evidence": "metrics.max_active_tasks_1=True"
+        },
+        {
+          "text": "DAG resolves via DagContext.get_current() and passes dag= explicitly to TaskGroups (IL-013)",
+          "passed": true,
+          "evidence": "metrics.dagcontext_pattern=True"
+        },
+        {
+          "text": "driver_cores is forwarded via conf['spark.driver.cores'], not as kwarg (IL-012)",
+          "passed": true,
+          "evidence": "metrics.driver_cores_via_conf=True"
+        },
+        {
+          "text": "TaskGroups topologically ordered: bronze >> silver_dimensions/silver_facts >> gold",
+          "passed": true,
+          "evidence": "metrics.topological_edges_correct=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-deploy-validation",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 43.1,
+        "tokens": 26074,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Emits _infra/cd/apply-silver-liquibase.sh (or equivalent idempotent script)",
+          "passed": true,
+          "evidence": "keyword hits 3/6"
+        },
+        {
+          "text": "Emits _infra/cd/sync-silver-dags.sh (or equivalent)",
+          "passed": true,
+          "evidence": "keyword hits 1/4"
+        },
+        {
+          "text": "Emits tests/integration/silver/test_deploy_smoke.py",
+          "passed": true,
+          "evidence": "keyword hits 2/5"
+        },
+        {
+          "text": "Scripts are idempotent (re-running doesn't error)",
+          "passed": true,
+          "evidence": "keyword hits 3/5"
+        },
+        {
+          "text": "Tests assert each script exits 0 AND Airflow reports no DAG import errors",
+          "passed": true,
+          "evidence": "keyword hits 7/8"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-gold",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 45.592,
+        "tokens": 26041,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Emits src/patient_360/gold/build_patient_summary.py",
+          "passed": false,
+          "evidence": "keyword hits 0/3"
+        },
+        {
+          "text": "Reads only from Silver \u2014 never imports from patient_360.bronze",
+          "passed": true,
+          "evidence": "metrics.reads_silver_only=True"
+        },
+        {
+          "text": "DQ gate runs BEFORE the write (cites LLD \u00a78.2)",
+          "passed": true,
+          "evidence": "metrics.dq_before_write=True"
+        },
+        {
+          "text": "Emits contracts/patient_summary.yml matching DMS \u00a74 column list",
+          "passed": true,
+          "evidence": "metrics.contract_aligned_dms=True"
+        },
+        {
+          "text": "Wires gold_aggregations TaskGroup with silver_facts >> gold_aggregations dependency",
+          "passed": true,
+          "evidence": "metrics.dag_wiring_described=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-ingestion",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 42.768,
+        "tokens": 25986,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Emits airflow/configs/bronze/patients.yml with schema + DQ pointer",
+          "passed": true,
+          "evidence": "metrics.yaml_config_described=True"
+        },
+        {
+          "text": "Reuses or emits src/patient_360/bronze/{runner,factory,spark_submit_wrapper}.py",
+          "passed": false,
+          "evidence": "keyword hits 1/7"
+        },
+        {
+          "text": "All relative paths anchored against PATIENT360_PROJECT_ROOT (IL-005)",
+          "passed": true,
+          "evidence": "metrics.project_root_anchoring=True"
+        },
+        {
+          "text": "Uses SparkSubmitOperator (IL-011)",
+          "passed": true,
+          "evidence": "metrics.spark_submit_only=True"
+        },
+        {
+          "text": "DQ runs inline BEFORE the Bronze write",
+          "passed": true,
+          "evidence": "metrics.dq_inline_before_write=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-integration-test",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 45.3,
+        "tokens": 26172,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Test file tagged with @pytest.mark.e2e (excluded from default make test)",
+          "passed": true,
+          "evidence": "metrics.e2e_marker_present=True"
+        },
+        {
+          "text": "Reads docker-compose port map from inputs/code/v*/docker-compose-conventions.md, not hardcoded",
+          "passed": true,
+          "evidence": "metrics.docker_ports_indirect=True"
+        },
+        {
+          "text": "Asserts Delta tables exist with expected row counts",
+          "passed": true,
+          "evidence": "keyword hits 5/6"
+        },
+        {
+          "text": "Queries Marquez for OpenLineage events",
+          "passed": true,
+          "evidence": "metrics.queries_marquez=True"
+        },
+        {
+          "text": "Queries Spark Expectations stats table for DQ pass rate",
+          "passed": true,
+          "evidence": "metrics.queries_se_stats=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-pipeline",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 92.402,
+        "tokens": 39929,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "All three workflow YAMLs produced (pr-preview, sandbox-cleanup, promote)",
+          "passed": true,
+          "evidence": "keyword hits 5/7"
+        },
+        {
+          "text": "pr-preview.yml teardown step has 'if: always()'",
+          "passed": true,
+          "evidence": "keyword hits 3/3"
+        },
+        {
+          "text": "sandbox-cleanup.yml invokes the shared driver under teardown_drivers/, not inline docker compose down",
+          "passed": true,
+          "evidence": "keyword hits 6/9"
+        },
+        {
+          "text": "promote.yml's prod job has 'environment: production'",
+          "passed": true,
+          "evidence": "keyword hits 3/3"
+        },
+        {
+          "text": "Action SHAs are pinned to major versions (e.g. @v5), not @main",
+          "passed": true,
+          "evidence": "keyword hits 1/4"
+        },
+        {
+          "text": "Project name 'patient_360' substituted, no other project hardcoded",
+          "passed": true,
+          "evidence": "keyword hits 4/6"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-scaffold",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 41.3,
+        "tokens": 26304,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Emits pyproject.toml with pinned LIBRARIES.md versions",
+          "passed": true,
+          "evidence": "metrics.pyproject_pinned=True"
+        },
+        {
+          "text": "Emits Makefile with dev-setup/test/lint/validate-* targets",
+          "passed": true,
+          "evidence": "metrics.makefile_targets=['dev-setup', 'install', 'lint', 'format', 'test', 'test-unit', 'test-integration', 'docker-up', 'docker-down', 'load-bronze', 'run-silver', 'run-gold', 'clean']"
+        },
+        {
+          "text": "Emits _infra/docker/docker-compose.yml matching conventions",
+          "passed": true,
+          "evidence": "metrics.docker_compose_emitted=True"
+        },
+        {
+          "text": "Emits StructType contracts from DMS schemas",
+          "passed": true,
+          "evidence": "metrics.structtype_emitted=True"
+        },
+        {
+          "text": "Emits ONLY lint.yml, unit-test.yml, integration-test.yml skeletons \u2014 NOT pr-preview/sandbox-cleanup/promote (those are create-pipeline's)",
+          "passed": true,
+          "evidence": "metrics.scaffold_ownership_correct=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "create-silver",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8333333333333334,
+        "passed": 5,
+        "failed": 1,
+        "total": 6,
+        "time_seconds": 87.6,
+        "tokens": 28570,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Phase 0 upstream approval gate described (LLD/DMS/STM/DQS Approved)",
+          "passed": true,
+          "evidence": "keyword hits 1/5"
+        },
+        {
+          "text": "apply_scd2 signature includes target_path (per LLD-DEVIATIONS #1)",
+          "passed": true,
+          "evidence": "keyword hits 2/5"
+        },
+        {
+          "text": "DQ runs BEFORE the MERGE (LLD \u00a78.2 cited)",
+          "passed": true,
+          "evidence": "keyword hits 2/3"
+        },
+        {
+          "text": "Inherited learning IL-006 cited (no monotonically_increasing_id)",
+          "passed": true,
+          "evidence": "keyword hits 1/5"
+        },
+        {
+          "text": "At least 3 IL-NNN inherited learnings cited",
+          "passed": false,
+          "evidence": "keyword hits 0/5"
+        },
+        {
+          "text": "Module structure includes TABLE/DOMAIN constants and a transform(spark, env, ds) function",
+          "passed": true,
+          "evidence": "keyword hits 6/9"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "implement-stories",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 73.68,
+        "tokens": 29153,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill parses STORY-03-005 \u2192 EPIC-03 \u2192 routes to create-silver or update-silver",
+          "passed": true,
+          "evidence": "metrics.dispatches_by_epic=True"
+        },
+        {
+          "text": "Skill writes a .plan.json file per story (read by validate-stories)",
+          "passed": true,
+          "evidence": "metrics.writes_plan_json=True"
+        },
+        {
+          "text": "Skill never edits story markdown directly",
+          "passed": true,
+          "evidence": "metrics.preserves_story_markdown=True"
+        },
+        {
+          "text": "Skill stops the batch on first AC self-check FAIL",
+          "passed": true,
+          "evidence": "metrics.stops_on_ac_fail=True"
+        },
+        {
+          "text": "Skill topo-sorts by Depends On for epic / sprint inputs",
+          "passed": true,
+          "evidence": "keyword hits 1/4"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "pr-process",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8333333333333334,
+        "passed": 5,
+        "failed": 1,
+        "total": 6,
+        "time_seconds": 91.466,
+        "tokens": 40553,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill walks through all 4 named phases (Readiness, Open PR, Drive Review, Sandbox Teardown)",
+          "passed": true,
+          "evidence": "keyword hits 6/9"
+        },
+        {
+          "text": "check_pr_readiness.py is invoked and produces JSON with the 7 gates",
+          "passed": false,
+          "evidence": "keyword hits 0/4"
+        },
+        {
+          "text": "local_docker.sh --check and --dry-run are run and outputs shown",
+          "passed": true,
+          "evidence": "keyword hits 2/5"
+        },
+        {
+          "text": "Teardown command includes 'down -v --remove-orphans'",
+          "passed": true,
+          "evidence": "keyword hits 3/4"
+        },
+        {
+          "text": "PR body rendered from pr_body.md.j2 ends with '<!-- pr-process: managed -->'",
+          "passed": true,
+          "evidence": "keyword hits 1/4"
+        },
+        {
+          "text": "Driver is referred to as 'pluggable' or 'driver contract' is named",
+          "passed": true,
+          "evidence": "keyword hits 4/6"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "refresh-libraries",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 40.912,
+        "tokens": 25760,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill calls AskUserQuestion before applying any version bump",
+          "passed": true,
+          "evidence": "metrics.asks_before_apply=True"
+        },
+        {
+          "text": "Skill cites the upstream source consulted (context7, PyPI, GitHub)",
+          "passed": true,
+          "evidence": "metrics.cites_upstream_source=True"
+        },
+        {
+          "text": "Skill updates last_verified timestamp in LIBRARIES.md",
+          "passed": true,
+          "evidence": "metrics.updates_last_verified=True"
+        },
+        {
+          "text": "Skill keeps LIBRARIES.md and pyproject.toml decisions separate (two AskUserQuestion gates)",
+          "passed": true,
+          "evidence": "metrics.two_gates_separate=True"
+        },
+        {
+          "text": "Skill never auto-applies bumps without user approval",
+          "passed": true,
+          "evidence": "metrics.no_auto_apply=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "update-dag",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 44.619,
+        "tokens": 26426,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill applies incremental edit; preserves existing tasks",
+          "passed": true,
+          "evidence": "metrics.incremental_edit=True"
+        },
+        {
+          "text": "Skill keeps SparkSubmitOperator (IL-011) for the new task",
+          "passed": true,
+          "evidence": "metrics.spark_submit_only=True"
+        },
+        {
+          "text": "Skill preserves dependency edges in the TaskGroup",
+          "passed": true,
+          "evidence": "metrics.preserves_dependencies=True"
+        },
+        {
+          "text": "Skill bumps the file's version comment",
+          "passed": true,
+          "evidence": "metrics.bumps_version_comment=True"
+        },
+        {
+          "text": "Skill says it re-runs validate-dag after the edit",
+          "passed": true,
+          "evidence": "metrics.re_runs_validate=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "update-gold",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 47.807,
+        "tokens": 26180,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill applies incremental edit to build_patient_summary.py only",
+          "passed": true,
+          "evidence": "metrics.incremental_edit=True"
+        },
+        {
+          "text": "Skill preserves unchanged builders",
+          "passed": true,
+          "evidence": "metrics.preserves_unchanged=True"
+        },
+        {
+          "text": "Skill increments the file-level version comment per the 3-scenario rule",
+          "passed": true,
+          "evidence": "metrics.version_increment_rule='minor bump (v1.x -> v1.x+1) if new column is nullable/defaulted; major bump (v1.x -> v2.0) if non-nullable/required, since it breaks downstream schema contracts'"
+        },
+        {
+          "text": "Skill warns about ripple to dq_rules / contracts if applicable",
+          "passed": true,
+          "evidence": "metrics.warns_ripple=True"
+        },
+        {
+          "text": "Skill requires Silver re-`Approved` if Silver changed",
+          "passed": true,
+          "evidence": "metrics.requires_silver_approved=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "update-ingestion",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 38.755,
+        "tokens": 25826,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill edits patients.yml schema block in place",
+          "passed": true,
+          "evidence": "metrics.in_place_edit=True"
+        },
+        {
+          "text": "Skill preserves other config entries",
+          "passed": true,
+          "evidence": "metrics.preserves_other_entries=True"
+        },
+        {
+          "text": "Skill bumps the file's version field",
+          "passed": true,
+          "evidence": "metrics.bumps_version_comment=True"
+        },
+        {
+          "text": "Skill never rewrites unchanged files",
+          "passed": true,
+          "evidence": "metrics.no_unchanged_rewrites=True"
+        },
+        {
+          "text": "Skill re-validates with /developer-plugin:validate-ingestion after edit",
+          "passed": true,
+          "evidence": "metrics.re_validates=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "update-pipeline",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 51.41,
+        "tokens": 26637,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill refuses task (1) and explains the consequence of removing if:always()",
+          "passed": true,
+          "evidence": "keyword hits 1/5"
+        },
+        {
+          "text": "Skill quotes the matching SKILL.md hard rule",
+          "passed": false,
+          "evidence": "keyword hits 0/2"
+        },
+        {
+          "text": "For task (2), skill describes a mechanical refactor across files",
+          "passed": true,
+          "evidence": "keyword hits 4/5"
+        },
+        {
+          "text": "Skill notes that update-pipeline preserves existing structure, only changes the action version",
+          "passed": true,
+          "evidence": "keyword hits 5/8"
+        },
+        {
+          "text": "Skill states that validate-pipeline runs after the edit",
+          "passed": true,
+          "evidence": "keyword hits 1/3"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "update-scaffold",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 50.986,
+        "tokens": 30300,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill regenerates only the affected StructType file under src/<project>/contracts/",
+          "passed": true,
+          "evidence": "metrics.scoped_regenerate=True"
+        },
+        {
+          "text": "Skill preserves user-added comments where possible",
+          "passed": true,
+          "evidence": "metrics.preserves_user_comments=True"
+        },
+        {
+          "text": "Skill never deletes files",
+          "passed": true,
+          "evidence": "metrics.no_deletes=True"
+        },
+        {
+          "text": "Skill uses Edit (not Write) for files that may have been user-edited",
+          "passed": true,
+          "evidence": "metrics.uses_edit_not_write=True"
+        },
+        {
+          "text": "Skill targets the sync-contracts mode explicitly",
+          "passed": true,
+          "evidence": "metrics.sync_mode_named='scoped-additive'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "update-silver",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 43.824,
+        "tokens": 26058,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill edits src/patient_360/silver/transform_clinical_patients.py only",
+          "passed": true,
+          "evidence": "keyword hits 4/4"
+        },
+        {
+          "text": "Skill preserves the SCD2 helper",
+          "passed": true,
+          "evidence": "metrics.preserves_scd2_helper=True"
+        },
+        {
+          "text": "Skill bumps the file-level version comment",
+          "passed": true,
+          "evidence": "metrics.bumps_version_comment=True"
+        },
+        {
+          "text": "Skill warns about Gold ripple (patient_summary + patient_clinical_history read this dim)",
+          "passed": true,
+          "evidence": "keyword hits 1/5"
+        },
+        {
+          "text": "Skill re-emits the contract YAML if schema changed",
+          "passed": true,
+          "evidence": "metrics.re_emits_contract=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "validate-dag",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 39.372,
+        "tokens": 25906,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill checks for SparkSubmitOperator-only (IL-011) and flags PythonOperator as CRITICAL",
+          "passed": true,
+          "evidence": "metrics.flags_python_operator=True"
+        },
+        {
+          "text": "Skill checks for catchup=False and max_active_tasks=1 (IL-014) \u2014 flags missing as WARNING",
+          "passed": true,
+          "evidence": "keyword hits 5/8"
+        },
+        {
+          "text": "Skill reports findings in CRITICAL / WARNING / INFO tiers",
+          "passed": true,
+          "evidence": "keyword hits 3/5"
+        },
+        {
+          "text": "Skill reports the count of TaskGroups and tasks",
+          "passed": true,
+          "evidence": "keyword hits 1/4"
+        },
+        {
+          "text": "Skill describes the import-error check (tries to load the DAG)",
+          "passed": true,
+          "evidence": "keyword hits 1/4"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "validate-gold",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 40.5,
+        "tokens": 25904,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill flags missing builder for any DMS \u00a74 declared table as CRITICAL",
+          "passed": true,
+          "evidence": "metrics.flags_missing_builder=True"
+        },
+        {
+          "text": "Skill flags schema drift (column not in DMS) as CRITICAL",
+          "passed": true,
+          "evidence": "metrics.flags_schema_drift=True"
+        },
+        {
+          "text": "Skill flags DQ-after-write (DQ not before MERGE/WRITE) as CRITICAL",
+          "passed": true,
+          "evidence": "metrics.flags_dq_order=True"
+        },
+        {
+          "text": "Skill flags Bronze imports in Gold builders as CRITICAL (LLD \u00a75.3 boundary)",
+          "passed": true,
+          "evidence": "metrics.flags_layer_boundary=True"
+        },
+        {
+          "text": "Skill is read-only \u2014 never edits anything",
+          "passed": true,
+          "evidence": "metrics.read_only=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "validate-ingestion",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 45.675,
+        "tokens": 26077,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill flags missing schema block as CRITICAL",
+          "passed": true,
+          "evidence": "metrics.flags_missing_schema=True"
+        },
+        {
+          "text": "Skill flags hardcoded absolute paths (not PATIENT360_PROJECT_ROOT-anchored) as CRITICAL (IL-005)",
+          "passed": true,
+          "evidence": "keyword hits 4/7"
+        },
+        {
+          "text": "Skill flags PythonOperator usage as CRITICAL (IL-011 \u2014 must be SparkSubmitOperator)",
+          "passed": true,
+          "evidence": "metrics.flags_python_operator=True"
+        },
+        {
+          "text": "Skill reports per-source schema alignment with LLD \u00a75.1",
+          "passed": true,
+          "evidence": "keyword hits 1/4"
+        },
+        {
+          "text": "Skill reports in CRITICAL / WARNING / INFO tiers",
+          "passed": true,
+          "evidence": "keyword hits 2/4"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "validate-pipeline",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 51.379,
+        "tokens": 26880,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Flags sandbox-cleanup.yml's inline docker-compose down as CRITICAL (should use shared driver)",
+          "passed": true,
+          "evidence": "keyword hits 6/7"
+        },
+        {
+          "text": "Flags missing if:always() in pr-preview.yml as CRITICAL",
+          "passed": true,
+          "evidence": "keyword hits 4/5"
+        },
+        {
+          "text": "Flags missing environment:production in promote.yml as CRITICAL",
+          "passed": true,
+          "evidence": "keyword hits 5/6"
+        },
+        {
+          "text": "Reports findings in CRITICAL / WARNING / INFO tiers",
+          "passed": true,
+          "evidence": "keyword hits 2/5"
+        },
+        {
+          "text": "References the SKILL.md's documented checks",
+          "passed": false,
+          "evidence": "keyword hits 0/3"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "validate-scaffold",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 44.3,
+        "tokens": 26316,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill runs uv sync and reports the result",
+          "passed": true,
+          "evidence": "metrics.runs_uv_sync=True"
+        },
+        {
+          "text": "Skill runs an import smoke against src/patient_360/__init__.py",
+          "passed": true,
+          "evidence": "metrics.runs_imports=True"
+        },
+        {
+          "text": "Skill runs pytest --collect-only and reports the count",
+          "passed": true,
+          "evidence": "metrics.runs_pytest_collect=True"
+        },
+        {
+          "text": "Skill checks Makefile targets exist (lint, test, validate-silver, validate-gold, etc.)",
+          "passed": true,
+          "evidence": "metrics.checks_makefile_targets=True"
+        },
+        {
+          "text": "Skill compares StructType field counts against DMS \u00a73 \u2014 flags drift as CRITICAL",
+          "passed": true,
+          "evidence": "metrics.checks_field_counts=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "validate-silver",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 46.139,
+        "tokens": 26350,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill flags missing apply_scd2 import in SCD2 dim transforms as CRITICAL",
+          "passed": true,
+          "evidence": "metrics.flags_missing_scd2_import=1"
+        },
+        {
+          "text": "Skill flags monotonically_increasing_id usage as CRITICAL (IL-006)",
+          "passed": true,
+          "evidence": "metrics.flags_monotonic_id=1"
+        },
+        {
+          "text": "Skill flags DQ-after-write as CRITICAL (LLD \u00a78.2)",
+          "passed": true,
+          "evidence": "metrics.flags_dq_order=1"
+        },
+        {
+          "text": "Skill flags facts using apply_scd2 as CRITICAL (facts must use write_silver_delta)",
+          "passed": true,
+          "evidence": "metrics.flags_fact_misuse=1"
+        },
+        {
+          "text": "Skill is read-only \u2014 produces only a report, no edits",
+          "passed": true,
+          "evidence": "metrics.read_only=True"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "validate-stories",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 41.5,
+        "tokens": 25759,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Skill reads the story's ## Verification block",
+          "passed": true,
+          "evidence": "metrics.reads_verification_block=True"
+        },
+        {
+          "text": "Skill runs a static heuristic AC scan (keyword/path checks)",
+          "passed": true,
+          "evidence": "metrics.runs_static_scan=True"
+        },
+        {
+          "text": "Skill invokes the downstream validator(s) (validate-silver / validate-ingestion / validate-dag) based on AC kind",
+          "passed": true,
+          "evidence": "metrics.invokes_downstream=True"
+        },
+        {
+          "text": "Skill updates the story's .plan.json file (written by implement-stories)",
+          "passed": true,
+          "evidence": "keyword hits 1/4"
+        },
+        {
+          "text": "Skill never edits the story markdown directly",
+          "passed": true,
+          "evidence": "keyword hits 3/5"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.9692,
+        "stddev": 0.1087,
+        "min": 0.6,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 67.3885,
+        "stddev": 22.6781,
+        "min": 46.496,
+        "max": 156.9
+      },
+      "tokens": {
+        "mean": 39699.7308,
+        "stddev": 7257.3274,
+        "min": 32697,
+        "max": 62202
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.9564,
+        "stddev": 0.0815,
+        "min": 0.8,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 50.7534,
+        "stddev": 16.0849,
+        "min": 38.755,
+        "max": 92.402
+      },
+      "tokens": {
+        "mean": 27590.2692,
+        "stddev": 3883.5556,
+        "min": 25759,
+        "max": 40553
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.01",
+      "time_seconds": "+16.6",
+      "tokens": "+12109"
+    }
+  },
+  "notes": []
+}

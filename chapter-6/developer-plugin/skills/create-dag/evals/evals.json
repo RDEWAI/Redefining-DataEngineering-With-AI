@@ -1,0 +1,30 @@
+{
+  "skill_name": "create-dag",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Fresh DAG from approved LLD",
+      "prompt": "`/developer-plugin:create-dag`",
+      "expected_output": "Output of /developer-plugin:create-dag matching the SKILL.md phases for scenario Fresh DAG from approved LLD",
+      "files": [],
+      "expectations": [
+        "Reads `outputs/lld/v*/LLD-*.md` and the per-layer configs.",
+        "Emits `airflow/dags/<project>_hourly_v1.py` with TaskGroups for bronze / silver_dimensions / silver_facts / gold / reconciliation.",
+        "Uses `SparkSubmitOperator` exclusively (IL-011).",
+        "Sets `max_active_tasks=1`, `catchup=False` (IL-014).",
+        "Resolves DAG via `DagContext.get_current()` and passes `dag=` explicitly to TaskGroups (IL-013)."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Hard rules",
+      "prompt": "Hard rules \u2014 - Never invents task IDs; reads from LLD \u00a75.x.",
+      "expected_output": "Output of /developer-plugin:create-dag matching the SKILL.md phases for scenario Hard rules",
+      "files": [],
+      "expectations": [
+        "Skill create-dag ran without error",
+        "Output references the SKILL.md sections cited in scenario Hard rules"
+      ]
+    }
+  ]
+}
