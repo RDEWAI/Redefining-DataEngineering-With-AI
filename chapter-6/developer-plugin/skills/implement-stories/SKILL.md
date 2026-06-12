@@ -119,100 +119,38 @@ detection is the invoked skill's responsibility.
 
 ### Phase 0: Resolve Target Set
 
-**FIRST — resolve the effective argument. Do this before any other Phase 0 step.**
+**FIRST — capture the target argument from the template variables.**
 
-The argument passed via the `Skill` tool may not reach this forked subagent.
-The shared resolver script auto-discovers the workspace root and checks
-four sources in order; stop at the first non-empty hit:
+This skill receives its target directly through the slash-command
+substitution variables — no resolver script, no sidecar files, no env
+vars:
 
-1. `$SKILL_ARG` environment variable.
-2. `<workspace>/.skill-arg` file — consumed (deleted after read).
-3. The conversational argument supplied to the skill.
-4. **Auto-mode default** — if `$CLAUDE_AUTO_MODE=1` OR
-   `<workspace>/.auto-mode` exists → **resolve the latest backlog and
-   implement the first un-Done epic** (as returned by
-   `status_rollup.py` in backlog order).
-5. Only if ALL four above are empty, ask the user via `AskUserQuestion`.
+- **`$ARGUMENTS`** — the full argument string the user typed after the
+  skill name (`STORY-02-002`, `EPIC-02`, `Sprint 3`, or a comma-list).
+  This is the target. Use it verbatim.
+- `$0` — the skill's own invocation name; diagnostics only.
 
-You MUST NOT ask the user until sources 1–4 have been checked.
+If `$ARGUMENTS` is non-empty, that is the target — proceed to Step 1
+(parse / normalize). If `$ARGUMENTS` is empty, ask the user via
+`AskUserQuestion` what to implement. Never guess a target and never
+silently fall back to "the first un-Done epic".
 
-**Mechanical resolver — execute exactly this bash block (no placeholders
-to substitute, no edits to the script invocation; the only line you fill
-in is `CONV_ARG`):**
-
-```bash
-# Step 1 — capture the user's conversational argument. Substitute the
-# bracketed text below with the EXACT message the user supplied after the
-# skill name; if they supplied no message, leave it as an empty string.
-CONV_ARG='<<EXACT_CONVERSATIONAL_TEXT_FROM_USER_OR_EMPTY_STRING>>'
-
-# Step 2 — run the shared resolver. It auto-discovers the workspace from
-# $PWD, so no {workspace_root} substitution is required. Output is two
-# lines on stdout: the resolved value, then the source token.
-read -r RESOLVED_ARG RESOLVED_SOURCE < <(
-  bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_skill_arg.sh" "$CONV_ARG" \
-    | paste -sd' ' -
-)
-```
-
-If `$RESOLVED_ARG` is `__AUTO__`, expand it into the first un-Done epic
-in the backlog and proceed without asking. If `$RESOLVED_SOURCE` is
-`EMPTY`, the resolver writes a diagnostic block to stderr listing every
-location it probed — surface that diagnostic to the user verbatim
-before asking via `AskUserQuestion`, so they can see exactly what was
-missing instead of guessing.
-
-**Hard rule: before declaring "no argument supplied", you MUST have
-actually invoked `bash resolve_skill_arg.sh "$CONV_ARG"` and quoted its
-output. Inventing a four-bullet checklist of "sources I checked"
-without running the script is forbidden — that pattern has caused
-multiple silent argument-loss bugs in this session.**
-
-**Resolution-source banner (mandatory, every run).** As the *first
-line* of skill output, before any other work, print exactly which
-source supplied the target so the user can spot a lost arg
-immediately:
+**Resolution-source banner (mandatory, every run).** As the *first line*
+of skill output, before any other work, echo the captured target so a
+lost arg is visible immediately:
 
 ```
-RESOLVED TARGET: <EPIC-NN | STORY-NN-NNN | Sprint N> (source: <SKILL_ARG | .skill-arg | conversational | __AUTO__>)
+RESOLVED TARGET: $ARGUMENTS
 ```
 
-Whenever the source is `__AUTO__` (sources 1–3 all empty), upgrade the
-banner to a hard warning:
-
-```
-⚠ AUTO-MODE FALLBACK: no explicit target found in $SKILL_ARG, .skill-arg,
-  or conversational arg. Resolved to <EPIC-NN> (first un-Done epic in backlog order).
-  If you intended a different target, abort now and re-invoke
-  AFTER writing the target to {workspace_root}/.skill-arg, e.g.:
-      echo "EPIC-02" > {workspace_root}/.skill-arg
-```
+If `$ARGUMENTS` is empty, print `RESOLVED TARGET: <none — prompting user>`
+and invoke `AskUserQuestion` before doing anything else.
 
 **Mandatory confirm (cannot be skipped).** Phase 0 Step 3's
-`AskUserQuestion` gate runs **on every invocation**, including auto-mode.
-There is no "skip confirm" path. The resolution-source banner makes the
-auto-mode disagreement visible; the AskUserQuestion gate then lets the
-user redirect. Skipping the confirm to "save a turn" is a defect — the
-loop the gate prevents (silently dispatching to the wrong epic, which
-leaves no plan JSON for the intended one) is far more expensive than
-one extra prompt.
-
-**Caller contract.** The Skill-tool argument frequently fails to reach
-forked subagents. Any caller (slash command, parent agent, hook) that
-invokes `/developer-plugin:implement-stories <arg>` programmatically
-MUST also `echo "<arg>" > {workspace_root}/.skill-arg` immediately
-before the Skill invocation. The skill consumes the file (deletes after
-read), so it is a one-shot. Without this, auto-mode silently picks the
-first un-Done epic — the banner + Step 3 confirm above are the safety
-net, not a substitute for the contract.
-
-**Auto-mode marker hygiene.** `$CLAUDE_AUTO_MODE=1` is the supported
-auto-mode trigger. The legacy `{workspace_root}/.auto-mode` file is
-honoured for backward compatibility but **strongly discouraged**: it is
-too easy to leave behind across sessions. If you find a `.auto-mode`
-file with no recent edits (older than the latest `.skill-arg` write),
-treat it as stale — emit a WARNING in the banner and ask the user
-whether to delete it before continuing.
+`AskUserQuestion` gate runs on **every** invocation. The banner above
+makes a wrong/empty target visible; the Step 3 gate then lets the user
+redirect before any plan JSON is written. Skipping the confirm to "save
+a turn" is a defect.
 
 #### Version lockfile (pinned upstream v{N})
 
@@ -241,8 +179,8 @@ NEEDS_BOOTSTRAP=$(echo "$DISCOVERY" | python3 -c "import sys,json; print(json.lo
 If `needs_bootstrap == True`, classify every story in the target set (via
 `status_rollup.py --mode classify`). If at least one classifies to
 `scaffold`, dispatch `/developer-plugin:create-scaffold` FIRST (passing
-the original target via `$SKILL_ARG`), wait for completion, then re-run
-discovery before continuing. `create-scaffold` handles the cookiecutter
+the original target as the Skill-tool argument), wait for completion,
+then re-run discovery before continuing. `create-scaffold` handles the cookiecutter
 bootstrap as its first step.
 
 If `needs_bootstrap == True` but NO story in the target set classifies to
@@ -261,7 +199,7 @@ Argument grammar (shared with validate-stories and complete-stories):
 | comma-list               | `STORY-02-001,STORY-02-002`        | ordered list — respect declared `Depends On`        |
 | `EPIC-NN`                | `EPIC-02`                          | every child story, topo-sorted                      |
 | `Sprint N`               | `Sprint 3`                         | every story whose `Sprint` cell is `Sprint N`       |
-| `__AUTO__` / (no arg)    | —                                  | auto-mode: next un-Done epic from `EPIC-01`; else ask via `AskUserQuestion` |
+| (empty `$ARGUMENTS`)     | —                                  | no target supplied → ask the user via `AskUserQuestion`; never guess |
 
 Normalize the argument exactly as `create-ingestion` Phase 0 does:
 uppercase, zero-padded (`"story 2 of epic 2"` → `STORY-02-002`). Reject
@@ -287,15 +225,13 @@ then topo-sort the same way.
 **Step 3 — Show the resolved list and confirm (mandatory).**
 
 This `AskUserQuestion` gate is the last guard before plans are persisted
-and sub-skills mutate the project. It runs on **every** invocation — no
-exceptions for auto-mode, no exceptions for `$CLAUDE_AUTO_MODE=1`. The
-prompt MUST surface (a) the resolved target with its resolution source
-(matching the banner above) and (b) the ordered story list, so a lost
-conversational arg becomes visible *here*, not after EPIC-01 plans
-overwrite EPIC-02 work:
+and sub-skills mutate the project. It runs on **every** invocation. The
+prompt MUST surface (a) the captured target from `$ARGUMENTS` (matching
+the banner above) and (b) the ordered story list, so a lost or wrong arg
+becomes visible *here*, not after EPIC-01 plans overwrite EPIC-02 work:
 
 ```
-RESOLVED TARGET: EPIC-02 (source: .skill-arg)
+RESOLVED TARGET: EPIC-02
 
 About to implement 3 stories in this order:
   1. STORY-02-001 — Per-Table YAML Ingestion Configs   (create-ingestion)
