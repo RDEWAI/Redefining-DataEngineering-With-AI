@@ -1,14 +1,16 @@
-.PHONY: help dev-setup install-plugins install-plugins-ch4 install-plugins-ch6 test test-unit validate-silver validate-gold lint format clean
+.PHONY: help dev-setup install-plugins install-plugins-ch4 install-plugins-ch5 install-plugins-ch6 uninstall-marketplaces test test-unit validate-silver validate-gold lint format clean
 
 help: ##@ Show available commands
 	@echo "Chapter 6: Silver and Gold Layer Implementation"
 	@echo ""
 	@echo "=== Setup ==="
-	@echo "  dev-setup            - Install dependencies with UV"
-	@echo "  install-plugins      - Install chapter-4 planning plugins + chapter-6 developer-plugin (atomic)"
-	@echo "  install-plugins-ch4  - Install chapter-4 planning plugins"
-	@echo "  install-plugins-ch6  - Install chapter-6 developer-plugin (Bronze + Silver + Gold)"
-	@echo "  clean                - Remove generated files and caches"
+	@echo "  dev-setup              - Install dependencies with UV"
+	@echo "  install-plugins        - Clean install: chapter-4 planning + chapter-5 scrum-master + chapter-6 developer"
+	@echo "  install-plugins-ch4    - Install chapter-4 planning plugins"
+	@echo "  install-plugins-ch5    - Install chapter-5 scrum-master-plugin only (skip developer to avoid name collision)"
+	@echo "  install-plugins-ch6    - Install chapter-6 developer-plugin (Bronze + Silver + Gold)"
+	@echo "  uninstall-marketplaces - Remove rdewai-plugins / rdewai-chapter5-plugins / rdewai-chapter6-plugins if present"
+	@echo "  clean                  - Remove generated files and caches"
 	@echo ""
 	@echo "=== Artifact Operations ==="
 	@echo "  validate-silver      - Validate Silver layer code + contracts + DQ rules"
@@ -27,29 +29,49 @@ dev-setup: ##@ Install dependencies
 # --- Claude plugin installation -----------------------------------------------
 # Chapter-6 is atomic: it ships its own developer-plugin (Bronze + Silver + Gold).
 # The chapter-5 developer-plugin shares the same name and CANNOT be installed
-# simultaneously with chapter-6's — slash-command namespace collision.
-# Planning plugins still live in chapter-4 (no name collisions there).
+# simultaneously with chapter-6's — slash-command namespace collision. We
+# therefore source ONLY scrum-master-plugin from chapter-5 and skip its
+# developer-plugin. Planning plugins live in chapter-4 (no name collisions).
+CH4_MARKETPLACE := rdewai-plugins
+CH5_MARKETPLACE := rdewai-chapter5-plugins
+CH6_MARKETPLACE := rdewai-chapter6-plugins
 CH4_PLUGINS := ba-plugin architect-plugin data-modeler-plugin mapping-analyst-plugin dq-engineer-plugin technical-lead-plugin
+CH5_PLUGINS := scrum-master-plugin
 CH6_PLUGINS := developer-plugin
 
-install-plugins: install-plugins-ch4 install-plugins-ch6 ##@ Install chapter-4 planning + chapter-6 developer
+install-plugins: uninstall-marketplaces install-plugins-ch4 install-plugins-ch5 install-plugins-ch6 ##@ Clean install: ch4 planning + ch5 scrum-master + ch6 developer
 	@echo "All chapter-6 Claude plugins installed."
-	@echo "Note: chapter-5/developer-plugin shares this name. Do NOT install ../chapter-5 marketplace concurrently."
+	@echo "Note: chapter-5/developer-plugin is intentionally skipped (name collision with chapter-6/developer-plugin)."
+
+uninstall-marketplaces: ##@ Remove existing rdewai marketplaces (idempotent)
+	@for mp in $(CH4_MARKETPLACE) $(CH5_MARKETPLACE) $(CH6_MARKETPLACE); do \
+		echo "Removing marketplace $$mp (if present)..."; \
+		claude plugin marketplace remove $$mp 2>/dev/null || true; \
+	done
 
 install-plugins-ch4: ##@ Install chapter-4 planning plugins
 	@echo "Adding chapter-4 marketplace..."
 	claude plugin marketplace add ../chapter-4/
 	@for p in $(CH4_PLUGINS); do \
-		echo "Installing $$p@rdewai-plugins..."; \
-		claude plugin install $$p@rdewai-plugins; \
+		echo "Installing $$p@$(CH4_MARKETPLACE)..."; \
+		claude plugin install $$p@$(CH4_MARKETPLACE); \
 	done
+
+install-plugins-ch5: ##@ Install chapter-5 scrum-master-plugin only
+	@echo "Adding chapter-5 marketplace..."
+	claude plugin marketplace add ../chapter-5/
+	@for p in $(CH5_PLUGINS); do \
+		echo "Installing $$p@$(CH5_MARKETPLACE)..."; \
+		claude plugin install $$p@$(CH5_MARKETPLACE); \
+	done
+	@echo "Skipping chapter-5/developer-plugin (collides with chapter-6/developer-plugin)."
 
 install-plugins-ch6: ##@ Install chapter-6 developer-plugin
 	@echo "Adding chapter-6 marketplace..."
 	claude plugin marketplace add ./
 	@for p in $(CH6_PLUGINS); do \
-		echo "Installing $$p@rdewai-chapter6-plugins..."; \
-		claude plugin install $$p@rdewai-chapter6-plugins; \
+		echo "Installing $$p@$(CH6_MARKETPLACE)..."; \
+		claude plugin install $$p@$(CH6_MARKETPLACE); \
 	done
 
 test: ##@ Run all tests

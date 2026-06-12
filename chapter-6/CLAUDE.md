@@ -49,10 +49,10 @@ adjustment are surfaced to the Technical Lead.)
 
 ## Installing the plugin
 
-Chapter-6 is atomic — install chapter-4 planning + chapter-6 developer-plugin only.
-DO NOT install the chapter-5 marketplace concurrently — it ships a
-`developer-plugin` with the same name and would collide on the slash-command
-namespace.
+Chapter-6 is atomic — install chapter-4 planning + chapter-5 scrum-master
++ chapter-6 developer-plugin. The chapter-5 `developer-plugin` is
+intentionally skipped: it shares a name with chapter-6's and would collide
+on the slash-command namespace. `scrum-master-plugin` has no collision.
 
 From the repo root:
 
@@ -66,12 +66,17 @@ From the repo root:
 /plugin install dq-engineer-plugin@rdewai-plugins
 /plugin install technical-lead-plugin@rdewai-plugins
 
+# Scrum Master (story decomposition) — chapter-5 (scrum-master only; skip its developer-plugin)
+/plugin marketplace add ./chapter-5
+/plugin install scrum-master-plugin@rdewai-chapter5-plugins
+
 # Developer plugin (Bronze + Silver + Gold) — chapter-6
 /plugin marketplace add ./chapter-6
 /plugin install developer-plugin@rdewai-chapter6-plugins
 ```
 
-Or from `chapter-6/`, run `make install-plugins`.
+Or from `chapter-6/`, run `make install-plugins` (removes any prior
+`rdewai-*` marketplaces first, then re-installs the correct set).
 
 ## Directory Layout
 
