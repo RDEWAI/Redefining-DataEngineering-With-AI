@@ -7,7 +7,7 @@
 | **Priority** | P1 |
 | **Story Points** | 5 |
 | **Sprint** | 6 |
-| **Dependencies** | STORY-03-005 |
+| **Dependencies** | STORY-03-005, STORY-03-007 |
 | **Status** | To Do |
 
 <!--
