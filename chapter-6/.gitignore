@@ -9,3 +9,9 @@ uc-warehouse/
 
 # UC-from-source build clone (third-party unitycatalog repo, ~52M, has own .git)
 _infra/docker/uc-source/
+
+# Local-only working/process docs (kept on disk, not tracked)
+SESSION-HANDOFF.md
+story-error-table-that-wouldnt-write.md
+UC-0.5.0-UPGRADE-RUNBOOK.md
+developer-plugin/LLD-DEVIATIONS.md
