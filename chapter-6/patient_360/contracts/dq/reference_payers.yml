@@ -1,0 +1,13 @@
+# DQ contract pointer for reference_payers (Silver SCD2 dimension).
+# FK reference dimension — referential integrity for clinical/billing facts,
+# so PROD action_if_failed: fail (DQS §2 reference_payers,
+# DQ-FLD-100/101/186; LLD §5.2 — Fail task).
+table: reference_payers
+layer: silver
+dq_rules_path: ../../dq_rules/reference_payers.yml
+
+# Severity thresholds for reconciliation tasks (LLD §5.5).
+thresholds:
+  completeness_min: 0.99
+  validity_min: 0.995
+  freshness_max_hours: 1

@@ -1,0 +1,45 @@
+skill: validate-drd
+version: "1.0"
+cases:
+  - id: TC-001
+    name: "Valid DRD passes validation"
+    description: "A complete, well-formed DRD passes with 0 CRITICAL issues"
+    inputs:
+      file: "test_fixtures/valid_drd.md"
+    expected:
+      - type: validation_pass
+      - type: exit_code
+        code: 0
+    success_criteria: "Validator returns exit code 0, no CRITICAL issues"
+
+  - id: TC-002
+    name: "Missing sections caught as CRITICAL"
+    description: "DRD missing required sections triggers CRITICAL findings"
+    inputs:
+      file: "test_fixtures/minimal_invalid_drd.md"
+    expected:
+      - type: validation_fail
+        severity: CRITICAL
+      - type: exit_code
+        code: 1
+    success_criteria: "Missing sections reported as CRITICAL, exit code 1"
+
+  - id: TC-003
+    name: "Empty sections caught as WARNING"
+    description: "DRD with empty section bodies triggers WARNING findings"
+    inputs:
+      file: "test_fixtures/empty_sections_drd.md"
+    expected:
+      - type: validation_fail
+        severity: WARNING
+    success_criteria: "Empty sections reported as WARNING"
+
+  - id: TC-004
+    name: "Placeholders detected as INFO"
+    description: "DRD with TO BE DETERMINED placeholders triggers INFO findings"
+    inputs:
+      file: "test_fixtures/placeholder_drd.md"
+    expected:
+      - type: validation_fail
+        severity: INFO
+    success_criteria: "Placeholders reported as INFO with owner tracking"

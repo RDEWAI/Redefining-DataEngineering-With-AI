@@ -1,0 +1,82 @@
+skill: create-hld
+version: "1.0"
+cases:
+  - id: TC-001
+    name: "Complete inputs produce valid HLD"
+    description: "Given DRD and architect inputs, skill produces an HLD that passes validation"
+    inputs:
+      folder: "inputs/architect/v1"
+      upstream: "outputs/drd/v1"
+    expected:
+      - type: validation_pass
+        description: "HLD passes validate-hld with 0 CRITICAL issues"
+      - type: section_present
+        sections:
+          - "1. Requirements & Scope"
+          - "2. Architecture Overview"
+          - "3. Data Architecture"
+          - "4. Technology Decisions"
+          - "5. Integration Architecture"
+          - "6. Operational Considerations"
+          - "7. Security & Governance"
+          - "8. Scalability & Capacity Model"
+          - "9. Decision Log"
+      - type: no_vague_language
+        banned: ["real-time", "all data", "comprehensive", "fast"]
+    success_criteria: "All expected checks pass"
+
+  - id: TC-002
+    name: "DRD traceability maintained"
+    description: "Every HLD section must reference source DRD sections"
+    inputs:
+      folder: "inputs/architect/v1"
+      upstream: "outputs/drd/v1"
+    expected:
+      - type: content_contains
+        patterns: ["[DRD"]
+    success_criteria: "DRD section references found throughout HLD"
+
+  - id: TC-003
+    name: "Database unavailable blocks generation"
+    description: "When database path is invalid, skill must STOP"
+    inputs:
+      folder: "inputs/architect/v1"
+      override_db_path: "/nonexistent/path.db"
+    expected:
+      - type: asks_question
+        about: "database"
+      - type: no_output_generated
+    success_criteria: "Skill does not generate HLD; asks user to resolve DB access"
+
+  - id: TC-004
+    name: "Missing infrastructure constraints triggers Q&A"
+    description: "When infrastructure_constraints.md is absent, skill asks user"
+    inputs:
+      folder: "inputs/architect/v1"
+      remove_files: ["infrastructure_constraints.md"]
+    expected:
+      - type: asks_question
+        about: "infrastructure"
+    success_criteria: "Skill asks about infrastructure constraints"
+
+  - id: TC-005
+    name: "Mermaid diagrams included"
+    description: "HLD must include architecture diagrams in Mermaid format"
+    inputs:
+      folder: "inputs/architect/v1"
+      upstream: "outputs/drd/v1"
+    expected:
+      - type: content_contains
+        patterns: ["```mermaid"]
+    success_criteria: "At least one Mermaid diagram block present"
+
+  - id: TC-006
+    name: "Technology decisions table populated"
+    description: "Section 4 must have a technology comparison table with decisions"
+    inputs:
+      folder: "inputs/architect/v1"
+      upstream: "outputs/drd/v1"
+    expected:
+      - type: content_contains
+        patterns: ["Decision", "Rationale", "Alternative"]
+    success_criteria: "Technology decisions documented with rationale"

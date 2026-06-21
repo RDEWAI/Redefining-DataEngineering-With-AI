@@ -1,0 +1,9 @@
+{
+  "name": "developer-plugin",
+  "version": "1.0.0",
+  "description": "Developer Agent for generating, updating, and validating Airflow DAGs, CI/CD pipelines, and the Bronze config-driven ingestion framework",
+  "author": {
+    "name": "RDEWAI"
+  },
+  "keywords": ["developer", "airflow", "dags", "cicd", "ingestion", "bronze", "data-engineering", "scrum", "stories", "epic", "acceptance-criteria", "coding-patterns", "library-versions", "refresh-libraries"]
+}

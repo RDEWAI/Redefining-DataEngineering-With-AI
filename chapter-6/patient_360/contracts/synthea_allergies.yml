@@ -1,0 +1,58 @@
+table: synthea_allergies
+layer: bronze
+dms_section: "DMS \xA72"
+schema: bronze
+ddl_path: ddl/migrations/20260620_101_synthea_allergies.sql
+dq_path: dq_rules/synthea_allergies.yml
+owner: Patient 360 Data Engineering
+description: "Bronze table synthea_allergies; see DMS \xA72 for the authoritative\
+  \ column-level schema."
+tags:
+- bronze
+- patient_360
+columns:
+- name: START
+  type: date
+  nullable: true
+- name: STOP
+  type: string
+  nullable: true
+- name: PATIENT
+  type: string
+  nullable: true
+- name: ENCOUNTER
+  type: string
+  nullable: true
+- name: CODE
+  type: bigint
+  nullable: true
+- name: SYSTEM
+  type: string
+  nullable: true
+- name: DESCRIPTION
+  type: string
+  nullable: true
+- name: TYPE
+  type: string
+  nullable: true
+- name: CATEGORY
+  type: string
+  nullable: true
+- name: REACTION1
+  type: bigint
+  nullable: true
+- name: DESCRIPTION1
+  type: string
+  nullable: true
+- name: SEVERITY1
+  type: string
+  nullable: true
+- name: REACTION2
+  type: bigint
+  nullable: true
+- name: DESCRIPTION2
+  type: string
+  nullable: true
+- name: SEVERITY2
+  type: string
+  nullable: true

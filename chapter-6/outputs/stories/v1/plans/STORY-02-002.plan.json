@@ -1,0 +1,121 @@
+{
+  "story_id": "STORY-02-002",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/outputs/stories/v1/EPIC-02-bronze-ingestion/STORY-02-002-bronze-factory-and-wrapper.md",
+  "epic_id": "EPIC-02",
+  "plan_version": 1,
+  "status": "implemented",
+  "generated_at": "2026-05-11T22:53:55.792614+00:00",
+  "summary": "1 task(s) across ['ingestion'] \u2014 3 AC(s).",
+  "classifier": {
+    "kind": "ingestion",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-02-002",
+    "paths": [
+      "spark_submit_wrapper.py"
+    ],
+    "by_skill": {
+      "ingestion": [
+        "spark_submit_wrapper.py"
+      ]
+    },
+    "dispatch_order": [
+      "ingestion"
+    ],
+    "unmatched": [
+      "spark_submit_wrapper.py"
+    ],
+    "fallback_kind": "ingestion"
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "create-ingestion",
+      "kind": "ingestion",
+      "mode": "create",
+      "paths": [
+        "spark_submit_wrapper.py"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "started_at": "2026-05-11T22:57:23.782013+00:00",
+      "finished_at": "2026-05-11T22:59:55.038880+00:00",
+      "artifacts": [
+        "patient_360/src/patient_360/bronze/spark_submit_wrapper.py"
+      ],
+      "files_created": 1,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-ingestion",
+      "validator_status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "T2",
+      "skill": "create-ingestion",
+      "kind": "ingestion",
+      "mode": "create",
+      "paths": [
+        "src/patient_360/bronze/ingestion_factory.py",
+        "tests/bronze/test_ingestion_factory_unit.py"
+      ],
+      "depends_on": [
+        "T1"
+      ],
+      "status": "done",
+      "started_at": "2026-05-11T22:59:55.039110+00:00",
+      "finished_at": "2026-05-11T23:03:27.032453+00:00",
+      "artifacts": [],
+      "files_created": 2,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-ingestion",
+      "validator_status": "pass",
+      "notes": ""
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "`ingestion_factory.build_bronze_taskgroup(dag, config_dir)` returns a TaskGroup with N tasks (one per YAML) [LLD \u00a72.3, \u00a74.2]",
+      "line": 37,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "`spark_submit_wrapper.py` configures memory/cores/executors from pipeline config and passes `--config-path` [LLD \u00a76.1, \u00a72.3]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "Unit tests cover empty config dir, single-file dir, and 13-file dir [LLD \u00a72.4]",
+      "line": 41,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

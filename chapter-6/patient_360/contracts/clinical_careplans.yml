@@ -1,0 +1,53 @@
+table: clinical_careplans
+layer: silver
+db_schema: clinical
+domain: clinical
+dms_section: "DMS \xA73.9"
+ddl_path: ddl/migrations/20260620_203_clinical_careplans.sql
+dq_path: dq_rules/clinical_careplans.yml
+owner: Patient 360 Data Engineering
+description: "Silver fact table clinical_careplans; column contract per DMS \xA73.9."
+tags:
+- silver
+- clinical
+- patient_360
+schema:
+- name: careplan_id
+  type: string
+  nullable: false
+- name: patient_id
+  type: string
+  nullable: false
+- name: encounter_id
+  type: string
+  nullable: true
+- name: start_date
+  type: date
+  nullable: true
+- name: stop_date
+  type: date
+  nullable: true
+- name: snomed_code
+  type: string
+  nullable: true
+- name: careplan_description
+  type: string
+  nullable: true
+- name: reason_code
+  type: string
+  nullable: true
+- name: reason_description
+  type: string
+  nullable: true
+- name: ds
+  type: date
+  nullable: false
+- name: _ingested_at
+  type: timestamp
+  nullable: false
+- name: _source_batch_id
+  type: string
+  nullable: false
+- name: _record_hash
+  type: string
+  nullable: false

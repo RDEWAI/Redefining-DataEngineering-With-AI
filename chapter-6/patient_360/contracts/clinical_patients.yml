@@ -1,0 +1,167 @@
+table: clinical_patients
+layer: silver
+domain: clinical
+schema:
+- name: patient_id
+  type: string
+  nullable: false
+  description: "Patient UUID \u2014 natural key"
+- name: birth_date
+  type: date
+  nullable: false
+  description: "Date of birth \u2014 PHI"
+- name: death_date
+  type: date
+  nullable: true
+  description: "Date of death \u2014 NULL for living patients"
+- name: prefix
+  type: string
+  nullable: true
+  description: Name prefix
+- name: first_name
+  type: string
+  nullable: false
+  description: "First name \u2014 PHI (SCD2 tracked)"
+- name: middle_name
+  type: string
+  nullable: true
+  description: "Middle name \u2014 PHI"
+- name: last_name
+  type: string
+  nullable: false
+  description: "Last name \u2014 PHI (SCD2 tracked)"
+- name: suffix
+  type: string
+  nullable: true
+  description: Name suffix
+- name: maiden_name
+  type: string
+  nullable: true
+  description: "Maiden name \u2014 PHI (SCD2 tracked)"
+- name: marital_status
+  type: string
+  nullable: true
+  description: "Marital status (M, S, W, D) \u2014 SCD2 tracked"
+- name: race
+  type: string
+  nullable: true
+  description: "Race \u2014 SCD Type 1 (overwrite)"
+- name: ethnicity
+  type: string
+  nullable: true
+  description: "Ethnicity \u2014 SCD Type 1 (overwrite)"
+- name: gender
+  type: string
+  nullable: true
+  description: "Standardised gender (MALE/FEMALE/OTHER/UNKNOWN) \u2014 SCD Type 1"
+- name: birth_place
+  type: string
+  nullable: true
+  description: Birth place
+- name: address
+  type: string
+  nullable: true
+  description: "Street address \u2014 PHI, SCD2 tracked"
+- name: city
+  type: string
+  nullable: true
+  description: "City \u2014 SCD2 tracked"
+- name: state
+  type: string
+  nullable: true
+  description: "State abbreviation \u2014 SCD2 tracked"
+- name: county
+  type: string
+  nullable: true
+  description: "County name \u2014 SCD2 tracked"
+- name: zip
+  type: string
+  nullable: true
+  description: "ZIP code \u2014 SCD2 tracked"
+- name: lat
+  type: decimal(9,6)
+  nullable: true
+  description: "Latitude \u2014 cast from DOUBLE"
+- name: lon
+  type: decimal(9,6)
+  nullable: true
+  description: "Longitude \u2014 cast from DOUBLE"
+- name: healthcare_expenses
+  type: decimal(12,2)
+  nullable: true
+  description: "Total healthcare expenses \u2014 SCD2 tracked"
+- name: healthcare_coverage
+  type: decimal(12,2)
+  nullable: true
+  description: "Total healthcare coverage \u2014 SCD2 tracked"
+- name: income
+  type: integer
+  nullable: true
+  description: "Annual income \u2014 SCD2 tracked"
+- name: calculated_age
+  type: integer
+  nullable: true
+  description: "Patient age \u2014 DATEDIFF(year, birth_date, COALESCE(death_date,\
+    \ current_date))"
+- name: patient_status
+  type: string
+  nullable: false
+  description: ALIVE if death_date IS NULL, DECEASED otherwise
+- name: effective_from
+  type: date
+  nullable: false
+  description: "SCD2 \u2014 row version start date"
+- name: effective_to
+  type: date
+  nullable: false
+  description: "SCD2 \u2014 row version end date (9999-12-31 for current version)"
+- name: is_current
+  type: boolean
+  nullable: false
+  description: "SCD2 \u2014 TRUE for the active version"
+- name: _record_hash
+  type: string
+  nullable: false
+  description: "SHA-256 hash of all SCD2-tracked columns \u2014 change detection"
+- name: _ingested_at
+  type: timestamp
+  nullable: false
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: string
+  nullable: false
+  description: Pipeline run identifier
+owner: Patient 360 Data Engineering
+dms_section: "DMS \xA73 clinical_patients"
+primary_key:
+- patient_id
+- effective_from
+partition_by: none
+write_strategy: Delta MERGE INTO on patient_id (SCD Type 2)
+ddl_path: ddl/migrations/20260620_209_clinical_patients.sql
+dq_path: dq_rules/clinical_patients.yml
+description: "Canonical patient demographic entity with SCD Type 2 history tracking.\
+  \ SSN, DRIVERS, PASSPORT (PHI) and FIPS (non-clinical) are excluded at the Silver\
+  \ boundary per DMS \xA73 / NFR-6. Derived columns calculated_age and patient_status\
+  \ are computed here."
+tags:
+- silver
+- clinical
+- scd2
+- patient_360
+scd2:
+  natural_keys:
+  - patient_id
+  hash_columns:
+  - first_name
+  - last_name
+  - maiden_name
+  - address
+  - city
+  - state
+  - county
+  - zip
+  - marital_status
+  - healthcare_expenses
+  - healthcare_coverage
+  - income

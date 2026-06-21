@@ -1,0 +1,37 @@
+# Bronze ingestion config -- ingest_conditions
+# Generated for STORY-02-003 (LLD §5.1, §4.2, §7.1).
+# Filename stem `conditions` drives the Airflow task id `ingest_conditions`
+# via the factory; the `table:` field below is the Bronze Delta table
+# name (synthea_conditions) used to look up contracts/<table>.yml and
+# dq_rules/<table>.yml.
+table: synthea_conditions
+layer: bronze
+output_path: ${PATIENT360_WAREHOUSE_ROOT}/dev/bronze/synthea_conditions/
+
+source:
+  type: csv
+  path: data/raw_delta/conditions.csv
+  header: true
+
+schema_ref: contracts/synthea_conditions.yml
+contracts_dir: contracts
+
+output_table: unity.bronze.synthea_conditions
+catalog_bronze_catalog_name: unity
+catalog_bronze_schema: bronze
+
+metadata_columns:
+  - ds
+  - _ingested_at
+  - _source_batch_id
+  - _source_file              # updated 2026-06-19: LLD §2.3 (1.19) source lineage
+
+empty_input_behavior: write_empty            # LLD §5.1 default
+dq_rules_table: synthea_conditions
+dq_rules_dir: dq_rules
+se_action_if_failed: drop             # LLD §5.4 fail-closed default
+quarantine_path: warehouse/{env}/quarantine/bronze/synthea_conditions/
+
+timeout_minutes: 30                   # LLD §4.2
+retries: 3
+retry_delay_seconds: 60

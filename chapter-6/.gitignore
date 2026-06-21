@@ -1,0 +1,11 @@
+# Generated Unity Catalog OSS Delta warehouse — local runtime data, never commit
+uc-warehouse/
+
+# Skill/editor backup files
+*.bak
+
+# Local skill-arg scratch files
+.skill-arg
+
+# UC-from-source build clone (third-party unitycatalog repo, ~52M, has own .git)
+_infra/docker/uc-source/

@@ -1,0 +1,13 @@
+table: patient_billing_summary
+layer: gold
+dms_section: "DMS \xA74"
+schema: gold
+ddl_path: ddl/migrations/20260620_301_patient_billing_summary.sql
+dq_path: dq_rules/patient_billing_summary.yml
+owner: Patient 360 Data Engineering
+description: "Gold table patient_billing_summary; see DMS \xA74 for the authoritative\
+  \ column-level schema."
+tags:
+- gold
+- patient_360
+columns: []
