@@ -1,0 +1,106 @@
+{
+  "story_id": "STORY-02-005",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/outputs/stories/v1/EPIC-02-bronze-ingestion/STORY-02-005-bronze-se-rules.md",
+  "epic_id": "EPIC-02",
+  "plan_version": 1,
+  "status": "implemented",
+  "generated_at": "2026-05-11T22:53:55.923455+00:00",
+  "summary": "1 task(s) across ['ingestion'] \u2014 4 AC(s).",
+  "classifier": {
+    "kind": "ingestion",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-02-005",
+    "paths": [
+      "dq_rules/*.yml"
+    ],
+    "by_skill": {
+      "ingestion": [
+        "dq_rules/*.yml"
+      ]
+    },
+    "dispatch_order": [
+      "ingestion"
+    ],
+    "unmatched": [],
+    "fallback_kind": null
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "update-ingestion",
+      "kind": "ingestion",
+      "mode": "update",
+      "paths": [
+        "dq_rules/*.yml"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "started_at": "2026-05-11T23:10:02.898825+00:00",
+      "finished_at": "2026-05-11T23:13:23.900406+00:00",
+      "artifacts": [],
+      "files_created": 2,
+      "files_updated": 13,
+      "critical_findings": [],
+      "validator": "validate-ingestion",
+      "validator_status": "pass",
+      "notes": ""
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "13 `dq_rules/{table}.yml` files exist with SE rule schema (per-table convention per LLD \u00a75.1) [LLD \u00a72.1, \u00a75.1, DQS \u00a72]",
+      "line": 37,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "Each YAML has \u22651 row_dq and \u22651 agg_dq rule per DQS \u00a72-3 [DQS \u00a72-3]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "Critical-table YAMLs (patients, encounters, allergies, orgs, providers, payers) declare `action_if_failed: fail` for at least one CRITICAL rule [LLD \u00a75.4]",
+      "line": 41,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 4,
+      "text": "`se_runner` integration test loads each rules file and runs against a synthetic DataFrame [LLD \u00a78.6.1]",
+      "line": 43,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

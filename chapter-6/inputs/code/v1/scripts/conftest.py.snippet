@@ -1,0 +1,45 @@
+# Illustrative pytest conftest — see test-pattern.md.
+# Generic placeholder: {project}.
+
+import pytest
+from pyspark.sql import SparkSession
+
+DELTA_PACKAGES = "io.delta:delta-spark_2.13:4.2.0"
+
+
+@pytest.fixture(scope="session")
+def spark(tmp_path_factory):
+    warehouse = tmp_path_factory.mktemp("warehouse")
+    metastore = tmp_path_factory.mktemp("metastore_db")
+
+    spark = (SparkSession.builder
+        .appName("{project}-tests")
+        .master("local[2]")
+        .config("spark.sql.warehouse.dir", str(warehouse))
+        .config("javax.jdo.option.ConnectionURL",
+                f"jdbc:derby:;databaseName={metastore};create=true")
+        .config("spark.sql.catalog.spark_catalog",
+                "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+        .config("spark.sql.extensions",
+                "io.delta.sql.DeltaSparkSessionExtension")
+        .config("spark.jars.packages", DELTA_PACKAGES)
+        .config("spark.driver.extraJavaOptions",
+                "-Dderby.stream.error.field=java.lang.System.err")
+        .getOrCreate())
+
+    yield spark
+    spark.stop()
+
+
+@pytest.fixture()
+def bronze_schema(spark):
+    spark.sql("CREATE SCHEMA IF NOT EXISTS bronze")
+    yield
+    spark.sql("DROP SCHEMA IF EXISTS bronze CASCADE")
+
+
+@pytest.fixture()
+def silver_schema(spark):
+    spark.sql("CREATE SCHEMA IF NOT EXISTS silver")
+    yield
+    spark.sql("DROP SCHEMA IF EXISTS silver CASCADE")

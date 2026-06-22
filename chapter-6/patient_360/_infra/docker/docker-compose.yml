@@ -1,0 +1,270 @@
+# patient_360 local dev stack (LLD §9.1).
+# Pinned versions: see inputs/code/v1/LIBRARIES.md.
+#
+# Services:
+#   unity-catalog    : Unity Catalog OSS 0.5.0 (catalog/metastore for Delta on local FS)
+#   unity-catalog-ui : Unity Catalog UI 0.5.0 (build-from-source; browser UI on :3000)
+#   marquez          : Marquez 0.51.1 (OpenLineage backend)
+#   marquez-db       : Postgres 14 backing Marquez
+#   airflow          : Airflow 3.2.1 standalone — runs DAGs from airflow/dags/
+#                      with Spark embedded (local[2]); no sidecar Spark cluster.
+#   otel-collector   : OpenTelemetry collector (OTLP gRPC :4317, HTTP :4318)
+services:
+  unity-catalog:
+    image: ghcr.io/rdewai/redefining-dataengineering-with-ai:uc-server-v0.5.0
+    container_name: "patient_360-uc"
+    networks:
+      default:
+        # Required so the unity-catalog-ui express proxy can resolve the
+        # server by hostname `server` on first boot.
+        aliases: [server]
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./uc-oss/etc:/home/unitycatalog/etc
+      - uc-data:/home/unitycatalog/etc/data
+      # Shared managed-table storage (LLD §9.1.1). The UC server must see the
+      # same files the Spark writers commit so coordinated commits for MANAGED
+      # SE `_error`/`_stats` tables resolve. Mounted at the same in-container
+      # path (/tmp/uc-warehouse) the airflow/thrift/ddl-apply services use, so
+      # the schema `storage_root` (set by scripts/uc_init.py) is identical on
+      # both sides of the commit.
+      - ../../uc-warehouse:/tmp/uc-warehouse
+    healthcheck:
+      test: ["CMD-SHELL", "(wget -qO- http://localhost:8080/api/2.1/unity-catalog/catalogs || exec 3<>/dev/tcp/localhost/8080) || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  unity-catalog-ui:
+    # LLD §9.1.1 v1.10: Unity Catalog does NOT publish a versioned -ui image
+    # on Docker Hub. Build from a shallow clone of the upstream UC repo at
+    # tag v0.5.0. The clone is performed by `make uc-ui-source` (idempotent),
+    # automatically invoked as a prerequisite of `make dev-up`. No manual
+    # `git clone` step is required.
+    build:
+      context: ./uc-source/ui
+    container_name: "patient_360-uc-ui"
+    depends_on:
+      unity-catalog:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      UC_URI_PROXY_TARGET: http://server:8080
+    healthcheck:
+      # The UI image is built FROM node:18 (Debian) — bash with /dev/tcp is
+      # present, so a TCP connect to the express server on :3000 is a
+      # sufficient readiness probe. `yarn start` binds :3000 only once the
+      # UI bundle is served. Needed so `docker compose up --wait` gates on
+      # the UI being ready (AC9 lists unity-catalog-ui among the six
+      # healthcheck-bearing services).
+      test: ["CMD-SHELL", "(exec 3<>/dev/tcp/localhost/3000) 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  marquez-db:
+    image: postgres:14
+    container_name: "patient_360-marquez-db"
+    environment:
+      POSTGRES_DB: marquez
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
+    volumes:
+      - marquez-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marquez"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  marquez:
+    image: marquezproject/marquez:0.51.1
+    container_name: "patient_360-marquez"
+    depends_on:
+      marquez-db:
+        condition: service_healthy
+    ports:
+      # Host port 5000 is reserved by macOS AirPlay Receiver on macOS 12+ —
+      # bind to 5001 by default. Override via `MARQUEZ_API_HOST_PORT` /
+      # `MARQUEZ_ADMIN_HOST_PORT` in .env if needed. See developer-plugin L-005.
+      - "${MARQUEZ_API_HOST_PORT:-5001}:5000"   # API
+      - "${MARQUEZ_ADMIN_HOST_PORT:-5002}:5001" # admin
+    environment:
+      # Marquez 0.51.1 reads POSTGRES_* (not MARQUEZ_DB_*) — using the
+      # MARQUEZ_DB_* names causes Marquez to fall back to localhost:5432
+      # and crash at startup with "Connection refused" against its own
+      # container loopback.
+      POSTGRES_HOST: marquez-db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: marquez
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
+    healthcheck:
+      test: ["CMD-SHELL", "(wget -qO- http://localhost:5000/api/v1/namespaces || exec 3<>/dev/tcp/localhost/5000) || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    image: ghcr.io/rdewai/redefining-dataengineering-with-ai:airflow-3.2.1
+    container_name: "patient_360-airflow"
+    depends_on:
+      unity-catalog:
+        condition: service_healthy
+      marquez:
+        condition: service_healthy
+      otel-collector:
+        # NOTE: service_started (NOT service_healthy). The otel-collector-contrib
+        # image is distroless — no /bin/sh, no wget, no curl — so no in-container
+        # healthcheck can succeed. The collector's health_check extension on
+        # :13133 is reachable from the host for manual verification.
+        condition: service_started
+    ports:
+      - "8081:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      PYTHONPATH: "/opt/airflow/dags:/opt/patient_360/src"
+      # In-airflow Spark (LLD §6.1 local_executor_mode = in-airflow-local[*]).
+      AIRFLOW_CONN_SPARK_DEFAULT: '{"conn_type":"spark","host":"local[2]"}'
+      # Per-task entry-script paths (auto-generated by /developer-plugin:create-dag
+      # from LLD §4.2 task inventory; see airflow/jobs/run_*.py).
+      BRONZE_RUNNER_APP: /opt/airflow/jobs/run_bronze_ingestion.py
+      BRONZE_RECON_APP: /opt/airflow/jobs/run_bronze_recon.py
+      # Env-driven config locations consumed by generated runners + DAG factory.
+      AIRFLOW_CONFIGS_DIR: /opt/airflow/configs
+      DQ_RULES_DIR: "/opt/patient_360/dq_rules"
+      # Anchors relative `contracts_dir` / `dq_rules_dir` values in the
+      # per-table YAML so spark-submit's CWD does not affect resolution.
+      PATIENT360_PROJECT_ROOT: /opt/patient_360
+      # Warehouse root for UC EXTERNAL Delta table LOCATIONs (LLD §9.1,
+      # 2026-05-12 pivot). Matches the `uc-warehouse` bind mount below and
+      # the LOCATION paths the ddl-apply beeline one-shot pre-creates via
+      # the spark-thrift-server.
+      PATIENT360_WAREHOUSE_ROOT: /tmp/uc-warehouse
+      UC_URI: http://unity-catalog:8080
+    volumes:
+      - ../../airflow/dags:/opt/airflow/dags
+      - ../../airflow/jobs:/opt/airflow/jobs
+      - ../../airflow/configs:/opt/airflow/configs
+      - ../../src:/opt/patient_360/src
+      - ../../contracts:/opt/patient_360/contracts
+      - ../../dq_rules:/opt/patient_360/dq_rules
+      # Pipeline env-config profiles (_infra/cd/config/{DEV,STAGING,PROD}.yaml +
+      # template.yaml) consumed by utils/pipeline_config.load_config — the Silver
+      # transforms call load_pipeline_config(env), which resolves
+      # ${PATIENT360_PROJECT_ROOT}/_infra/cd/config/<ENV>.yaml. Without this mount
+      # the Silver tasks fail with FileNotFoundError (Bronze never needed it).
+      - ../../_infra/cd/config:/opt/patient_360/_infra/cd/config:ro
+      # Dev utilities (uc_init, sync_bronze_contracts, etc.)
+      - ../../scripts:/opt/patient_360/scripts
+      # Repo-root data/ (loaded by chapter-2's `make load-raw-data`) — holds
+      # `duckdb/raw.db` with the `synthea.*` source tables the per-table
+      # YAML configs read from.
+      - ../../../../data:/opt/patient_360/data
+      - ../../uc-warehouse:/tmp/uc-warehouse
+    command: ["standalone"]
+    healthcheck:
+      # Airflow 3.x moved the health endpoint from /health to
+      # /api/v2/monitor/health. /health returns 404 on 3.x and the container
+      # is marked unhealthy forever. See developer-plugin L-006.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/v2/monitor/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+  spark-thrift-server:
+    # LLD §9.1.1, §13 Decision 12: the Spark SQL endpoint (HiveServer2 on
+    # :10000) the ddl-apply beeline one-shot targets to execute Delta DDL so
+    # UC EXTERNAL Delta tables are pre-created before any pipeline write.
+    # Spark 4.1.0 + Delta + Unity Catalog jars baked into Dockerfile.thrift.
+    build:
+      context: .
+      dockerfile: Dockerfile.thrift
+    image: ghcr.io/rdewai/redefining-dataengineering-with-ai:thrift-spark4.1.1
+    container_name: "patient_360-thrift"
+    depends_on:
+      unity-catalog:
+        condition: service_healthy
+    ports:
+      - "10000:10000"
+    environment:
+      UC_URI: http://unity-catalog:8080
+      # UC OSS local runs in no-auth mode; empty token is accepted.
+      UC_TOKEN: ""
+      PATIENT360_WAREHOUSE_ROOT: /tmp/uc-warehouse
+    volumes:
+      - ../../uc-warehouse:/tmp/uc-warehouse
+    healthcheck:
+      # HiveServer2 opens the Thrift port only once the SQL engine is ready;
+      # a TCP connect to :10000 is a sufficient readiness probe. /dev/tcp is a
+      # bash builtin — invoke bash EXPLICITLY: CMD-SHELL runs /bin/sh (dash on
+      # the Ubuntu Spark image), which lacks /dev/tcp and would fail the probe
+      # forever (thrift stuck "starting", ddl-apply never starts).
+      test: ["CMD", "bash", "-c", "(exec 3<>/dev/tcp/localhost/10000) 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 45s
+
+  ddl-apply:
+    # LLD §9.1.1, §13 Decision 12: one-shot beeline DDL applier. Applies the
+    # plain dated .sql migrations under ddl/migrations/ (Liquibase REMOVED —
+    # it cannot work on UC OSS + Spark Thrift; see developer-plugin L-015).
+    # Reuses the Spark Thrift Server image (Dockerfile.thrift) for its bundled
+    # `beeline` client + python3, substitutes ${PATIENT360_WAREHOUSE_ROOT}, and
+    # applies each migration in lexical (dated/sequenced) order via
+    # `beeline -u jdbc:hive2://spark-thrift-server:10000/unity -f <file.sql>`,
+    # then exits 0. Driven by `make ddl-apply`.
+    build:
+      context: .
+      dockerfile: Dockerfile.thrift
+    image: ghcr.io/rdewai/redefining-dataengineering-with-ai:thrift-spark4.1.1
+    container_name: "patient_360-ddl-apply"
+    depends_on:
+      spark-thrift-server:
+        condition: service_healthy
+    environment:
+      THRIFT_HOST: spark-thrift-server
+      THRIFT_PORT: "10000"
+      UC_CATALOG: unity
+      DDL_DIR: /ddl/migrations
+      # Substituted into each migration's `LOCATION '${PATIENT360_WAREHOUSE_ROOT}/...'`.
+      # MUST match spark-thrift-server's warehouse root so the pre-created
+      # EXTERNAL Delta LOCATIONs resolve to the same on-disk paths.
+      PATIENT360_WAREHOUSE_ROOT: /tmp/uc-warehouse
+    volumes:
+      - ../../ddl/migrations:/ddl/migrations:ro
+      - ./ddl-apply.sh:/usr/local/bin/ddl-apply.sh:ro
+      - ../../uc-warehouse:/tmp/uc-warehouse
+    entrypoint: ["/usr/bin/env", "bash", "/usr/local/bin/ddl-apply.sh"]
+    restart: "no"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.107.0
+    container_name: "patient_360-otel"
+    ports:
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+      - "13133:13133"  # health_check extension (curl localhost:13133/)
+    volumes:
+      - ./observability/otel-config.yaml:/etc/otel/config.yaml
+    command: ["--config", "/etc/otel/config.yaml"]
+    # Intentionally no in-container probe — the otel/opentelemetry-collector-contrib
+    # image is distroless (no /bin/sh, no wget, no curl). Any in-container probe fails with
+    # `exec: "/bin/sh": stat /bin/sh: no such file or directory`. Verify the
+    # collector from the host via `curl localhost:13133/` (health_check extension
+    # enabled in observability/otel-config.yaml). Airflow's depends_on for this
+    # service MUST use `condition: service_started`, NOT `service_healthy`.
+
+volumes:
+  uc-data:
+  marquez-db:

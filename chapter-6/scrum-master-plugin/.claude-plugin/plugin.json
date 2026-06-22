@@ -1,0 +1,9 @@
+{
+  "name": "scrum-master-plugin",
+  "version": "1.0.0",
+  "description": "Scrum Master Agent for generating, updating, and validating Sprint Backlog (Epics and Stories) documents",
+  "author": {
+    "name": "RDEWAI"
+  },
+  "keywords": ["scrum-master", "stories", "epics", "sprint-backlog", "agile", "work-decomposition", "story-writing"]
+}

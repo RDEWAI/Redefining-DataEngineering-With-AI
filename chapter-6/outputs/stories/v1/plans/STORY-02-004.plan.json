@@ -1,0 +1,104 @@
+{
+  "story_id": "STORY-02-004",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/outputs/stories/v1/EPIC-02-bronze-ingestion/STORY-02-004-bronze-liquibase-ddl.md",
+  "epic_id": "EPIC-02",
+  "plan_version": 1,
+  "status": "failed",
+  "generated_at": "2026-05-12T03:08:01.141457+00:00",
+  "summary": "1 task(s) across ['ingestion'] \u2014 3 AC(s).",
+  "classifier": {
+    "kind": "ingestion",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-02-004",
+    "paths": [
+      "ddl/liquibase/changelogs/*.xml",
+      "master-changelog.xml"
+    ],
+    "by_skill": {
+      "ingestion": [
+        "ddl/liquibase/changelogs/*.xml",
+        "master-changelog.xml"
+      ]
+    },
+    "dispatch_order": [
+      "ingestion"
+    ],
+    "unmatched": [
+      "ddl/liquibase/changelogs/*.xml",
+      "master-changelog.xml"
+    ],
+    "fallback_kind": "ingestion"
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "create-ingestion",
+      "kind": "ingestion",
+      "mode": "create",
+      "paths": [
+        "ddl/liquibase/changelogs/*.xml",
+        "master-changelog.xml"
+      ],
+      "depends_on": [],
+      "status": "failed",
+      "started_at": "2026-05-12T03:08:57.133862+00:00",
+      "finished_at": "2026-05-12T03:10:51.765581+00:00",
+      "artifacts": [],
+      "files_created": 0,
+      "files_updated": 0,
+      "critical_findings": [
+        "handbook validator: 29 pre-existing CRITICAL issues unrelated to story scope (duplicate configs, missing output_path, missing test modules, absolute /opt/airflow path).",
+        "These are project-wide issues that block validation; story-scoped deliverables (13 synthea_*.xml + master-changelog.xml) all PASS AC."
+      ],
+      "validator": "validate-ingestion",
+      "validator_status": "pending",
+      "notes": "",
+      "handbook_validator": "fail"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "13 `ddl/liquibase/changelogs/{table}.xml` files exist for Bronze tables [LLD \u00a79.1, DMS \u00a72]",
+      "line": 37,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "Project-wide `master-changelog.xml` includes all 29 project changelogs (Bronze + Silver + Gold) per LLD \u00a79.1; this story owns the 13 Bronze include entries (DMS \u00a72), with Silver (+13, DMS \u00a73) and Gold (+3, DMS \u00a74) include entries authored by their own layer stories [LLD \u00a79.1, DMS \u00a72/\u00a73/\u00a74]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "Each changeset has a `<rollback>` element [LLD \u00a79.1]",
+      "line": 41,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

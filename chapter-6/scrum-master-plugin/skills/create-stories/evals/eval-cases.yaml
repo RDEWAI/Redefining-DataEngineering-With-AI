@@ -1,0 +1,161 @@
+skill: create-stories
+version: "1.0"
+cases:
+  - id: TC-001
+    name: "Complete inputs produce valid backlog"
+    description: "Given LLD and all upstream artifacts, skill produces a backlog that passes validation"
+    inputs:
+      folder: "inputs/stories/v1"
+      upstream: "outputs/lld/v1"
+    expected:
+      - type: validation_pass
+        description: "Backlog passes validate-stories with 0 CRITICAL issues"
+      - type: file_exists
+        patterns:
+          - "BACKLOG-*.md"
+          - "EPIC-*/EPIC-*.md"
+          - "EPIC-*/STORY-*.md"
+      - type: no_vague_language
+        banned: ["do everything", "all data", "comprehensive", "various"]
+    success_criteria: "All expected checks pass"
+
+  - id: TC-002
+    name: "Upstream traceability maintained"
+    description: "Every story must reference upstream artifact sections"
+    inputs:
+      folder: "inputs/stories/v1"
+      upstream: "outputs/lld/v1"
+    expected:
+      - type: content_contains
+        patterns: ["[LLD"]
+    success_criteria: "LLD section references found in story files"
+
+  - id: TC-003
+    name: "Missing team capacity triggers Q&A"
+    description: "When team-capacity.md is absent, skill asks user"
+    inputs:
+      folder: "inputs/stories/v1"
+      remove_files: ["team-capacity.md"]
+    expected:
+      - type: asks_question
+        about: "capacity"
+    success_criteria: "Skill asks about team capacity"
+
+  - id: TC-004
+    name: "Story IDs are globally unique"
+    description: "Each story has a unique STORY-NN-NNN identifier"
+    inputs:
+      folder: "inputs/stories/v1"
+      upstream: "outputs/lld/v1"
+    expected:
+      - type: content_contains
+        patterns: ["STORY-01-", "STORY-02-"]
+    success_criteria: "Story IDs follow STORY-NN-NNN format"
+
+  - id: TC-005
+    name: "Dependency graph included"
+    description: "Backlog must include a Mermaid dependency diagram"
+    inputs:
+      folder: "inputs/stories/v1"
+      upstream: "outputs/lld/v1"
+    expected:
+      - type: content_contains
+        patterns: ["```mermaid"]
+    success_criteria: "Mermaid diagram present in backlog"
+
+  - id: TC-006
+    name: "Stories have acceptance criteria"
+    description: "Every story must have acceptance criteria with upstream references"
+    inputs:
+      folder: "inputs/stories/v1"
+      upstream: "outputs/lld/v1"
+    expected:
+      - type: content_contains
+        patterns: ["Acceptance Criteria", "- [ ]"]
+    success_criteria: "Acceptance criteria with checkboxes present"
+
+  - id: TC-007
+    name: "Medallion-layer epics contain closure sequence"
+    description: >
+      Each medallion-layer epic (Bronze / Silver-Dim / Silver-Fact / Gold, cited
+      via LLD §5.1 / §5.2 / §5.3) must close with a performance-optimization
+      story AND an integration-test story. Deploy-validation is optional but a
+      `Deploy: N/A — layer completes at integration-test` note must appear in
+      the epic Objective when omitted. Closure order is perf BEFORE
+      integration-test.
+    inputs:
+      folder: "inputs/stories/v1"
+      upstream: "outputs/lld/v1"
+    expected:
+      - type: content_contains
+        scope: "EPIC-02-*/STORY-*.md"
+        patterns:
+          - "Story Type | performance-optimization"
+          - "Story Type | integration-test"
+      - type: content_contains
+        scope: "EPIC-03-*/STORY-*.md"
+        patterns:
+          - "Story Type | performance-optimization"
+          - "Story Type | integration-test"
+      - type: content_contains
+        scope: "EPIC-04-*/STORY-*.md"
+        patterns:
+          - "Story Type | performance-optimization"
+          - "Story Type | integration-test"
+      - type: content_contains
+        scope: "EPIC-05-*/STORY-*.md"
+        patterns:
+          - "Story Type | performance-optimization"
+          - "Story Type | integration-test"
+      - type: content_contains
+        scope: "EPIC-02-*/STORY-*integration-test*.md"
+        patterns: ["Airflow DAG", "Unity Catalog"]
+      - type: validator_check
+        check: "STORIES-CLOSURE-001"
+        expected: "not-fired"
+      - type: validator_check
+        check: "STORIES-CLOSURE-002"
+        expected: "not-fired"
+      - type: validator_check
+        check: "STORIES-CLOSURE-003"
+        expected: "not-fired"
+      - type: validator_check
+        check: "STORIES-CLOSURE-004"
+        expected: "not-fired"
+    success_criteria: >
+      Each layer epic (EPIC-02 Bronze, EPIC-03 Silver-Dim, EPIC-04 Silver-Fact,
+      EPIC-05 Gold) contains perf + integration-test stories; integration-test
+      AC mentions both the Airflow DAG and Unity Catalog; integration-test
+      depends on the perf story from the same epic.
+
+  - id: TC-008
+    name: "Trailing epics do not collect layer-specific closure work"
+    description: >
+      EPIC-07 (Release) and EPIC-08 (Hardening) must NOT contain stories of type
+      performance-optimization, integration-test, or deploy-validation scoped to
+      a single medallion layer. Those belong inside the layer epic. Trailing
+      epics are reserved for system-wide concerns: CI pipeline, PROD promotion,
+      rollback runbook, full-pipeline E2E load test, security audit,
+      documentation audit, maintenance cadence.
+    inputs:
+      folder: "inputs/stories/v1"
+      upstream: "outputs/lld/v1"
+    expected:
+      - type: content_not_contains
+        scope: "EPIC-07-*/STORY-*.md"
+        patterns:
+          - "Story Type | performance-optimization"
+          - "Story Type | integration-test"
+          - "Story Type | deploy-validation"
+      - type: content_not_contains
+        scope: "EPIC-08-*/STORY-*.md"
+        patterns:
+          - "Story Type | performance-optimization"
+          - "Story Type | integration-test"
+          - "Story Type | deploy-validation"
+      - type: validator_check
+        check: "STORIES-CLOSURE-006"
+        expected: "not-fired"
+    success_criteria: >
+      Trailing epics contain only release / hardening story types; no layer
+      closure work leaks into them.

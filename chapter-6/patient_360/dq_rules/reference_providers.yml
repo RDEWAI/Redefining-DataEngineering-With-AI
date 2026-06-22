@@ -1,0 +1,105 @@
+product_id: patient-360
+dq_env:
+  DEV:
+    table_name: unity.silver.reference_providers
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 0
+    priority: medium
+  QA:
+    table_name: unity.silver.reference_providers
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    priority: medium
+  PROD:
+    table_name: unity.silver.reference_providers
+    action_if_failed: fail
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    priority: high
+rules:
+- rule: DQ_FLD_097
+  rule_type: row_dq
+  column_name: provider_id
+  expectation: provider_id IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on provider_id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_098
+  rule_type: row_dq
+  column_name: organization_id
+  expectation: organization_id IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on organization_id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_099
+  rule_type: row_dq
+  column_name: is_current
+  expectation: is_current IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on is_current
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: false
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_185
+  rule_type: row_dq
+  column_name: is_current
+  expectation: COUNT(*) FILTER (WHERE is_current = TRUE) = COUNT(DISTINCT provider_id)
+  action_if_failed: ignore
+  tag: field_validation
+  description: CONSISTENCY on is_current
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: false
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_REF_018
+  rule_type: query_dq
+  column_name: ''
+  expectation: (SELECT COUNT(*) FROM reference_providers_view c LEFT JOIN reference_organizations p ON c.organization_id = p.organization_id WHERE p.organization_id IS NULL) = 0
+  action_if_failed: ignore
+  tag: referential_integrity
+  description: 'FK check: reference_providers.organization_id -> reference_organizations.organization_id'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: true
+  priority: high

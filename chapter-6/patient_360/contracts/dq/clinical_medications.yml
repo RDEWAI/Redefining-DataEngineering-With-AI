@@ -1,0 +1,9 @@
+# DQ contract pointer for clinical_medications (silver fact). thresholds: operator-set defaults.
+table: clinical_medications
+layer: silver
+dq_rules_path: ../../dq_rules/clinical_medications.yml
+dq_rules_ref: dq_rules/clinical_medications.yml
+thresholds:
+  completeness_min: 0.95
+  validity_min: 0.995
+  freshness_max_hours: 25

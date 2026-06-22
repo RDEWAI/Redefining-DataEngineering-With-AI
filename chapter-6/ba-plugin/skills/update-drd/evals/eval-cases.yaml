@@ -1,0 +1,56 @@
+skill: update-drd
+version: "1.0"
+cases:
+  - id: TC-001
+    name: "Version incremented on update"
+    description: "Updated DRD must have incremented version number"
+    inputs:
+      existing_artifact: "outputs/drd/v1/"
+      changes: "Add new data source: lab_results table"
+    expected:
+      - type: content_contains
+        patterns: ["Version", "2.0"]
+    success_criteria: "Version number incremented from 1.0 to 2.0"
+
+  - id: TC-002
+    name: "Change log entry added"
+    description: "Update adds a change log entry documenting what changed"
+    inputs:
+      existing_artifact: "outputs/drd/v1/"
+      changes: "Update SLA from 2s to 1s"
+    expected:
+      - type: content_contains
+        patterns: ["change", "SLA"]
+    success_criteria: "Change log captures the SLA modification"
+
+  - id: TC-003
+    name: "Unchanged sections preserved"
+    description: "Sections not affected by the update remain intact"
+    inputs:
+      existing_artifact: "outputs/drd/v1/"
+      changes: "Add new stakeholder to section 1.4"
+    expected:
+      - type: section_present
+        sections: ["2. Source Discovery", "3. Data Quality", "5. Business Rules"]
+    success_criteria: "Unrelated sections unchanged"
+
+  - id: TC-004
+    name: "Ripple effect assessment"
+    description: "When updating source discovery, skill checks impact on data quality section"
+    inputs:
+      existing_artifact: "outputs/drd/v1/"
+      changes: "Add new source table with known data quality issues"
+    expected:
+      - type: asks_question
+        about: "data quality"
+    success_criteria: "Skill identifies ripple effect and asks about DQ implications"
+
+  - id: TC-005
+    name: "Updated DRD passes validation"
+    description: "After update, the modified DRD still passes validation"
+    inputs:
+      existing_artifact: "outputs/drd/v1/"
+      changes: "Minor text clarification in business context"
+    expected:
+      - type: validation_pass
+    success_criteria: "Updated DRD passes validate-drd with 0 CRITICAL issues"

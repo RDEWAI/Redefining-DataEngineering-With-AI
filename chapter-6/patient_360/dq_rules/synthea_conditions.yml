@@ -1,0 +1,106 @@
+# updated: 2026-06-20 — table_name → 3-part FQN unity.bronze.synthea_conditions (LLD v1.20 §2.3 item 3 / managed SE audit tables)
+product_id: patient-360
+dq_env:
+  DEV:
+    table_name: unity.bronze.synthea_conditions
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 0
+    priority: medium
+  QA:
+    table_name: unity.bronze.synthea_conditions
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    priority: medium
+  PROD:
+    table_name: unity.bronze.synthea_conditions
+    action_if_failed: fail
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    priority: high
+rules:
+- rule: DQ_FLD_022
+  rule_type: row_dq
+  column_name: PATIENT
+  expectation: PATIENT IS NOT NULL
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on PATIENT
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_023
+  rule_type: row_dq
+  column_name: ENCOUNTER
+  expectation: ENCOUNTER IS NOT NULL
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on ENCOUNTER
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_024
+  rule_type: row_dq
+  column_name: CODE
+  expectation: CODE IS NOT NULL
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on CODE
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_FLD_025
+  rule_type: row_dq
+  column_name: START
+  expectation: START IS NOT NULL
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on START
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_STA_003
+  rule_type: agg_dq
+  column_name: ''
+  expectation: count(*) > 199278 and count(*) < 220255
+  action_if_failed: ignore
+  tag: statistical_distribution
+  description: 'Statistical check: Row Count baseline=209,767'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: true
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium

@@ -1,0 +1,133 @@
+{
+  "story_id": "STORY-03-003",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-6/outputs/stories/v1/EPIC-03-silver-dimensions/STORY-03-003-silver-dim-providers.md",
+  "epic_id": "EPIC-03",
+  "plan_version": 1,
+  "status": "implemented",
+  "generated_at": "2026-06-16T05:33:50.255892+00:00",
+  "summary": "1 task(s) across ['silver'] \u2014 5 AC(s).",
+  "classifier": {
+    "kind": "silver",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-03-003",
+    "paths": [
+      "transform_providers.py",
+      "dq_rules/reference_providers.yml"
+    ],
+    "by_skill": {
+      "silver": [
+        "dq_rules/reference_providers.yml",
+        "transform_providers.py"
+      ]
+    },
+    "dispatch_order": [
+      "silver"
+    ],
+    "unmatched": [
+      "transform_providers.py"
+    ],
+    "fallback_kind": "silver"
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "create-silver",
+      "kind": "silver",
+      "mode": "create",
+      "paths": [
+        "dq_rules/reference_providers.yml",
+        "transform_providers.py"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "started_at": "2026-06-16T05:34:00.586286+00:00",
+      "finished_at": "2026-06-16T05:40:59.467795+00:00",
+      "artifacts": [],
+      "files_created": [
+        "src/patient_360/silver/transform_providers.py",
+        "contracts/reference_providers.yml",
+        "contracts/dq/reference_providers.yml",
+        "dq_rules/reference_providers.yml",
+        "tests/silver/test_transform_providers_unit.py"
+      ],
+      "files_updated": [],
+      "critical_findings": [],
+      "validator": "validate-silver",
+      "validator_status": "pass",
+      "notes": "",
+      "handbook_validator": "pass",
+      "out_of_scope_findings": [
+        "validate-silver R20 DAG missing transform_providers_silver task -> owned by STORY-03-007 (DAG wiring), not this story"
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "`transform_providers.py` reads the bronze `synthea_providers` table as path-based external Delta (`warehouse/{env}/bronze/synthea_providers/`) via the `read_bronze_delta` helper \u2014 NOT `unity.bronze.synthea_providers` (Decision 12 & 15 revoked 2026-05-12; UC registration is deploy-time only) [LLD \u00a75.2]",
+      "line": 37,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "PHI columns dropped at Silver boundary per DMS \u00a73 / NFR-6 [DMS \u00a73, LLD \u00a75.2]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "`apply_scd2(...)` invoked with natural keys + hash columns from DMS \u00a76 [DMS \u00a76, LLD \u00a75.2]",
+      "line": 41,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 4,
+      "text": "Inline SE called with rules from `dq_rules/reference_providers.yml`; `action_if_failed: fail` per LLD \u00a75.4 [LLD \u00a75.2, \u00a75.4; DQS \u00a72]",
+      "line": 43,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 5,
+      "text": "Unit tests cover hash-changed / hash-same / new-record / PHI-dropped scenarios [LLD \u00a72.4]",
+      "line": 45,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

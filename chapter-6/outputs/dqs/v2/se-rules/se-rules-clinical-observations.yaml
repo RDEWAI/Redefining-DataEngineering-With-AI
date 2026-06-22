@@ -1,0 +1,144 @@
+# SE Rules for clinical.clinical_observations
+# Generated from: DQS-2026-06-20-patient-360.md
+# Compatible with spark-expectations >= 2.6.0
+# Load with: load_rules_from_yaml(this_file, spark, options={"dq_env": "PROD"})
+# Product: patient-360
+# Rules: 7
+
+product_id: patient-360
+dq_env:
+  DEV:
+    table_name: dev_clinical.clinical_observations
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 0
+    priority: medium
+  QA:
+    table_name: qa_clinical.clinical_observations
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    priority: medium
+  PROD:
+    table_name: clinical.clinical_observations
+    action_if_failed: fail
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    priority: high
+rules:
+- rule: DQ_FLD_077
+  rule_type: row_dq
+  column_name: patient_id
+  expectation: patient_id IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on patient_id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_078
+  rule_type: row_dq
+  column_name: encounter_id
+  expectation: encounter_id IS NOT NULL
+  action_if_failed: drop
+  tag: field_validation
+  description: NOT NULL on encounter_id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: true
+  error_drop_threshold: 5
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_FLD_079
+  rule_type: row_dq
+  column_name: loinc_code
+  expectation: loinc_code IS NOT NULL
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on loinc_code
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_REF_008
+  rule_type: query_dq
+  column_name: ''
+  expectation: (SELECT COUNT(*) FROM clinical_observations_view c LEFT JOIN clinical_patients
+    p ON c.patient_id = p.patient_id WHERE p.patient_id IS NULL) = 0
+  action_if_failed: ignore
+  tag: referential_integrity
+  description: 'FK check: clinical_observations.patient_id -> clinical_patients.patient_id'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: true
+  priority: high
+- rule: DQ_REF_009
+  rule_type: query_dq
+  column_name: ''
+  expectation: (SELECT COUNT(*) FROM clinical_observations_view c LEFT JOIN clinical_encounters
+    p ON c.encounter_id = p.encounter_id WHERE p.encounter_id IS NULL) = 0
+  action_if_failed: ignore
+  tag: referential_integrity
+  description: 'FK check: clinical_observations.encounter_id -> clinical_encounters.encounter_id'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: true
+  priority: high
+- rule: DQ_STA_026
+  rule_type: agg_dq
+  column_name: ''
+  expectation: count(*) > 0
+  action_if_failed: ignore
+  tag: statistical_distribution
+  description: 'Statistical check: observation_value baseline=5.0%'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: true
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_STA_027
+  rule_type: agg_dq
+  column_name: ''
+  expectation: count(*) > 0
+  action_if_failed: ignore
+  tag: statistical_distribution
+  description: 'Statistical check: units baseline=10.0%'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: true
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium

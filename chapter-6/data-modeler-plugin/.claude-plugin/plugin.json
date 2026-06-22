@@ -1,0 +1,9 @@
+{
+  "name": "data-modeler-plugin",
+  "version": "1.0.0",
+  "description": "Data Modeler Agent for generating, updating, and validating Data Model Specifications (DMS) with embedded YAML schema blocks",
+  "author": {
+    "name": "RDEWAI"
+  },
+  "keywords": ["data-modeler", "dms", "schema-design", "dimensional-model", "scd", "bronze-silver-gold"]
+}
