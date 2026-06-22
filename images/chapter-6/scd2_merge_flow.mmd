@@ -1,0 +1,27 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart TB
+    START(["apply_scd2(df, target_table,<br/>natural_keys, hash_columns,<br/>effective_date)"])
+    COLD{"Target table empty?<br/>(first run)"}
+    INIT["Empty target:<br/>INSERT all rows<br/>is_current = TRUE"]
+    HASH["Compute record hash<br/>over DMS §6 columns<br/>(coalesce nulls to '')"]
+    MATCH{"Natural key<br/>matches a<br/>current row?"}
+    NEW["No match →<br/>INSERT new version"]
+    CHANGED{"Hash<br/>differs?"}
+    CLOSE["Close current row:<br/>effective_to = effective_from − 1<br/>is_current = FALSE<br/>then INSERT new version"]
+    NOOP["Unchanged →<br/>no-op"]
+    METRICS(["Return metrics:<br/>rows_inserted · rows_closed<br/>· rows_unchanged"])
+
+    START --> COLD
+    COLD -->|"Yes"| INIT --> METRICS
+    COLD -->|"No"| HASH --> MATCH
+    MATCH -->|"No"| NEW --> METRICS
+    MATCH -->|"Yes"| CHANGED
+    CHANGED -->|"Yes"| CLOSE --> METRICS
+    CHANGED -->|"No"| NOOP --> METRICS
+
+    classDef se fill:#D9E2EC,stroke:#334E68,color:#102A43,stroke-width:2px;
+    classDef dec fill:#F7EFE0,stroke:#B08A40,color:#4A3810,stroke-width:2px;
+    classDef act fill:#E8F0E8,stroke:#5A8A5A,color:#1A3A1A,stroke-width:2px;
+    class START,METRICS se;
+    class COLD,MATCH,CHANGED dec;
+    class INIT,HASH,NEW,CLOSE,NOOP act;

@@ -1,0 +1,25 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart TB
+    B["Bronze handoff<br/>13 named UC Delta tables (unity.bronze.*)"]
+    DQ{"run_dq · inline Spark Expectations<br/>before every write"}
+    DIMS["<b>silver_dimensions<br/>4 SCD2</b><br/>clinical_patients<br/>reference_organizations<br/>reference_providers<br/>reference_payers"]
+    M["apply_scd2 · MERGE (stateful)<br/>into named UC dims"]
+    FACTS["<b>silver_facts<br/>9 cleansed</b><br/>overwrite current ds partition<br/>cheap — reprocessed each run"]
+    R{"reconciliation_silver · fail-closed gate<br/>SE run-evidence + cross-table query_dq"}
+    G(["Downstream layers gated"])
+
+    B --> DQ
+    DQ --> DIMS --> M --> R
+    DQ --> FACTS --> R
+    R --> G
+
+    classDef src fill:#E6EEF7,stroke:#4A72A8,color:#16314A,stroke-width:2px;
+    classDef gate fill:#F7EFE0,stroke:#B08A40,color:#4A3810,stroke-width:2px;
+    classDef dim fill:#E8E8F4,stroke:#6A6AB0,color:#1A1A4A,stroke-width:2px;
+    classDef fact fill:#EDF7E8,stroke:#7AA85A,color:#2A4A10,stroke-width:2px;
+    classDef recon fill:#F7E8E8,stroke:#B05A5A,color:#4A1010,stroke-width:2px;
+    class B src;
+    class DQ gate;
+    class DIMS,M dim;
+    class FACTS fact;
+    class R recon;
