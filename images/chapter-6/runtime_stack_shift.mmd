@@ -1,0 +1,37 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}, 'flowchart': {'subGraphTitleMargin': {'top': 8, 'bottom': 24}}}}%%
+flowchart TB
+    subgraph CARRY["Carried forward unchanged"]
+        direction LR
+        ART["Artifacts<br/>LLD · DMS · STM · DQS"] ~~~ PLG["developer-plugin<br/>same package, +silver triad"] ~~~ ROLE["Roles<br/>Scrum Master · Developer"]
+    end
+
+    subgraph CH5["Chapter 5<br/>Bronze foundation"]
+        direction TB
+        D0["CSV + DuckDB — sources only"]
+        D1["Spark 4.1.1 + Delta Lake"]
+        D2["SparkSubmitOperator · Airflow 3.2.1"]
+        D3["Inline Spark Expectations (run_dq)"]
+        D4["insertInto named UC tables<br/>EXTERNAL · Liquibase-precreated · UC 0.5.0"]
+        D0 --> D1 --> D2 --> D3 --> D4
+    end
+
+    subgraph CH6["Chapter 6<br/>Silver layer"]
+        direction TB
+        S1["Spark 4.1.1 + Delta Lake"]
+        S2["SparkSubmitOperator · Airflow 3.2.1"]
+        S3["Inline Spark Expectations (run_dq)"]
+        S4["SCD2 MERGE dims (apply_scd2)<br/>+ cleansed facts (overwrite by ds)"]
+        S5["insertInto unity.silver.*<br/>+ reconciliation_silver gate"]
+        S1 --> S2 --> S3 --> S4 --> S5
+    end
+
+    CARRY -.-> CH5
+    CARRY -.-> CH6
+    CH5 ==> CH6
+
+    classDef carry fill:#E8F0E8,stroke:#5A8A5A,color:#1A3A1A,stroke-width:2px;
+    classDef ch5 fill:#E6EEF7,stroke:#4A72A8,color:#16314A,stroke-width:2px;
+    classDef ch6 fill:#F7EFE0,stroke:#B08A40,color:#4A3810,stroke-width:2px;
+    class ART,PLG,ROLE carry;
+    class D0,D1,D2,D3,D4 ch5;
+    class S1,S2,S3,S4,S5 ch6;

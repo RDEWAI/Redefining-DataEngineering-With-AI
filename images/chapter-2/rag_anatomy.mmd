@@ -1,17 +1,18 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
 flowchart TD
     %% Main Pipeline
     KB["📚 Knowledge Base<br>(CSV, PDF, JSON, Wiki, etc.)"] --> VDB["🧬 Vector Database"]
     VDB --> LLM["🤖 LLM as Thinker"]
     LLM --> SDK["🛠️ RAG Tools / SDKs"]
-    
+
     %% Horizontal Alignment (Pushes these to a new column on the right)
     KB ~~~ User
     VDB ~~~ Feedback
-    
+
     %% Interactions with User and Feedback
     SDK -->|Serves| User["👤 User"]
     User -->|Provides| Feedback["🔄 Feedback Loop"]
-    
+
     %% Feedback loops returning to core components
     Feedback -.->|Improves| VDB
     Feedback -.->|Improves| LLM

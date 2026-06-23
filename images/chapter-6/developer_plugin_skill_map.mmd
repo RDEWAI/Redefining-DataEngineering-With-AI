@@ -1,0 +1,21 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart TB
+    DP["developer-plugin"]
+
+    CH5SK["<b>Carried from Chapter 5</b><br/>scaffold triad<br/>ingestion triad<br/>Airflow DAG triad<br/>pipeline triad (CI/CD)<br/>integration-test"]
+    SILVER["<b>Silver triad (new)</b><br/>create-silver<br/>update-silver<br/>validate-silver"]
+    DISC["<b>Discipline branch</b><br/>Inherited learnings IL-001 … IL-018<br/>apply-learnings + check-learnings-queue hook<br/>Regression rules in validate-* skills"]
+
+    DP --> CH5SK
+    DP --> SILVER
+    DP --> DISC
+    SILVER -.-> DISC
+
+    classDef root fill:#D9E2EC,stroke:#334E68,color:#102A43,stroke-width:2px;
+    classDef carried fill:#EDEDEA,stroke:#8A8A82,color:#33332E,stroke-width:2px;
+    classDef new fill:#E8F0E8,stroke:#5A8A5A,color:#1A3A1A,stroke-width:2px;
+    classDef disc fill:#F7E8E8,stroke:#B05A5A,color:#4A1010,stroke-width:2px;
+    class DP root;
+    class CH5SK carried;
+    class SILVER new;
+    class DISC disc;
