@@ -29,7 +29,7 @@ As a data engineer, I want build the `patient_billing_summary` Gold consumer tab
 
 ## Description
 
-Implement `src/patient_360/gold/build_billing_summary.py` (or `build_patient_summary.py`) per LLD §5.3. Reads current-version `unity.silver.clinical_patients` (`is_current=TRUE`) via `spark.read.table(...)`, joins to relevant Silver facts, denormalizes via ARRAY<STRUCT> (LLD §5.3 / NFR-1), then full-overwrite `insertInto`s the Liquibase-pre-created `unity.gold.patient_billing_summary` UC table — `df.write.mode('overwrite').insertInto("unity.gold.patient_billing_summary")` (Decision 12/15 re-adopted 2026-06-18; never `saveAsTable`/path-based `.save`). Inline SE via `dq_rules/patient_billing_summary.yml`. Empty-input: `fail` (LLD §5.3 — consumer table must have data).
+Implement `src/patient_360/gold/build_billing_summary.py` (or `build_patient_summary.py`) per LLD §5.3. Reads current-version `unity.silver.clinical_patients` (`is_current=TRUE`) via `spark.read.table(...)`, joins to relevant Silver facts, denormalizes via ARRAY<STRUCT> (LLD §5.3 / NFR-1), then full-overwrite `insertInto`s the `ddl/migrations/*.sql`-pre-created `unity.gold.patient_billing_summary` UC table — `df.write.mode('overwrite').insertInto("unity.gold.patient_billing_summary")` (Decision 12/15 re-adopted 2026-06-18; never `saveAsTable`/path-based `.save`). Inline SE via `dq_rules/patient_billing_summary.yml`. Empty-input: `fail` (LLD §5.3 — consumer table must have data).
 
 ## Acceptance Criteria
 

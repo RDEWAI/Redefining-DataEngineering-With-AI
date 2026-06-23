@@ -29,7 +29,7 @@ As a platform engineer, I want the Marquez lineage server and its postgres backi
 
 ## Description
 
-Author the `marquez` and `marquez-db` service entries in `_infra/docker/docker-compose.yml` (shared file, co-authored across STORY-01-005, STORY-01-006, STORY-01-007). Pin images per LLD §9.1.1 (`marquezproject/marquez:0.51.1`, `postgres:14`). Wire `marquez` to `marquez-db` via `depends_on` with `condition: service_healthy`. Each service declares a `healthcheck:` block — postgres uses `pg_isready`, Marquez uses an HTTP probe against `:5000/api/v1/namespaces`.
+Author the `marquez` and `marquez-db` service entries in `_infra/docker/docker-compose.yml` (shared file, co-authored across STORY-01-005, STORY-01-006, STORY-01-007). Pin images per LLD §9.1.1 (`marquezproject/marquez:0.51.1`, `postgres:14`). Wire `marquez` to `marquez-db` via `depends_on` with `condition: service_healthy`. Each service declares a `healthcheck:` block — postgres uses `pg_isready`, Marquez uses an HTTP probe against `:5001/api/v1/namespaces`.
 
 ## Acceptance Criteria
 
@@ -40,13 +40,13 @@ Author the `marquez` and `marquez-db` service entries in `_infra/docker/docker-c
 
 - [x] Both services declare a `healthcheck:` block such that `docker compose ps` reports `healthy` within 60s of start [LLD §9.1.1]
 
-- [x] **Definition of Done** evidence captured in the Verification block: (a) `docker compose ps` output showing `marquez` and `marquez-db` both `healthy`, AND (b) HTTP probe `curl -fsS http://localhost:5000/api/v1/namespaces` returns 200 with a JSON body [LLD §4.2, §9.1.1]
+- [x] **Definition of Done** evidence captured in the Verification block: (a) `docker compose ps` output showing `marquez` and `marquez-db` both `healthy`, AND (b) HTTP probe `curl -fsS http://localhost:5001/api/v1/namespaces` returns 200 with a JSON body [LLD §4.2, §9.1.1]
 
 
 ## Technical Notes
 
 - **Upstream references**: LLD §4.2, §9.1, §9.1.1
-- **Implementation hints**: postgres healthcheck = `pg_isready -U marquez`. Marquez healthcheck = `curl -fsS http://localhost:5000/api/v1/namespaces`. Keep credentials in env vars referenced from a single compose-level `.env` file. Lineage *wiring* into Spark (OpenLineage listener config) is owned by EPIC-06; this story only stands the server up.
+- **Implementation hints**: postgres healthcheck = `pg_isready -U marquez`. Marquez healthcheck = `curl -fsS http://localhost:5001/api/v1/namespaces`. Keep credentials in env vars referenced from a single compose-level `.env` file. Lineage *wiring* into Spark (OpenLineage listener config) is owned by EPIC-06; this story only stands the server up.
 
 ## Estimation Support
 
@@ -61,7 +61,7 @@ Author the `marquez` and `marquez-db` service entries in `_infra/docker/docker-c
 | Coverage | What | How |
 |----------|------|-----|
 
-| Smoke | Marquez API reachable | curl http://localhost:5000/api/v1/namespaces |
+| Smoke | Marquez API reachable | curl http://localhost:5001/api/v1/namespaces |
 
 
 
@@ -77,7 +77,7 @@ AC3:
   - grep_count: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "healthcheck:", at_least: 2}
   - manual: "docker compose ps shows marquez and marquez-db both 'healthy'"
 AC4:
-  - manual: "Capture `docker compose ps` output (both services healthy) AND `curl -fsS http://localhost:5000/api/v1/namespaces` returning 200; paste both into the story verification log"
+  - manual: "Capture `docker compose ps` output (both services healthy) AND `curl -fsS http://localhost:5001/api/v1/namespaces` returning 200; paste both into the story verification log"
 ```
 
 
@@ -98,7 +98,7 @@ AC4:
 
 2. `docker compose -f _infra/docker/docker-compose.yml ps`
 
-3. `curl -fsS http://localhost:5000/api/v1/namespaces`
+3. `curl -fsS http://localhost:5001/api/v1/namespaces`
 
 
 ### Expected outcome

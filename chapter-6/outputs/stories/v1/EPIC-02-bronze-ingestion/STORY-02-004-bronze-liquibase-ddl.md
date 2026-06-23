@@ -1,4 +1,4 @@
-# STORY-02-004: Author Liquibase DDL changelogs for 13 Bronze tables
+# STORY-02-004: Author plain .sql DDL migrations for 13 Bronze tables
 
 | Field | Value |
 |-------|-------|
@@ -25,26 +25,26 @@
 
 ## User Story
 
-As a data engineer, I want have one Liquibase changelog per Bronze table referenced from `contracts/{table}.yml` so that schema evolution is versioned and rollback-safe per LLD §9.1.
+As a data engineer, I want one plain dated `.sql` DDL migration per Bronze table under `ddl/migrations/` referenced from `contracts/{table}.yml` so that the UC EXTERNAL Delta tables are pre-created idempotently before any pipeline write, applied in lexical order via beeline against the Spark Thrift Server per LLD §9.1.
 
 ## Description
 
-Author 13 `ddl/liquibase/changelogs/{table}.xml` files (one per Bronze table). Each **pre-creates a UC EXTERNAL Delta table** via `CREATE TABLE unity.bronze.synthea_{table} (...) USING DELTA LOCATION '<warehouse path>'` per DMS §2 with metadata columns (`ds`, `_ingested_at`, `_source_batch_id`), executed by Liquibase against the Spark Thrift Server (`jdbc:hive2://spark-thrift-server:10000/unity`) via `make ddl-apply` per LLD §13 Decision 12. These tables exist before the runner ever writes (the runner only `insertInto`s). Include rollback statements for each changeset. Per LLD §9.1 the `master-changelog.xml` is **project-wide** (Bronze + Silver + Gold = 29 tables across DMS §2/§3/§4) — this story authors the 13 Bronze per-table changelogs and ensures the project-wide `master-changelog.xml` includes them; downstream Silver/Gold stories add their own includes. The aggregate include count in `master-changelog.xml` after this story is at least 13 (Bronze rows present) and grows to 29 once Silver + Gold complete.
+Author 13 plain dated `ddl/migrations/<YYYYMMDD>_<NNN>_synthea_{table}.sql` migration files (one per Bronze table). Each **pre-creates a UC EXTERNAL Delta table** via `CREATE TABLE IF NOT EXISTS unity.bronze.synthea_{table} (...) USING DELTA LOCATION '<warehouse path>'` per DMS §2 with the four metadata columns (`ds`, `_ingested_at`, `_source_batch_id`, `_source_file STRING`) — `_source_file STRING` is mandatory per LLD §2.3 so the runner's `insertInto` column arity matches (omitting it triggers `DELTA_INSERT_COLUMN_ARITY_MISMATCH`). All layers' migrations live in the single flat `ddl/migrations/` directory — there are **no** per-layer `ddl/bronze/` / `ddl/silver/` / `ddl/gold/` subdirectories; the dated + zero-padded sequence filename prefix (`<YYYYMMDD>_<NNN>_`) gives the bronze → silver → gold apply order under a plain **lexical sort**. The `.sql` files are applied in lexical order by the beeline one-shot `_infra/docker/ddl-apply.sh` against the Spark Thrift Server (`jdbc:hive2://spark-thrift-server:10000/unity`) via `make ddl-apply` per LLD §13 Decision 12 — Liquibase is retired (UPGRADE-NOTES UC 0.5.0 / Spark 4.1: plain beeline-applied `.sql` replaces the Liquibase changelog/master-changelog machinery). These tables exist before the runner ever writes (the runner only `insertInto`s). `CREATE TABLE IF NOT EXISTS` makes each migration idempotent and re-runnable, so no separate rollback element is required. `make ddl-apply` runs every `ddl/migrations/*.sql` in lexical order (downstream Silver/Gold layer stories add their own dated `ddl/migrations/*.sql` files, applied by the same target — 29 tables total once all layers complete).
 
 ## Acceptance Criteria
 
 
-- [ ] 13 `ddl/liquibase/changelogs/{table}.xml` files exist for Bronze tables, each issuing `CREATE TABLE unity.bronze.synthea_{table} ... USING DELTA LOCATION` (UC EXTERNAL Delta pre-create) [LLD §9.1, §13 Decision 12, DMS §2]
+- [ ] 13 plain dated `ddl/migrations/<YYYYMMDD>_<NNN>_synthea_{table}.sql` migration files exist for Bronze tables, each issuing `CREATE TABLE IF NOT EXISTS unity.bronze.synthea_{table} ... USING DELTA LOCATION` (UC EXTERNAL Delta pre-create); all migrations are flat under `ddl/migrations/` (no per-layer subdirs) [LLD §9.1, §13 Decision 12, DMS §2]
 
-- [ ] Project-wide `master-changelog.xml` includes all 29 project changelogs (Bronze + Silver + Gold) per LLD §9.1; this story owns the 13 Bronze include entries (DMS §2), with Silver (+13, DMS §3) and Gold (+3, DMS §4) include entries authored by their own layer stories [LLD §9.1, DMS §2/§3/§4]
+- [ ] `make ddl-apply` runs every `ddl/migrations/*.sql` in lexical order via beeline against `jdbc:hive2://spark-thrift-server:10000/unity`; the 13 Bronze migrations are applied before the first Bronze pipeline run (Silver +13 / Gold +3 migrations authored by their own layer stories as dated `ddl/migrations/*.sql` files, applied by the same target — 29 total once all layers complete) [LLD §9.1, §13 Decision 12, DMS §2/§3/§4]
 
-- [ ] Each changeset has a `<rollback>` element [LLD §9.1]
+- [ ] Each migration uses `CREATE TABLE IF NOT EXISTS` so it is idempotent and re-runnable (no Liquibase changelog/rollback element needed) [LLD §9.1]
 
 
 ## Technical Notes
 
-- **Upstream references**: LLD §9.1, §13 Decision 12, DMS §2
-- **Implementation hints**: Generate from a Jinja template seeded by DMS §2 column lists; emit `CREATE TABLE unity.bronze.synthea_<t> (...) USING DELTA LOCATION '${PATIENT360_WAREHOUSE_ROOT}/{env}/bronze/synthea_<t>'`. Liquibase targets the Spark Thrift Server (the only endpoint that can run Delta DDL), applied by `make ddl-apply`.
+- **Upstream references**: LLD §9.1, §13 Decision 12, DMS §2; UPGRADE-NOTES UC 0.5.0 / Spark 4.1 (Liquibase → beeline-applied plain `.sql`)
+- **Implementation hints**: Generate from a Jinja template seeded by DMS §2 column lists; name each file `ddl/migrations/<YYYYMMDD>_<NNN>_synthea_<t>.sql` (dated + zero-padded sequence so lexical order = bronze → silver → gold); emit `CREATE TABLE IF NOT EXISTS unity.bronze.synthea_<t> (...) USING DELTA LOCATION '${PATIENT360_WAREHOUSE_ROOT}/{env}/bronze/synthea_<t>'`. `make ddl-apply` (the `_infra/docker/ddl-apply.sh` one-shot) invokes `beeline -u jdbc:hive2://spark-thrift-server:10000/unity -f <each ddl/migrations/*.sql in lexical order>` (the Spark Thrift Server is the only endpoint that can run Delta DDL). No `master-changelog.xml`, no `<changeSet>`/`<rollback>` XML — plain `.sql` only.
 
 ## Estimation Support
 
@@ -61,7 +61,7 @@ Author 13 `ddl/liquibase/changelogs/{table}.xml` files (one per Bronze table). E
 | Coverage | What | How |
 |----------|------|-----|
 
-| Contract | Liquibase XMLs parse and validate | pytest patient_360/tests/bronze/test_liquibase_changelogs.py |
+| Contract | Bronze .sql migrations parse and create UC EXTERNAL Delta tables | pytest patient_360/tests/bronze/test_bronze_ddl_sql.py |
 
 
 
@@ -69,18 +69,19 @@ Author 13 `ddl/liquibase/changelogs/{table}.xml` files (one per Bronze table). E
 
 ```yaml
 AC1:
-  - file_count: {glob: "patient_360/ddl/liquibase/changelogs/synthea_*.xml", equals: 13}
-  - grep_count: {glob: "patient_360/ddl/liquibase/changelogs/synthea_*.xml", pattern: "unity\\.bronze\\.synthea_", min: 13}
-  - grep_count: {glob: "patient_360/ddl/liquibase/changelogs/synthea_*.xml", pattern: "USING DELTA|LOCATION", min: 13}
+  - file_count: {glob: "patient_360/ddl/migrations/*synthea_*.sql", equals: 13}
+  - grep_count: {glob: "patient_360/ddl/migrations/*.sql", pattern: "unity\\.bronze\\.synthea_", min: 13}
+  - grep_count: {glob: "patient_360/ddl/migrations/*synthea_*.sql", pattern: "USING DELTA|LOCATION", min: 13}
+  - grep_count: {glob: "patient_360/ddl/migrations/*synthea_*.sql", pattern: "CREATE TABLE IF NOT EXISTS", min: 13}
 AC2:
-  - file_exists: "patient_360/ddl/liquibase/master-changelog.xml"
-  # master-changelog.xml is project-wide per LLD §9.1 (Bronze + Silver + Gold = 29 includes total).
-  # This story is the Bronze layer's contribution: 13 Bronze include entries MUST be present.
-  # The full 29-include count is verified once Silver + Gold layer stories complete.
-  - grep_count: {file: "patient_360/ddl/liquibase/master-changelog.xml", pattern: 'changelogs/synthea_', greater_or_equal: 13}
-  - grep_count: {file: "patient_360/ddl/liquibase/master-changelog.xml", pattern: '<include\s+file=', greater_or_equal: 13}
+  - grep: {file: "patient_360/Makefile", pattern: "ddl-apply:"}
+  - grep: {file: "patient_360/Makefile", pattern: "beeline|hive2://spark-thrift-server:10000"}
+  - grep: {file: "patient_360/Makefile", pattern: "ddl/migrations/.*\\.sql|ddl/migrations"}
+  # Liquibase machinery is retired (UPGRADE-NOTES UC 0.5.0 / Spark 4.1): no master-changelog.xml.
+  - forbidden_grep: {glob: "patient_360/ddl/**", pattern: "master-changelog|<changeSet|<databaseChangeLog", reason: "Liquibase retired — plain beeline-applied .sql only"}
 AC3:
-  - grep_count: {glob: "patient_360/ddl/liquibase/changelogs/synthea_*.xml", pattern: "<rollback>", equals: 13}
+  - grep_count: {glob: "patient_360/ddl/migrations/*synthea_*.sql", pattern: "CREATE TABLE IF NOT EXISTS", equals: 13}
+  - forbidden_grep: {glob: "patient_360/ddl/migrations/*.sql", pattern: "<rollback>", reason: "idempotent CREATE TABLE IF NOT EXISTS replaces Liquibase rollback elements"}
 ```
 
 
@@ -95,13 +96,13 @@ AC3:
 ### Steps
 
 
-1. `cd patient_360 && uv run pytest tests/bronze/test_liquibase_changelogs.py -v`
+1. `cd patient_360 && uv run pytest tests/bronze/test_bronze_ddl_sql.py -v`
 
 
 ### Expected outcome
 
 
-- All Liquibase XMLs parse and tests pass
+- All 13 Bronze `.sql` migrations parse; `make ddl-apply` creates the `unity.bronze.synthea_*` EXTERNAL Delta tables idempotently; tests pass
 
 
 ## Documentation Updates

@@ -29,7 +29,7 @@ As a data engineer, I want generate the patient_360 project scaffold from the co
 
 ## Description
 
-Render the `inputs/lld/v1/templates/cookiecutter-chapter/` cookiecutter template into `patient_360/` with defaults `chapter_name=chapter-5`, `project_name=patient_360`, `python_version=3.12`. The rendered tree must contain `src/patient_360/{bronze,silver,gold,utils}/`, `airflow/dags/`, `airflow/configs/`, `contracts/`, `dq_rules/`, `ddl/liquibase/`, `_infra/{ci,cd,docker}/`, `tests/{bronze,silver,gold}/`, `pyproject.toml`, `Makefile`, and `CLAUDE.md`. `make dev-setup` must succeed and `pytest --collect-only` must report no errors.
+Render the `inputs/lld/v1/templates/cookiecutter-chapter/` cookiecutter template into `patient_360/` with defaults `chapter_name=chapter-5`, `project_name=patient_360`, `python_version=3.12`. The rendered tree must contain `src/patient_360/{bronze,silver,gold,utils}/`, `airflow/dags/`, `airflow/configs/`, `contracts/`, `dq_rules/`, `ddl/migrations/`, `_infra/{ci,cd,docker}/`, `tests/{bronze,silver,gold}/`, `pyproject.toml`, `Makefile`, and `CLAUDE.md`. `make dev-setup` must succeed and `pytest --collect-only` must report no errors.
 
 ## Acceptance Criteria
 

@@ -37,7 +37,7 @@ Build the system-wide CI pipeline, DEV→STAGING→PROD promotion runbooks, roll
 
 ### Out of Scope
 
-- Layer-specific deploy (lives in layer epic — only Bronze in this backlog has Liquibase)
+- Layer-specific deploy (lives in layer epic — only Bronze in this backlog has a layer-scoped DDL deploy-validation story)
 
 
 ## Stories

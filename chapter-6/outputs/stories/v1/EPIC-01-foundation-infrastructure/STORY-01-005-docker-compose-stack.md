@@ -29,16 +29,16 @@ As a platform engineer, I want the Unity Catalog OSS service block (server + UI)
 
 ## Description
 
-Author the `unity-catalog` and `unity-catalog-ui` service entries in `_infra/docker/docker-compose.yml` (a shared file co-authored across STORY-01-005, STORY-01-006, STORY-01-007). The `unity-catalog` service pins the published server image per LLD §9.1.1 (`unitycatalog/unitycatalog:v0.4.0`). The `unity-catalog-ui` service **builds from source** per LLD §9.1.1 (upstream reality: no versioned `-ui` image is published to Docker Hub; only `main` rolling tags exist). Shallow-clone `github.com/unitycatalog/unitycatalog` at tag `v0.4.0` into `_infra/docker/uc-source/` and declare `build: { context: _infra/docker/uc-source/ui/, dockerfile: Dockerfile }` for the UI service. Map the UI port `3000:3000` (upstream default). Provide `scripts/uc_init.py` that creates UC catalog `unity` and schemas `bronze` / `silver` / `gold`, idempotent on re-run, invoked once after the UC server reports healthy. Add a `healthcheck:` block to each service so `docker compose ps` reports `healthy`. The combined `make dev-up` / `make dev-down` Makefile targets land in STORY-01-007.
+Author the `unity-catalog` and `unity-catalog-ui` service entries in `_infra/docker/docker-compose.yml` (a shared file co-authored across STORY-01-005, STORY-01-006, STORY-01-007). The `unity-catalog` service runs the **UC 0.5.0** server image. UC 0.5.0 has no published server image, so it is **built from source** with the `/root/.cache` Dockerfile cache fix (UPGRADE-NOTES §4.4 — the upstream Dockerfile copies the build cache from `$HOME/.cache` but `sbt` running as root caches under `/root/.cache`, causing a `NoClassDefFoundError: io/vertx/core/Verticle` at startup), then published to a container registry and pulled here. The `unity-catalog-ui` service **builds from source** per LLD §9.1.1 (upstream reality: no versioned `-ui` image is published to Docker Hub; only `main` rolling tags exist). Clone `github.com/unitycatalog/unitycatalog` at tag `v0.5.0` into `_infra/docker/uc-source/` and declare `build: { context: _infra/docker/uc-source/ui/, dockerfile: Dockerfile }` for the UI service. Mount a shared `_delta_log` volume between the `unity-catalog`, `spark-thrift-server`, and Airflow/Spark containers so coordinated commits on SE's MANAGED audit tables work (UPGRADE-NOTES §4.5, §7). Map the UI port `3000:3000` (upstream default). Provide `scripts/uc_init.py` that creates UC catalog `unity` and schemas `bronze` / `silver` / `gold`, idempotent on re-run, invoked once after the UC server reports healthy. Each schema is created with a **top-level `storage_root` managed location** (sent as a top-level field, NOT nested under `properties` — UPGRADE-NOTES §4.5) so that on UC 0.5.0 the spark-expectations MANAGED `_stats`/`_error` audit tables can be created with coordinated commits against a shared `_delta_log` volume. Add a `healthcheck:` block to each service so `docker compose ps` reports `healthy`. The combined `make dev-up` / `make dev-down` Makefile targets land in STORY-01-007.
 
 ## Acceptance Criteria
 
 
-- [x] `_infra/docker/docker-compose.yml` declares `unity-catalog` (image `unitycatalog/unitycatalog:v0.4.0`) and `unity-catalog-ui` (`build:` context `_infra/docker/uc-source/ui/`) per LLD §9.1.1; `_infra/docker/uc-source/` is a shallow clone of `unitycatalog/unitycatalog` at tag `v0.4.0` [LLD §9.1.1]
+- [ ] `_infra/docker/docker-compose.yml` declares `unity-catalog` (UC **0.5.0** server image — built from source with the `/root/.cache` Dockerfile fix per UPGRADE-NOTES §4.4, published to a registry and pulled here) and `unity-catalog-ui` (`build:` context `_infra/docker/uc-source/ui/`) per LLD §9.1.1; `_infra/docker/uc-source/` is a clone of `unitycatalog/unitycatalog` at tag `v0.5.0`. The `unity-catalog` service mounts a shared `_delta_log` volume with the Spark/Thrift containers for coordinated commits on SE's MANAGED audit tables [LLD §9.1.1; UPGRADE-NOTES §2, §4.4, §7]
 
 - [x] Both UC services declare a `healthcheck:` block such that `docker compose ps` reports `healthy` within 60s of start [LLD §9.1.1]
 
-- [x] `scripts/uc_init.py` creates UC catalog `unity` and schemas `bronze` / `silver` / `gold` and is idempotent on re-run [LLD §1]
+- [ ] `scripts/uc_init.py` creates UC catalog `unity` and schemas `bronze` / `silver` / `gold` (idempotent on re-run), each schema created with a **top-level `storage_root` managed location** (sent as a top-level field in the create-schema request, NOT nested under `properties`) so UC 0.5.0 can host SE's MANAGED `_stats`/`_error` audit tables with coordinated commits [LLD §1; UPGRADE-NOTES §4.5, §7]
 
 - [x] **Definition of Done** evidence captured in the Verification block: (a) `docker compose ps` output showing `unity-catalog` and `unity-catalog-ui` both `healthy`, AND (b) HTTP probe `curl -fsS http://localhost:8080/api/2.1/unity-catalog/catalogs` returns 200 with `unity` listed [LLD §1, §9.1.1]
 
@@ -47,7 +47,7 @@ Author the `unity-catalog` and `unity-catalog-ui` service entries in `_infra/doc
 
 - **Upstream references**: LLD §1, §9.1, §9.1.1
 - **Implementation hints**: `docker-compose.yml` is the shared file across the three split stories — author only the UC service blocks here. Use the official `healthcheck:` Docker syntax with a curl/wget probe against `:8080/api/2.1/unity-catalog/catalogs`. Keep `uc_init.py` invocation outside compose (called from `make dev-up` in STORY-01-007 after wait-for-healthy).
-- **Upstream-reality note**: Unity Catalog does NOT publish a versioned Docker image for its UI. A prior pin to `unitycatalog/unitycatalog-ui:v0.4.0` failed with `failed to resolve reference` — that tag does not exist on Docker Hub. Mirror the upstream `compose.yaml` pattern (`github.com/unitycatalog/unitycatalog/compose.yaml`): server uses `image:`, UI uses `build:` against the cloned source tree. Recommended clone command in your Makefile or scaffold step: `git clone --depth 1 --branch v0.4.0 https://github.com/unitycatalog/unitycatalog _infra/docker/uc-source/` (skip if directory exists). Port maps 3000:3000 (not 3001) to match upstream default.
+- **Upstream-reality note**: UC 0.5.0 has no published server OR UI image. Build both from source against the cloned tree at tag `v0.5.0`, applying the `/root/.cache` Dockerfile cache fix for the server (UPGRADE-NOTES §4.4) and publishing the server image to a registry. Mirror the upstream `compose.yaml` pattern (`github.com/unitycatalog/unitycatalog/compose.yaml`). Recommended clone command in your Makefile or scaffold step: `git clone --depth 1 --branch v0.5.0 https://github.com/unitycatalog/unitycatalog _infra/docker/uc-source/` (skip if directory exists). Port maps 3000:3000 (not 3001) to match upstream default. **Why 0.5.0:** UC 0.4.0 could not create SE's MANAGED `_error`/`_stats` audit tables (empty-namespace `fullTableNameForApi` AIOOBE on bare names + no managed-location support); 0.5.0 fixes name qualification and supports `catalogManaged` tables with coordinated commits (UPGRADE-NOTES §1.1–§1.2).
 
 ## Estimation Support
 
@@ -71,8 +71,9 @@ Author the `unity-catalog` and `unity-catalog-ui` service entries in `_infra/doc
 ```yaml
 AC1:
   - file_exists: "patient_360/_infra/docker/docker-compose.yml"
-  - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "unitycatalog/unitycatalog:v0.4.0"}
+  - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "unitycatalog.*0\\.5\\.0|:v0\\.5\\.0"}
   - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "build:\\s*$|context:\\s*.*uc-source/ui"}
+  - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "_delta_log"}
   - file_exists: "patient_360/_infra/docker/uc-source/ui/Dockerfile"
 AC2:
   - grep_count: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "healthcheck:", at_least: 2}
@@ -80,6 +81,7 @@ AC2:
 AC3:
   - file_exists: "patient_360/scripts/uc_init.py"
   - grep: {file: "patient_360/scripts/uc_init.py", pattern: "bronze.*silver.*gold|create_schema"}
+  - grep: {file: "patient_360/scripts/uc_init.py", pattern: "storage_root"}
 AC4:
   - manual: "Capture `docker compose ps` output (both services healthy) AND `curl -fsS http://localhost:8080/api/2.1/unity-catalog/catalogs` returning 200 with `unity` listed; paste both into the story verification log"
 ```
@@ -98,7 +100,7 @@ AC4:
 ### Steps
 
 
-1. One-time: `git clone --depth 1 --branch v0.4.0 https://github.com/unitycatalog/unitycatalog patient_360/_infra/docker/uc-source/` (skip if dir exists)
+1. One-time: `git clone --depth 1 --branch v0.5.0 https://github.com/unitycatalog/unitycatalog patient_360/_infra/docker/uc-source/` (skip if dir exists)
 
 2. `cd patient_360 && docker compose -f _infra/docker/docker-compose.yml up -d --build unity-catalog unity-catalog-ui` (first run builds the UI image; subsequent runs reuse it)
 

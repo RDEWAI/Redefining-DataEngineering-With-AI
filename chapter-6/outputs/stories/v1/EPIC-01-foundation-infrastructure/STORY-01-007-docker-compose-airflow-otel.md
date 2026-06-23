@@ -29,28 +29,28 @@ As a platform engineer, I want the locally-built Airflow image and the otel-coll
 
 ## Description
 
-Author the `airflow`, `otel-collector`, `spark-thrift-server`, and `liquibase` service entries in `_infra/docker/docker-compose.yml` (the shared file is now complete after this story). Author `_infra/docker/Dockerfile.airflow` that bundles Airflow 3.2.1, Spark 4.0.0 (`local[2]` executor), JDK 17, and `spark-expectations>=2.10` per LLD §6.1. Author `_infra/docker/Dockerfile.thrift` (Spark 4.0.0 + Delta + UC jars) for the `spark-thrift-server` service (HiveServer2 on :10000) — the Spark SQL endpoint Liquibase targets to run Delta DDL, so UC tables are pre-created before pipeline writes per LLD §13 Decision 12. Pin `otel/opentelemetry-collector-contrib:0.107.0` and `liquibase/liquibase:4.29` (one-shot DDL applier, `depends_on: spark-thrift-server` service_healthy) per LLD §9.1.1. Wire `airflow` `depends_on:` UC OSS and Marquez with `condition: service_healthy`, and otel-collector with `condition: service_started`. **Do NOT add a `healthcheck:` block to `otel-collector`** — the `otel/opentelemetry-collector-contrib` image is distroless (no `/bin/sh`, no `wget`, no `curl`), so any in-container probe will fail with `exec: "/bin/sh": stat /bin/sh: no such file or directory`. The collector's own `health_check` extension on `:13133` is reachable from the host for verification. Add the `dev-up` / `dev-down` / `ddl-apply` targets to the project `Makefile` — `dev-up` brings the full stack up, waits for all healthcheck-bearing services healthy (including `spark-thrift-server`), runs `scripts/uc_init.py` once, then runs `make ddl-apply` (Liquibase against `jdbc:hive2://spark-thrift-server:10000/unity`) to pre-create the UC EXTERNAL Delta tables before any DAG trigger.
+Author the `airflow`, `otel-collector`, and `spark-thrift-server` service entries in `_infra/docker/docker-compose.yml` (the shared file is now complete after this story). Author `_infra/docker/Dockerfile.airflow` that bundles Airflow 3.2.1, Spark **4.1.1** (`local[2]` executor), JDK 17, and `spark-expectations>=2.10` per LLD §6.1. Author `_infra/docker/Dockerfile.thrift` (Spark **4.1.1** + delta-spark **4.3.0** + `unitycatalog-spark_4.1_2.13:0.5.0` + openlineage-spark **1.50.0** jars) for the `spark-thrift-server` service (HiveServer2 on :10000) — the Spark SQL endpoint that runs Delta DDL and that **beeline** targets via `make ddl-apply`, so UC tables are pre-created before pipeline writes per LLD §13 Decision 12. Pin `otel/opentelemetry-collector-contrib:0.107.0` per LLD §9.1.1. (Liquibase is retired — UPGRADE-NOTES UC 0.5.0 / Spark 4.1: DDL is now plain beeline-applied `.sql`; there is **no** `liquibase` container.) Mount a shared `_delta_log` volume between `spark-thrift-server`, `airflow`, and `unity-catalog` for coordinated commits on SE's MANAGED audit tables (UPGRADE-NOTES §4.5, §7). Wire `airflow` `depends_on:` UC OSS and Marquez with `condition: service_healthy`, and otel-collector with `condition: service_started`. **Do NOT add a `healthcheck:` block to `otel-collector`** — the `otel/opentelemetry-collector-contrib` image is distroless (no `/bin/sh`, no `wget`, no `curl`), so any in-container probe will fail with `exec: "/bin/sh": stat /bin/sh: no such file or directory`. The collector's own `health_check` extension on `:13133` is reachable from the host for verification. Add the `dev-up` / `dev-down` / `ddl-apply` targets to the project `Makefile` — `dev-up` brings the full stack up, waits for all healthcheck-bearing services healthy (including `spark-thrift-server`), runs `scripts/uc_init.py` once, then runs `make ddl-apply` (the `_infra/docker/ddl-apply.sh` one-shot, beeline applying every plain dated `ddl/migrations/*.sql` in lexical order against `jdbc:hive2://spark-thrift-server:10000/unity`) to pre-create the UC EXTERNAL Delta tables before any DAG trigger.
 
 ## Acceptance Criteria
 
 
-- [x] `_infra/docker/Dockerfile.airflow` installs JDK 17, Spark 4.0.0, Airflow 3.2.1, and `spark-expectations>=2.10` per LLD §6.1 [LLD §6.1]
+- [ ] `_infra/docker/Dockerfile.airflow` installs JDK 17, Spark 4.1.1, Airflow 3.2.1, and `spark-expectations>=2.10` per LLD §6.1 [LLD §6.1; UPGRADE-NOTES §2]
 
 - [x] `_infra/docker/docker-compose.yml` declares `airflow` (built from `Dockerfile.airflow`) and `otel-collector` (`otel/opentelemetry-collector-contrib:0.107.0`) per LLD §9.1.1 [LLD §9.1.1]
 
-- [ ] `_infra/docker/docker-compose.yml` declares `spark-thrift-server` (built from `Dockerfile.thrift`, Spark 4.0.0 + Delta + UC jars, HiveServer2 :10000) and `liquibase` (`liquibase/liquibase:4.29`, one-shot, `depends_on: spark-thrift-server` service_healthy) per LLD §9.1.1, §13 Decision 12 [LLD §9.1.1, §13 Decision 12]
+- [ ] `_infra/docker/docker-compose.yml` declares `spark-thrift-server` (built from `Dockerfile.thrift`, Spark 4.1.1 + delta-spark 4.3.0 + `unitycatalog-spark_4.1_2.13:0.5.0` jars, HiveServer2 :10000) and mounts the shared `_delta_log` volume; there is **no** `liquibase` container (DDL is beeline-applied `.sql` — UPGRADE-NOTES) per LLD §9.1.1, §13 Decision 12 [LLD §9.1.1, §13 Decision 12; UPGRADE-NOTES §2, §4.5]
 
-- [ ] `_infra/docker/Dockerfile.thrift` exists and bundles Spark 4.0.0 + Delta + UC jars, launching the Spark Thrift Server (HiveServer2) on :10000 [LLD §9.1.1, §13 Decision 12]
+- [ ] `_infra/docker/Dockerfile.thrift` exists and bundles Spark 4.1.1 + delta-spark 4.3.0 + `unitycatalog-spark_4.1_2.13:0.5.0` jars, launching the Spark Thrift Server (HiveServer2) on :10000 [LLD §9.1.1, §13 Decision 12; UPGRADE-NOTES §2]
 
 - [x] `airflow` declares `depends_on:` `unity-catalog` and `marquez` with `condition: service_healthy`, and `otel-collector` with `condition: service_started` (otel image is distroless — see Description) [LLD §9.1.1]
 
 - [x] `airflow` declares a `healthcheck:` block such that `docker compose ps` reports it `healthy` within 120s of start. `otel-collector` MUST NOT declare a `healthcheck:`; verify it via `curl localhost:13133/` from the host [LLD §9.1.1]
 
-- [x] `make dev-up` brings the full eight-service stack up, waits for healthy (incl. `spark-thrift-server`), runs `scripts/uc_init.py`, then runs `make ddl-apply`, and exits 0; `make dev-down` tears it down cleanly [LLD §9.3]
+- [ ] `make dev-up` brings the full seven-service stack up, waits for healthy (incl. `spark-thrift-server`), runs `scripts/uc_init.py`, then runs `make ddl-apply`, and exits 0; `make dev-down` tears it down cleanly [LLD §9.3]
 
-- [ ] `Makefile` declares a `ddl-apply` target that runs Liquibase `update` against `jdbc:hive2://spark-thrift-server:10000/unity` to pre-create the UC EXTERNAL Delta tables; `dev-up` invokes it after `spark-thrift-server` is healthy and before any DAG trigger [LLD §9.1, §13 Decision 12]
+- [ ] `Makefile` declares a `ddl-apply` target that runs `beeline -u jdbc:hive2://spark-thrift-server:10000/unity -f` over every plain dated `ddl/migrations/*.sql` in lexical order (all layers' migrations live flat under `ddl/migrations/` — no per-layer subdirs) to pre-create the UC EXTERNAL Delta tables; `dev-up` invokes it after `spark-thrift-server` is healthy and before any DAG trigger. **No** Liquibase (retired — UPGRADE-NOTES) [LLD §9.1, §13 Decision 12]
 
-- [ ] **Definition of Done** evidence captured in the Verification block: (a) `docker compose ps` output showing the six healthcheck-bearing services (`unity-catalog`, `unity-catalog-ui`, `marquez-db`, `marquez`, `airflow`, `spark-thrift-server`) `healthy`, `otel-collector` `running`, and `liquibase` exited 0, AND (b) HTTP probe `curl -fsS http://localhost:8081/health` (Airflow webserver) returning 200 AND `curl -fsS http://localhost:13133/` (otel-collector health_check extension, probed from host) returning 200 AND `make ddl-apply` reporting the UC tables created [LLD §6.1, §9.1.1, §13 Decision 12]
+- [ ] **Definition of Done** evidence captured in the Verification block: (a) `docker compose ps` output showing the six healthcheck-bearing services (`unity-catalog`, `unity-catalog-ui`, `marquez-db`, `marquez`, `airflow`, `spark-thrift-server`) `healthy` and `otel-collector` `running`, AND (b) HTTP probe `curl -fsS http://localhost:8081/health` (Airflow webserver) returning 200 AND `curl -fsS http://localhost:13133/` (otel-collector health_check extension, probed from host) returning 200 AND `make ddl-apply` (beeline) reporting the UC tables created [LLD §6.1, §9.1.1, §13 Decision 12]
 
 - [ ] The `airflow` service block exports `PATIENT360_PROJECT_ROOT` (and the derived `AIRFLOW_CONFIGS_DIR`, `DQ_RULES_DIR`, `PATIENT360_WAREHOUSE_ROOT`) so every Airflow task resolves paths against the project root rather than CWD (LLD §9.1 — 2026-05-12 pivot) [LLD §9.1]
 
@@ -94,11 +94,13 @@ AC2:
   - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "otel/opentelemetry-collector-contrib:0.107.0"}
 AC3:
   - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "spark-thrift-server:"}
-  - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "liquibase/liquibase:4.29"}
   - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "10000"}
+  - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "_delta_log"}
+  - forbidden_grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "liquibase", reason: "Liquibase retired — DDL is beeline-applied .sql per UPGRADE-NOTES UC 0.5.0 / Spark 4.1"}
 AC4:
   - file_exists: "patient_360/_infra/docker/Dockerfile.thrift"
   - grep: {file: "patient_360/_infra/docker/Dockerfile.thrift", pattern: "spark|Spark"}
+  - grep: {file: "patient_360/_infra/docker/Dockerfile.thrift", pattern: "0\\.5\\.0|unitycatalog-spark_4\\.1"}
 AC5:
   - grep_count: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "condition: service_healthy", at_least: 2}
   - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "condition: service_started"}
@@ -112,9 +114,11 @@ AC7:
   - grep: {file: "patient_360/Makefile", pattern: "uc_init.py"}
 AC8:
   - grep: {file: "patient_360/Makefile", pattern: "ddl-apply:"}
-  - grep: {file: "patient_360/Makefile", pattern: "hive2://spark-thrift-server:10000|liquibase"}
+  - grep: {file: "patient_360/Makefile", pattern: "beeline.*hive2://spark-thrift-server:10000|hive2://spark-thrift-server:10000"}
+  - grep: {file: "patient_360/Makefile", pattern: "ddl/migrations/.*\\.sql|ddl/migrations"}
+  - forbidden_grep: {file: "patient_360/Makefile", pattern: "liquibase", reason: "Liquibase retired — ddl-apply runs beeline over plain .sql per UPGRADE-NOTES"}
 AC9:
-  - manual: "Capture `docker compose ps` output (six services healthy incl. spark-thrift-server, otel-collector running, liquibase exited 0) AND HTTP probes — `curl -fsS http://localhost:8081/health` (Airflow) returning 200 AND `curl -fsS http://localhost:13133/` (otel-collector, probed from host) returning 200 AND `make ddl-apply` reporting UC tables created; paste all into the story verification log"
+  - manual: "Capture `docker compose ps` output (six services healthy incl. spark-thrift-server, otel-collector running) AND HTTP probes — `curl -fsS http://localhost:8081/health` (Airflow) returning 200 AND `curl -fsS http://localhost:13133/` (otel-collector, probed from host) returning 200 AND `make ddl-apply` (beeline) reporting UC tables created; paste all into the story verification log"
 AC10:
   - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "PATIENT360_PROJECT_ROOT"}
   - grep: {file: "patient_360/_infra/docker/docker-compose.yml", pattern: "AIRFLOW_CONFIGS_DIR|DQ_RULES_DIR|PATIENT360_WAREHOUSE_ROOT"}
@@ -152,7 +156,7 @@ AC11:
 ### Expected outcome
 
 
-- Six containers report `healthy` (incl. `spark-thrift-server`), `otel-collector` reports `running`, and `liquibase` exits 0 after `make ddl-apply` in `docker compose ps`
+- Six containers report `healthy` (incl. `spark-thrift-server`) and `otel-collector` reports `running`; `make ddl-apply` (beeline over `ddl/migrations/*.sql` in lexical order) completes and creates the UC tables
 
 - Airflow `/health` returns 200; otel-collector health_check on `localhost:13133/` returns 200 (probed from host)
 

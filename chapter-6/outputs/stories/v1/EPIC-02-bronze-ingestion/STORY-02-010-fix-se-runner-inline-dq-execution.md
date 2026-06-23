@@ -64,7 +64,7 @@ DQ gate a no-op.
    `f"{target_table}_error"`). Both writers are MANAGED (`format("delta")` with
    **NO** `.option("path", ...)`); SE creates them via `saveAsTable` on first run
    as `catalogManaged` tables in the schema `storage_root` (set by
-   `scripts/uc_init.py`) — SE-owned, NOT pre-created in Liquibase. A single shared
+   `scripts/uc_init.py`) — SE-owned, NOT pre-created by the `ddl/migrations/*.sql` migrations. A single shared
    `bronze_se_stats` / `bronze_se_error` name collides on per-table schema
    (`DELTA_*` merge conflict); the per-table FQN prevents this. This is the §13
    Decision 12 (corrected 2026-06-20) MANAGED-audit-table design, valid on

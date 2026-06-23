@@ -44,9 +44,9 @@ Implement `src/patient_360/utils/se_runner.py` (LLD §2.3) wrapping `WrappedData
 
 - [x] With `se_runner` removed from the module path, ingestion fails closed: unit test asserts ImportError propagates out of `ingestion_runner.py` [LLD §8.6, §13 Decision 14]
 
-- [x] `reconciliation.py` queries `bronze_se_stats` for `meta_dq_run_id == run_id` and fails-closed when count = 0 [LLD §8.6.1, §5.5]
+- [x] `reconciliation.py` iterates each Bronze table's per-table MANAGED stats table `unity.bronze.synthea_<table>_stats` and matches on `meta_dq_run_id == run_id`, failing-closed when the aggregate count = 0 [LLD §8.6.1, §5.5]
 
-- [ ] SE STATS and ERROR tables are written as **per-table MANAGED Unity Catalog tables** by a 3-part FQN — `unity.<schema>.<table>_stats` and `unity.<schema>.<table>_error` — derived from the FQN `target_table` (`stats_table=f"{se_target_table}_stats"`; SE derives `_error` as `f"{target_table}_error"`). Both writers are MANAGED (`format("delta")` with **NO** `.option("path", ...)`); SE creates them via `saveAsTable` on first run as `catalogManaged` tables in the schema `storage_root` (set by `scripts/uc_init.py`) — SE-owned, NOT pre-created in Liquibase. `se_runner.py` must **NOT** write either to a single shared `bronze_se_stats` / `bronze_se_error` name, and must **NOT** write either to a path-based `warehouse/{env}/_se/<table>/{stats,errors}` location. Valid on **UC 0.5.0** + delta-spark 4.1 coordinated commits — the earlier path-based `.option("path", ...)` design (which assumed `UCSingleCatalog` rejects `saveAsTable`-create) is **withdrawn**: that was a misdiagnosis of an empty-namespace `fullTableNameForApi` defect on bare names (AIOOBE on a length-0 namespace under spark-submit), NOT an RTAS refusal; the FQN `target_table` avoids it [LLD §2.3 (v1.20), §8.2, §8.3, §13 Decision 12 (corrected 2026-06-20)]
+- [ ] SE STATS and ERROR tables are written as **per-table MANAGED Unity Catalog tables** by a 3-part FQN — `unity.<schema>.<table>_stats` and `unity.<schema>.<table>_error` — derived from the FQN `target_table` (`stats_table=f"{se_target_table}_stats"`; SE derives `_error` as `f"{target_table}_error"`). Both writers are MANAGED (`format("delta")` with **NO** `.option("path", ...)`); SE creates them via `saveAsTable` on first run as `catalogManaged` tables in the schema `storage_root` (set by `scripts/uc_init.py`) — SE-owned, NOT pre-created by the `ddl/migrations/*.sql` migrations. `se_runner.py` must **NOT** write either to a single shared `bronze_se_stats` / `bronze_se_error` name (use the per-table FQN `unity.bronze.synthea_<table>_stats` / `_error` instead), and must **NOT** write either to a path-based `warehouse/{env}/_se/<table>/{stats,errors}` location. Valid on **UC 0.5.0** + delta-spark 4.1 coordinated commits — the earlier path-based `.option("path", ...)` design (which assumed `UCSingleCatalog` rejects `saveAsTable`-create) is **withdrawn**: that was a misdiagnosis of an empty-namespace `fullTableNameForApi` defect on bare names (AIOOBE on a length-0 namespace under spark-submit), NOT an RTAS refusal; the FQN `target_table` avoids it [LLD §2.3 (v1.20), §8.2, §8.3, §13 Decision 12 (corrected 2026-06-20)]
 
 
 ## Technical Notes
@@ -96,7 +96,7 @@ AC5:
   - pytest: {node: "patient_360/tests/bronze/test_ingestion_runner_failclosed_unit.py"}
 AC6:
   - file_exists: "patient_360/src/patient_360/utils/reconciliation.py"
-  - grep: {file: "patient_360/src/patient_360/utils/reconciliation.py", pattern: "bronze_se_stats|meta_dq_run_id"}
+  - grep: {file: "patient_360/src/patient_360/utils/reconciliation.py", pattern: "_stats|meta_dq_run_id"}
 AC7:
   - grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "stats_table\\s*=\\s*f?['\"]?\\{?[a-zA-Z_]*target_table\\}?_stats"}
   - grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "unity\\.(bronze|silver|gold)"}
