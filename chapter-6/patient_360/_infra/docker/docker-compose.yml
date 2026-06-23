@@ -53,13 +53,15 @@ services:
     environment:
       UC_URI_PROXY_TARGET: http://server:8080
     healthcheck:
-      # The UI image is built FROM node:18 (Debian) — bash with /dev/tcp is
-      # present, so a TCP connect to the express server on :3000 is a
-      # sufficient readiness probe. `yarn start` binds :3000 only once the
-      # UI bundle is served. Needed so `docker compose up --wait` gates on
-      # the UI being ready (AC9 lists unity-catalog-ui among the six
-      # healthcheck-bearing services).
-      test: ["CMD-SHELL", "(exec 3<>/dev/tcp/localhost/3000) 2>/dev/null || exit 1"]
+      # The UI image is built FROM node:18 (Debian). `CMD-SHELL` runs the test
+      # under /bin/sh, which is dash on Debian — dash has NO /dev/tcp, so a bash
+      # /dev/tcp probe fails with "Directory nonexistent" even when the UI is up.
+      # Use curl (present in the node:18 image) against the served bundle on
+      # :3000 instead. `yarn start` binds :3000 only once the UI bundle is
+      # served, so a 200 here is a sufficient readiness probe. Needed so
+      # `docker compose up --wait` gates on the UI being ready (AC9 lists
+      # unity-catalog-ui among the six healthcheck-bearing services).
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://localhost:3000 || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 20
