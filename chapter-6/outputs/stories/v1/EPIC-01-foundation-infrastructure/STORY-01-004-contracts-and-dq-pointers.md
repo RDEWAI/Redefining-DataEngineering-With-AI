@@ -25,7 +25,7 @@
 
 ## User Story
 
-As a data engineer, I want have one `contracts/{table}.yml`, `contracts/dq/{table}.yml`, and `dq_rules/{table}.yml` per table so that ingestion runner, SE runner, and Liquibase migrations all resolve their inputs by table-name convention.
+As a data engineer, I want have one `contracts/{table}.yml`, `contracts/dq/{table}.yml`, and `dq_rules/{table}.yml` per table so that ingestion runner, SE runner, and the `.sql` DDL migrations all resolve their inputs by table-name convention.
 
 ## Description
 

@@ -18,7 +18,7 @@
 
 ## Objective
 
-Land all 13 Phase-1 Synthea source tables in `unity.bronze.*` via the config-driven ingestion framework. Tables are pre-created as EXTERNAL Delta by Liquibase (`make ddl-apply` against the Spark Thrift Server) per LLD §13 Decision 12; every Bronze write is a UC-managed `df.write.mode("overwrite").insertInto("unity.bronze.<table>")` (LLD Decision 15, re-adopted 2026-06-18), schema-enforced, idempotent via **dynamic partition overwrite** (`spark.sql.sources.partitionOverwriteMode=dynamic`; **not** `replaceWhere`, which `insertInto` silently ignores), and gated by inline SE row_dq + agg_dq + cross-table reconciliation. The runner never creates tables (`UCSingleCatalog` rejects CTAS/RTAS).
+Land all 13 Phase-1 Synthea source tables in `unity.bronze.*` via the config-driven ingestion framework. Tables are pre-created as EXTERNAL Delta by plain beeline-applied `.sql` migrations (`make ddl-apply` against the Spark Thrift Server) per LLD §13 Decision 12 (Liquibase retired — UPGRADE-NOTES UC 0.5.0 / Spark 4.1); every Bronze write is a `df.write.mode("overwrite").insertInto("unity.bronze.<table>")` (LLD Decision 15, re-adopted 2026-06-18), schema-enforced, idempotent via **dynamic partition overwrite** (`spark.sql.sources.partitionOverwriteMode=dynamic`; **not** `replaceWhere`, which `insertInto` silently ignores), and gated by inline SE row_dq + agg_dq + cross-table reconciliation. The runner never creates the business tables (they are pre-created EXTERNAL Delta); the only `saveAsTable`-created tables are SE's own MANAGED `_stats`/`_error` audit tables on UC 0.5.0.
 
 
 **Deploy Scope**: Layer-scoped — see deploy-validation story below
@@ -35,7 +35,7 @@ Land all 13 Phase-1 Synthea source tables in `unity.bronze.*` via the config-dri
 
 - Generic ingestion runner + TaskGroup factory + SparkSubmit wrapper
 
-- 13 per-table YAML configs + 13 Liquibase changelogs + 13 SE rule YAMLs
+- 13 per-table YAML configs + 13 Bronze `.sql` DDL migrations + 13 SE rule YAMLs
 
 - DAG wiring (Bronze TaskGroup + reconciliation_bronze with SE-RUN-EVIDENCE query)
 
@@ -45,7 +45,7 @@ Land all 13 Phase-1 Synthea source tables in `unity.bronze.*` via the config-dri
 
 - Local integration test against UC OSS local
 
-- Liquibase deploy validation (LLD §9.1 prescribes per-layer DDL)
+- Bronze DDL deploy validation — apply the Bronze `ddl/migrations/*.sql` files via beeline in lexical order (LLD §9.1 prescribes per-layer DDL; migrations are flat under `ddl/migrations/`)
 
 
 ### Out of Scope
@@ -66,7 +66,7 @@ Land all 13 Phase-1 Synthea source tables in `unity.bronze.*` via the config-dri
 
 | STORY-02-003 | Author 13 per-table Bronze ingestion YAML configs | build | 5 | 3 | STORY-02-001 |
 
-| STORY-02-004 | Author Liquibase DDL changelogs for 13 Bronze tables | build | 3 | 4 | STORY-01-004 |
+| STORY-02-004 | Author plain .sql DDL migrations for 13 Bronze tables | build | 3 | 4 | STORY-01-004 |
 
 | STORY-02-005 | Author 13 per-table Bronze SE rule YAMLs | build | 5 | 4 | STORY-01-010 |
 
@@ -78,7 +78,7 @@ Land all 13 Phase-1 Synthea source tables in `unity.bronze.*` via the config-dri
 
 | STORY-02-008 | Local integration test: trigger Bronze DAG against Unity Catalog OSS local | integration-test | 5 | 5 | STORY-02-006, STORY-02-007 |
 
-| STORY-02-009 | Deploy validation: apply Liquibase Bronze changelogs locally + DAG deploy smoke | deploy-validation | 3 | 5 | STORY-02-008 |
+| STORY-02-009 | Deploy validation: apply Bronze .sql DDL migrations locally + DAG deploy smoke | deploy-validation | 3 | 5 | STORY-02-008 |
 
 
 
@@ -97,7 +97,7 @@ Stories below must execute in this order (enforced by dependencies):
 
 4. **Deployment Validation** (optional — only if LLD prescribes layer-scoped deploy work):
 
-   - STORY-02-009: Deploy validation: apply Liquibase Bronze changelogs locally + DAG deploy smoke
+   - STORY-02-009: Deploy validation: apply Bronze .sql DDL migrations locally + DAG deploy smoke
 
 
 
@@ -106,9 +106,9 @@ Stories below must execute in this order (enforced by dependencies):
 
 - [ ] All 13 Bronze tables registered in `unity.bronze.*` after triggering the DAG on local Airflow [LLD §5.1, §13 Decision 15]
 
-- [ ] `bronze_se_stats` populated; reconciliation_bronze succeeds (SE run-evidence) [LLD §8.6.1]
+- [ ] SE per-table MANAGED audit tables (`unity.bronze.synthea_<table>_stats` / `_error`) populated; reconciliation_bronze succeeds (SE run-evidence) [LLD §8.6.1; UPGRADE-NOTES §6]
 
-- [ ] `make ddl-apply` pre-creates all 13 `unity.bronze.*` EXTERNAL Delta tables via Liquibase against the Spark Thrift Server before the first pipeline run; DAG re-deploys cleanly [LLD §9.1, §13 Decision 12]
+- [ ] `make ddl-apply` pre-creates all 13 `unity.bronze.*` EXTERNAL Delta tables via beeline-applied plain dated `ddl/migrations/*.sql` (lexical order) against the Spark Thrift Server before the first pipeline run; DAG re-deploys cleanly [LLD §9.1, §13 Decision 12]
 
 
 ## Risks & Assumptions

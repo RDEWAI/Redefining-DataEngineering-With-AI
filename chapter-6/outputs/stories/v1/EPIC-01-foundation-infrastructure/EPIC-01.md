@@ -32,7 +32,7 @@ Provide the project scaffold, cross-layer utilities, contracts, docker-compose s
 
 - Contract YAMLs and DQ pointer files (29 + 29)
 
-- docker-compose local stack — split into three service-grouped stories: (1) UC OSS + unity-catalog-ui with `uc_init.py` schema bootstrap, (2) Marquez + marquez-db (postgres), (3) Airflow (locally built `Dockerfile.airflow`) + otel-collector + `spark-thrift-server` (`Dockerfile.thrift`) + `liquibase` (one-shot DDL applier) with shared `make dev-up` / `make dev-down` / `make ddl-apply` Makefile targets. UC is the runtime catalog (named side catalog) per LLD §13 Decision 12 (re-adopted 2026-06-18); UC EXTERNAL Delta tables are pre-created by Liquibase against the Spark Thrift Server via `make ddl-apply` before any DAG trigger. Every docker-compose service ships a `healthcheck:` block; each story's DoD requires `docker compose ps healthy` AND a service-specific HTTP/CLI probe captured in the verification log
+- docker-compose local stack — split into three service-grouped stories: (1) UC OSS **0.5.0** (built from source) + unity-catalog-ui with `uc_init.py` schema bootstrap (each schema gets a top-level `storage_root` managed location; shared `_delta_log` volume), (2) Marquez + marquez-db (postgres), (3) Airflow (locally built `Dockerfile.airflow`, Spark 4.1.1) + otel-collector + `spark-thrift-server` (`Dockerfile.thrift`, Spark 4.1.1 + delta-spark 4.3.0 + `unitycatalog-spark_4.1_2.13:0.5.0`) with shared `make dev-up` / `make dev-down` / `make ddl-apply` Makefile targets. UC is the runtime catalog (named side catalog) per LLD §13 Decision 12 (re-adopted 2026-06-18); UC EXTERNAL Delta tables are pre-created by **beeline applying plain dated `ddl/migrations/*.sql` in lexical order** against the Spark Thrift Server via `make ddl-apply` before any DAG trigger (Liquibase retired — UPGRADE-NOTES UC 0.5.0 / Spark 4.1). Every docker-compose service ships a `healthcheck:` block; each story's DoD requires `docker compose ps healthy` AND a service-specific HTTP/CLI probe captured in the verification log
 
 - Runtime bootstrap with SE end-to-end smoke (LLD §8.6.1)
 
@@ -77,11 +77,11 @@ Provide the project scaffold, cross-layer utilities, contracts, docker-compose s
 ## Acceptance Criteria (Epic-Level)
 
 
-- [x] All 10 EPIC-01 stories Done with green tests [LLD §2.4]
+- [ ] All 10 EPIC-01 stories Done with green tests (re-verification pending after the UC 0.5.0 / Spark 4.1 + beeline-DDL fold-in) [LLD §2.4]
 
-- [x] `make dev-bootstrap && make smoke-se` succeeds end-to-end on a clean laptop [LLD §1, §6.1, §8.6.1]
+- [ ] `make dev-bootstrap && make smoke-se` succeeds end-to-end on a clean laptop against the UC 0.5.0 stack [LLD §1, §6.1, §8.6.1]
 
-- [x] `bronze_se_stats` populated from the smoke run; reconciliation_bronze fail-closed query verified [LLD §8.6.1]
+- [ ] SE per-table MANAGED audit tables (`unity.<schema>.<table>_stats` / `_error`) populated from the smoke run; reconciliation_bronze fail-closed query verified [LLD §8.6.1; UPGRADE-NOTES §6]
 
 
 ## Risks & Assumptions
@@ -89,7 +89,7 @@ Provide the project scaffold, cross-layer utilities, contracts, docker-compose s
 
 - Single-state fail-closed import contract (LLD §8.6 + §13 Decision 14): STORY-01-009 wires the diagnostic `try/except ImportError` (logs at ERROR + re-raises) and STORY-01-010 ships `se_runner.py` + `reconciliation.py`. Neither story introduces a soft-degradation path — missing-SE is a deploy error. Stories are complementary (no ordering dependency); however, STORY-01-010 unit tests assert that `ingestion_runner.py` still propagates ImportError, so both must be merged together to keep the runner consistent.
 
-- Shared `docker-compose.yml` co-authorship: STORY-01-005, STORY-01-006, and STORY-01-007 all edit the same file; merge serially in dependency order. The full six-service stack is only validated end-to-end in STORY-01-007 (which lands `make dev-up` / `make dev-down`).
+- Shared `docker-compose.yml` co-authorship: STORY-01-005, STORY-01-006, and STORY-01-007 all edit the same file; merge serially in dependency order. The full seven-service stack (UC 0.5.0, UC-UI, marquez-db, marquez, airflow, otel-collector, spark-thrift-server — no Liquibase container, retired per UPGRADE-NOTES) is only validated end-to-end in STORY-01-007 (which lands `make dev-up` / `make dev-down`).
 
 - JDK 17 / Docker Desktop dependency risks: bootstrap fails-closed if either is missing.
 

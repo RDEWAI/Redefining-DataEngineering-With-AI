@@ -29,7 +29,7 @@ As a data engineer, I want have one command bring my laptop from clean to a veri
 
 ## Description
 
-Wire `make dev-bootstrap` and `make smoke-se` to: bring up the docker-compose stack (including `spark-thrift-server`), bootstrap UC OSS catalog/schemas, run `make ddl-apply` to pre-create the UC EXTERNAL Delta tables via Liquibase against the Spark Thrift Server (LLD §13 Decision 12), seed Synthea source data, exercise spark-submit against `local[2]`, and run `with_expectations(...)` end-to-end against a real Spark session writing to `bronze_se_stats` (SE stats are path-based via `.option("path")`, outside UC). Provide a `tests/bootstrap/test_se_smoke.py::test_with_expectations_runs_end_to_end` integration test enforcing run-evidence per LLD §8.6.1. This story exists because Spokane shipped a Bronze pipeline where DQ silently did nothing — we close that gap end-to-end.
+Wire `make dev-bootstrap` and `make smoke-se` to: bring up the docker-compose stack (including `spark-thrift-server`), bootstrap UC OSS catalog/schemas via `scripts/uc_init.py` (which creates each schema with a **top-level `storage_root` managed location** so SE's MANAGED `_stats`/`_error` audit tables can be created on UC 0.5.0 — UPGRADE-NOTES §4.5), run `make ddl-apply` to pre-create the UC EXTERNAL Delta tables via beeline applying `ddl/migrations/*.sql` in lexical order against the Spark Thrift Server (LLD §13 Decision 12), seed Synthea source data, exercise spark-submit against `local[2]`, and run `with_expectations(...)` end-to-end against a real Spark session whose run produces SE's per-table MANAGED `unity.<schema>.<table>_stats` / `_error` audit tables (UC 0.5.0 + delta-spark 4.x coordinated commits via the schema `storage_root`). Provide a `tests/bootstrap/test_se_smoke.py::test_with_expectations_runs_end_to_end` integration test enforcing run-evidence per LLD §8.6.1. This story exists because Spokane shipped a Bronze pipeline where DQ silently did nothing — we close that gap end-to-end.
 
 ## Acceptance Criteria
 
@@ -38,19 +38,19 @@ Wire `make dev-bootstrap` and `make smoke-se` to: bring up the docker-compose st
 
 - [x] `docker compose -f _infra/docker/docker-compose.yml up -d` succeeds [LLD §1]
 
-- [x] UC catalog `unity` and schemas `bronze`/`silver`/`gold` created via `scripts/uc_init.py` [LLD §1]
+- [ ] UC catalog `unity` and schemas `bronze`/`silver`/`gold` created via `scripts/uc_init.py`, each schema created with a **top-level `storage_root` managed location** (NOT nested under `properties`) so SE's MANAGED `_stats`/`_error` audit tables can be created on UC 0.5.0; a shared `_delta_log` volume between the UC server and Spark is configured for coordinated commits [LLD §1; UPGRADE-NOTES §4.5, §7]
 
-- [ ] `make ddl-apply` pre-creates the UC EXTERNAL Delta tables (Liquibase → `jdbc:hive2://spark-thrift-server:10000/unity`) so a real Bronze `insertInto unity.bronze.<table>` can succeed [LLD §9.1, §13 Decision 12]
+- [ ] `make ddl-apply` pre-creates the UC EXTERNAL Delta tables (beeline applying `ddl/migrations/*.sql` in lexical order → `jdbc:hive2://spark-thrift-server:10000/unity`) so a real Bronze `insertInto unity.bronze.<table>` can succeed [LLD §9.1, §13 Decision 12]
 
 - [x] Synthea source data seeded into local source DB (13 Phase-1 source tables) [LLD §5.1]
 
 - [x] `curl http://localhost:8080/api/2.1/unity-catalog/catalogs` returns 200 with `unity` listed [LLD §1]
 
-- [x] `docker compose exec airflow spark-submit --master 'local[2]' --version` exits 0 and reports Spark 4.0.0 [LLD §6.1]
+- [x] `docker compose exec airflow spark-submit --master 'local[2]' --version` exits 0 and reports Spark 4.1.1 [LLD §6.1]
 
 - [x] `docker compose exec airflow python -c 'from spark_expectations.core.expectations import SparkExpectations'` exits 0 (proves SE 2.10+ imports — DQ is mandatory) [LLD §6.1]
 
-- [x] SE end-to-end smoke `pytest -m integration tests/bootstrap/test_se_smoke.py::test_with_expectations_runs_end_to_end` invokes `WrappedDataFrameWriter(...).with_expectations(...)` and asserts `bronze_se_stats` has ≥1 row whose `meta_dq_run_id` matches the run [LLD §8.6.1]
+- [x] SE end-to-end smoke `pytest -m integration tests/bootstrap/test_se_smoke.py::test_with_expectations_runs_end_to_end` invokes `WrappedDataFrameWriter(...).with_expectations(...)` and asserts the per-table MANAGED UC stats table `unity.bronze.synthea_<table>_stats` has ≥1 row whose `meta_dq_run_id` matches the run [LLD §8.6.1]
 
 
 ## Technical Notes
@@ -134,7 +134,7 @@ AC8:
 
 - All five bootstrap steps complete green
 
-- `bronze_se_stats` has ≥1 row after `make smoke-se`
+- The per-table MANAGED UC stats table `unity.bronze.synthea_<table>_stats` has ≥1 row after `make smoke-se`
 
 - UC OSS API returns `unity` catalog
 
