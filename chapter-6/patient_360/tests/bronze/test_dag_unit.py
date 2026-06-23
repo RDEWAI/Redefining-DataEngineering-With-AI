@@ -10,7 +10,9 @@ Scope (per story Verification block):
 * AC1: file_exists + dag_id ``patient360_hourly_v1``
 * AC2: ``build_bronze_taskgroup`` is the source of Bronze fan-out
 * AC3: ``reconciliation_bronze`` task exists downstream of Bronze
-* AC4: ``max_active_runs=1`` + concurrency=16 (max_active_tasks=16)
+* AC4: ``max_active_runs=1`` + env-dependent ``max_active_tasks``
+  (LLD §4.1: DEV=1, STAGING=8, PROD=16; resolved from ``PATIENT360_ENV``,
+  default DEV)
 """
 
 from __future__ import annotations
@@ -113,13 +115,38 @@ def test_dag_id_and_schedule(dag_module):
 
 
 def test_dag_concurrency_and_max_active_runs(dag_module):
-    """AC4: max_active_runs=1, concurrency=16, catchup=True."""
+    """AC4: max_active_runs=1, env-dependent max_active_tasks, catchup=True.
+
+    The ``dag_module`` fixture imports the DAG with no ``PATIENT360_ENV``
+    set, so concurrency resolves to the DEV default of 1 (LLD §4.1 —
+    an 8 GB laptop OOMs running 13 SparkSubmit tasks in parallel).
+    """
     dag = dag_module.dag_instance
     assert dag.max_active_runs == 1
     # Airflow 3.x renamed ``concurrency`` to ``max_active_tasks``; both
-    # are surfaced on the DAG object.
-    assert dag.max_active_tasks == 16
+    # are surfaced on the DAG object. DEV default = 1 (LLD §4.1).
+    assert dag.max_active_tasks == 1
     assert dag.catchup is True
+
+
+@pytest.mark.parametrize(
+    ("env", "expected"),
+    [("DEV", 1), ("STAGING", 8), ("PROD", 16)],
+)
+def test_max_active_tasks_is_env_dependent(
+    monkeypatch_module, patched_spark_submit, env, expected
+):
+    """AC4: max_active_tasks varies by PATIENT360_ENV per LLD §4.1
+    (DEV=1, STAGING=8, PROD=16). Re-imports the DAG under each env."""
+    monkeypatch_module.setenv("AIRFLOW_CONFIGS_DIR", str(REPO_ROOT / "airflow" / "configs"))
+    monkeypatch_module.setenv("PATIENT360_ENV", env)
+    spec = importlib.util.spec_from_file_location(
+        f"patient360_hourly_v1_dag_{env}", DAG_FILE
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.dag_instance.max_active_tasks == expected
 
 
 def test_dag_exposes_14_bronze_layer_tasks(dag_module):
