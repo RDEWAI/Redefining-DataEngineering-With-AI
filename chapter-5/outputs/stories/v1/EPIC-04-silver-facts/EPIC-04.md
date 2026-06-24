@@ -4,8 +4,8 @@
 |-------|-------|
 | **LLD Section** | §5.2 |
 | **Epic Scope** | layer |
-| **Stories** | 12 |
-| **Total Points** | 42 |
+| **Stories** | 13 |
+| **Total Points** | 45 |
 | **Sprints** | 6-7 |
 | **Status** | Draft |
 
@@ -72,7 +72,9 @@ Implement the 9 Silver fact transforms — encounters first, then conditions / m
 
 | STORY-04-009 | Implement transform_careplans_silver (fact) | build | 3 | 7 | STORY-04-001 |
 
-| STORY-04-010 | Implement reconciliation_silver task (cross-table query_dq) | build | 3 | 7 | STORY-04-001, STORY-04-002, STORY-04-003, STORY-04-004, STORY-04-005, STORY-04-006, STORY-04-007, STORY-04-008, STORY-04-009 |
+| STORY-04-013 | Wire the silver_facts TaskGroup into patient360_hourly_v1 | build | 3 | 7 | STORY-03-007, STORY-04-001, STORY-04-002, STORY-04-003, STORY-04-004, STORY-04-005, STORY-04-006, STORY-04-007, STORY-04-008, STORY-04-009 |
+
+| STORY-04-010 | Implement reconciliation_silver task (cross-table query_dq) | build | 3 | 7 | STORY-04-001, STORY-04-002, STORY-04-003, STORY-04-004, STORY-04-005, STORY-04-006, STORY-04-007, STORY-04-008, STORY-04-009, STORY-04-013 |
 
 | STORY-04-011 | Performance: shuffle.partitions tuning + observations 8-partition repartition | performance-optimization | 3 | 7 | STORY-04-010 |
 

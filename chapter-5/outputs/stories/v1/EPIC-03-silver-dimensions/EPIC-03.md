@@ -4,8 +4,8 @@
 |-------|-------|
 | **LLD Section** | §5.2 |
 | **Epic Scope** | layer |
-| **Stories** | 6 |
-| **Total Points** | 27 |
+| **Stories** | 7 |
+| **Total Points** | 30 |
 | **Sprints** | 5-6 |
 | **Status** | Draft |
 
@@ -60,9 +60,11 @@ Implement the 4 Silver dimension transforms (patients, organizations, providers,
 
 | STORY-03-004 | Implement transform_payers_silver (SCD2 dimension) | build | 5 | 5 | STORY-01-003, STORY-02-008 |
 
+| STORY-03-007 | Wire the silver_dimensions TaskGroup into patient360_hourly_v1 | build | 3 | 6 | STORY-02-006, STORY-03-001, STORY-03-002, STORY-03-003, STORY-03-004 |
+
 | STORY-03-005 | Performance: broadcast small dims + SCD2-aware filter pushdown | performance-optimization | 2 | 6 | STORY-03-001, STORY-03-002, STORY-03-003, STORY-03-004 |
 
-| STORY-03-006 | Local integration test: trigger Silver dim tasks against UC OSS | integration-test | 5 | 6 | STORY-03-005 |
+| STORY-03-006 | Local integration test: trigger Silver dim tasks against UC OSS | integration-test | 5 | 6 | STORY-03-005, STORY-03-007 |
 
 
 

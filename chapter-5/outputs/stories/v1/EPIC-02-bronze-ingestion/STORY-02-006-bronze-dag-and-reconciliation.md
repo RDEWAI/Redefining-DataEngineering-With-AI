@@ -49,6 +49,7 @@ Author `patient_360/airflow/dags/patient360_hourly_v1.py` per LLD §4. The DAG c
 
 - **Upstream references**: LLD §4.1, §4.2, §5.5, §8.6.1
 - **Implementation hints**: Use Airflow 3.2.1 syntax (`@dag` decorator). The reconciliation task should accept the run's `{{ ts_nodash }}` to derive `meta_dq_run_id`.
+- **Shared DAG**: `patient360_hourly_v1.py` is the single full-pipeline DAG. This story creates the file with the Bronze TaskGroup + `reconciliation_bronze`; downstream layers extend the *same* file — Silver dims add the `silver_dimensions` TaskGroup (STORY-03-007), Silver facts add `silver_facts` + `reconciliation_silver` (STORY-04-013, STORY-04-010), Gold adds its tasks (EPIC-05). Keep `reconciliation_bronze` as the join point the Silver dimension tasks attach to.
 
 ## Estimation Support
 
