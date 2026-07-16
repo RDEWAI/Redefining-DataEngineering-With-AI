@@ -1,0 +1,38 @@
+[project]
+name = "chapter-7-gold-workspace"
+version = "0.1.0"
+description = "Chapter 7: Gold layer implementation for the Patient 360 Medallion pipeline"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "jinja2>=3.1.0",
+    "pyyaml>=6.0",
+    "openpyxl>=3.1.0",
+    "sqlparse>=0.5.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.1.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = []
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"

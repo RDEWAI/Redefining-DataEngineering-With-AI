@@ -1,0 +1,69 @@
+table: clinical_medications
+layer: silver
+db_schema: clinical
+domain: clinical
+dms_section: "DMS \xA73.4"
+ddl_path: ddl/migrations/20260620_207_clinical_medications.sql
+dq_path: dq_rules/clinical_medications.yml
+owner: Patient 360 Data Engineering
+description: "Silver fact table clinical_medications; column contract per DMS \xA7\
+  3.4."
+tags:
+- silver
+- clinical
+- patient_360
+schema:
+- name: patient_id
+  type: string
+  nullable: false
+- name: encounter_id
+  type: string
+  nullable: false
+- name: payer_id
+  type: string
+  nullable: true
+- name: start_date
+  type: timestamp
+  nullable: false
+- name: stop_date
+  type: timestamp
+  nullable: true
+- name: rxnorm_code
+  type: string
+  nullable: true
+- name: medication_description
+  type: string
+  nullable: true
+- name: base_cost
+  type: decimal(12,2)
+  nullable: true
+- name: payer_coverage
+  type: decimal(12,2)
+  nullable: true
+- name: dispenses
+  type: int
+  nullable: true
+- name: total_cost
+  type: decimal(12,2)
+  nullable: true
+- name: reason_code
+  type: string
+  nullable: true
+- name: reason_description
+  type: string
+  nullable: true
+- name: medication_status
+  type: string
+  nullable: false
+- name: ds
+  type: date
+  nullable: false
+- name: _ingested_at
+  type: timestamp
+  nullable: false
+- name: _source_batch_id
+  type: string
+  nullable: false
+- name: _record_hash
+  type: string
+  nullable: false

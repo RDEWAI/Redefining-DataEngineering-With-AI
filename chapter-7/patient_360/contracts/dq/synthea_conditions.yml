@@ -1,0 +1,9 @@
+# DQ contract pointer for synthea_conditions.
+table: synthea_conditions
+dq_rules_path: ../../dq_rules/synthea_conditions.yml
+
+# Severity thresholds for reconciliation tasks (LLD §5.5).
+thresholds:
+  completeness_min: 0.99
+  validity_min: 0.995
+  freshness_max_hours: 25

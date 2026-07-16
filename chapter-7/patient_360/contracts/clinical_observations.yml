@@ -1,0 +1,54 @@
+table: clinical_observations
+layer: silver
+db_schema: clinical
+domain: clinical
+dms_section: "DMS \xA73.5"
+ddl_path: ddl/migrations/20260620_208_clinical_observations.sql
+dq_path: dq_rules/clinical_observations.yml
+owner: Patient 360 Data Engineering
+description: "Silver fact table clinical_observations; column contract per DMS \xA7\
+  3.5."
+tags:
+- silver
+- clinical
+- patient_360
+schema:
+- name: patient_id
+  type: string
+  nullable: false
+- name: encounter_id
+  type: string
+  nullable: false
+- name: observation_date
+  type: timestamp
+  nullable: false
+- name: category
+  type: string
+  nullable: true
+- name: loinc_code
+  type: string
+  nullable: true
+- name: observation_description
+  type: string
+  nullable: true
+- name: observation_value
+  type: string
+  nullable: true
+- name: units
+  type: string
+  nullable: true
+- name: value_type
+  type: string
+  nullable: true
+- name: ds
+  type: date
+  nullable: false
+- name: _ingested_at
+  type: timestamp
+  nullable: false
+- name: _source_batch_id
+  type: string
+  nullable: false
+- name: _record_hash
+  type: string
+  nullable: false

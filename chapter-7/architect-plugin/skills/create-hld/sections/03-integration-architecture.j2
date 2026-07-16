@@ -1,0 +1,32 @@
+## 3. Integration Architecture
+
+<!-- Describes how this system connects to the outside world:
+     source systems it ingests from and consumer groups it serves.
+     The System Context Diagram answers: "What does our system interact with?" -->
+
+### 3.1 Source Systems
+
+| Source | Type | Access Pattern | Tables Consumed |
+|--------|------|---------------|-----------------|
+{% for source in hld.integration.sources %}
+| {{ source.name }} | {{ source.type }} | {{ source.access_pattern }} | {{ source.tables }} |
+{% endfor %}
+
+### 3.2 Consumer Access Pattern
+
+| Consumer Group | Access Method | Gold Tables | SLA |
+|---------------|--------------|-------------|-----|
+{% for consumer in hld.integration.consumers %}
+| {{ consumer.name }} | {{ consumer.access_method }} | {{ consumer.tables }} | {{ consumer.sla }} |
+{% endfor %}
+
+### 3.3 System Context Diagram
+
+<!-- C4 Level 1: The data platform as a boundary box with external actors,
+     source systems, and consumer groups around it. -->
+
+```mermaid
+{{ hld.architecture.system_context_diagram }}
+```
+
+---

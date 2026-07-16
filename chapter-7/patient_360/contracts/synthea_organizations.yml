@@ -1,0 +1,46 @@
+table: synthea_organizations
+layer: bronze
+dms_section: "DMS \xA72"
+schema: bronze
+ddl_path: ddl/migrations/20260620_109_synthea_organizations.sql
+dq_path: dq_rules/synthea_organizations.yml
+owner: Patient 360 Data Engineering
+description: "Bronze table synthea_organizations; see DMS \xA72 for the authoritative\
+  \ column-level schema."
+tags:
+- bronze
+- patient_360
+columns:
+- name: Id
+  type: string
+  nullable: true
+- name: NAME
+  type: string
+  nullable: true
+- name: ADDRESS
+  type: string
+  nullable: true
+- name: CITY
+  type: string
+  nullable: true
+- name: STATE
+  type: string
+  nullable: true
+- name: ZIP
+  type: string
+  nullable: true
+- name: LAT
+  type: double
+  nullable: true
+- name: LON
+  type: double
+  nullable: true
+- name: PHONE
+  type: string
+  nullable: true
+- name: REVENUE
+  type: double
+  nullable: true
+- name: UTILIZATION
+  type: bigint
+  nullable: true

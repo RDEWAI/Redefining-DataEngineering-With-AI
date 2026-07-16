@@ -1,0 +1,88 @@
+# Low-Level Design: {{ lld.title }}
+
+| Field | Value |
+|-------|-------|
+| **Version** | {{ lld.version }} |
+| **Created** | {{ lld.created_date }} |
+| **Last Modified** | {{ lld.modified_date }} |
+| **Author** | {{ lld.author }} |
+| **Status** | {{ lld.status }} |
+| **DRD Reference** | {{ lld.drd_reference }} |
+| **HLD Reference** | {{ lld.hld_reference }} |
+| **DMS Reference** | {{ lld.dms_reference }} |
+| **STM Reference** | {{ lld.stm_reference }} |
+| **DQS Reference** | {{ lld.dqs_reference }} |
+| **Target Scaffold** | cookiecutter-chapter (see `inputs/lld/v{{ lld.input_version }}/templates/cookiecutter-chapter/`) |
+| **Project Name** | {{ lld.project_name }} |
+| **Chapter** | {{ lld.chapter_name }} |
+
+---
+
+## 1. Design Overview
+
+{{ lld.design_overview }}
+
+## 2. Code Architecture
+
+{{ lld.code_architecture }}
+
+## 3. File Formats & Storage Layout
+
+{{ lld.file_formats }}
+
+## 4. DAG Specification
+
+{{ lld.dag_specification }}
+
+## 5. Task Implementation Details
+
+{{ lld.task_implementation }}
+
+## 6. Performance & Optimization
+
+{{ lld.performance }}
+
+## 7. Configuration Schema
+
+{{ lld.configuration_schema }}
+
+## 8. Error Handling
+
+<!--
+  Structure §8 around the four failure classes. "Dead letter" here means ONLY
+  the ingest DLQ (pre-validation failures). Row-level DQ rejections are owned
+  by Spark Expectations' `<target>_error` table — do NOT duplicate with a
+  custom writer.
+
+  ### 8.1 Retry Policies
+  ### 8.2 SE `_error` Table (row_dq) — Delta; auto-written by Spark Expectations
+  ### 8.3 SE Stats & Detailed Tables (agg_dq, query_dq) — metrics only
+  ### 8.4 Ingest DLQ (pre-validation parse/schema/encoding only) — Parquet
+  ### 8.5 Alerting Thresholds
+-->
+
+{{ lld.error_handling }}
+
+## 9. Deployment
+
+{{ lld.deployment }}
+
+## 10. Monitoring
+
+{{ lld.monitoring }}
+
+## 11. Upstream Artifact References
+
+{{ lld.upstream_references }}
+
+## 12. Traceability Matrix
+
+{{ lld.traceability_matrix }}
+
+## 13. Decision Log
+
+{{ lld.decision_log }}
+
+## 14. Version History
+
+{{ lld.version_history }}

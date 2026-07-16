@@ -1,0 +1,79 @@
+table: synthea_payers
+layer: bronze
+dms_section: "DMS \xA72"
+schema: bronze
+ddl_path: ddl/migrations/20260620_111_synthea_payers.sql
+dq_path: dq_rules/synthea_payers.yml
+owner: Patient 360 Data Engineering
+description: "Bronze table synthea_payers; see DMS \xA72 for the authoritative column-level\
+  \ schema."
+tags:
+- bronze
+- patient_360
+columns:
+- name: Id
+  type: string
+  nullable: true
+- name: NAME
+  type: string
+  nullable: true
+- name: OWNERSHIP
+  type: string
+  nullable: true
+- name: ADDRESS
+  type: string
+  nullable: true
+- name: CITY
+  type: string
+  nullable: true
+- name: STATE_HEADQUARTERED
+  type: string
+  nullable: true
+- name: ZIP
+  type: string
+  nullable: true
+- name: PHONE
+  type: string
+  nullable: true
+- name: AMOUNT_COVERED
+  type: double
+  nullable: true
+- name: AMOUNT_UNCOVERED
+  type: double
+  nullable: true
+- name: REVENUE
+  type: double
+  nullable: true
+- name: COVERED_ENCOUNTERS
+  type: bigint
+  nullable: true
+- name: UNCOVERED_ENCOUNTERS
+  type: bigint
+  nullable: true
+- name: COVERED_MEDICATIONS
+  type: bigint
+  nullable: true
+- name: UNCOVERED_MEDICATIONS
+  type: bigint
+  nullable: true
+- name: COVERED_PROCEDURES
+  type: bigint
+  nullable: true
+- name: UNCOVERED_PROCEDURES
+  type: bigint
+  nullable: true
+- name: COVERED_IMMUNIZATIONS
+  type: bigint
+  nullable: true
+- name: UNCOVERED_IMMUNIZATIONS
+  type: bigint
+  nullable: true
+- name: UNIQUE_CUSTOMERS
+  type: bigint
+  nullable: true
+- name: QOLS_AVG
+  type: double
+  nullable: true
+- name: MEMBER_MONTHS
+  type: bigint
+  nullable: true

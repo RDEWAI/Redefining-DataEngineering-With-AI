@@ -1,0 +1,7 @@
+# developer-plugin version lockfile — pins upstream v{N}/ folders.
+# Written by implement-stories; consumed by create-*/update-* skills.
+# Delete to re-pin on the next implement-stories run.
+lld: v1
+stm: v3
+dqs: v2
+stories: v1

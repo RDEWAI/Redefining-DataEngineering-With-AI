@@ -1,0 +1,51 @@
+{
+  "name": "rdewai-chapter7-plugins",
+  "owner": {
+    "name": "RDEWAI"
+  },
+  "metadata": {
+    "description": "Chapter 7 plugins — the full agent chain carried forward from chapter-6, focused on completing the Gold consumer layer of the Patient 360 Medallion pipeline: upstream artifact plugins (BA, Architect, Data Modeler, Mapping Analyst, DQ Engineer, Technical Lead) plus downstream story-decomposition (Scrum Master) and code-generation (Developer) plugins."
+  },
+  "plugins": [
+    {
+      "name": "ba-plugin",
+      "source": "./ba-plugin",
+      "description": "Business Analyst Agent for generating, updating, and validating Data Requirements Documents (DRDs)"
+    },
+    {
+      "name": "architect-plugin",
+      "source": "./architect-plugin",
+      "description": "Data Architect Agent for generating, updating, and validating High-Level Design (HLD) documents"
+    },
+    {
+      "name": "data-modeler-plugin",
+      "source": "./data-modeler-plugin",
+      "description": "Data Modeler Agent for generating, updating, and validating Data Model Specifications (DMS)"
+    },
+    {
+      "name": "mapping-analyst-plugin",
+      "source": "./mapping-analyst-plugin",
+      "description": "Mapping Analyst Agent for generating, updating, and validating Source-to-Target Mapping (STM) Excel workbooks"
+    },
+    {
+      "name": "dq-engineer-plugin",
+      "source": "./dq-engineer-plugin",
+      "description": "Data Quality Engineer Agent for generating, updating, and validating Data Quality Specifications (DQS) and Spark-Expectations rules"
+    },
+    {
+      "name": "technical-lead-plugin",
+      "source": "./technical-lead-plugin",
+      "description": "Technical Lead Agent for generating, updating, and validating Low-Level Design (LLD) documents and configuration templates"
+    },
+    {
+      "name": "scrum-master-plugin",
+      "source": "./scrum-master-plugin",
+      "description": "Scrum Master Agent for generating, updating, and validating Sprint Backlog (Epics and Stories) documents"
+    },
+    {
+      "name": "developer-plugin",
+      "source": "./developer-plugin",
+      "description": "Developer Agent for generating, updating, and validating Airflow DAGs, CI/CD pipelines, and the Bronze config-driven ingestion framework"
+    }
+  ]
+}

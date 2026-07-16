@@ -1,0 +1,394 @@
+# SE rules for gold.patient_billing_summary — copied from DQS se-rules-patient-billing-summary.yaml
+# (DQS-2026-06-20 v2). table_name set to 3-part unity.gold FQN per create-gold Phase 3.
+# Cross-table query_dq (DQ_REF_020) kept is_active:false (source tables not registered as Spark views).
+product_id: patient-360
+dq_env:
+  DEV:
+    table_name: unity.gold.patient_billing_summary
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 0
+    priority: medium
+  QA:
+    table_name: unity.gold.patient_billing_summary
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    priority: medium
+  PROD:
+    table_name: unity.gold.patient_billing_summary
+    action_if_failed: fail
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    priority: high
+rules:
+- rule: DQ_FLD_163
+  rule_type: row_dq
+  column_name: encounter_id
+  expectation: encounter_id IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on encounter_id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_164
+  rule_type: row_dq
+  column_name: patient_id
+  expectation: patient_id IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on patient_id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_165
+  rule_type: row_dq
+  column_name: base_encounter_cost
+  expectation: base_encounter_cost IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on base_encounter_cost
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_166
+  rule_type: row_dq
+  column_name: total_claim_cost
+  expectation: total_claim_cost IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on total_claim_cost
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_167
+  rule_type: row_dq
+  column_name: total_visit_cost
+  expectation: total_visit_cost IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on total_visit_cost
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_168
+  rule_type: row_dq
+  column_name: base_encounter_cost
+  expectation: base_encounter_cost >= 0
+  action_if_failed: fail
+  tag: field_validation
+  description: RANGE on base_encounter_cost
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_169
+  rule_type: row_dq
+  column_name: total_claim_cost
+  expectation: total_claim_cost >= 0
+  action_if_failed: fail
+  tag: field_validation
+  description: RANGE on total_claim_cost
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_170
+  rule_type: row_dq
+  column_name: payer_coverage
+  expectation: payer_coverage >= 0
+  action_if_failed: fail
+  tag: field_validation
+  description: RANGE on payer_coverage
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_171
+  rule_type: row_dq
+  column_name: _ingested_at
+  expectation: _ingested_at IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on _ingested_at
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_172
+  rule_type: row_dq
+  column_name: first_name
+  expectation: first_name IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on first_name
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_173
+  rule_type: row_dq
+  column_name: last_name
+  expectation: last_name IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on last_name
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_174
+  rule_type: row_dq
+  column_name: birth_date
+  expectation: birth_date IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on birth_date
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_175
+  rule_type: row_dq
+  column_name: encounter_class
+  expectation: encounter_class IS NULL OR encounter_class IN ('AMBULATORY','INPATIENT','EMERGENCY','OUTPATIENT','WELLNESS','URGENTCARE','HOME','HOSPICE','SNF','VIRTUAL','UNMAPPED')
+  action_if_failed: ignore
+  tag: field_validation
+  description: ENUM on encounter_class
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_FLD_176
+  rule_type: row_dq
+  column_name: service_date
+  expectation: service_date IS NOT NULL OR 1=1
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on service_date
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_FLD_177
+  rule_type: row_dq
+  column_name: total_visit_cost
+  expectation: total_visit_cost >= 0
+  action_if_failed: fail
+  tag: field_validation
+  description: RANGE on total_visit_cost
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_178
+  rule_type: row_dq
+  column_name: claim_id
+  expectation: claim_id IS NOT NULL OR 1=1
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on claim_id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_FLD_179
+  rule_type: row_dq
+  column_name: primary_payer_name
+  expectation: primary_payer_name IS NOT NULL OR 1=1
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on primary_payer_name
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_FLD_180
+  rule_type: row_dq
+  column_name: secondary_payer_name
+  expectation: secondary_payer_name IS NOT NULL OR 1=1
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on secondary_payer_name
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_FLD_181
+  rule_type: row_dq
+  column_name: claim_status
+  expectation: claim_status IS NOT NULL OR 1=1
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on claim_status
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_FLD_182
+  rule_type: row_dq
+  column_name: outstanding_amount
+  expectation: outstanding_amount IS NULL OR outstanding_amount >= 0
+  action_if_failed: ignore
+  tag: field_validation
+  description: RANGE on outstanding_amount
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_FLD_183
+  rule_type: row_dq
+  column_name: provider_name
+  expectation: provider_name IS NOT NULL OR 1=1
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on provider_name
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_FLD_189
+  rule_type: row_dq
+  column_name: encounter_id
+  expectation: COUNT(*) > 0
+  action_if_failed: fail
+  tag: field_validation
+  description: ROW COUNT on encounter_id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_REF_020
+  rule_type: query_dq
+  column_name: ''
+  expectation: (SELECT COUNT(*) FROM patient_billing_summary_view c LEFT JOIN patient_summary p ON c.patient_id
+    = p.patient_id WHERE p.patient_id IS NULL) = 0
+  action_if_failed: ignore
+  tag: referential_integrity
+  description: 'FK check: patient_billing_summary.patient_id -> patient_summary.patient_id'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: false
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: true
+  priority: high
+- rule: DQ_STA_019
+  rule_type: agg_dq
+  column_name: ''
+  expectation: count(*) > 323505 and count(*) < 357558
+  action_if_failed: ignore
+  tag: statistical_distribution
+  description: 'Statistical check: Row Count baseline=340,532'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: true
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium

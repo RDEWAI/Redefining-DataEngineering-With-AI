@@ -1,0 +1,58 @@
+table: synthea_encounters
+layer: bronze
+dms_section: "DMS \xA72"
+schema: bronze
+ddl_path: ddl/migrations/20260620_105_synthea_encounters.sql
+dq_path: dq_rules/synthea_encounters.yml
+owner: Patient 360 Data Engineering
+description: "Bronze table synthea_encounters; see DMS \xA72 for the authoritative\
+  \ column-level schema."
+tags:
+- bronze
+- patient_360
+columns:
+- name: Id
+  type: string
+  nullable: true
+- name: START
+  type: timestamp
+  nullable: true
+- name: STOP
+  type: timestamp
+  nullable: true
+- name: PATIENT
+  type: string
+  nullable: true
+- name: ORGANIZATION
+  type: string
+  nullable: true
+- name: PROVIDER
+  type: string
+  nullable: true
+- name: PAYER
+  type: string
+  nullable: true
+- name: ENCOUNTERCLASS
+  type: string
+  nullable: true
+- name: CODE
+  type: bigint
+  nullable: true
+- name: DESCRIPTION
+  type: string
+  nullable: true
+- name: BASE_ENCOUNTER_COST
+  type: double
+  nullable: true
+- name: TOTAL_CLAIM_COST
+  type: double
+  nullable: true
+- name: PAYER_COVERAGE
+  type: double
+  nullable: true
+- name: REASONCODE
+  type: bigint
+  nullable: true
+- name: REASONDESCRIPTION
+  type: string
+  nullable: true

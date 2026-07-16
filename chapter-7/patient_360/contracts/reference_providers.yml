@@ -1,0 +1,105 @@
+table: reference_providers
+layer: silver
+domain: reference
+schema:
+- name: provider_id
+  type: string
+  nullable: false
+  description: "Provider UUID \u2014 natural key"
+- name: organization_id
+  type: string
+  nullable: true
+  description: "FK to reference_organizations.organization_id \u2014 SCD Type 2 tracked"
+- name: provider_name
+  type: string
+  nullable: true
+  description: "Provider full name \u2014 SCD Type 2 tracked"
+- name: gender
+  type: string
+  nullable: true
+  description: "Provider gender \u2014 HL7 standardized (MALE/FEMALE/UNKNOWN)"
+- name: specialty
+  type: string
+  nullable: true
+  description: "Medical specialty \u2014 SCD Type 2 tracked (source SPECIALITY typo\
+    \ corrected per DMS \xA73.12)"
+- name: address
+  type: string
+  nullable: true
+  description: Street address
+- name: city
+  type: string
+  nullable: true
+  description: City
+- name: state
+  type: string
+  nullable: true
+  description: State abbreviation
+- name: zip
+  type: string
+  nullable: true
+  description: ZIP code
+- name: lat
+  type: decimal(9,6)
+  nullable: true
+  description: "Latitude \u2014 cast from DOUBLE"
+- name: lon
+  type: decimal(9,6)
+  nullable: true
+  description: "Longitude \u2014 cast from DOUBLE"
+- name: encounter_count
+  type: integer
+  nullable: true
+  description: Total encounter count
+- name: procedure_count
+  type: integer
+  nullable: true
+  description: Total procedure count
+- name: effective_from
+  type: date
+  nullable: false
+  description: "SCD2 \u2014 row version start date"
+- name: effective_to
+  type: date
+  nullable: false
+  description: "SCD2 \u2014 row version end date (9999-12-31 for current version)"
+- name: is_current
+  type: boolean
+  nullable: false
+  description: "SCD2 \u2014 TRUE for the active version"
+- name: _record_hash
+  type: string
+  nullable: false
+  description: "SHA-256 hash of SCD2-tracked columns \u2014 change detection"
+- name: _ingested_at
+  type: timestamp
+  nullable: false
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: string
+  nullable: false
+  description: Pipeline run identifier
+owner: Patient 360 Data Engineering
+dms_section: "DMS \xA73.12 reference_providers"
+primary_key:
+- provider_id
+- effective_from
+partition_by: none
+write_strategy: Delta MERGE INTO on provider_id (SCD Type 2)
+ddl_path: ddl/migrations/20260620_213_reference_providers.sql
+dq_path: dq_rules/reference_providers.yml
+description: "Reference data for clinical providers with SCD Type 2 history tracking.\
+  \ Synthea providers source carries no PHI columns; the projection selects only DMS\
+  \ \xA73.12 columns so no non-DMS column can leak (NFR-6)."
+tags:
+- silver
+- reference
+- scd2
+- patient_360
+scd2:
+  natural_keys:
+  - provider_id
+  hash_columns:
+  - provider_name
+  - specialty
+  - organization_id

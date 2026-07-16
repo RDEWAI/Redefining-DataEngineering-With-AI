@@ -1,0 +1,79 @@
+# Illustrative Bronze reconciliation runner — see airflow-dag-pattern.md.
+# Generic placeholders: {project}, {layer}.
+#
+# Invoked from the bronze (or silver/gold) reconciliation task in the DAG
+# via SparkSubmitOperator. Reads per-table YAML configs from --configs-dir
+# (default sourced from `AIRFLOW_CONFIGS_DIR` env var, falling back to the
+# canonical container path), runs cross-table reconciliation checks
+# (row counts, freshness, completeness) per LLD §5.5, and writes results
+# to the SE stats Delta table.
+#
+# CRITICAL: never hardcode `airflow/configs` (relative) — the path differs
+# between the dev workstation, the airflow container, and CI. The
+# `--configs-dir` arg + `AIRFLOW_CONFIGS_DIR` env var is the single
+# resolution mechanism.
+
+import argparse
+import logging
+import os
+import sys
+from pathlib import Path
+
+import yaml
+from pyspark.sql import SparkSession
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_CONFIGS_DIR = os.environ.get("AIRFLOW_CONFIGS_DIR", "/opt/airflow/configs")
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Bronze reconciliation runner")
+    p.add_argument("--ds", required=True, help="Logical date YYYY-MM-DD")
+    p.add_argument(
+        "--configs-dir",
+        default=DEFAULT_CONFIGS_DIR,
+        help=(
+            "Directory containing per-table YAML configs. Defaults to the "
+            "AIRFLOW_CONFIGS_DIR env var, or /opt/airflow/configs. NEVER "
+            "hardcode 'airflow/configs' (relative)."
+        ),
+    )
+    p.add_argument("--layer", default="bronze", choices=["bronze", "silver", "gold"])
+    return p.parse_args(argv)
+
+
+def load_configs(configs_dir: Path) -> list[dict]:
+    if not configs_dir.is_dir():
+        raise FileNotFoundError(
+            f"configs_dir does not exist: {configs_dir}. Set AIRFLOW_CONFIGS_DIR "
+            "or pass --configs-dir."
+        )
+    configs: list[dict] = []
+    for yml in sorted(configs_dir.glob("*.yml")):
+        configs.append(yaml.safe_load(yml.read_text()))
+    return configs
+
+
+def run(args: argparse.Namespace) -> int:
+    configs_dir = Path(args.configs_dir)
+    configs = load_configs(configs_dir)
+    logger.info("Reconciling %d %s tables for ds=%s", len(configs), args.layer, args.ds)
+
+    spark = SparkSession.builder.appName(f"reconcile_{args.layer}").getOrCreate()
+    try:
+        for cfg in configs:
+            target = f"unity.{args.layer}.{cfg['table']}"
+            df = spark.table(target).where(f"ds = '{args.ds}'")
+            count = df.count()
+            logger.info("  %s rows=%d", target, count)
+            # ... cross-table checks per LLD §5.5 (row counts vs source,
+            # freshness, completeness) ...
+        return 0
+    finally:
+        spark.stop()
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    sys.exit(run(parse_args()))

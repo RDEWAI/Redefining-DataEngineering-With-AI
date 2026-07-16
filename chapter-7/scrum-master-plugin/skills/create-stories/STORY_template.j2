@@ -1,0 +1,94 @@
+# STORY-{{ "%02d"|format(story.epic_number) }}-{{ "%03d"|format(story.number) }}: {{ story.title }}
+
+| Field | Value |
+|-------|-------|
+| **Epic** | EPIC-{{ "%02d"|format(story.epic_number) }}: {{ story.epic_title }} |
+| **Story Type** | {{ story.story_type }} |
+| **Priority** | {{ story.priority }} |
+| **Story Points** | {{ story.points }} |
+| **Sprint** | {{ story.sprint }} |
+| **Dependencies** | {{ story.dependencies }} |
+| **Status** | {{ story.status }} |
+
+<!--
+  Story Type vocabulary (required):
+    - build                    → primary construction work
+    - performance-optimization → layer-scoped perf tuning (LLD §6); runs BEFORE integration-test
+    - integration-test         → triggers layer DAG on local Airflow against Unity Catalog OSS local; validates landed data in UC local
+    - deploy-validation        → layer-scoped DDL/DAG/config deploy smoke (optional; only when LLD prescribes it)
+    - observability            → layer-scoped lineage/metrics/dashboard wiring
+    - release                  → cross-layer promotion/rollback (trailing epic only)
+    - hardening                → cross-layer security/docs/maintenance (trailing epic only)
+    - runtime-bootstrap        → JDK/Docker/UC catalog/source-data prerequisites (≥1 per backlog, typically EPIC-01)
+-->
+
+
+## User Story
+
+As a {{ story.persona }}, I want {{ story.goal }} so that {{ story.benefit }}.
+
+## Description
+
+{{ story.description }}
+
+## Acceptance Criteria
+
+{% for criterion in story.acceptance_criteria %}
+- [ ] {{ criterion.text }} [{{ criterion.reference }}]
+{% endfor %}
+
+## Technical Notes
+
+- **Upstream references**: {{ story.upstream_references }}
+- **Implementation hints**: {{ story.implementation_hints }}
+
+## Estimation Support
+
+| Artifact | Sections Covered |
+|----------|-----------------|
+{% for row in story.estimation_support %}
+| {{ row.artifact }} | {{ row.sections }} |
+{% endfor %}
+
+## Testing
+
+| Coverage | What | How |
+|----------|------|-----|
+{% for row in story.testing %}
+| {{ row.coverage }} | {{ row.what }} | {{ row.how }} |
+{% endfor %}
+{% if story.verifiers %}
+
+## Verification
+
+```yaml
+{% for ac_id, specs in story.verifiers.items() %}{{ ac_id }}:
+{% for spec in specs %}  - {{ spec }}
+{% endfor %}{% endfor %}```
+{% endif %}
+
+## How to Test (User)
+
+### Prerequisites
+
+{% for item in story.user_test_prerequisites %}
+- {{ item }}
+{% endfor %}
+
+### Steps
+
+{% for step in story.user_test_steps %}
+{{ loop.index }}. {{ step }}
+{% endfor %}
+
+### Expected outcome
+
+{% for item in story.user_test_expected %}
+- {{ item }}
+{% endfor %}
+
+## Documentation Updates
+
+{% for item in story.documentation_updates %}
+- [ ] {{ item }}
+{% endfor %}

@@ -1,0 +1,54 @@
+table: clinical_conditions
+layer: silver
+db_schema: clinical
+domain: clinical
+dms_section: "DMS \xA73.3"
+ddl_path: ddl/migrations/20260620_204_clinical_conditions.sql
+dq_path: dq_rules/clinical_conditions.yml
+owner: Patient 360 Data Engineering
+description: "Silver fact table clinical_conditions; column contract per DMS \xA7\
+  3.3."
+tags:
+- silver
+- clinical
+- patient_360
+schema:
+- name: patient_id
+  type: string
+  nullable: false
+- name: encounter_id
+  type: string
+  nullable: false
+- name: onset_date
+  type: date
+  nullable: false
+- name: resolution_date
+  type: date
+  nullable: true
+- name: code_system
+  type: string
+  nullable: true
+- name: snomed_code
+  type: string
+  nullable: true
+- name: condition_description
+  type: string
+  nullable: true
+- name: condition_status
+  type: string
+  nullable: false
+- name: condition_duration_days
+  type: int
+  nullable: true
+- name: ds
+  type: date
+  nullable: false
+- name: _ingested_at
+  type: timestamp
+  nullable: false
+- name: _source_batch_id
+  type: string
+  nullable: false
+- name: _record_hash
+  type: string
+  nullable: false

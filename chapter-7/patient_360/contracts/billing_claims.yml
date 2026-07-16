@@ -1,0 +1,83 @@
+table: billing_claims
+layer: silver
+db_schema: billing
+domain: billing
+dms_section: "DMS \xA73.10"
+ddl_path: ddl/migrations/20260620_201_billing_claims.sql
+dq_path: dq_rules/billing_claims.yml
+owner: Patient 360 Data Engineering
+description: "Silver fact table billing_claims; column contract per DMS \xA73.10."
+tags:
+- silver
+- billing
+- patient_360
+schema:
+- name: claim_id
+  type: string
+  nullable: false
+- name: patient_id
+  type: string
+  nullable: false
+- name: appointment_id
+  type: string
+  nullable: true
+- name: provider_id
+  type: string
+  nullable: true
+- name: primary_payer_id
+  type: string
+  nullable: true
+- name: secondary_payer_id
+  type: string
+  nullable: true
+- name: diagnosis_code_1
+  type: string
+  nullable: true
+- name: diagnosis_code_2
+  type: string
+  nullable: true
+- name: diagnosis_code_3
+  type: string
+  nullable: true
+- name: referring_provider_id
+  type: string
+  nullable: true
+- name: supervising_provider_id
+  type: string
+  nullable: true
+- name: service_date
+  type: timestamp
+  nullable: true
+- name: current_illness_date
+  type: timestamp
+  nullable: true
+- name: status_primary
+  type: string
+  nullable: true
+- name: status_secondary
+  type: string
+  nullable: true
+- name: status_patient
+  type: string
+  nullable: true
+- name: outstanding_primary
+  type: decimal(12,2)
+  nullable: true
+- name: outstanding_secondary
+  type: decimal(12,2)
+  nullable: true
+- name: outstanding_patient
+  type: decimal(12,2)
+  nullable: true
+- name: ds
+  type: date
+  nullable: false
+- name: _ingested_at
+  type: timestamp
+  nullable: false
+- name: _source_batch_id
+  type: string
+  nullable: false
+- name: _record_hash
+  type: string
+  nullable: false

@@ -1,0 +1,71 @@
+table: clinical_allergies
+layer: silver
+db_schema: clinical
+domain: clinical
+dms_section: "DMS \xA73.6"
+ddl_path: ddl/migrations/20260620_202_clinical_allergies.sql
+dq_path: dq_rules/clinical_allergies.yml
+owner: Patient 360 Data Engineering
+description: "Silver fact table clinical_allergies; column contract per DMS \xA73.6."
+tags:
+- silver
+- clinical
+- patient_360
+schema:
+- name: patient_id
+  type: string
+  nullable: false
+- name: encounter_id
+  type: string
+  nullable: true
+- name: start_date
+  type: date
+  nullable: true
+- name: stop_date
+  type: date
+  nullable: true
+- name: allergy_code
+  type: string
+  nullable: true
+- name: code_system
+  type: string
+  nullable: true
+- name: allergy_description
+  type: string
+  nullable: false
+- name: allergy_type
+  type: string
+  nullable: true
+- name: allergy_category
+  type: string
+  nullable: true
+- name: reaction1_code
+  type: string
+  nullable: true
+- name: reaction1_description
+  type: string
+  nullable: true
+- name: severity1
+  type: string
+  nullable: true
+- name: reaction2_code
+  type: string
+  nullable: true
+- name: reaction2_description
+  type: string
+  nullable: true
+- name: severity2
+  type: string
+  nullable: true
+- name: ds
+  type: date
+  nullable: false
+- name: _ingested_at
+  type: timestamp
+  nullable: false
+- name: _source_batch_id
+  type: string
+  nullable: false
+- name: _record_hash
+  type: string
+  nullable: false

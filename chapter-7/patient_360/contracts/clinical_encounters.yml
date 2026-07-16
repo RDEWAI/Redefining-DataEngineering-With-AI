@@ -1,0 +1,84 @@
+table: clinical_encounters
+layer: silver
+db_schema: clinical
+domain: clinical
+dms_section: "DMS \xA73.2"
+ddl_path: ddl/migrations/20260620_205_clinical_encounters.sql
+dq_path: dq_rules/clinical_encounters.yml
+owner: Patient 360 Data Engineering
+description: "Silver fact table clinical_encounters; column contract per DMS \xA7\
+  3.2."
+tags:
+- silver
+- clinical
+- patient_360
+schema:
+- name: encounter_id
+  type: string
+  nullable: false
+- name: patient_id
+  type: string
+  nullable: false
+- name: organization_id
+  type: string
+  nullable: true
+- name: provider_id
+  type: string
+  nullable: true
+- name: payer_id
+  type: string
+  nullable: true
+- name: encounter_class
+  type: string
+  nullable: true
+- name: snomed_code
+  type: string
+  nullable: true
+- name: encounter_description
+  type: string
+  nullable: true
+- name: start_date
+  type: timestamp
+  nullable: false
+- name: stop_date
+  type: timestamp
+  nullable: true
+- name: encounter_duration_hours
+  type: decimal(10,2)
+  nullable: true
+- name: los_days
+  type: int
+  nullable: true
+- name: base_encounter_cost
+  type: decimal(12,2)
+  nullable: true
+- name: total_claim_cost
+  type: decimal(12,2)
+  nullable: true
+- name: payer_coverage
+  type: decimal(12,2)
+  nullable: true
+- name: total_visit_cost
+  type: decimal(12,2)
+  nullable: true
+- name: reason_code
+  type: string
+  nullable: true
+- name: reason_description
+  type: string
+  nullable: true
+- name: is_30_day_readmission
+  type: boolean
+  nullable: false
+- name: ds
+  type: date
+  nullable: false
+- name: _ingested_at
+  type: timestamp
+  nullable: false
+- name: _source_batch_id
+  type: string
+  nullable: false
+- name: _record_hash
+  type: string
+  nullable: false

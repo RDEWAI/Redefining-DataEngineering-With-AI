@@ -1,0 +1,121 @@
+# updated: 2026-06-20 — table_name → 3-part FQN unity.bronze.synthea_medications (LLD v1.20 §2.3 item 3 / managed SE audit tables)
+product_id: patient-360
+dq_env:
+  DEV:
+    table_name: unity.bronze.synthea_medications
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 0
+    priority: medium
+  QA:
+    table_name: unity.bronze.synthea_medications
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    priority: medium
+  PROD:
+    table_name: unity.bronze.synthea_medications
+    action_if_failed: fail
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    priority: high
+rules:
+- rule: DQ_FLD_026
+  rule_type: row_dq
+  column_name: PATIENT
+  expectation: PATIENT IS NOT NULL
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on PATIENT
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_027
+  rule_type: row_dq
+  column_name: ENCOUNTER
+  expectation: ENCOUNTER IS NOT NULL
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on ENCOUNTER
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_028
+  rule_type: row_dq
+  column_name: CODE
+  expectation: CODE IS NOT NULL
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on CODE
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_FLD_029
+  rule_type: row_dq
+  column_name: BASE_COST
+  expectation: BASE_COST IS NULL OR BASE_COST >= 0
+  action_if_failed: ignore
+  tag: field_validation
+  description: RANGE on BASE_COST
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_FLD_030
+  rule_type: row_dq
+  column_name: TOTALCOST
+  expectation: TOTALCOST IS NULL OR TOTALCOST >= 0
+  action_if_failed: ignore
+  tag: field_validation
+  description: RANGE on TOTALCOST
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_STA_004
+  rule_type: agg_dq
+  column_name: ''
+  expectation: count(*) > 275629 and count(*) < 304642
+  action_if_failed: ignore
+  tag: statistical_distribution
+  description: 'Statistical check: Row Count baseline=290,136'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: true
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium

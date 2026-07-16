@@ -1,0 +1,77 @@
+table: patient_billing_summary
+layer: gold
+db_schema: gold
+domain: analytics
+dms_section: "DMS §4"
+ddl_path: ddl/migrations/20260620_301_patient_billing_summary.sql
+dq_path: dq_rules/patient_billing_summary.yml
+owner: Patient 360 Data Engineering
+description: "Gold consumer table patient_billing_summary; column contract per DMS §4 (one row per encounter per patient; cost fields isolated to this table per DRD §5.5)."
+tags:
+- gold
+- analytics
+- patient_360
+schema:
+- name: encounter_id
+  type: string
+  nullable: false
+- name: patient_id
+  type: string
+  nullable: false
+- name: first_name
+  type: string
+  nullable: false
+- name: last_name
+  type: string
+  nullable: false
+- name: birth_date
+  type: date
+  nullable: false
+- name: encounter_class
+  type: string
+  nullable: true
+- name: service_date
+  type: date
+  nullable: true
+- name: base_encounter_cost
+  type: decimal(12,2)
+  nullable: false
+- name: total_claim_cost
+  type: decimal(12,2)
+  nullable: false
+- name: payer_coverage
+  type: decimal(12,2)
+  nullable: false
+- name: total_visit_cost
+  type: decimal(12,2)
+  nullable: false
+- name: claim_id
+  type: string
+  nullable: true
+- name: primary_payer_id
+  type: string
+  nullable: true
+- name: primary_payer_name
+  type: string
+  nullable: true
+- name: secondary_payer_id
+  type: string
+  nullable: true
+- name: secondary_payer_name
+  type: string
+  nullable: true
+- name: claim_status
+  type: string
+  nullable: true
+- name: outstanding_amount
+  type: decimal(12,2)
+  nullable: true
+- name: provider_id
+  type: string
+  nullable: true
+- name: provider_name
+  type: string
+  nullable: true
+- name: _ingested_at
+  type: timestamp
+  nullable: false

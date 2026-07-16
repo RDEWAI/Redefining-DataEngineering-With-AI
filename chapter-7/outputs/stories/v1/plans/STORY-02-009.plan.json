@@ -1,0 +1,86 @@
+{
+  "story_id": "STORY-02-009",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/outputs/stories/v1/EPIC-02-bronze-ingestion/STORY-02-009-bronze-deploy-validation.md",
+  "epic_id": "EPIC-02",
+  "plan_version": 2,
+  "status": "failed",
+  "generated_at": "2026-05-12T03:08:01.222890+00:00",
+  "summary": "1 task(s) across ['deploy-validation'] \u2014 3 AC(s).",
+  "classifier": {
+    "kind": "deploy-validation",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-02-009",
+    "paths": [],
+    "by_skill": {},
+    "dispatch_order": [],
+    "unmatched": [],
+    "fallback_kind": "deploy-validation"
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "create-deploy-validation",
+      "kind": "deploy-validation",
+      "mode": "create",
+      "paths": [],
+      "depends_on": [],
+      "status": "failed",
+      "started_at": null,
+      "finished_at": "2026-05-12T03:11:24.782196+00:00",
+      "artifacts": [],
+      "files_created": 0,
+      "files_updated": 0,
+      "critical_findings": [
+        "Dispatch blocked: create-integration-test / create-deploy-validation skill folders exist on disk but the Skill tool reports them as unknown \u2014 plugin reinstall (or marketplace refresh) required before they can be invoked."
+      ],
+      "validator": "validate-deploy-validation",
+      "validator_status": "pending",
+      "notes": "behavioural story \u2014 no path tokens; sub-skill handles AC scope"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "`liquibase update --changelog-file=master-changelog.xml` succeeds locally and registers 13 Bronze changesets [LLD \u00a79.1]",
+      "line": 37,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "`_infra/cd/airflow-sync.sh` re-syncs the DAG and Airflow `dags list-import-errors` reports none [LLD \u00a79.1, \u00a79.3]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "Re-triggered DAG run completes successfully end-to-end [LLD \u00a79.3]",
+      "line": 41,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}
