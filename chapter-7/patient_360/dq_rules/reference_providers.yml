@@ -1,3 +1,10 @@
+# SE Rules for unity.silver.reference_providers
+# Generated from: DQS-2026-07-18-patient-360.md
+# Compatible with spark-expectations >= 2.6.0
+# Load with: load_rules_from_yaml(this_file, spark, options={"dq_env": "PROD"})
+# Product: patient-360
+# Rules: 5
+
 product_id: patient-360
 dq_env:
   DEV:
@@ -74,7 +81,7 @@ rules:
   enable_querydq_custom_output: false
   priority: high
 - rule: DQ_FLD_185
-  rule_type: row_dq
+  rule_type: agg_dq
   column_name: is_current
   expectation: COUNT(*) FILTER (WHERE is_current = TRUE) = COUNT(DISTINCT provider_id)
   action_if_failed: ignore
@@ -91,7 +98,9 @@ rules:
 - rule: DQ_REF_018
   rule_type: query_dq
   column_name: ''
-  expectation: (SELECT COUNT(*) FROM reference_providers_view c LEFT JOIN reference_organizations p ON c.organization_id = p.organization_id WHERE p.organization_id IS NULL) = 0
+  expectation: (SELECT COUNT(*) FROM reference_providers_view c LEFT JOIN reference_organizations
+    p ON c.organization_id = p.organization_id WHERE p.organization_id IS NULL) =
+    0
   action_if_failed: ignore
   tag: referential_integrity
   description: 'FK check: reference_providers.organization_id -> reference_organizations.organization_id'

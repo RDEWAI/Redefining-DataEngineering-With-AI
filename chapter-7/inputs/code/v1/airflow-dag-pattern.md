@@ -1,5 +1,5 @@
 ---
-Version: 1.0
+Version: 1.1
 Status: Approved
 Topic: Airflow DAG shape — factory, task groups, SparkSubmitOperator
 ---
@@ -39,6 +39,57 @@ factory so 20 tables don't mean 20 copy-paste DAG files.
 - Airflow 3.2.1 — `@dag`, `@task`, `TaskGroup`, `SparkSubmitOperator`
   (from `airflow.providers.apache.spark`).
 - Jinja-templated args: `{{ ds }}`, `{{ data_interval_end }}`.
+
+## Resource sizing (env-tiered — source of truth is LLD §6.1)
+
+Spark memory, executor count, and shuffle partitions are **environment-tiered
+and MUST be resolved from `PATIENT360_ENV`** — never hardcode a single literal
+across all deployments. The values come from **LLD §6.1** (Resource Sizing),
+*not* from §4.2. The §4.2 task-inventory table has no memory column: the small
+integers there are the **retries** count and the `execution_timeout`; wiring a
+`driver_memory="2g"` off a "§4.2 sizing" reading is a citation error.
+
+Why this matters: on the single-laptop DEV compose stack (8 GB Docker VM shared
+by UC OSS, Marquez, Postgres, otel, and the Airflow scheduler/webserver), a
+`2g` driver JVM's resident set exceeds the free VM headroom and the kernel
+**SIGKILLs spark-submit (`Error code is: -9`)** — an *OS/cgroup* OOM, not a JVM
+heap error. A smaller `-Xmx1g` keeps RSS bounded, lets Spark spill to disk, and
+survives. LLD §6.1 (revised 2026-05-12) sets the DEV default to `1g/1g`
+precisely for this reason.
+
+Resolve once, near the top of the DAG (alongside the `max_active_tasks` /
+`catchup` env resolution), and reference the map in **every**
+`SparkSubmitOperator` — bronze factory, silver dims/facts, and gold builders:
+
+```python
+DEPLOY_ENV = os.environ.get("PATIENT360_ENV", "DEV").upper()
+
+# Spark resource sizing per LLD §6.1 (env-tiered). DEV=1g avoids the OS
+# OOM-kill on the 8 GB co-resident compose stack. Shuffle partitions per
+# §6.1 (DEV 8 / STAGING 16 / PROD 32). §4.2 has NO memory column — do not
+# source memory from it.
+SPARK_SIZING = {
+    "DEV":     {"driver_memory": "1g", "executor_memory": "1g", "shuffle_partitions": 8},
+    "STAGING": {"driver_memory": "4g", "executor_memory": "4g", "shuffle_partitions": 16},
+    "PROD":    {"driver_memory": "8g", "executor_memory": "8g", "shuffle_partitions": 32},
+}[DEPLOY_ENV]
+
+SparkSubmitOperator(
+    task_id=f"transform_{table}_silver",
+    application=silver_transform_app,
+    driver_memory=SPARK_SIZING["driver_memory"],      # LLD §6.1 (env-tiered)
+    executor_memory=SPARK_SIZING["executor_memory"],  # LLD §6.1 (env-tiered)
+    conf=build_spark_conf({"spark.sql.shuffle.partitions": str(SPARK_SIZING["shuffle_partitions"])}),
+    retries=2,                                         # LLD §4.2 (retries — NOT memory)
+    execution_timeout=timedelta(minutes=45),          # LLD §4.2
+    ...
+)
+```
+
+`executor_memory` / `executor_cores` / `num_executors` are no-ops under a
+`local[N]` master (the executor runs inside the driver JVM) — keep them for
+STAGING/PROD parity but understand that in DEV only `driver_memory` bounds the
+process. This is why the DEV OOM is fixed by lowering the **driver** heap.
 
 ## Illustrative snippet
 
@@ -161,6 +212,12 @@ full pattern.
 - Calling a SparkSession directly inside a `@task` — the Airflow worker
   holds it for the whole task; use `SparkSubmitOperator` so Spark runs
   in its own process.
+- Hardcoding `driver_memory="2g"` (or any single memory literal) across
+  all tasks/envs, or sourcing memory from LLD §4.2 — §4.2 has no memory
+  column (its integers are retries/timeouts). Memory is env-tiered per
+  §6.1; resolve it from `PATIENT360_ENV` via `SPARK_SIZING`. A `2g` driver
+  OOM-kills spark-submit (`Error code is: -9`) on the 8 GB DEV compose
+  stack; DEV must be `1g`.
 
 ## References
 

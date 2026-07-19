@@ -21,9 +21,16 @@
 
 product_id: patient-360
 
+# table_name is ENV-AGNOSTIC on this stack. All envs (DEV/QA/PROD) run against
+# ONE local Unity Catalog OSS metastore (LLD §1), so the SE target/stats/error
+# tables live under `unity.<layer>` in every env — there is no dev_/qa_
+# physical-DB prefix. Only per-env POLICY varies (action_if_failed / thresholds /
+# priority). Never env-prefix the name: a value like `dev_analytics.<t>` both
+# fails the SE rule-filter AND makes SE try to create `<t>_stats`/`<t>_error`
+# under a catalog.schema that does not exist in UC.
 dq_env:
   DEV:
-    table_name: "dev_{schema}.{table}"
+    table_name: "{schema}.{table}"
     action_if_failed: ignore        # permissive in dev — log but don't block
     enable_for_source_dq_validation: true
     enable_for_target_dq_validation: true
@@ -32,7 +39,7 @@ dq_env:
     error_drop_threshold: 0          # integer % — alert on any drop
     priority: medium
   QA:
-    table_name: "qa_{schema}.{table}"
+    table_name: "{schema}.{table}"
     action_if_failed: ignore         # NOT drop — drop is only valid for row_dq
     enable_for_source_dq_validation: true
     enable_for_target_dq_validation: true
@@ -59,7 +66,18 @@ rules: []
 # ---------------------------------------------------------------------------
 _generator:
   layer_schemas:
-    bronze: raw
-    silver: clinical
-    gold: analytics
+    # Authoritative runtime schemas: all Medallion layers live under the single
+    # local Unity Catalog OSS `unity` catalog (LLD §1 / ddl/migrations/*.sql).
+    bronze: unity.bronze
+    silver: unity.silver
+    gold: unity.gold
     source: synthea
+    # Stale-alias resolution: the DQS still addresses reconciliation TARGETS by
+    # their documented-stale 3-part FQNs (`unity.analytics.*`, `unity.clinical.*`,
+    # `unity.raw.*`). After `_canonicalize_table` strips the leading `unity.`,
+    # the middle segment (analytics/clinical/raw) is resolved here to the same
+    # `unity.<layer>` key as the field-rule group, so recon rules MERGE into the
+    # correct per-table file instead of splitting into a stale `analytics.*` file.
+    raw: unity.bronze
+    clinical: unity.silver
+    analytics: unity.gold

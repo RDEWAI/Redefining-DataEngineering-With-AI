@@ -45,6 +45,17 @@ SCD2_METADATA_COLUMNS = frozenset(
     {"effective_from", "effective_to", "is_current", "_record_hash"}
 )
 
+# A FLD rule whose expression contains one of these TABLE-LEVEL aggregate
+# functions (evaluated over the whole table, e.g. a grain/row-count/uniqueness
+# check) must be emitted as `agg_dq`, not `row_dq`. A bare aggregate inside a
+# row_dq expectation is passed to F.expr() per row and raises
+# [MISSING_GROUP_BY] at runtime. CARDINALITY()/SIZE() (ARRAY length) are
+# DELIBERATELY absent: they are per-row scalar functions on an array column, so
+# a rule like `CARDINALITY(allergies) <= 50` stays a per-row row_dq check.
+_AGG_FUNC_RE = re.compile(
+    r"\b(count|sum|avg|min|max|stddev|variance)\s*\(", re.IGNORECASE
+)
+
 
 @dataclass
 class DqsRule:
@@ -79,6 +90,17 @@ class DqsRule:
         """Map DQS rule category to Spark-Expectations rule type."""
         prefix = self.rule_id.split("-")[1].upper() if "-" in self.rule_id else ""
         if prefix == "FLD":
+            # Most FLD rules are per-row predicates (row_dq). But a FLD rule
+            # whose expression is a TABLE-LEVEL aggregate (COUNT/SUM/... over the
+            # whole table — e.g. a grain row-count or uniqueness check) must be
+            # agg_dq: a bare aggregate in a row_dq expectation raises
+            # [MISSING_GROUP_BY]. A subquery-based expression belongs to
+            # query_dq, so only classify NON-subquery aggregates as agg_dq. A
+            # per-row scalar such as CARDINALITY(arr) is NOT an aggregate (it is
+            # not in _AGG_FUNC_RE) and correctly stays row_dq.
+            expr = self.expression or ""
+            if _AGG_FUNC_RE.search(expr) and "select" not in expr.lower():
+                return "agg_dq"
             return "row_dq"
         elif prefix == "STA":
             return "agg_dq"
@@ -644,14 +666,16 @@ def parse_dqs(dqs_path: Path) -> list[DqsRule]:
 
 _DEFAULT_DQ_ENV = {
     "DEV": {
-        # BARE table name (NOT env-schema-prefixed). SE filters the rule set on
-        # `table_name == target_table` and also derives its error/stats table
-        # identifier from it. The SE runner passes the bare table name (the SE
-        # data tables are path-based, so no env schema is needed); an
-        # env-prefixed value like `dev_clinical.<t>` both fails the filter
-        # (zero rules selected) AND makes SE try to CREATE `dev_clinical.<t>_error`
-        # in a non-existent catalog schema.
-        "table_name": "{table}",
+        # ENV-AGNOSTIC 3-part FQN `unity.<layer>.<table>` (resolved via
+        # layer_schemas). All envs (DEV/QA/PROD) run against ONE local Unity
+        # Catalog OSS metastore (LLD §1), so table_name is IDENTICAL across envs
+        # — only per-env POLICY (action_if_failed / thresholds / priority) varies.
+        # The schema IS required: SE filters the rule set on
+        # `table_name == target_table` and derives its `<t>_stats`/`<t>_error`
+        # audit-table FQNs from it. What breaks SE is an ENV-DB PREFIX like
+        # `dev_analytics.<t>` — that catalog.schema does not exist in UC, so the
+        # stats/error saveAsTable fails. `unity.<layer>` DOES exist, so use it.
+        "table_name": "{schema}.{table}",
         "action_if_failed": "ignore",  # permissive — log but don't block
         "enable_for_source_dq_validation": True,
         "enable_for_target_dq_validation": True,
@@ -661,7 +685,7 @@ _DEFAULT_DQ_ENV = {
         "priority": "medium",
     },
     "QA": {
-        "table_name": "{table}",  # bare — see DEV note
+        "table_name": "{schema}.{table}",  # env-agnostic — see DEV note
         "action_if_failed": "ignore",  # NOT drop — drop only valid for row_dq
         "enable_for_source_dq_validation": True,
         "enable_for_target_dq_validation": True,
@@ -671,7 +695,7 @@ _DEFAULT_DQ_ENV = {
         "priority": "medium",
     },
     "PROD": {
-        "table_name": "{table}",  # bare — see DEV note
+        "table_name": "{schema}.{table}",  # env-agnostic — see DEV note
         "action_if_failed": "fail",  # strictest — halt pipeline on failures
         "enable_for_source_dq_validation": True,
         "enable_for_target_dq_validation": True,
@@ -683,10 +707,21 @@ _DEFAULT_DQ_ENV = {
 }
 
 _DEFAULT_LAYER_SCHEMAS = {
-    "bronze": "raw",
-    "silver": "clinical",
-    "gold": "analytics",
+    # Authoritative runtime schemas: every Medallion layer lives under the single
+    # local Unity Catalog OSS `unity` catalog (LLD §1 / ddl/migrations/*.sql).
+    "bronze": "unity.bronze",
+    "silver": "unity.silver",
+    "gold": "unity.gold",
     "source": "synthea",
+    # Stale-alias resolution: the DQS still addresses reconciliation TARGETS by
+    # their documented-stale 3-part FQNs (unity.analytics.*, unity.clinical.*,
+    # unity.raw.*). After `_canonicalize_table` strips the leading `unity.`, the
+    # middle segment (analytics/clinical/raw) resolves here to the SAME
+    # `unity.<layer>` key as the field-rule group, so recon rules MERGE into the
+    # correct per-table file instead of splitting into a stale `analytics.*` file.
+    "raw": "unity.bronze",
+    "clinical": "unity.silver",
+    "analytics": "unity.gold",
 }
 
 

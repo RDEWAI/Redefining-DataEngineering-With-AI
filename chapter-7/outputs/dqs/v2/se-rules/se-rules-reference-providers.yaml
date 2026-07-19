@@ -1,5 +1,5 @@
-# SE Rules for clinical.reference_providers
-# Generated from: DQS-2026-06-20-patient-360.md
+# SE Rules for unity.silver.reference_providers
+# Generated from: DQS-2026-07-18-patient-360.md
 # Compatible with spark-expectations >= 2.6.0
 # Load with: load_rules_from_yaml(this_file, spark, options={"dq_env": "PROD"})
 # Product: patient-360
@@ -8,7 +8,7 @@
 product_id: patient-360
 dq_env:
   DEV:
-    table_name: dev_clinical.reference_providers
+    table_name: unity.silver.reference_providers
     action_if_failed: ignore
     enable_for_source_dq_validation: true
     enable_for_target_dq_validation: true
@@ -17,7 +17,7 @@ dq_env:
     error_drop_threshold: 0
     priority: medium
   QA:
-    table_name: qa_clinical.reference_providers
+    table_name: unity.silver.reference_providers
     action_if_failed: ignore
     enable_for_source_dq_validation: true
     enable_for_target_dq_validation: true
@@ -26,7 +26,7 @@ dq_env:
     error_drop_threshold: 5
     priority: medium
   PROD:
-    table_name: clinical.reference_providers
+    table_name: unity.silver.reference_providers
     action_if_failed: fail
     enable_for_source_dq_validation: true
     enable_for_target_dq_validation: true
@@ -81,7 +81,7 @@ rules:
   enable_querydq_custom_output: false
   priority: high
 - rule: DQ_FLD_185
-  rule_type: row_dq
+  rule_type: agg_dq
   column_name: is_current
   expectation: COUNT(*) FILTER (WHERE is_current = TRUE) = COUNT(DISTINCT provider_id)
   action_if_failed: ignore

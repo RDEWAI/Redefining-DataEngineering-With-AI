@@ -1,5 +1,5 @@
-# SE Rules for analytics.patient_summary
-# Generated from: DQS-2026-06-20-patient-360.md
+# SE Rules for unity.gold.patient_summary
+# Generated from: DQS-2026-07-18-patient-360.md
 # Compatible with spark-expectations >= 2.6.0
 # Load with: load_rules_from_yaml(this_file, spark, options={"dq_env": "PROD"})
 # Product: patient-360
@@ -8,7 +8,7 @@
 product_id: patient-360
 dq_env:
   DEV:
-    table_name: dev_analytics.patient_summary
+    table_name: unity.gold.patient_summary
     action_if_failed: ignore
     enable_for_source_dq_validation: true
     enable_for_target_dq_validation: true
@@ -17,7 +17,7 @@ dq_env:
     error_drop_threshold: 0
     priority: medium
   QA:
-    table_name: qa_analytics.patient_summary
+    table_name: unity.gold.patient_summary
     action_if_failed: ignore
     enable_for_source_dq_validation: true
     enable_for_target_dq_validation: true
@@ -26,7 +26,7 @@ dq_env:
     error_drop_threshold: 5
     priority: medium
   PROD:
-    table_name: analytics.patient_summary
+    table_name: unity.gold.patient_summary
     action_if_failed: fail
     enable_for_source_dq_validation: true
     enable_for_target_dq_validation: true
@@ -51,7 +51,7 @@ rules:
   enable_querydq_custom_output: false
   priority: high
 - rule: DQ_FLD_106
-  rule_type: row_dq
+  rule_type: agg_dq
   column_name: patient_id
   expectation: COUNT(*) = COUNT(DISTINCT patient_id)
   action_if_failed: fail
@@ -489,7 +489,7 @@ rules:
 - rule: DQ_FLD_135
   rule_type: row_dq
   column_name: allergies
-  expectation: allergies IS NULL OR LEN(allergies) <= 50
+  expectation: allergies IS NULL OR CARDINALITY(allergies) <= 50
   action_if_failed: ignore
   tag: field_validation
   description: CARDINALITY on allergies
@@ -504,7 +504,7 @@ rules:
 - rule: DQ_FLD_136
   rule_type: row_dq
   column_name: conditions
-  expectation: conditions IS NULL OR LEN(conditions) <= 100
+  expectation: conditions IS NULL OR CARDINALITY(conditions) <= 100
   action_if_failed: ignore
   tag: field_validation
   description: CARDINALITY on conditions
@@ -519,7 +519,7 @@ rules:
 - rule: DQ_FLD_137
   rule_type: row_dq
   column_name: medications
-  expectation: medications IS NULL OR LEN(medications) <= 50
+  expectation: medications IS NULL OR CARDINALITY(medications) <= 50
   action_if_failed: ignore
   tag: field_validation
   description: CARDINALITY on medications
@@ -534,8 +534,9 @@ rules:
 - rule: DQ_FLD_138
   rule_type: row_dq
   column_name: allergies
-  expectation: (has_allergy = TRUE AND allergies IS NOT NULL AND LEN(allergies) >
-    0) OR (has_allergy = FALSE AND (allergies IS NULL OR LEN(allergies) = 0))
+  expectation: (has_allergy = TRUE AND allergies IS NOT NULL AND CARDINALITY(allergies)
+    > 0) OR (has_allergy = FALSE AND (allergies IS NULL OR CARDINALITY(allergies)
+    = 0))
   action_if_failed: fail
   tag: field_validation
   description: CROSS-FIELD on allergies
@@ -550,8 +551,8 @@ rules:
 - rule: DQ_FLD_139
   rule_type: row_dq
   column_name: conditions
-  expectation: (active_condition_count > 0 AND conditions IS NOT NULL AND LEN(conditions)
-    > 0) OR (active_condition_count = 0 AND (conditions IS NULL OR LEN(conditions)
+  expectation: (active_condition_count > 0 AND conditions IS NOT NULL AND CARDINALITY(conditions)
+    > 0) OR (active_condition_count = 0 AND (conditions IS NULL OR CARDINALITY(conditions)
     = 0))
   action_if_failed: ignore
   tag: field_validation
@@ -567,8 +568,8 @@ rules:
 - rule: DQ_FLD_140
   rule_type: row_dq
   column_name: medications
-  expectation: (active_medication_count > 0 AND medications IS NOT NULL AND LEN(medications)
-    > 0) OR (active_medication_count = 0 AND (medications IS NULL OR LEN(medications)
+  expectation: (active_medication_count > 0 AND medications IS NOT NULL AND CARDINALITY(medications)
+    > 0) OR (active_medication_count = 0 AND (medications IS NULL OR CARDINALITY(medications)
     = 0))
   action_if_failed: ignore
   tag: field_validation
@@ -582,7 +583,7 @@ rules:
   enable_querydq_custom_output: false
   priority: medium
 - rule: DQ_FLD_187
-  rule_type: row_dq
+  rule_type: agg_dq
   column_name: patient_id
   expectation: COUNT(*) > 0
   action_if_failed: fail

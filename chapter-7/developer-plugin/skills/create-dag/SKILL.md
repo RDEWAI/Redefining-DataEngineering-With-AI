@@ -139,6 +139,14 @@ Use `AskUserQuestion` to confirm:
   - Never emit `configs_dir="airflow/configs"` (relative — same issue)
   - The validator (`DAG-PATHS-001`, `DAG-PATHS-002`) rejects either pattern.
   - Reference snippet: `inputs/code/v1/scripts/dag_factory.py.snippet`.
+- **CRITICAL — env-tiered Spark sizing (LLD §6.1, NOT §4.2):** resolve
+  `driver_memory`/`executor_memory`/`spark.sql.shuffle.partitions` for every
+  `SparkSubmitOperator` from an env-keyed `SPARK_SIZING` map on
+  `PATIENT360_ENV` (DEV `1g`/8 · STAGING `4g`/16 · PROD `8g`/32), per the
+  `airflow-dag-pattern.md` "Resource sizing" section. Never hardcode a single
+  memory literal; never read memory off §4.2 (its integers are
+  retries/timeouts). DEV `2g` OS-OOM-kills spark-submit (`Error code is: -9`)
+  on the 8 GB co-resident compose stack — DEV must be `1g`.
 
 ### Phase 3b: Generate per-task entry wrappers (MANDATORY)
 

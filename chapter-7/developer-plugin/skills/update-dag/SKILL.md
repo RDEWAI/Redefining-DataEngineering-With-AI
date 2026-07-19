@@ -110,6 +110,14 @@ Use `AskUserQuestion` to confirm scope if the diff is ambiguous.
 - Edit in-place for same-day changes
 - Bump the version comment at the top of the file
 - Preserve all existing task IDs unless explicitly renamed
+- **Spark resource sizing** — every `SparkSubmitOperator`'s
+  `driver_memory`/`executor_memory` (and `spark.sql.shuffle.partitions`)
+  MUST resolve from the env-tiered `SPARK_SIZING` map keyed on
+  `PATIENT360_ENV`, per **LLD §6.1** and the `airflow-dag-pattern.md`
+  "Resource sizing" section. Never hardcode a single memory literal, and
+  never source memory from LLD §4.2 (its integers are retries/timeouts,
+  not memory). DEV must be `1g` — a `2g` driver OS-OOM-kills spark-submit
+  (`Error code is: -9`) on the 8 GB co-resident compose stack.
 
 ### Phase 3: Validate
 Invoke `/developer-plugin:validate-dag` on the updated file.

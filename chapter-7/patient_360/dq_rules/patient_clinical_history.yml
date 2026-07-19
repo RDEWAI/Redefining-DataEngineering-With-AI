@@ -1,6 +1,10 @@
-# SE rules for gold.patient_clinical_history — regenerated from DQS v2 se-rules-patient-clinical-history.yaml (generate-se-rules).
-# table_name set to 3-part unity.gold FQN per create-gold Phase 3.
-# Cross-table query_dq (DQ_REF_*/DQ_REC_*) kept is_active:false (source tables not registered as Spark views).
+# SE Rules for unity.gold.patient_clinical_history
+# Generated from: DQS-2026-07-18-patient-360.md
+# Compatible with spark-expectations >= 2.6.0
+# Load with: load_rules_from_yaml(this_file, spark, options={"dq_env": "PROD"})
+# Product: patient-360
+# Rules: 27
+
 product_id: patient-360
 dq_env:
   DEV:
@@ -62,7 +66,7 @@ rules:
   enable_querydq_custom_output: false
   priority: high
 - rule: DQ_FLD_143
-  rule_type: row_dq
+  rule_type: agg_dq
   column_name: encounter_id
   expectation: COUNT(*) = COUNT(DISTINCT encounter_id)
   action_if_failed: fail
@@ -362,7 +366,7 @@ rules:
   enable_querydq_custom_output: false
   priority: medium
 - rule: DQ_FLD_188
-  rule_type: row_dq
+  rule_type: agg_dq
   column_name: encounter_id
   expectation: COUNT(*) > 0
   action_if_failed: fail
@@ -386,7 +390,7 @@ rules:
   description: 'FK check: patient_clinical_history.patient_id -> patient_summary.patient_id'
   enable_for_source_dq_validation: false
   enable_for_target_dq_validation: true
-  is_active: false
+  is_active: true
   enable_error_drop_alert: false
   error_drop_threshold: 2
   query_dq_delimiter: '@'
