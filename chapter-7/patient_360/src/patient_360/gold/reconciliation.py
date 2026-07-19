@@ -40,9 +40,10 @@ reconciliation rules):
 Schema-name note: LLD §5.3 / stories / DDL target ``unity.silver.*`` and
 ``unity.gold.*``. The DQS ``unity.clinical`` / ``unity.analytics`` schema names
 are stale (create-gold Phase 1 schema-name reconciliation) — this runner uses
-``unity.silver`` / ``unity.gold``. Gold is a full-overwrite rebuild (no ``ds``
-partition), so the Silver source counts are NOT ds-scoped (SCD2 dims filtered
-``is_current = TRUE``).
+``unity.silver`` / ``unity.gold``. Gold is a full-overwrite current-snapshot
+rebuild (no ``ds`` partition), so ds-partitioned Silver FACT sources ARE scoped
+to the latest ``ds`` (``source_latest_ds=True`` — mirrors the Gold builders'
+``_read_fact_current`` read); SCD2 dims filter ``is_current = TRUE``.
 
 Entry points:
 
@@ -59,6 +60,8 @@ import os
 import sys
 from dataclasses import dataclass
 from typing import Any
+
+from pyspark.sql import functions as F
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +111,12 @@ class RowCountRule:
     ``unity.silver.<source>`` / ``unity.gold.<target>``). ``source_filter``
     restricts the Silver source (e.g. ``is_current = TRUE`` for SCD2 dims);
     ``tolerance`` is a fraction (0.0 = exact match).
+
+    For a ds-partitioned Silver FACT reconciled against a full-overwrite Gold
+    current-snapshot, set ``source_latest_ds=True`` so the source count is
+    scoped to the latest ``ds`` (matches the Gold builder's
+    ``_read_fact_current`` read); SCD2 dims use ``source_filter="is_current =
+    TRUE"`` instead.
     """
 
     rule_id: str
@@ -115,6 +124,7 @@ class RowCountRule:
     target: str
     tolerance: float = 0.0
     source_filter: str | None = None
+    source_latest_ds: bool = False
     target_filter: str | None = None
 
 
@@ -135,8 +145,11 @@ def _gold_fqn(table: str) -> str:
     return table if "." in table else f"{catalog}.{GOLD_SCHEMA}.{table}"
 
 
-def _count(spark: Any, fqn: str, where: str | None = None) -> int:
+def _count(spark: Any, fqn: str, where: str | None = None, latest_ds: bool = False) -> int:
     df = spark.table(fqn)
+    if latest_ds:
+        m = df.agg(F.max(F.col("ds"))).first()[0]
+        df = df.where(F.col("ds") == F.lit(m))
     if where:
         df = df.where(where)
     return int(df.count())
@@ -148,7 +161,9 @@ def check_row_count(spark: Any, rule: RowCountRule) -> ReconResult:
     An empty Silver source only reconciles against an empty Gold target
     (fail-closed: Gold never fabricates rows the Silver source lacks).
     """
-    src = _count(spark, _silver_fqn(rule.source), rule.source_filter)
+    src = _count(
+        spark, _silver_fqn(rule.source), rule.source_filter, latest_ds=rule.source_latest_ds
+    )
     tgt = _count(spark, _gold_fqn(rule.target), rule.target_filter)
     if src == 0:
         passed = tgt == 0
@@ -260,12 +275,14 @@ def gold_row_count_rules() -> list[RowCountRule]:
             source="clinical_encounters",
             target="patient_clinical_history",
             tolerance=0.001,
+            source_latest_ds=True,
         ),
         RowCountRule(
             "DQ-STA-019",
             source="clinical_encounters",
             target="patient_billing_summary",
             tolerance=0.05,
+            source_latest_ds=True,
         ),
     ]
 
@@ -283,7 +300,9 @@ def run_reconciliation(
     A single failing check aborts the layer so downstream consumers never see
     un-reconciled Gold data (LLD §5.5 — block consumer access on failure).
     ``ds`` / ``meta_dq_run_id`` are carried into logs + the failure marker for
-    traceability (Gold is full-overwrite; the source counts are not ds-scoped).
+    traceability. Gold is a full-overwrite current-snapshot, so ds-partitioned
+    Silver FACT sources ARE scoped to the latest ``ds`` (mirroring the Gold
+    builders' ``_read_fact_current`` read); SCD2 dims filter ``is_current``.
     """
     resolved_env = env or os.environ.get(ENV_ENV, DEFAULT_ENV)
     rules = row_count_rules if row_count_rules is not None else gold_row_count_rules()

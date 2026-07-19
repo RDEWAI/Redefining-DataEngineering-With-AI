@@ -134,6 +134,13 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      # DEV-ONLY: SimpleAuthManager normally auto-generates a RANDOM admin
+      # password (simple_auth_manager_passwords.json.generated) that rotates on
+      # every boot and is invisible to host-side tests. ALL_ADMINS=true makes it
+      # grant admin to ANY login, so `make integration-test` can obtain a JWT
+      # deterministically from /auth/token with a fixed cred (admin/admin).
+      # Never enable this outside the local single-laptop dev stack.
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"
       PYTHONPATH: "/opt/airflow/dags:/opt/patient_360/src"
       # In-airflow Spark (LLD §6.1 local_executor_mode = in-airflow-local[*]).
       AIRFLOW_CONN_SPARK_DEFAULT: '{"conn_type":"spark","host":"local[2]"}'

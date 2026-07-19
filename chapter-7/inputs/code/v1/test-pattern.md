@@ -1,5 +1,5 @@
 ---
-Version: 1.0
+Version: 1.1
 Status: Approved
 Topic: pytest layout, Spark + Delta + UC test fixtures, integration marker
 ---
@@ -32,6 +32,15 @@ are parameterized for reuse.
 - **Assertions on DataFrames** — use `chispa` or a small
   `assert_df_equal` helper for ordered/unordered equality; never
   `df.collect() == expected` (order-dependent).
+- **Gold fact fixtures carry `ds`** — a Silver **FACT** fixture used to
+  exercise a Gold builder MUST include a `ds` `StringType` column (e.g.
+  `"2026-07-18"`), because Gold builders read facts via
+  `_read_fact_current`, which selects only the latest `ds` partition
+  (`MAX(ds)`). Omitting `ds` raises `UNRESOLVED_COLUMN: ds` at build time.
+  Give every row in a given fact fixture the same `ds` so `MAX(ds)` keeps
+  them all and the aggregation assertions are unchanged. SCD2 **DIM**
+  fixtures do NOT need `ds` — they are read current-state via
+  `_read_current` (`is_current == True`), not by `ds`.
 
 ## Key APIs
 

@@ -100,6 +100,22 @@ def _read_current(spark: SparkSession, table: str) -> DataFrame:
     return spark.table(f"unity.silver.{table}").filter(F.col("is_current") == True)  # noqa: E712
 
 
+def _read_fact_current(spark: SparkSession, table: str) -> DataFrame:
+    """Read the current snapshot of a ds-partitioned Silver fact.
+
+    Silver facts are append-only per ds (LLD §7); re-running ingestion lands a
+    fresh full copy of every natural key under a new ds. The Gold current-state
+    read keeps only the latest ds partition (the newest complete load) so per-key
+    COUNT/SUM aggregations stay at grain and do not double-count across ds
+    (DQS DQ-FLD-143). Fact analogue of _read_current's is_current filter for dims.
+    An empty fact yields max(ds) = None -> empty result, which the caller's
+    empty-input = Fail guard then surfaces (LLD §5.3).
+    """
+    fact = spark.table(f"unity.silver.{table}")
+    latest_ds = fact.select(F.max(F.col("ds"))).first()[0]
+    return fact.filter(F.col("ds") == F.lit(latest_ds))
+
+
 def _count_by_encounter(fact: DataFrame, alias: str) -> DataFrame:
     """Pre-aggregate a silver fact to one row per encounter (STM count subqueries)."""
     return fact.groupBy("encounter_id").agg(F.count(F.lit(1)).cast("int").alias(alias))
@@ -116,16 +132,16 @@ def build(spark: SparkSession, env: str, ds: str) -> DataFrame:
     #    reference_organizations are current SCD2 dimensions, joined on their natural
     #    keys. The five clinical facts + care plans are pre-aggregated to per-encounter
     #    counts before joining.
-    encounters = spark.table("unity.silver.clinical_encounters")
+    encounters = _read_fact_current(spark, "clinical_encounters")
     patients = _read_current(spark, "clinical_patients")
     providers = _read_current(spark, "reference_providers")
     organizations = _read_current(spark, "reference_organizations")
-    conditions = spark.table("unity.silver.clinical_conditions")
-    procedures = spark.table("unity.silver.clinical_procedures")
-    medications = spark.table("unity.silver.clinical_medications")
-    observations = spark.table("unity.silver.clinical_observations")
-    immunizations = spark.table("unity.silver.clinical_immunizations")
-    careplans = spark.table("unity.silver.clinical_careplans")
+    conditions = _read_fact_current(spark, "clinical_conditions")
+    procedures = _read_fact_current(spark, "clinical_procedures")
+    medications = _read_fact_current(spark, "clinical_medications")
+    observations = _read_fact_current(spark, "clinical_observations")
+    immunizations = _read_fact_current(spark, "clinical_immunizations")
+    careplans = _read_fact_current(spark, "clinical_careplans")
 
     # LLD §5.3 empty-input = Fail: the required base fact with no rows halts the task
     # (do NOT write an empty consumer table).

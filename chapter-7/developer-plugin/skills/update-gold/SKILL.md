@@ -95,6 +95,42 @@ in-flight Silver change.
 
 ## Phase 2 — Compute the Diff
 
+### Phase 2.0 — MANDATORY snippet read-routing audit (run FIRST, cannot be skipped)
+
+Before the artifact-column/join/DQ diff below, you MUST audit every
+in-scope builder's Silver reads against the CURRENT
+`inputs/code/v*/scripts/gold_builder.py.snippet`. The snippet is the
+canonical generator source; a builder that reads a Silver **FACT** through
+a bare `spark.table("unity.silver.<fact>")` is out of sync with the snippet
+and IS drift — even when every column/join/DQ rule still matches. Do NOT
+conclude "NO DRIFT" until this audit passes.
+
+Run, for each in-scope builder:
+
+```bash
+grep -nE 'spark\.table\("unity\.silver\.' src/patient_360/gold/<builder>.py
+```
+
+Classify each matched Silver table:
+- **DIM** — SCD2, carries `is_current` (per DMS §3): `clinical_patients`,
+  `reference_providers`, `reference_organizations`, `reference_payers`, and
+  any other SCD2 dimension. DIMS are read via `_read_current`. A bare
+  `spark.table(...)` on a DIM inside `build(...)` is also drift (should be
+  `_read_current`), but in this pipeline dims already use `_read_current`.
+- **FACT** — ds-partitioned append-only (per LLD §7), NO `is_current`:
+  `clinical_encounters`, `clinical_conditions`, `clinical_procedures`,
+  `clinical_medications`, `clinical_observations`, `clinical_immunizations`,
+  `clinical_careplans`, `billing_claims`, and any other non-SCD2 Silver
+  table. FACTS MUST be read via `_read_fact_current`.
+
+The ONLY allowed `spark.table("unity.silver.` matches are the two inside
+the `_read_current` and `_read_fact_current` helper bodies. If a match
+appears anywhere inside `build(...)` for a FACT, that is confirmed drift →
+apply the "Snippet read-routing change" step in Phase 4. Re-run the grep
+after applying; it must show only the two helper-body matches.
+
+### Phase 2.1 — Artifact diff
+
 1. **Read current Gold builders** under `gold/build_*.py` — extract the
    LLD §5.3 row, STM row, DMS section, DQ rule range each was generated
    against.
@@ -110,6 +146,18 @@ in-flight Silver change.
      `patient_summary` — use the actual changed column from the diff, not
      a placeholder name)
    - LLD §5.3 input list change → join graph drift
+   - **Snippet read-routing drift** → the current
+     `inputs/code/v*/scripts/gold_builder.py.snippet` is the canonical
+     Silver-read pattern. Classify every Silver input the builder reads as
+     a **DIM** (SCD2, carries `is_current` per DMS §3 → must be read via
+     `_read_current`) or a **FACT** (ds-partitioned append-only per LLD §7,
+     no `is_current` → must be read via `_read_fact_current`, latest-ds
+     only). If a builder reads a FACT through a bare
+     `spark.table("unity.silver.<fact>")` inside `build(...)` while the
+     snippet routes facts through `_read_fact_current`, that is builder
+     drift — the bare read double-counts across ds and breaks the Gold
+     grain contract (DQS DQ-FLD-143). Also treat a missing
+     `_read_fact_current` helper in a builder that reads any fact as drift.
 4. **Report drift** before writing any change. Include a "Silver inputs
    affecting Gold" subsection that lists which Silver columns changed and
    which Gold tables consume them.
@@ -127,6 +175,16 @@ against the last-mod stamp on the Gold modules.
 - **STM rule change**: re-emit the join/aggregation block from
   `inputs/code/v*/scripts/gold_builder.py.snippet` (per
   `gold-aggregation-pattern.md`); preserve boilerplate
+- **Snippet read-routing change**: re-emit ONLY the Silver-read block from
+  the snippet. Ensure the `_read_fact_current` helper (verbatim from the
+  snippet, placed right after `_read_current`) is defined in the module.
+  For each drifted FACT, replace the bare
+  `spark.table("unity.silver.<fact>")` with
+  `_read_fact_current(spark, "<fact>")`, preserving any trailing
+  `.alias(...)` unchanged. DIM reads stay on `_read_current`. Touch nothing
+  else — joins, projections, `OUTPUT_COLUMNS`, the empty-input guard, the
+  `run_dq` gate, and the `insertInto` write are all unchanged. `del ds` may
+  remain (the helper keys off max(ds), so the passed `ds` stays unused).
 - **DQ rule change**: re-copy the `rules:` subtree (plus the `dq_env`
   block) from
   `outputs/dqs/v*/se-rules/se-rules-<gold_table-hyphenated>.yaml` →

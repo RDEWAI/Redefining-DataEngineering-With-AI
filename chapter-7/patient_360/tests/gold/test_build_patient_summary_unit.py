@@ -133,25 +133,42 @@ def _conditions_df(spark, rows):
             T.StructField("snomed_code", T.StringType(), True),
             T.StructField("condition_description", T.StringType(), True),
             T.StructField("onset_date", T.DateType(), True),
+            # ds: silver facts are ds-partitioned; the gold builder reads via
+            # _read_fact_current (latest ds). One shared ds keeps all rows.
+            T.StructField("ds", T.StringType(), True),
         ]
     )
-    return spark.createDataFrame([tuple(r[c] for c in cols) for r in rows], schema)
+    return spark.createDataFrame(
+        [tuple(r[c] for c in cols) + ("2026-07-18",) for r in rows], schema
+    )
 
 
 def _medications_df(spark, rows):
     from pyspark.sql import types as T
 
     cols = ["patient_id", "medication_status", "rxnorm_code", "medication_description"]
-    schema = T.StructType([T.StructField(c, T.StringType(), True) for c in cols])
-    return spark.createDataFrame([tuple(r[c] for c in cols) for r in rows], schema)
+    schema = T.StructType(
+        [T.StructField(c, T.StringType(), True) for c in cols]
+        # ds: latest-ds fact read via _read_fact_current; one shared ds.
+        + [T.StructField("ds", T.StringType(), True)]
+    )
+    return spark.createDataFrame(
+        [tuple(r[c] for c in cols) + ("2026-07-18",) for r in rows], schema
+    )
 
 
 def _allergies_df(spark, rows):
     from pyspark.sql import types as T
 
     cols = ["patient_id", "allergy_description", "severity1"]
-    schema = T.StructType([T.StructField(c, T.StringType(), True) for c in cols])
-    return spark.createDataFrame([tuple(r[c] for c in cols) for r in rows], schema)
+    schema = T.StructType(
+        [T.StructField(c, T.StringType(), True) for c in cols]
+        # ds: latest-ds fact read via _read_fact_current; one shared ds.
+        + [T.StructField("ds", T.StringType(), True)]
+    )
+    return spark.createDataFrame(
+        [tuple(r[c] for c in cols) + ("2026-07-18",) for r in rows], schema
+    )
 
 
 def _encounters_df(spark, rows):
@@ -164,9 +181,13 @@ def _encounters_df(spark, rows):
             T.StructField("start_date", T.DateType(), True),
             T.StructField("encounter_class", T.StringType(), True),
             T.StructField("is_30_day_readmission", T.BooleanType(), True),
+            # ds: latest-ds fact read via _read_fact_current; one shared ds.
+            T.StructField("ds", T.StringType(), True),
         ]
     )
-    return spark.createDataFrame([tuple(r[c] for c in cols) for r in rows], schema)
+    return spark.createDataFrame(
+        [tuple(r[c] for c in cols) + ("2026-07-18",) for r in rows], schema
+    )
 
 
 def _tables(spark, patients, conditions=None, medications=None, allergies=None, encounters=None):

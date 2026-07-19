@@ -80,9 +80,14 @@ def _encounters_df(spark, rows):
             T.StructField("total_claim_cost", T.DoubleType(), True),
             T.StructField("payer_coverage", T.DoubleType(), True),
             T.StructField("total_visit_cost", T.DoubleType(), True),
+            # ds: silver facts are ds-partitioned; the gold builder reads via
+            # _read_fact_current (latest ds). One shared ds keeps all rows.
+            T.StructField("ds", T.StringType(), True),
         ]
     )
-    return spark.createDataFrame([tuple(r[c] for c in cols) for r in rows], schema)
+    return spark.createDataFrame(
+        [tuple(r[c] for c in cols) + ("2026-07-18",) for r in rows], schema
+    )
 
 
 def _patients_df(spark, rows):
@@ -126,9 +131,13 @@ def _claims_df(spark, rows):
             T.StructField("outstanding_primary", T.DoubleType(), True),
             T.StructField("outstanding_secondary", T.DoubleType(), True),
             T.StructField("outstanding_patient", T.DoubleType(), True),
+            # ds: latest-ds fact read via _read_fact_current; one shared ds.
+            T.StructField("ds", T.StringType(), True),
         ]
     )
-    return spark.createDataFrame([tuple(r[c] for c in cols) for r in rows], schema)
+    return spark.createDataFrame(
+        [tuple(r[c] for c in cols) + ("2026-07-18",) for r in rows], schema
+    )
 
 
 def _payers_df(spark, rows):

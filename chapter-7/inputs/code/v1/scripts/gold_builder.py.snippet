@@ -23,6 +23,13 @@
 #   * SCD2 dims are read current-state: filter is_current == True and join on
 #     the NATURAL key (patient_id / provider_id / organization_id / payer_id).
 #     There is no surrogate FK in this pipeline.
+#   * Plain Silver FACTS are ds-partitioned, append-only (LLD §7): re-running
+#     ingestion lands another full copy of every natural key under a new ds.
+#     Read facts current-state via _read_fact_current (latest ds partition only)
+#     so per-key COUNT/SUM aggregations are not double-counted across ds. This is
+#     the fact analogue of the dims' is_current filter and is what keeps the Gold
+#     grain contract green (DQS DQ-FLD-143: COUNT(*) = COUNT(DISTINCT <grain>)).
+#     NEVER read a Silver fact with a bare spark.table(...) in a Gold builder.
 #   * Gold NEVER performs SCD2 — never import or call the SCD2 helper.
 #   * run_dq(...) gates BEFORE the write and returns a SINGLE validated
 #     DataFrame (keyword-only, single-DF return — not a tuple).
@@ -79,13 +86,29 @@ def _read_current(spark: SparkSession, table: str) -> DataFrame:
     return spark.table(f"unity.silver.{table}").filter(F.col("is_current") == True)  # noqa: E712
 
 
+def _read_fact_current(spark: SparkSession, table: str) -> DataFrame:
+    """Read the current snapshot of a ds-partitioned Silver fact.
+
+    Silver facts are append-only per ds (LLD §7); re-running ingestion lands a
+    fresh full copy of every natural key under a new ds. The Gold current-state
+    read keeps only the latest ds partition (the newest complete load) so per-key
+    COUNT/SUM aggregations stay at grain and do not double-count across ds
+    (DQS DQ-FLD-143). Fact analogue of _read_current's is_current filter for dims.
+    An empty fact yields max(ds) = None -> empty result, which the caller's
+    empty-input = Fail guard then surfaces (LLD §5.3).
+    """
+    fact = spark.table(f"unity.silver.{table}")
+    latest_ds = fact.select(F.max(F.col("ds"))).first()[0]
+    return fact.filter(F.col("ds") == F.lit(latest_ds))
+
+
 def build(spark: SparkSession, env: str, ds: str) -> DataFrame:
-    # 1. Read Silver inputs (LLD §5.3 Inputs). SCD2 dims via _read_current on
-    #    the natural key; plain facts via spark.table(...). Broadcast the small
-    #    dims per LLD §6.2 (patients ~5.7K, payers ~10) where the STM join calls
-    #    for it.
+    # 1. Read Silver inputs (LLD §5.3 Inputs). SCD2 dims via _read_current on the
+    #    natural key; ds-partitioned facts via _read_fact_current (latest ds only,
+    #    so cross-ds re-ingestion never double-counts). Broadcast the small dims
+    #    per LLD §6.2 (patients ~5.7K, payers ~10) where the STM join calls for it.
     patients = _read_current(spark, "clinical_patients")  # example dim read
-    encounters = spark.table("unity.silver.clinical_encounters")  # example fact read
+    encounters = _read_fact_current(spark, "clinical_encounters")  # example fact read
     # ... one read per LLD §5.3 Input for this Gold table
 
     # LLD §5.3 empty-input = Fail: a required Silver input with no rows halts

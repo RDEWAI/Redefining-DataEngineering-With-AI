@@ -155,24 +155,88 @@ it. The conftest MUST:
 
 - Read endpoints from env vars with sensible local defaults. Required
   env var names (project-agnostic): `AIRFLOW_API`, `UC_URI`,
-  `MARQUEZ_API`, `AIRFLOW_USER`, `AIRFLOW_PASSWORD`, plus a per-layer
-  pair `<LAYER>_DAG_ID` and `UC_<LAYER>_SCHEMA` (e.g. `BRONZE_DAG_ID`,
-  `UC_BRONZE_SCHEMA`) where `<LAYER>` is the upper-case layer name.
-  The catalog name comes from `UC_CATALOG`. None of these defaults
+  `MARQUEZ_API`, `AIRFLOW_USER`, `AIRFLOW_PASSWORD`, `AIRFLOW_AUTH_URL`,
+  plus a per-layer pair `<LAYER>_DAG_ID` and `UC_<LAYER>_SCHEMA` (e.g.
+  `BRONZE_DAG_ID`, `UC_BRONZE_SCHEMA`) where `<LAYER>` is the upper-case
+  layer name. The catalog name comes from `UC_CATALOG`. Defaults:
+  `AIRFLOW_API` = `http://localhost:8081/api/v2` (host port 8081 →
+  container 8080; the `/api/v1` path returns 404 on Airflow 3.x), keep
+  `UC_URI` and `MARQUEZ_API` defaults as-is. None of these defaults
   should encode a project-specific catalog/schema name — use the
   values declared in the LLD §7.1 (or equivalent) config schema.
+- Auth is **JWT bearer for Airflow 3.x SimpleAuthManager**, not basic
+  auth. The conftest MUST:
+  - Read `AIRFLOW_USER` (default `admin`), `AIRFLOW_PASSWORD`
+    (default `admin`), and `AIRFLOW_AUTH_URL` (default the stack's
+    `/auth/token` root endpoint — derivable from `AIRFLOW_API` by
+    removing the trailing `/api/v2` and appending `/auth/token`, i.e.
+    `http://localhost:8081/auth/token`).
+  - Provide a session-scoped **token fixture** (e.g. `airflow_token`)
+    that POSTs JSON `{"username": <user>, "password": <pass>}` to
+    `AIRFLOW_AUTH_URL` and returns the response's `access_token`. The
+    fixture MUST accept **HTTP 200 OR 201** as success — Airflow 3.x's
+    `POST /auth/token` returns **201 Created** (verified on Airflow
+    3.2.1), while some builds return 200. Only `pytest.skip(...)` when
+    the status is neither 200 nor 201 (or the request raises). Do NOT
+    hardcode a 200-only check — that skips every integration test on a
+    stack that returns 201.
+  - Provide an `airflow_headers()` helper returning
+    `{"Authorization": f"Bearer {token}"}`.
+  - Do NOT provide an `airflow_auth()` basic-auth tuple method — basic
+    auth returns HTTP 401 on Airflow 3.x.
 - Provide a session-scoped `stack` fixture returning a frozen dataclass
   of the resolved endpoints.
 - Provide an `autouse=True` session-scoped `_require_stack` fixture that
-  probes `{AIRFLOW_API}/version`, `{UC_URI}/catalogs`, and
-  `{MARQUEZ_API}/namespaces` over HTTP (NOT just TCP — TCP-only checks
-  false-positive when an unrelated process binds the port). On any
-  non-200-or-401 status the fixture calls `pytest.skip(...)` with a
-  message that names every missing endpoint.
+  probes `{AIRFLOW_API}/monitor/health` (no auth — the v2 health
+  endpoint is unauthenticated and returns 200 when ready),
+  `{UC_URI}/catalogs`, and `{MARQUEZ_API}/namespaces` over HTTP (NOT
+  just TCP — TCP-only checks false-positive when an unrelated process
+  binds the port). On any non-200 status the fixture calls
+  `pytest.skip(...)` with a message that names every missing endpoint.
+  Keep the UC/Marquez probe semantics unchanged.
+
+> Note: Airflow 3.x REST is JWT-only; basic-auth tuples return 401. The
+> token endpoint lives at the server root (`/auth/token`), not under
+> `/api/v2`.
+
+The conftest MUST ALSO provide a **shared session-scoped successful-run
+fixture per layer** (e.g. `successful_{layer}_run`, such as
+`successful_gold_run`) so the layer's UC test module and its SE-evidence
+module read the SAME fresh successful DAG run regardless of pytest
+collection order. Without it the suite is order-dependent: pytest
+collects `test_{layer}_se_evidence.py` BEFORE `test_{layer}_uc.py`
+(alphabetical), so an evidence test that scans for "the latest
+successful run" can latch a STALE prior run (e.g. a `prestart-*` run
+that predates the layer's terminal `reconciliation_{layer}` task) and
+fail with a bogus `reconciliation_{layer} state is None`. The fixture
+removes both the per-test independent trigger (in the UC module) and the
+independent latest-successful scan (in the evidence module). It MUST:
+
+- **Fast path (reuse):** query
+  `{AIRFLOW_API}/dags/{dag_id}/dagRuns?state=success&order_by=-end_date&limit=10`
+  with the `airflow_headers()` bearer header. If the most recent success
+  ended within a reuse window (~45 min; parse `end_date` as ISO-8601 —
+  accept both a trailing `Z` and an explicit offset — and compare to
+  `datetime.now(timezone.utc)`), RETURN that run payload with no new
+  trigger. This is what makes re-runs fast (no ~30-min DAG wait).
+- **Slow path (trigger):** otherwise **unpause the DAG first** (`PATCH
+  {AIRFLOW_API}/dags/{dag_id}` with `update_mask=is_paused` and body
+  `{"is_paused": false}`; idempotent), then trigger a fresh run reusing
+  the SAME JWT auth + `logical_date` contract used by the UC module's
+  trigger helper (`{"dag_run_id": "integration-{uuid4_hex_8}",
+  "logical_date": "<current UTC ISO-8601>"}`, accept HTTP 200/201), and
+  poll `{AIRFLOW_API}/dags/{dag_id}/dagRuns/{run_id}` every 10 s to a
+  terminal state (deadline 30 min). `pytest.fail(...)` on `failed`/timeout.
+- Return the run **payload** (so consumers can both assert
+  `state == "success"` for AC1 and address `dag_run_id` for task-instance
+  / SE-evidence lookups). Guarantee `state == "success"` on return.
+- Depend on `airflow_headers` (hence `airflow_token`) so it honestly
+  `pytest.skip`s when the stack is down, matching the autouse probe.
 
 If the file already exists, leave it alone — do not overwrite a
 hand-authored conftest. Use `Edit` to add fields/probes only when
-strictly required by the new test module.
+strictly required by the new test module (adding the shared
+`successful_{layer}_run` fixture is a sanctioned incremental addition).
 
 ### Phase 3: Author Layer Test Module
 
@@ -185,33 +249,40 @@ module MUST:
 - Constant tuple `METADATA_COLUMNS` populated from the LLD §2.3 (or
   equivalent) ingestion runner contract. Read the LLD; do not
   hardcode column names.
-- A module-scoped fixture `successful_dag_run` that:
-  - POSTs to `{AIRFLOW_API}/dags/{dag_id}/dagRuns` with a fresh
-    `dag_run_id` (e.g. `integration-{uuid4_hex_8}`).
-  - Polls `GET {AIRFLOW_API}/dags/{dag_id}/dagRuns/{run_id}` every 10 s
-    until `state in ("success", "failed")`, deadline 30 min.
-  - `pytest.fail()` if the run ends in `failed` or times out.
-- Test `test_dag_run_succeeds` (AC1): asserts the fixture's `state ==
-  "success"`.
-- Test `test_{N}_{layer}_tables_in_uc` (AC2): GETs
-  `{UC_URI}/tables?catalog_name=…&schema_name=…` and asserts every
-  table in `LAYER_TABLES` is present.
+- **Do NOT declare a module-scoped trigger fixture here.** Every test in
+  this module consumes the shared session-scoped `successful_{layer}_run`
+  fixture from the conftest (Phase 2). This is what keeps the UC module
+  and the SE-evidence module reading the SAME fresh successful run — a
+  per-module trigger reintroduces the collection-order defect.
+- Test `test_dag_run_succeeds` (AC1): consumes `successful_{layer}_run`
+  and asserts its `state == "success"`.
+- Test `test_{N}_{layer}_tables_in_uc` (AC2): depends on
+  `successful_{layer}_run` (so a run exists) and GETs
+  `{UC_URI}/tables?catalog_name=…&schema_name=…`, asserting every table
+  in `LAYER_TABLES` is present. Keep the UC-table assertions unchanged.
 - Parametrized test `test_metadata_columns_populated[table]` (AC3): for
   each table, GETs `{UC_URI}/tables/{catalog}.{schema}.{table}` and
-  asserts the three metadata columns are in the column list.
+  asserts the three metadata columns are in the column list. (For layers
+  whose AC3 is a fail-closed reconciliation gate — e.g. a Gold row-count
+  gate — instead read `successful_{layer}_run["dag_run_id"]` and assert
+  the terminal `reconciliation_{layer}` task instance is `success`.)
 
 Also write `{project_root}/tests/integration/{layer}/test_{layer}_se_evidence.py`
 covering AC4 (SE stats run evidence) and AC5 (Marquez dq_pass_rate
 facet):
 
-- Helper `_latest_successful_run(stack)` queries
-  `{AIRFLOW_API}/dags/{dag_id}/dagRuns?state=success&order_by=-start_date`
-  and returns the most recent run inside a lookback window (2 h
-  default).
-- Test `test_se_stats_populated` (AC4): asserts the SE stats table
-  (e.g. `{layer}_se_stats`) is present in UC AND a recent successful
-  DAG run exists.
-- Test `test_dq_pass_rate_in_marquez` (AC5): queries
+- **Do NOT scan for the latest successful run here.** Consume the shared
+  session-scoped `successful_{layer}_run` fixture (Phase 2) instead of an
+  independent `_latest_successful_run(...)` scan — the independent scan is
+  exactly what made an alphabetically-earlier evidence module latch a
+  stale run. Read `successful_{layer}_run["dag_run_id"]` for task-instance
+  and SE-evidence lookups.
+- Test `test_se_stats_populated` (AC4): consumes `successful_{layer}_run`
+  and asserts the SE stats table(s) are present in UC AND (where the AC
+  demands it) the terminal `reconciliation_{layer}` task instance of that
+  run is `success`.
+- Test `test_dq_pass_rate_in_marquez` (AC5): also consumes
+  `successful_{layer}_run`, then queries
   `{MARQUEZ_API}/namespaces/{ns}/jobs` for jobs whose name contains the
   DAG ID, then walks each job's runs and asserts at least one run's
   `facets` exposes a DQ key (`dataQuality`, `dataQualityMetrics`,
@@ -273,4 +344,26 @@ Per file: `PATH | CREATED / EDITED / SKIPPED`. Conclude with
 
 ## Learnings & Corrections
 
-_No learnings recorded yet._
+- (2026-07-18): Airflow 3.2.1 standalone uses SimpleAuthManager: REST is
+  `/api/v2` on host port 8081, JWT bearer only (basic-auth tuple → 401).
+  Token via `POST /auth/token` (server root). Health probe is
+  `/api/v2/monitor/health` (unauthenticated). v2 dagRuns POST requires
+  `logical_date`.
+- (2026-07-18): `POST /auth/token` returns **201 Created** (not 200) on
+  Airflow 3.2.1 — the `airflow_token` fixture MUST accept **200 OR 201**
+  and only `pytest.skip(...)` on any other status (or a request
+  exception). A 200-only check skips every integration test (no token →
+  no DAG trigger) against a 201-returning stack.
+- (2026-07-19): A layer's integration suite splits across two modules
+  (`test_{layer}_uc.py` + `test_{layer}_se_evidence.py`) that pytest
+  collects ALPHABETICALLY — `se_evidence` BEFORE `uc`. If the UC module
+  triggers its own run (module fixture) and the evidence module
+  independently scans for "latest successful run", the evidence test runs
+  FIRST and can latch a STALE prior run (e.g. a `prestart-*` run with no
+  terminal `reconciliation_{layer}` task) → `reconciliation_{layer} state
+  is None`. Fix: a SHARED session-scoped `successful_{layer}_run` fixture
+  in the conftest that reuses a recent success (parse `end_date`, ~45-min
+  window) or else unpauses + triggers + polls; EVERY layer test consumes
+  it. This makes collection order irrelevant. Do NOT keep any per-module
+  trigger or per-module latest-successful scan once the shared fixture
+  exists.

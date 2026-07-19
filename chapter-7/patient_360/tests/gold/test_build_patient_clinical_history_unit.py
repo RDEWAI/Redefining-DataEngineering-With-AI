@@ -87,9 +87,14 @@ def _encounters_df(spark, rows):
             T.StructField("los_days", T.IntegerType(), True),
             T.StructField("is_30_day_readmission", T.BooleanType(), True),
             T.StructField("reason_description", T.StringType(), True),
+            # ds: silver facts are ds-partitioned; the gold builder reads via
+            # _read_fact_current (latest ds). One shared ds keeps all rows.
+            T.StructField("ds", T.StringType(), True),
         ]
     )
-    return spark.createDataFrame([tuple(r[c] for c in _ENCOUNTER_COLS) for r in rows], schema)
+    return spark.createDataFrame(
+        [tuple(r[c] for c in _ENCOUNTER_COLS) + ("2026-07-18",) for r in rows], schema
+    )
 
 
 def _encounter_row(encounter_id, patient_id, **ov):
@@ -168,8 +173,14 @@ def _enc_fk_df(spark, rows):
     """A minimal silver fact carrying only encounter_id (count sources)."""
     from pyspark.sql import types as T
 
-    schema = T.StructType([T.StructField("encounter_id", T.StringType(), True)])
-    return spark.createDataFrame([(r,) for r in rows], schema)
+    schema = T.StructType(
+        [
+            T.StructField("encounter_id", T.StringType(), True),
+            # ds: latest-ds fact read via _read_fact_current; one shared ds.
+            T.StructField("ds", T.StringType(), True),
+        ]
+    )
+    return spark.createDataFrame([(r, "2026-07-18") for r in rows], schema)
 
 
 def _careplans_df(spark, rows):
@@ -180,9 +191,13 @@ def _careplans_df(spark, rows):
         [
             T.StructField("encounter_id", T.StringType(), True),
             T.StructField("stop_date", T.DateType(), True),
+            # ds: latest-ds fact read via _read_fact_current; one shared ds.
+            T.StructField("ds", T.StringType(), True),
         ]
     )
-    return spark.createDataFrame([tuple(r[c] for c in cols) for r in rows], schema)
+    return spark.createDataFrame(
+        [tuple(r[c] for c in cols) + ("2026-07-18",) for r in rows], schema
+    )
 
 
 def _tables(

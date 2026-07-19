@@ -78,6 +78,22 @@ def _read_current(spark: SparkSession, table: str) -> DataFrame:
     return spark.table(f"unity.silver.{table}").filter(F.col("is_current") == True)  # noqa: E712
 
 
+def _read_fact_current(spark: SparkSession, table: str) -> DataFrame:
+    """Read the current snapshot of a ds-partitioned Silver fact.
+
+    Silver facts are append-only per ds (LLD §7); re-running ingestion lands a
+    fresh full copy of every natural key under a new ds. The Gold current-state
+    read keeps only the latest ds partition (the newest complete load) so per-key
+    COUNT/SUM aggregations stay at grain and do not double-count across ds
+    (DQS DQ-FLD-143). Fact analogue of _read_current's is_current filter for dims.
+    An empty fact yields max(ds) = None -> empty result, which the caller's
+    empty-input = Fail guard then surfaces (LLD §5.3).
+    """
+    fact = spark.table(f"unity.silver.{table}")
+    latest_ds = fact.select(F.max(F.col("ds"))).first()[0]
+    return fact.filter(F.col("ds") == F.lit(latest_ds))
+
+
 def build(spark: SparkSession, env: str, ds: str) -> DataFrame:
     # `ds` is part of the shared builder interface (SparkSubmitOperator passes it)
     # but patient_billing_summary carries no `ds` column (DMS §4) — `_ingested_at`
@@ -89,9 +105,9 @@ def build(spark: SparkSession, env: str, ds: str) -> DataFrame:
     #    reference_providers are current SCD2 dimensions read on their natural key.
     #    billing_claims is a plain Silver fact LEFT-joined on the encounter linkage.
     #    Each source is aliased so the multi-join projection is unambiguous.
-    encounters = spark.table("unity.silver.clinical_encounters").alias("ce")
+    encounters = _read_fact_current(spark, "clinical_encounters").alias("ce")
     patients = _read_current(spark, "clinical_patients").alias("cp")
-    claims = spark.table("unity.silver.billing_claims").alias("bc")
+    claims = _read_fact_current(spark, "billing_claims").alias("bc")
     payers_primary = _read_current(spark, "reference_payers").alias("rpay")
     payers_secondary = _read_current(spark, "reference_payers").alias("rpay2")
     providers = _read_current(spark, "reference_providers").alias("rprov")

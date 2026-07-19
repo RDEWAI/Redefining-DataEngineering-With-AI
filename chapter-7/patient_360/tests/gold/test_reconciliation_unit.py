@@ -4,11 +4,15 @@
 ``unity.silver.*`` sources within the DQS §4/§5 tolerance, asserts
 patient_summary completeness (= 5,767 current patients; NFR-4 / DQ-FLD-106),
 and asserts allergy cross-field completeness (DQ-FLD-138). These tests exercise
-the row-count + completeness contract and the fail-closed raise WITHOUT a live
-Spark session — a stubbed ``spark`` returns per-FQN row counts (and a distinct
-patient count + an allergy-violation count), and records the SQL/table calls it
-is handed. Covers positive reconciliation, tolerance-breach fail, and
-completeness-fail (patient + allergy) cases per the story ## Verification block.
+the row-count + completeness contract and the fail-closed raise WITHOUT real
+Spark table IO — a stubbed ``spark`` (``_FakeSpark``) returns per-FQN row counts
+(and a distinct patient count + an allergy-violation count), and records the
+SQL/table calls it is handed. A minimal local ``SparkSession`` is booted only so
+``pyspark.sql.functions`` (``F.col`` / ``F.max`` / ``F.lit``) can build the
+latest-ds Column expressions used by ``_count(latest_ds=True)`` — no real tables
+are ever read. Covers positive reconciliation, tolerance-breach fail, latest-ds
+source scoping, and completeness-fail (patient + allergy) cases per the story
+## Verification block.
 """
 
 from __future__ import annotations
@@ -16,6 +20,24 @@ from __future__ import annotations
 import pytest
 
 from patient_360.gold import reconciliation as recon
+
+pytest.importorskip("pyspark", reason="pyspark not installed")
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _active_spark_context():
+    """Provide an active SparkContext for the whole module.
+
+    ``_count(latest_ds=True)`` builds ``F.max(F.col("ds"))`` / ``F.lit(m)``
+    Column expressions (mirroring the Gold builders' ``_read_fact_current``);
+    ``pyspark.sql.functions`` needs a live SparkContext to construct them. The
+    ``_FakeSpark`` frames ignore the Column args, so no real table is read.
+    """
+    from pyspark.sql import SparkSession
+
+    spark = SparkSession.builder.master("local[1]").appName("recon-unit").getOrCreate()
+    yield spark
+    spark.stop()
 
 _ENV = "DEV"
 _DS = "2026-07-15"
@@ -43,20 +65,54 @@ class _FakeResult:
         return [_FakeRow(self._n)]
 
 
+class _FakeAggRow:
+    """Result of ``frame.agg(F.max(F.col("ds")))`` — ``first()[0]`` yields the
+    configured max ``ds`` (or ``None`` for an empty ds-partitioned fact).
+    """
+
+    def __init__(self, value):
+        self._value = value
+
+    def first(self):
+        return [self._value]
+
+
 class _FakeFrame:
     """A frame for one FQN. ``count()`` honours the last ``where`` predicate via
     ``where_counts``; ``select(...).distinct().count()`` returns ``distinct``.
+
+    For ds-partitioned silver FACTs, ``ds_max`` models ``max(ds)`` (the value
+    returned by ``agg(F.max(F.col("ds"))).first()[0]``) and ``latest_ds_count``
+    is the row count once scoped to that latest ds — the non-string (Column)
+    ``where`` from ``_count(latest_ds=True)`` selects it. dims/gold pass neither.
     """
 
-    def __init__(self, base: int, *, where_counts: dict[str, int] | None = None, distinct: int | None = None):
+    def __init__(
+        self,
+        base: int,
+        *,
+        where_counts: dict[str, int] | None = None,
+        distinct: int | None = None,
+        ds_max=None,
+        latest_ds_count: int | None = None,
+    ):
         self._base = base
         self._where_counts = where_counts or {}
         self._distinct = distinct if distinct is not None else base
         self._pending = base
         self._distinct_mode = False
+        self._ds_max = ds_max
+        self._latest_ds_count = latest_ds_count if latest_ds_count is not None else base
 
-    def where(self, cond: str):
-        self._pending = self._where_counts.get(cond, self._base)
+    def agg(self, *_cols):
+        return _FakeAggRow(self._ds_max)
+
+    def where(self, cond):
+        if isinstance(cond, str):
+            self._pending = self._where_counts.get(cond, self._base)
+        else:
+            # non-string predicate == the latest-ds Column filter from _count()
+            self._pending = self._latest_ds_count
         return self
 
     def select(self, *_cols):
@@ -88,6 +144,8 @@ class _FakeSpark:
             spec["base"],
             where_counts=spec.get("where_counts"),
             distinct=spec.get("distinct"),
+            ds_max=spec.get("ds_max"),
+            latest_ds_count=spec.get("latest_ds_count"),
         )
 
     def sql(self, q: str) -> _FakeResult:
@@ -114,7 +172,12 @@ def _healthy_frames(
             "where_counts": {"is_current = TRUE": silver_patients_current},
         },
         "unity.gold.patient_clinical_history": {"base": gold_history},
-        "unity.silver.clinical_encounters": {"base": silver_encounters},
+        # ds-partitioned silver FACT: carries a constant ds so max(ds) resolves
+        # and the latest-ds scope retains every row (all rows share one ds here).
+        "unity.silver.clinical_encounters": {
+            "base": silver_encounters,
+            "ds_max": _DS,
+        },
         "unity.gold.patient_billing_summary": {"base": gold_billing},
     }
 
@@ -174,6 +237,29 @@ def test_empty_silver_source_requires_empty_gold():
     }
     spark = _FakeSpark(frames)
     assert recon.check_row_count(spark, rule).passed is False
+
+
+def test_fact_source_scoped_to_latest_ds():
+    # Silver facts accumulate duplicate rows across ds (re-ingested static data):
+    # 2 ds x 300 keys = 600 total, but the latest ds holds 300. Gold dedups to
+    # the latest-ds snapshot (300) via _read_fact_current. DQ-REC-005 must scope
+    # its SOURCE count to the latest ds (300) so it reconciles against gold's 300
+    # — NOT the 600 counted across every ds (which would false-FAIL).
+    frames = {
+        "unity.silver.clinical_encounters": {
+            "base": 600,  # count across ALL ds (would false-FAIL without scoping)
+            "ds_max": _DS,
+            "latest_ds_count": 300,  # count scoped to the latest ds
+        },
+        "unity.gold.patient_clinical_history": {"base": 300},
+    }
+    spark = _FakeSpark(frames)
+    rule = recon.gold_row_count_rules()[1]  # DQ-REC-005 (fact, source_latest_ds=True)
+    assert rule.rule_id == "DQ-REC-005"
+    assert rule.source_latest_ds is True
+    result = recon.check_row_count(spark, rule)
+    assert result.passed  # 300 (latest ds) vs 300 gold reconciles within tol
+    assert "silver.clinical_encounters=300" in result.detail
 
 
 # ---------------------------------------------------------------------------

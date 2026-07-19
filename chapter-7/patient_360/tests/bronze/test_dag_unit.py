@@ -115,18 +115,20 @@ def test_dag_id_and_schedule(dag_module):
 
 
 def test_dag_concurrency_and_max_active_runs(dag_module):
-    """AC4: max_active_runs=1, env-dependent max_active_tasks, catchup=True.
+    """AC4: max_active_runs=1, env-dependent max_active_tasks, DEV catchup=False.
 
     The ``dag_module`` fixture imports the DAG with no ``PATIENT360_ENV``
     set, so concurrency resolves to the DEV default of 1 (LLD §4.1 —
-    an 8 GB laptop OOMs running 13 SparkSubmit tasks in parallel).
+    an 8 GB laptop OOMs running 13 SparkSubmit tasks in parallel) and
+    ``catchup`` resolves to the DEV value of False (LLD §4.1; STAGING/PROD
+    enable backfill — see ``test_catchup_is_env_dependent``).
     """
     dag = dag_module.dag_instance
     assert dag.max_active_runs == 1
     # Airflow 3.x renamed ``concurrency`` to ``max_active_tasks``; both
     # are surfaced on the DAG object. DEV default = 1 (LLD §4.1).
     assert dag.max_active_tasks == 1
-    assert dag.catchup is True
+    assert dag.catchup is False  # DEV default per LLD §4.1 (STAGING/PROD=True; see test_catchup_is_env_dependent)
 
 
 @pytest.mark.parametrize(
@@ -147,6 +149,18 @@ def test_max_active_tasks_is_env_dependent(
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.dag_instance.max_active_tasks == expected
+
+
+@pytest.mark.parametrize(("env", "expected"), [("DEV", False), ("STAGING", True), ("PROD", True)])
+def test_catchup_is_env_dependent(monkeypatch_module, patched_spark_submit, env, expected):
+    """AC4/LLD §4.1: catchup is env-tiered (DEV=False, STAGING/PROD=True)."""
+    monkeypatch_module.setenv("AIRFLOW_CONFIGS_DIR", str(REPO_ROOT / "airflow" / "configs"))
+    monkeypatch_module.setenv("PATIENT360_ENV", env)
+    spec = importlib.util.spec_from_file_location(f"patient360_hourly_v1_dag_catchup_{env}", DAG_FILE)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.dag_instance.catchup is expected
 
 
 def test_dag_exposes_14_bronze_layer_tasks(dag_module):

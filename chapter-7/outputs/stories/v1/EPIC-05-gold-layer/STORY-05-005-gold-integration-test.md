@@ -65,9 +65,9 @@ Trigger Airflow DAG; assert 3 Gold tables in `unity.gold.*` (`patient_summary`, 
 | Coverage | What | How |
 |----------|------|-----|
 
-| Integration | Gold DAG run + UC tables + 5,767 patient row count | pytest -m integration patient_360/tests/integration/test_gold_uc.py |
+| Integration | Gold DAG run + UC tables + 5,767 patient row count | pytest -m integration patient_360/tests/integration/gold/test_gold_uc.py |
 
-| DQ | gold_se_stats + allergy completeness | pytest -m integration patient_360/tests/integration/test_gold_dq_evidence.py |
+| DQ | gold_se_stats + allergy completeness | pytest -m integration patient_360/tests/integration/gold/test_gold_se_evidence.py |
 
 | Smoke | Gold DAG tasks parse | pytest patient_360/tests/gold/test_dag_unit.py |
 
@@ -79,13 +79,13 @@ Trigger Airflow DAG; assert 3 Gold tables in `unity.gold.*` (`patient_summary`, 
 
 ```yaml
 AC1:
-  - pytest: {node: "patient_360/tests/integration/test_gold_uc.py::test_dag_runs", marker: "integration"}
+  - pytest: {node: "patient_360/tests/integration/gold/test_gold_uc.py::test_dag_runs", marker: "integration"}
 AC2:
-  - pytest: {node: "patient_360/tests/integration/test_gold_uc.py::test_3_gold_tables_in_uc", marker: "integration"}
+  - pytest: {node: "patient_360/tests/integration/gold/test_gold_uc.py::test_3_gold_tables_in_uc", marker: "integration"}
 AC3:
-  - pytest: {node: "patient_360/tests/integration/test_gold_uc.py::test_patient_summary_count_5767", marker: "integration"}
+  - pytest: {node: "patient_360/tests/integration/gold/test_gold_uc.py::test_patient_summary_count_5767", marker: "integration"}
 AC4:
-  - pytest: {node: "patient_360/tests/integration/test_gold_dq_evidence.py::test_allergy_completeness", marker: "integration"}
+  - pytest: {node: "patient_360/tests/integration/gold/test_gold_se_evidence.py::test_allergy_completeness", marker: "integration"}
 AC5:
   - manual: "Grafana DQ board — visual check of dq_pass_rate gauge"
 ```
@@ -104,7 +104,7 @@ AC5:
 
 1. `cd patient_360 && make ddl-apply` (pre-create UC tables) then `docker compose exec airflow airflow dags trigger patient360_hourly_v1`
 
-2. `uv run pytest -m integration tests/integration/test_gold_uc.py tests/integration/test_gold_dq_evidence.py -v`
+2. `uv run pytest -m integration tests/integration/gold/test_gold_uc.py tests/integration/gold/test_gold_se_evidence.py -v`
 
 
 ### Expected outcome
