@@ -1,0 +1,140 @@
+# Semantic entity: unity.gold.patient_clinical_history
+# Physical contract: contracts/patient_clinical_history.yml
+# sample_values / present_in_data reflect the LIVE Gold data (300 rows).
+name: patient_clinical_history
+table: unity.gold.patient_clinical_history
+grain: "one row per encounter"
+primary_key: encounter_id
+description: >-
+  One row per clinical encounter with denormalized patient/provider/organization names
+  and per-encounter roll-up counts (conditions, procedures, medications, observations,
+  immunizations, active care plans).
+synonyms: [encounter, encounters, visit, visits, clinical history, appointments]
+sensitive_columns: [first_name, last_name]
+
+dimensions:
+  - name: encounter_id
+    column: encounter_id
+    type: string
+    description: "Encounter UUID (natural key)."
+  - name: patient_id
+    column: patient_id
+    type: string
+    description: "Patient UUID; joins to patient_summary."
+  - name: encounter_class
+    column: encounter_class
+    type: string
+    description: "Encounter class."
+    synonyms: [visit type, encounter type]
+    sample_values: [OUTPATIENT, EMERGENCY, WELLNESS]
+    notes: ["Domain also includes INPATIENT / URGENTCARE; not present in the current load."]
+  - name: encounter_description
+    column: encounter_description
+    type: string
+    description: "Human-readable encounter description."
+  - name: start_date
+    column: start_date
+    type: timestamp
+    description: "Encounter start timestamp."
+    synonyms: [encounter date, visit date, when]
+  - name: stop_date
+    column: stop_date
+    type: timestamp
+    description: "Encounter stop timestamp (may be null)."
+  - name: los_days
+    column: los_days
+    type: int
+    description: "Length of stay in days. Observed range -5..6 (negatives are a source data quirk)."
+    synonyms: [length of stay, los, days in hospital]
+  - name: encounter_duration_hours
+    column: encounter_duration_hours
+    type: decimal
+    description: "Encounter duration in hours."
+  - name: is_30_day_readmission
+    column: is_30_day_readmission
+    type: boolean
+    description: "TRUE if this encounter is a 30-day readmission."
+    synonyms: [readmission, readmitted]
+    sample_values: ["false"]
+    present_in_data: false
+    notes: ["All FALSE in the current load."]
+  - name: provider_name
+    column: provider_name
+    type: string
+    description: "Attending provider name (high cardinality: ~261 distinct)."
+    synonyms: [doctor, physician, provider, clinician]
+  - name: organization_name
+    column: organization_name
+    type: string
+    description: "Encounter organization/facility name (~252 distinct)."
+    synonyms: [hospital, facility, clinic, organization]
+  - name: reason_description
+    column: reason_description
+    type: string
+    description: "Reason for the encounter."
+    present_in_data: false
+    notes: ["Null for every row in the current load."]
+
+measures:
+  - name: encounter_count
+    agg: count
+    description: "Number of encounters (rows)."
+    synonyms: [how many encounters, number of visits, visit count]
+  - name: distinct_patient_count
+    agg: count_distinct
+    expr: patient_id
+    description: "Number of distinct patients with an encounter (290 in current load)."
+  - name: avg_los
+    agg: avg
+    expr: los_days
+    description: "Average length of stay in days."
+    synonyms: [average length of stay, mean los]
+  - name: avg_encounter_duration_hours
+    agg: avg
+    expr: encounter_duration_hours
+    description: "Average encounter duration in hours."
+  - name: readmission_rate
+    agg: custom
+    expr: "AVG(CASE WHEN is_30_day_readmission THEN 1 ELSE 0 END)"
+    description: "Fraction of encounters that are 30-day readmissions (0..1)."
+    present_in_data: false
+    notes: ["Evaluates to 0 in the current load."]
+  - name: total_conditions
+    agg: sum
+    expr: condition_count
+    description: "Total conditions recorded across encounters (per-encounter 0-8)."
+  - name: total_medications
+    agg: sum
+    expr: medication_count
+    description: "Total medications recorded across encounters (per-encounter 0-6)."
+  - name: total_procedures
+    agg: sum
+    expr: procedure_count
+    description: "Total procedures across encounters."
+    present_in_data: false
+    notes: ["procedure_count is 0 for every encounter in the current load."]
+  - name: total_observations
+    agg: sum
+    expr: observation_count
+    description: "Total observations across encounters."
+    present_in_data: false
+    notes: ["observation_count is 0 for every encounter in the current load."]
+  - name: total_immunizations
+    agg: sum
+    expr: immunization_count
+    description: "Total immunizations across encounters."
+    present_in_data: false
+    notes: ["immunization_count is 0 for every encounter in the current load."]
+  - name: total_active_careplans
+    agg: sum
+    expr: active_careplan_count
+    description: "Total active care plans across encounters (active = stop_date IS NULL)."
+    present_in_data: false
+    notes: ["active_careplan_count is 0 for every encounter in the current load."]
+
+notes:
+  - "Full-overwrite current snapshot; no ds partition."
+  - "active_careplan_count is derived as COUNT(*) WHERE stop_date IS NULL (no careplan_status column)."
+  - "In the current load, procedure/observation/immunization/careplan counts and readmission flags
+     are all zero, and reason_description is null — prefer questions about encounter_class, provider,
+     organization, length of stay, and condition_count."

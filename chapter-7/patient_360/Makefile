@@ -1,4 +1,4 @@
-.PHONY: dev-setup test integration-test lint format clean validate dev-up dev-down uc-init uc-ui-source seed-source-data wait-for-uc spark-smoke ddl-apply wait-for-thrift
+.PHONY: dev-setup test integration-test lint format clean validate dev-up dev-down uc-init uc-ui-source seed-source-data wait-for-uc spark-smoke ddl-apply wait-for-thrift semantic-validate semantic-render semantic-ask semantic-chat
 
 UC_HOST ?= http://localhost:8080
 UC_UI_HOST ?= http://localhost:3000
@@ -32,6 +32,21 @@ format:
 validate:
 	@echo "Running contract + DQ rule validation..."
 	uv run pytest tests/test_contracts.py -v
+
+# --- Semantic model + NL-to-SQL agent over the Gold tables ---
+# Routed via LiteLLM: set LLM_MODEL (default anthropic/claude-opus-5) + that provider's key
+# (e.g. ANTHROPIC_API_KEY, or LLM_API_BASE for a local Ollama). Needs the docker stack up.
+semantic-validate:
+	uv run python -m patient_360.semantic validate
+
+semantic-render:
+	uv run python -m patient_360.semantic render
+
+semantic-ask:
+	uv run python -m patient_360.semantic ask "$(Q)"
+
+semantic-chat:
+	uv run python -m patient_360.semantic chat
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; \

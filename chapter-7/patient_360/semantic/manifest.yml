@@ -1,0 +1,144 @@
+# Semantic model manifest — Patient 360 Gold layer
+#
+# The file-based semantic model that grounds natural-language-to-SQL generation over the
+# three unity.gold.* tables. Entities are auto-discovered from entities/*.yml; this file
+# adds the cross-entity relationships, named business metrics, a business-term glossary,
+# and verified example queries for few-shot grounding.
+#
+# Physical types/nullability live in contracts/*.yml and are cross-checked by
+# `python -m patient_360.semantic.validate`. sample_values reflect the LIVE Gold data.
+name: patient_360_gold
+description: >-
+  Semantic model over the Patient 360 Gold layer (unity.gold.patient_summary,
+  patient_clinical_history, patient_billing_summary). Grain, dimensions, measures,
+  joins, metrics, and vocabulary for answering business questions in SQL.
+version: "1.0"
+dialect: "Spark SQL"
+catalog: unity
+
+# entities: auto-loaded from semantic/entities/*.yml
+
+relationships:
+  - name: history_to_patient
+    from_entity: patient_clinical_history
+    from_column: patient_id
+    to_entity: patient_summary
+    to_column: patient_id
+    cardinality: many_to_one
+    description: "Each encounter belongs to one patient."
+  - name: billing_to_patient
+    from_entity: patient_billing_summary
+    from_column: patient_id
+    to_entity: patient_summary
+    to_column: patient_id
+    cardinality: many_to_one
+    description: "Each billing row belongs to one patient."
+  - name: billing_to_history
+    from_entity: patient_billing_summary
+    from_column: encounter_id
+    to_entity: patient_clinical_history
+    to_column: encounter_id
+    cardinality: one_to_one
+    description: "Billing and clinical history share the encounter grain (join on encounter_id)."
+
+metrics:
+  - name: living_patient_count
+    entity: patient_summary
+    measure: patient_count
+    filter: "patient_status = 'ALIVE'"
+    description: "Number of living patients."
+    synonyms: [how many living patients, alive patients]
+  - name: deceased_patient_count
+    entity: patient_summary
+    measure: patient_count
+    filter: "patient_status = 'DECEASED'"
+    description: "Number of deceased patients."
+    synonyms: [how many deceased, dead patients]
+  - name: avg_age_by_gender
+    entity: patient_summary
+    measure: avg_age
+    group_by: [gender]
+    description: "Average patient age split by gender."
+  - name: patients_by_race
+    entity: patient_summary
+    measure: patient_count
+    group_by: [race]
+    description: "Patient counts by race."
+  - name: encounters_by_class
+    entity: patient_clinical_history
+    measure: encounter_count
+    group_by: [encounter_class]
+    description: "Encounter volume by encounter class."
+  - name: avg_length_of_stay_by_encounter_class
+    entity: patient_clinical_history
+    measure: avg_los
+    group_by: [encounter_class]
+    description: "Average length of stay by encounter class."
+  - name: readmission_rate
+    entity: patient_clinical_history
+    measure: readmission_rate
+    description: "Share of encounters that are 30-day readmissions (0 in current load)."
+  - name: total_cost_by_encounter_class
+    entity: patient_billing_summary
+    measure: total_claim_cost
+    group_by: [encounter_class]
+    description: "Total claim cost by encounter class."
+
+# Business term -> how to express it in SQL. The agent maps user vocabulary to columns/values.
+glossary:
+  married: "marital_status = 'M'"
+  single: "marital_status = 'S'"
+  divorced: "marital_status = 'D'"
+  widowed: "marital_status = 'W'"
+  living: "patient_status = 'ALIVE'"
+  alive: "patient_status = 'ALIVE'"
+  deceased: "patient_status = 'DECEASED'"
+  dead: "patient_status = 'DECEASED'"
+  hispanic: "ethnicity = 'HISPANIC'"
+  non-hispanic: "ethnicity = 'NONHISPANIC'"
+  doctor: "provider_name (patient_clinical_history / patient_billing_summary)"
+  physician: "provider_name"
+  hospital: "organization_name (patient_clinical_history)"
+  facility: "organization_name"
+  insurer: "primary_payer_name / secondary_payer_name (patient_billing_summary)"
+  payer: "primary_payer_name / secondary_payer_name"
+  readmission: "is_30_day_readmission (encounter) / has_30day_readmission_history (patient)"
+  length of stay: "los_days (patient_clinical_history)"
+  cost: "total_claim_cost / total_visit_cost / base_encounter_cost (patient_billing_summary ONLY)"
+  age: "calculated_age (patient_summary)"
+
+verified_queries:
+  - question: "How many living patients are there?"
+    sql: "SELECT COUNT(*) AS living_patients FROM unity.gold.patient_summary WHERE patient_status = 'ALIVE'"
+  - question: "How many patients are there by gender?"
+    sql: >-
+      SELECT gender, COUNT(*) AS patient_count
+      FROM unity.gold.patient_summary
+      GROUP BY gender ORDER BY patient_count DESC
+  - question: "What is the average patient age by race?"
+    sql: >-
+      SELECT race, ROUND(AVG(calculated_age), 1) AS avg_age
+      FROM unity.gold.patient_summary
+      GROUP BY race ORDER BY avg_age DESC
+  - question: "How many patients have at least one recorded allergy?"
+    sql: "SELECT COUNT(*) AS patients_with_allergy FROM unity.gold.patient_summary WHERE has_allergy = TRUE"
+  - question: "Who are the five oldest married patients?"
+    description: "Shows mapping 'married' -> marital_status = 'M'."
+    sql: >-
+      SELECT first_name, last_name, calculated_age
+      FROM unity.gold.patient_summary
+      WHERE marital_status = 'M'
+      ORDER BY calculated_age DESC LIMIT 5
+  - question: "How many encounters occurred by encounter class?"
+    sql: >-
+      SELECT encounter_class, COUNT(*) AS encounters
+      FROM unity.gold.patient_clinical_history
+      GROUP BY encounter_class ORDER BY encounters DESC
+  - question: "How many distinct patients had an encounter?"
+    sql: "SELECT COUNT(DISTINCT patient_id) AS patients_with_encounter FROM unity.gold.patient_clinical_history"
+  - question: "What is the total claim cost by encounter class?"
+    description: "Cost fields live only on patient_billing_summary."
+    sql: >-
+      SELECT encounter_class, ROUND(SUM(total_claim_cost), 2) AS total_claim_cost
+      FROM unity.gold.patient_billing_summary
+      GROUP BY encounter_class ORDER BY total_claim_cost DESC
