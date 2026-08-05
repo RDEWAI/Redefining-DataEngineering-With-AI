@@ -1,0 +1,46 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    SRC(["Source Systems<br/><i>apps · IoT · transactional<br/>third-party · file systems</i>"])
+
+    subgraph inflow["Input Workflows &mdash; gather data"]
+        direction TB
+        I1["Extract"]
+        I2["Ingest"]
+        I3["Stream"]
+        I4["Process"]
+    end
+
+    LAKE{{"Data Lake<br/><i>cleanse · dedup · conform</i>"}}
+
+    SERVE["Serve<br/><i>marts · semantic model · APIs</i>"]
+
+    subgraph outflow["Output Workflows &mdash; deliver insight"]
+        direction TB
+        O1["Report agent"]
+        O2["Alert agent"]
+        O3["Sync agent"]
+        O4["Activate agent"]
+    end
+
+    DST(["Target Systems<br/><i>dashboards · CRM · ops apps</i>"])
+
+    SRC --> I1 & I2 & I3 & I4
+    I1 & I2 & I3 & I4 --> LAKE
+    LAKE --> SERVE
+    SERVE --> O1 & O2 & O3 & O4
+    O1 & O2 & O3 & O4 --> DST
+
+    classDef sys fill:#E8E8F4,stroke:#6A6AB0,color:#1A1A4A,stroke-width:2px;
+    classDef ingest fill:#E6EEF7,stroke:#4A72A8,color:#16314A,stroke-width:2px;
+    classDef lake fill:#F7EFE0,stroke:#B08A40,color:#4A3810,stroke-width:2px;
+    classDef serve fill:#EDF7E8,stroke:#7AA85A,color:#2A4A10,stroke-width:2px;
+    classDef deliver fill:#F7E8F2,stroke:#A85A94,color:#4A1038,stroke-width:2px;
+
+    class SRC,DST sys;
+    class I1,I2,I3,I4 ingest;
+    class LAKE lake;
+    class SERVE serve;
+    class O1,O2,O3,O4 deliver;
+
+    style inflow fill:#F4F8FC,stroke:#4A72A8,stroke-width:2px;
+    style outflow fill:#FCF4FA,stroke:#A85A94,stroke-width:2px;

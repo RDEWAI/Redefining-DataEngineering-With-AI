@@ -1,0 +1,20 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    A["Silver handoff<br/>cleansed dims + facts"]
+    B{"run_dq · inline Spark Expectations<br/>before every write"}
+    C["<b>gold_marts</b><br/>patient_360 consumer marts"]
+    D{"KPI reconciliation<br/>+ grain checks"}
+    E(["Serving consumers"])
+
+    A --> B --> C --> D --> E
+
+    classDef src fill:#E6EEF7,stroke:#4A72A8,color:#16314A,stroke-width:2px;
+    classDef gate fill:#F7EFE0,stroke:#B08A40,color:#4A3810,stroke-width:2px;
+    classDef mart fill:#EDF7E8,stroke:#7AA85A,color:#2A4A10,stroke-width:2px;
+    classDef recon fill:#F7E8E8,stroke:#B05A5A,color:#4A1010,stroke-width:2px;
+    classDef serve fill:#E8E8F4,stroke:#6A6AB0,color:#1A1A4A,stroke-width:2px;
+    class A src;
+    class B gate;
+    class C mart;
+    class D recon;
+    class E serve;

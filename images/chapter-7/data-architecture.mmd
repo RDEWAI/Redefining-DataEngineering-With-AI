@@ -1,0 +1,48 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial', 'lineColor': '#333333'}}}%%
+flowchart TD
+    subgraph sources[" "]
+        direction LR
+        FS["<b>File Systems</b>"]
+        BDS["<b>Big Data Systems</b>"]
+        OA["<b>Operational Apps</b>"]
+    end
+
+    subgraph storage[" "]
+        EXT("Data Extraction")
+        STG[("Staging Area")]
+        DL[("History Area")]
+        PROC("Data Processing")
+        DW[("Data<br/>Warehouse")]
+        DLH[("Data<br/>Lakehouse")]
+    end
+
+    subgraph serving[" "]
+        DPS("Data Serving")
+        ADM[("Analytical<br/>Datamart")]
+        WC[("Wide-<br/>Column")]
+        GDB[("Graph<br/>Database")]
+        CONS["<b>Consumption Layer</b><br/><br/>BI&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ML&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Apps"]
+    end
+
+    FS --> EXT
+    BDS --> EXT
+    OA --> EXT
+    EXT --> STG & DL
+    STG & DL --> PROC
+    PROC --> DW & DLH
+    DW --> DPS
+    DLH --> DPS
+    DPS --> ADM & WC & GDB
+    ADM & WC & GDB --> CONS
+
+    classDef dashed fill:#ffffff,stroke:#333333,stroke-width:1.5px,stroke-dasharray:6 4;
+    classDef proc fill:#ffffff,stroke:#333333,stroke-width:1.5px;
+    classDef store fill:#ffffff,stroke:#333333,stroke-width:1.5px;
+
+    class FS,BDS,OA,CONS dashed;
+    class EXT,PROC,DPS proc;
+    class STG,DL,DW,DLH,ADM,WC,GDB store;
+
+    style sources fill:#ffffff,stroke:#333333,stroke-width:1.5px,stroke-dasharray:6 4;
+    style storage fill:#ffffff,stroke:#333333,stroke-width:1.5px,stroke-dasharray:6 4;
+    style serving fill:#ffffff,stroke:#333333,stroke-width:1.5px,stroke-dasharray:6 4;

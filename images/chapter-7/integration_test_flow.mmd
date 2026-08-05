@@ -1,0 +1,27 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial'}}}%%
+flowchart TD
+    B["create ephemeral tables"]
+    D["Deploy code"]
+    E["Trigger DAG<br/>Bronze -> Silver -> Gold"]
+    F{"Assertions"}
+    G["Rebuild proven"]
+    H["Fail · report which<br/>layer diverged"]
+    A["Clean ephemeral"]
+
+    B --> D --> E --> F
+    F -->|match| G
+    F -->|drift| H
+    G --> A
+    H --> A
+
+    classDef setup fill:#E6EEF7,stroke:#4A72A8,color:#16314A,stroke-width:2px;
+    classDef step fill:#EDF7E8,stroke:#7AA85A,color:#2A4A10,stroke-width:2px;
+    classDef gate fill:#F7EFE0,stroke:#B08A40,color:#4A3810,stroke-width:2px;
+    classDef pass fill:#E8E8F4,stroke:#6A6AB0,color:#1A1A4A,stroke-width:2px;
+    classDef fail fill:#F7E8E8,stroke:#B05A5A,color:#4A1010,stroke-width:2px;
+    class B setup;
+    class D,E step;
+    class F gate;
+    class G pass;
+    class H fail;
+    class A setup;
