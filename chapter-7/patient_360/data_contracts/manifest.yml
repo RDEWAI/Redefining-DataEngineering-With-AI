@@ -1,0 +1,27 @@
+# Data Contracts — the producer<->consumer agreement for each Gold table.
+#
+# The semantic layer explains business terms; ontology/taxonomy give the 'why' and relationships;
+# a data contract adds what a consumer (human or AI) needs to USE the data safely: SLAs (freshness,
+# latency, availability, retention), timing caveats, and a versioning/deprecation policy so
+# breaking changes are signalled rather than discovered.
+#
+# Contracts are auto-discovered from data_contracts/*.yml (excluding this manifest). They are
+# ODCS-inspired (Open Data Contract Standard) and reference the physical column contract under
+# contracts/<table>.yml rather than duplicating the schema. Consumed by AI via RAG.
+name: patient_360_data_contracts
+version: "1.0"
+standard: "ODCS-inspired (Open Data Contract Standard)"
+description: >-
+  Serving contracts for the three Patient 360 Gold tables. Each contract carries SLA + timing
+  metadata (so an AI does not draw wrong conclusions from stale joins) and a semantic-versioning
+  policy for schema evolution.
+
+versioning_policy:
+  scheme: semver
+  major: "Breaking change — column removed/renamed, type narrowed, or the MEANING of a value changes."
+  minor: "Additive, backward-compatible — new column or new allowed value."
+  patch: "Docs/metadata only — descriptions, tags, SLA text."
+  deprecation: >-
+    Announce a breaking change at least one MINOR release ahead; keep the prior MAJOR readable
+    during the deprecation window; AI-assisted migration handles downstream rewrites.
+  breaking_change_notation: "Increment MAJOR and tag the changelog entry `BREAKING`."

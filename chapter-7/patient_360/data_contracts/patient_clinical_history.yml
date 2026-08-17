@@ -1,0 +1,44 @@
+# Data contract: unity.gold.patient_clinical_history  (ODCS-inspired)
+kind: DataContract
+id: patient_clinical_history
+version: 1.0.0
+status: active
+table: unity.gold.patient_clinical_history
+domain: analytics
+owner: "Patient 360 Data Engineering"
+schema_ref: contracts/patient_clinical_history.yml
+ontology_ref: ontology/entities/encounter.yml
+semantic_ref: semantic/entities/patient_clinical_history.yml
+
+description: >-
+  One row per clinical encounter with denormalized patient/provider/organization names and
+  per-encounter roll-up counts. Encounter-grain consumer surface (joins 1:1 to billing).
+
+guarantees:
+  grain: "one row per encounter"
+  primary_key: encounter_id
+  foreign_keys:
+    - "patient_id -> patient_summary.patient_id (mandatory)"
+  joins:
+    - "encounter_id 1:1 to patient_billing_summary (cost lives only on billing)"
+
+sla:
+  update_frequency: "Rebuilt each gold_build run."
+  freshness: "Full-overwrite current snapshot."
+  latency: "Available immediately after gold_build completes."
+  availability: "Best-effort on the local dev stack; production target 99.5%."
+  retention: "Current snapshot only."
+  timing_caveats:
+    - >-
+      Downstream joins to nightly-refreshed sources (e.g. a 3 AM lab feed) can lag encounter data:
+      an encounter recorded late in the day may not have matching same-day lab results yet. Do not
+      conclude 'no result' before the next refresh — treat a missing join as pending, not negative.
+
+consumers:
+  - "Patient 360 dashboard"
+  - "NL-to-SQL analytics agent (AI Analytics Query)"
+
+changelog:
+  - version: 1.0.0
+    change: "Initial contract."
+    breaking: false

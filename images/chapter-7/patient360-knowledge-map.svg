@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1340 900" font-family="Arial, Helvetica, sans-serif">
+<defs>
+  <marker id="arw" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+    <path d="M1,1 L11,6 L1,11 z" fill="#444444"/></marker>
+  <marker id="arwP" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+    <path d="M1,1 L11,6 L1,11 z" fill="#7A4FB0"/></marker>
+  <marker id="tri" viewBox="0 0 20 20" refX="16" refY="10" markerWidth="12" markerHeight="12" orient="auto">
+    <path d="M2,3 L18,10 L2,17 Z" fill="#ffffff" stroke="#7A4FB0" stroke-width="2"/></marker>
+</defs>
+<rect x="0" y="0" width="1340" height="900" fill="#ffffff"/>
+<rect x="65.0" y="85.0" width="380" height="200" rx="10" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="255" y="111.0" text-anchor="middle" font-size="15" font-weight="700" fill="#3A1A5A">Glossary  (business term → SQL)</text>
+<line x1="77.0" y1="123.0" x2="433.0" y2="123.0" stroke="#7A4FB0" stroke-width="1" stroke-opacity="0.4"/>
+<text x="81.0" y="143.0" font-size="13" fill="#3A1A5A" font-family="monospace" fill-opacity="0.9">living     →  patient_status = 'ALIVE'</text>
+<text x="81.0" y="164.0" font-size="13" fill="#3A1A5A" font-family="monospace" fill-opacity="0.9">deceased   →  patient_status = 'DECEASED'</text>
+<text x="81.0" y="185.0" font-size="13" fill="#3A1A5A" font-family="monospace" fill-opacity="0.9">married    →  marital_status = 'M'</text>
+<text x="81.0" y="206.0" font-size="13" fill="#3A1A5A" font-family="monospace" fill-opacity="0.9">emergency  →  encounter_class = 'EMERGENCY'</text>
+<text x="81.0" y="227.0" font-size="13" fill="#3A1A5A" font-family="monospace" fill-opacity="0.9">cost       →  patient_billing_summary ONLY</text>
+<text x="720" y="96" text-anchor="middle" font-size="14" font-weight="700" fill="#3A1A5A">Taxonomy · encounter_class</text>
+<rect x="645.0" y="110" width="150.0" height="32" rx="7" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.6"/>
+<text x="720" y="131" text-anchor="middle" font-size="13.5" font-weight="700" fill="#3A1A5A">encounter_class</text>
+<rect x="566.0" y="176" width="108.0" height="32" rx="7" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.6"/>
+<text x="620" y="197" text-anchor="middle" font-size="13.5" font-weight="700" fill="#3A1A5A">Ambulatory</text>
+<rect x="797.0" y="176" width="66.0" height="32" rx="7" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.6"/>
+<text x="830" y="197" text-anchor="middle" font-size="13.5" font-weight="700" fill="#3A1A5A">Acute</text>
+<path d="M 690 140 L 636 178" fill="none" stroke="#7A4FB0" stroke-width="1.6" marker-end="url(#tri)"/>
+<path d="M 752 140 L 812 178" fill="none" stroke="#7A4FB0" stroke-width="1.6" marker-end="url(#tri)"/>
+<text x="556" y="238" text-anchor="middle" font-size="12" font-family="monospace" fill="#333">OUTPATIENT</text>
+<path d="M 620 210 L 556 226" fill="none" stroke="#9a7bc4" stroke-width="1.2" marker-end="url(#arw)"/>
+<text x="664" y="238" text-anchor="middle" font-size="12" font-family="monospace" fill="#333">WELLNESS</text>
+<path d="M 620 210 L 664 226" fill="none" stroke="#9a7bc4" stroke-width="1.2" marker-end="url(#arw)"/>
+<text x="830" y="238" text-anchor="middle" font-size="12" font-family="monospace" fill="#333">EMERGENCY</text>
+<path d="M 830 210 L 830 226" fill="none" stroke="#9a7bc4" stroke-width="1.2" marker-end="url(#arw)"/>
+<text x="1105" y="96" text-anchor="middle" font-size="14" font-weight="700" fill="#3A1A5A">Taxonomy · Medication</text>
+<rect x="1051.0" y="110" width="108.0" height="32" rx="7" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.6"/>
+<text x="1105" y="131" text-anchor="middle" font-size="13.5" font-weight="700" fill="#3A1A5A">Medication</text>
+<rect x="952.6" y="184" width="124.80000000000001" height="32" rx="7" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.6"/>
+<text x="1015" y="205" text-anchor="middle" font-size="13.5" font-weight="700" fill="#3A1A5A">Prescription</text>
+<rect x="1175.4" y="184" width="49.2" height="32" rx="7" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.6"/>
+<text x="1200" y="205" text-anchor="middle" font-size="13.5" font-weight="700" fill="#3A1A5A">OTC</text>
+<path d="M 1072 141 L 1028 184" fill="none" stroke="#7A4FB0" stroke-width="1.6" marker-end="url(#tri)"/>
+<path d="M 1138 141 L 1188 184" fill="none" stroke="#7A4FB0" stroke-width="1.6" marker-end="url(#tri)"/>
+<rect x="130.0" y="411.0" width="250" height="118" rx="10" fill="#E6EEF7" stroke="#4A72A8" stroke-width="2"/>
+<text x="255" y="437.0" text-anchor="middle" font-size="17" font-weight="700" fill="#16314A">Patient</text>
+<line x1="142.0" y1="449.0" x2="368.0" y2="449.0" stroke="#4A72A8" stroke-width="1" stroke-opacity="0.4"/>
+<text x="146.0" y="469.0" font-size="13.5" fill="#16314A" fill-opacity="0.9">patient_id  (key)</text>
+<text x="146.0" y="490.0" font-size="13.5" fill="#16314A" fill-opacity="0.9">patient_status</text>
+<text x="146.0" y="511.0" font-size="13.5" fill="#16314A" fill-opacity="0.9">marital_status, gender, age</text>
+<rect x="595.0" y="411.0" width="250" height="118" rx="10" fill="#EDF7E8" stroke="#5F8F45" stroke-width="2"/>
+<text x="720" y="437.0" text-anchor="middle" font-size="17" font-weight="700" fill="#213812">Encounter</text>
+<line x1="607.0" y1="449.0" x2="833.0" y2="449.0" stroke="#5F8F45" stroke-width="1" stroke-opacity="0.4"/>
+<text x="611.0" y="469.0" font-size="13.5" fill="#213812" fill-opacity="0.9">encounter_id  (key)</text>
+<text x="611.0" y="490.0" font-size="13.5" fill="#213812" fill-opacity="0.9">encounter_class</text>
+<text x="611.0" y="511.0" font-size="13.5" fill="#213812" fill-opacity="0.9">provider_name, los_days</text>
+<rect x="980.0" y="411.0" width="250" height="118" rx="10" fill="#F7EFE0" stroke="#B08A40" stroke-width="2"/>
+<text x="1105" y="437.0" text-anchor="middle" font-size="17" font-weight="700" fill="#4A3810">Billing / Cost</text>
+<line x1="992.0" y1="449.0" x2="1218.0" y2="449.0" stroke="#B08A40" stroke-width="1" stroke-opacity="0.4"/>
+<text x="996.0" y="469.0" font-size="13.5" fill="#4A3810" fill-opacity="0.9">encounter_id  (key)</text>
+<text x="996.0" y="490.0" font-size="13.5" fill="#4A3810" fill-opacity="0.9">total_claim_cost</text>
+<text x="996.0" y="511.0" font-size="13.5" fill="#4A3810" fill-opacity="0.9">encounter_class</text>
+<path d="M 380.0 470 L 595.0 470" fill="none" stroke="#444444" stroke-width="1.8" marker-end="url(#arw)"/>
+<rect x="416.2" y="458" width="141.6" height="20" rx="5" fill="#ffffff" stroke="#444444" stroke-width="0.8"/>
+<text x="487" y="472" text-anchor="middle" font-size="12.5" font-style="italic" fill="#444444">hasEncounter (1:N)</text>
+<path d="M 845.0 470 L 980.0 470" fill="none" stroke="#444444" stroke-width="1.8" marker-end="url(#arw)"/>
+<rect x="848.4" y="458" width="127.2" height="20" rx="5" fill="#ffffff" stroke="#444444" stroke-width="0.8"/>
+<text x="912" y="472" text-anchor="middle" font-size="12.5" font-style="italic" fill="#444444">incursCost (1:1)</text>
+<path d="M 720 244 L 720 410" fill="none" stroke="#7A4FB0" stroke-width="1.6" marker-end="url(#arwP)" stroke-dasharray="5 5"/>
+<rect x="678.0" y="318" width="84.0" height="20" rx="5" fill="#ffffff" stroke="#7A4FB0" stroke-width="0.8"/>
+<text x="720" y="332" text-anchor="middle" font-size="12.5" font-style="italic" fill="#7A4FB0">classifies</text>
+<path d="M 1105 218 L 1105 410" fill="none" stroke="#7A4FB0" stroke-width="1.6" marker-end="url(#arwP)" stroke-dasharray="5 5"/>
+<rect x="1063.0" y="318" width="84.0" height="20" rx="5" fill="#ffffff" stroke="#7A4FB0" stroke-width="0.8"/>
+<text x="1105" y="332" text-anchor="middle" font-size="12.5" font-style="italic" fill="#7A4FB0">classifies</text>
+<path d="M 300 286 C 300 340, 272 385, 258 410" fill="none" stroke="#7A4FB0" stroke-width="1.6" marker-end="url(#arwP)" stroke-dasharray="5 5"/>
+<rect x="153.2" y="340" width="105.60000000000001" height="20" rx="5" fill="#ffffff" stroke="#7A4FB0" stroke-width="0.8"/>
+<text x="206" y="354" text-anchor="middle" font-size="12.5" font-style="italic" fill="#7A4FB0">terms→columns</text>
+<path d="M 137,641.0 L 137,679.0 A 118,12 0 0 0 373,679.0 L 373,641.0 A 118,12 0 0 0 137,641.0 Z" fill="#F2F2F6" stroke="#555555" stroke-width="1.6"/>
+<ellipse cx="255" cy="641.0" rx="118" ry="12" fill="#F2F2F6" stroke="#555555" stroke-width="1.6"/>
+<text x="255" y="669" text-anchor="middle" font-size="13" font-family="monospace" fill="#333333">unity.gold.patient_summary</text>
+<path d="M 602,641.0 L 602,679.0 A 118,12 0 0 0 838,679.0 L 838,641.0 A 118,12 0 0 0 602,641.0 Z" fill="#F2F2F6" stroke="#555555" stroke-width="1.6"/>
+<ellipse cx="720" cy="641.0" rx="118" ry="12" fill="#F2F2F6" stroke="#555555" stroke-width="1.6"/>
+<text x="720" y="669" text-anchor="middle" font-size="13" font-family="monospace" fill="#333333">unity.gold.patient_clinical_history</text>
+<path d="M 987,641.0 L 987,679.0 A 118,12 0 0 0 1223,679.0 L 1223,641.0 A 118,12 0 0 0 987,641.0 Z" fill="#F2F2F6" stroke="#555555" stroke-width="1.6"/>
+<ellipse cx="1105" cy="641.0" rx="118" ry="12" fill="#F2F2F6" stroke="#555555" stroke-width="1.6"/>
+<text x="1105" y="669" text-anchor="middle" font-size="13" font-family="monospace" fill="#333333">unity.gold.patient_billing_summary</text>
+<path d="M 255 529.0 L 255 623.0" fill="none" stroke="#444444" stroke-width="1.8" marker-end="url(#arw)"/>
+<rect x="289.8" y="567.0" width="62.4" height="20" rx="5" fill="#ffffff" stroke="#444444" stroke-width="0.8"/>
+<text x="321" y="581.0" text-anchor="middle" font-size="12.5" font-style="italic" fill="#444444">maps to</text>
+<path d="M 720 529.0 L 720 623.0" fill="none" stroke="#444444" stroke-width="1.8" marker-end="url(#arw)"/>
+<rect x="754.8" y="567.0" width="62.4" height="20" rx="5" fill="#ffffff" stroke="#444444" stroke-width="0.8"/>
+<text x="786" y="581.0" text-anchor="middle" font-size="12.5" font-style="italic" fill="#444444">maps to</text>
+<path d="M 1105 529.0 L 1105 623.0" fill="none" stroke="#444444" stroke-width="1.8" marker-end="url(#arw)"/>
+<rect x="1139.8" y="567.0" width="62.4" height="20" rx="5" fill="#ffffff" stroke="#444444" stroke-width="0.8"/>
+<text x="1171" y="581.0" text-anchor="middle" font-size="12.5" font-style="italic" fill="#444444">maps to</text>
+<path d="M 255 691 L 255 750" fill="none" stroke="#9a9aa5" stroke-width="1.3" stroke-dasharray="4 4"/>
+<path d="M 720 691 L 720 750" fill="none" stroke="#9a9aa5" stroke-width="1.3" stroke-dasharray="4 4"/>
+<path d="M 1105 691 L 1105 750" fill="none" stroke="#9a9aa5" stroke-width="1.3" stroke-dasharray="4 4"/>
+<rect x="500" y="725" width="118" height="20" rx="5" fill="#ffffff" stroke="#888" stroke-width="0.8"/>
+<text x="559" y="739" text-anchor="middle" font-size="12" font-style="italic" fill="#666">governed by</text>
+<rect x="200.0" y="756.0" width="960" height="112" rx="10" fill="#F4F4F8" stroke="#777777" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="680" y="782.0" text-anchor="middle" font-size="15" font-weight="700" fill="#333333">Data Contract  (ODCS) — the three Gold tables</text>
+<line x1="212.0" y1="794.0" x2="1148.0" y2="794.0" stroke="#777777" stroke-width="1" stroke-opacity="0.4"/>
+<text x="216.0" y="814.0" font-size="13" fill="#333333" fill-opacity="0.9">grain: 1 row per patient / per encounter   ·   history ↔ billing 1:1 on encounter_id</text>
+<text x="216.0" y="835.0" font-size="13" fill="#333333" fill-opacity="0.9">freshness: full-overwrite snapshot, fresh after gold_build   ·   versioning: semver</text>
+<text x="216.0" y="856.0" font-size="13" fill="#333333" fill-opacity="0.9">cost columns (total_claim_cost, …) live ONLY on patient_billing_summary</text>
+</svg>

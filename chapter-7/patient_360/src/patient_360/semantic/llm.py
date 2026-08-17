@@ -82,8 +82,10 @@ class LiteLLMClient:
                 "the 'litellm' package is required for LiteLLMClient; run `uv sync`"
             ) from exc
         # Silently drop params a given provider doesn't support (e.g. some local models),
-        # so the same call shape works everywhere.
+        # so the same call shape works everywhere. Also quiet LiteLLM's banner/debug chatter so
+        # a clean CLI shows our message, not the library's.
         litellm.drop_params = True
+        litellm.suppress_debug_info = True
         kwargs: dict[str, object] = {
             "model": self.model,
             "messages": [{"role": m.role, "content": m.content} for m in messages],

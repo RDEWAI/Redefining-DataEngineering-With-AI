@@ -1,0 +1,58 @@
+# Taxonomy: Encounter class  (grouping the encounter_class values into a hierarchy)
+name: EncounterClassTaxonomy
+root: EncounterClass
+entity: Encounter                       # ontology/entities/encounter.yml (hasEncounterClass)
+classification_basis: "care setting / acuity"
+maps_to: unity.gold.patient_clinical_history.encounter_class
+description: >-
+  Groups the flat encounter_class codes into acute vs ambulatory branches so an agent can ask
+  'how many acute encounters' without enumerating every leaf code. Leaves are the literal values
+  stored in encounter_class; parent nodes are analytic groupings only (not stored values).
+
+nodes:
+  - concept: EncounterClass
+    parent: null
+    level: 0
+    definition: "Top of the encounter classification."
+
+  - concept: Ambulatory
+    parent: EncounterClass
+    level: 1
+    definition: "Care delivered without an overnight admission."
+  - concept: Acute
+    parent: EncounterClass
+    level: 1
+    definition: "Unplanned / higher-acuity care."
+
+  # Leaves — these map to actual encounter_class literals in the Gold data.
+  - concept: OUTPATIENT
+    parent: Ambulatory
+    level: 2
+    stored_value: OUTPATIENT
+    present_in_data: true
+  - concept: WELLNESS
+    parent: Ambulatory
+    level: 2
+    stored_value: WELLNESS
+    present_in_data: true
+  - concept: EMERGENCY
+    parent: Acute
+    level: 2
+    stored_value: EMERGENCY
+    present_in_data: true
+  - concept: INPATIENT
+    parent: Acute
+    level: 2
+    stored_value: INPATIENT
+    present_in_data: false
+    note: "In the domain but absent from the current load."
+  - concept: URGENTCARE
+    parent: Acute
+    level: 2
+    stored_value: URGENTCARE
+    present_in_data: false
+    note: "In the domain but absent from the current load."
+
+usage_note: >-
+  To answer 'acute encounters', filter encounter_class IN ('EMERGENCY','INPATIENT','URGENTCARE');
+  for 'ambulatory', IN ('OUTPATIENT','WELLNESS'). Only OUTPATIENT/WELLNESS/EMERGENCY are populated.

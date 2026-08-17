@@ -1,4 +1,4 @@
-.PHONY: dev-setup test integration-test lint format clean validate dev-up dev-down uc-init uc-ui-source seed-source-data wait-for-uc spark-smoke ddl-apply wait-for-thrift semantic-validate semantic-render semantic-ask semantic-chat
+.PHONY: dev-setup test integration-test lint format clean validate dev-up dev-down uc-init uc-ui-source seed-source-data wait-for-uc spark-smoke ddl-apply wait-for-thrift semantic-validate knowledge-metadata ai-search cost-triage cost-triage-feedback
 
 UC_HOST ?= http://localhost:8080
 UC_UI_HOST ?= http://localhost:3000
@@ -33,20 +33,39 @@ validate:
 	@echo "Running contract + DQ rule validation..."
 	uv run pytest tests/test_contracts.py -v
 
-# --- Semantic model + NL-to-SQL agent over the Gold tables ---
-# Routed via LiteLLM: set LLM_MODEL (default anthropic/claude-opus-5) + that provider's key
-# (e.g. ANTHROPIC_API_KEY, or LLM_API_BASE for a local Ollama). Needs the docker stack up.
+# --- Validate the semantic model against the physical Gold contracts (offline) ---
 semantic-validate:
 	uv run python -m patient_360.semantic validate
 
-semantic-render:
-	uv run python -m patient_360.semantic render
+# --- Knowledge metadata (semantic + ontology + taxonomy + data contracts) + AI search ---
+# knowledge-metadata builds a local RAG index over all four metadata folders (offline, no key).
+knowledge-metadata:
+	uv run python -m patient_360.knowledge build
 
-semantic-ask:
-	uv run python -m patient_360.semantic ask "$(Q)"
+# ai-search — the entry point: ask an NLP question that reads ALL knowledge (RAG metadata) AND the
+# Gold data (NL->SQL) to answer. Routed via LiteLLM (LLM_MODEL + provider key, e.g. ANTHROPIC_API_KEY)
+# and needs the Spark/Unity Catalog stack up (`make dev-up`).
+#   make ai-search Q="how many living patients are there?"
+ai-search:
+	uv run python -m patient_360.knowledge ask "$(Q)"
 
-semantic-chat:
-	uv run python -m patient_360.semantic chat
+# --- AI workflow: Cost Anomaly Triage Agent (forward-deployed loop over Gold cost) ---
+# Detect (deterministic) -> AI triage real-vs-artifact grounded in knowledge -> alert/suppress.
+# Reads the live unity.gold.* tables the pipeline produced — needs the Spark/Unity Catalog stack
+# up (`make dev-up`). Any LLM via LiteLLM — set LLM_MODEL (default anthropic/claude-opus-5) + key:
+#   LLM_MODEL=gpt-4o OPENAI_API_KEY=...                                  make cost-triage
+#   LLM_MODEL=ollama/qwen2.5-coder LLM_API_BASE=http://localhost:11434  make cost-triage
+# (FIXTURE=1 runs a tiny bundled sample without Spark, for a quick dev smoke.)
+# After triage it INTERACTIVELY asks you to confirm/correct each verdict; your corrections are
+# read back into the AI prompt on the next run (RAG feedback — no retraining). Add REVIEW=0 for CI.
+# Also available as the console script `cost-triage` and `python -m ai_workflows.cost_triage`.
+cost-triage:
+	uv run python -m ai_workflows.cost_triage run $(if $(FIXTURE),--fixture,) $(if $(filter 0,$(REVIEW)),--no-review,)
+
+# Non-interactive fallback (CI / Airflow): record a correction without the prompt. VERDICT = real|artifact.
+#   make cost-triage-feedback CLASS=EMERGENCY VERDICT=real NOTE="acute; high per-encounter cost is genuine"
+cost-triage-feedback:
+	uv run python -m ai_workflows.cost_triage feedback --class "$(CLASS)" --correct "$(VERDICT)" --note "$(NOTE)"
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; \

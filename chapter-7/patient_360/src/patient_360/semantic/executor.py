@@ -81,3 +81,5 @@ class SparkGoldExecutor:
         if self._spark is not None:
             self._spark.stop()
             self._spark = None
+
+
