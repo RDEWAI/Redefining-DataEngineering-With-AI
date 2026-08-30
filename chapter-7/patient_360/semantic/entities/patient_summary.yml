@@ -1,0 +1,166 @@
+# Semantic entity: unity.gold.patient_summary
+# Physical contract: contracts/patient_summary.yml  (drift-checked by semantic.validate)
+# sample_values / present_in_data reflect the LIVE Gold data (5,767 rows), not the DMS projection.
+name: patient_summary
+table: unity.gold.patient_summary
+grain: "one row per patient (current SCD2 version only)"
+primary_key: patient_id
+description: >-
+  One row per patient: current demographics plus pre-aggregated clinical roll-ups
+  (active condition / medication counts, allergy flag, encounter recency & count).
+synonyms: [patient, patients, member, demographics, patient profile, people]
+# PHI — do not expose in aggregate answers unless the question is about a specific patient.
+sensitive_columns: [first_name, middle_name, last_name, prefix, suffix, address, zip]
+
+dimensions:
+  - name: patient_id
+    column: patient_id
+    type: string
+    description: "Patient UUID (natural key)."
+    synonyms: [patient identifier, id]
+  - name: first_name
+    column: first_name
+    type: string
+    description: "Given name (PHI)."
+    sensitive: true
+  - name: last_name
+    column: last_name
+    type: string
+    description: "Family name (PHI)."
+    sensitive: true
+  - name: patient_status
+    column: patient_status
+    type: string
+    description: "Living status of the patient."
+    synonyms: [living status, alive or deceased, vital status]
+    sample_values: [ALIVE, DECEASED]
+  - name: gender
+    column: gender
+    type: string
+    description: "Administrative gender."
+    synonyms: [sex]
+    sample_values: [MALE, FEMALE]
+    notes: ["Domain also allows OTHER / UNKNOWN; not present in the current load."]
+  - name: race
+    column: race
+    type: string
+    description: "Race category (uppercase, abbreviated)."
+    sample_values: [WHITE, BLACK, ASIAN, HAWAIIAN, NATIVE, OTHER]
+  - name: ethnicity
+    column: ethnicity
+    type: string
+    description: "Ethnicity category."
+    sample_values: [HISPANIC, NONHISPANIC]
+  - name: marital_status
+    column: marital_status
+    type: string
+    description: "Marital status as a single-letter code (may be null)."
+    synonyms: [marriage status]
+    sample_values: [M, S, D, W]
+    notes:
+      - "Single-letter CODES, not words: M=Married, S=Single, D=Divorced, W=Widowed. Null = unknown."
+      - "To filter 'married patients' use marital_status = 'M' (see glossary)."
+  - name: calculated_age
+    column: calculated_age
+    type: int
+    description: "Age in years as of the current date. Observed range 1-112."
+    synonyms: [age, how old]
+  - name: birth_date
+    column: birth_date
+    type: date
+    description: "Date of birth. Observed 1914-12-19 .. 2025-10-10."
+    synonyms: [dob, date of birth]
+  - name: death_date
+    column: death_date
+    type: date
+    description: "Date of death; null for living patients (767 non-null in current load)."
+  - name: city
+    column: city
+    type: string
+    description: "Residential city."
+  - name: state
+    column: state
+    type: string
+    description: "Residential state."
+  - name: zip
+    column: zip
+    type: string
+    description: "Residential ZIP code (PHI)."
+    sensitive: true
+  - name: has_allergy
+    column: has_allergy
+    type: boolean
+    description: "TRUE when the patient has one or more recorded allergies."
+    synonyms: [allergic, has allergies]
+    sample_values: ["true", "false"]
+  - name: has_30day_readmission_history
+    column: has_30day_readmission_history
+    type: boolean
+    description: "TRUE if the patient has any 30-day readmission in history."
+    synonyms: [readmitted, readmission]
+    sample_values: ["false"]
+    present_in_data: false
+    notes: ["All FALSE in the current load — no readmissions present."]
+  - name: recent_encounter_class
+    column: recent_encounter_class
+    type: string
+    description: "Class of the patient's most recent encounter; null when the patient has no encounter."
+    sample_values: [OUTPATIENT, EMERGENCY, WELLNESS]
+    notes: ["Null for patients with no encounters (majority in current load)."]
+  - name: recent_encounter_date
+    column: recent_encounter_date
+    type: date
+    description: "Date of the patient's most recent encounter (null if none)."
+
+measures:
+  - name: patient_count
+    agg: count_distinct
+    expr: patient_id
+    description: "Number of distinct patients."
+    synonyms: [how many patients, number of patients, patient volume, headcount]
+  - name: avg_age
+    agg: avg
+    expr: calculated_age
+    description: "Average patient age in years."
+    synonyms: [mean age, average age]
+  - name: patients_with_allergy
+    agg: custom
+    expr: "SUM(CASE WHEN has_allergy THEN 1 ELSE 0 END)"
+    description: "Count of patients with at least one recorded allergy."
+  - name: readmission_patient_rate
+    agg: custom
+    expr: "AVG(CASE WHEN has_30day_readmission_history THEN 1 ELSE 0 END)"
+    description: "Fraction of patients with a 30-day readmission in history (0..1)."
+    present_in_data: false
+    notes: ["Evaluates to 0 in the current load (no readmissions)."]
+  - name: total_active_conditions
+    agg: sum
+    expr: active_condition_count
+    description: "Total active conditions across patients (per-patient count is 0-5)."
+  - name: avg_active_conditions
+    agg: avg
+    expr: active_condition_count
+    description: "Average number of active conditions per patient."
+  - name: total_active_medications
+    agg: sum
+    expr: active_medication_count
+    description: "Total active medications across patients."
+    present_in_data: false
+    notes: ["active_medication_count is 0 for every patient in the current load."]
+  - name: total_encounters
+    agg: sum
+    expr: encounter_count
+    description: "Sum of lifetime encounter counts (per-patient count is 0-2 in current load)."
+  - name: avg_encounters_per_patient
+    agg: avg
+    expr: encounter_count
+    description: "Average lifetime encounters per patient."
+
+notes:
+  - "Full-overwrite current snapshot; no ds partition."
+  - "allergies / conditions / medications are ARRAY<STRUCT> columns (not scalar dimensions).
+     Use size()/explode() to query them. conditions[] and medications[] are ACTIVE-only.
+     medications[] is empty for all patients in the current load."
+  - "active_medication_count, and 30-day readmission history, carry no non-trivial values in the
+     current dataset — prefer patient_summary questions about status, age, gender, race, conditions,
+     allergies, and encounter counts."

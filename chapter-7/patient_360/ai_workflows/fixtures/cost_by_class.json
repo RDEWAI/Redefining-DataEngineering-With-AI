@@ -1,0 +1,6 @@
+[
+  {"encounter_class": "WELLNESS",   "n_rows": 120, "n_distinct": 120, "total_cost": 18000.0, "avg_cost": 150.0},
+  {"encounter_class": "OUTPATIENT", "n_rows": 100, "n_distinct": 100, "total_cost": 24000.0, "avg_cost": 240.0},
+  {"encounter_class": "EMERGENCY",  "n_rows": 80,  "n_distinct": 60,  "total_cost": 54000.0, "avg_cost": 900.0},
+  {"encounter_class": "INPATIENT",  "n_rows": 200, "n_distinct": 100, "total_cost": 60000.0, "avg_cost": 300.0}
+]

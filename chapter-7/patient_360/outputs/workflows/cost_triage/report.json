@@ -1,0 +1,11 @@
+[
+  {
+    "encounter_class": "EMERGENCY",
+    "group": "Acute",
+    "avg_cost": 1742.51,
+    "zscore": 1.41,
+    "fanout_ratio": 1.0,
+    "n_distinct": 6,
+    "signature": "EMERGENCY:1743"
+  }
+]

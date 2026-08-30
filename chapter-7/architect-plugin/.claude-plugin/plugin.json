@@ -1,0 +1,9 @@
+{
+  "name": "architect-plugin",
+  "version": "1.0.0",
+  "description": "Data Architect Agent for generating, updating, and validating High-Level Design (HLD) documents",
+  "author": {
+    "name": "RDEWAI"
+  },
+  "keywords": ["data-architect", "hld", "high-level-design", "medallion", "data-platform", "lakehouse"]
+}

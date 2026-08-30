@@ -1,0 +1,149 @@
+# STORY-01-010: SE runner & reconciliation modules — fail-closed implementation
+
+| Field | Value |
+|-------|-------|
+| **Epic** | EPIC-01: Foundation & Infrastructure |
+| **Story Type** | build |
+| **Priority** | P1 |
+| **Story Points** | 5 |
+| **Sprint** | 3 |
+| **Dependencies** | STORY-01-002 |
+| **Status** | In Progress |
+
+<!--
+  Story Type vocabulary (required):
+    - build                    → primary construction work
+    - performance-optimization → layer-scoped perf tuning (LLD §6); runs BEFORE integration-test
+    - integration-test         → triggers layer DAG on local Airflow against Unity Catalog OSS local; validates landed data in UC local
+    - deploy-validation        → layer-scoped DDL/DAG/config deploy smoke (optional; only when LLD prescribes it)
+    - observability            → layer-scoped lineage/metrics/dashboard wiring
+    - release                  → cross-layer promotion/rollback (trailing epic only)
+    - hardening                → cross-layer security/docs/maintenance (trailing epic only)
+    - runtime-bootstrap        → JDK/Docker/UC catalog/source-data prerequisites (≥1 per backlog, typically EPIC-01)
+-->
+
+
+## User Story
+
+As a data engineer, I want a shipped `se_runner.py` and `reconciliation.py` so that bronze ingestion enforces inline DQ on every load and reconciliation can verify SE run-evidence — making the single-state fail-closed import contract operationally real (LLD §8.6 + §13 Decision 14).
+
+## Description
+
+Implement `src/patient_360/utils/se_runner.py` (LLD §2.3) wrapping `WrappedDataFrameWriter(...).with_expectations(...)` with `se.enable.error.table=true` and `se.enable.stats.table=true` per LLD §8.2-§8.3. SE STATS and ERROR tables are per-table MANAGED Unity Catalog tables addressed by 3-part FQN (`unity.<schema>.<table>_stats` / `_error`), SE-created via `saveAsTable` on UC 0.5.0 — NOT path-based and NOT a shared `bronze_se_stats` name (LLD §13 Decision 12, corrected 2026-06-20). Map `--env` to SE `dq_env` (DEV→DEV, STAGING→QA, PROD→PROD). Also implement `src/patient_360/utils/reconciliation.py` per LLD §2.3 / §5.5 with the SE-RUN-EVIDENCE query from §8.6.1. The diagnostic `try/except ImportError` wrapper in `ingestion_runner.py` (STORY-01-009) stays in place — it is part of the single-state fail-closed contract per LLD §8.6 + §13 Decision 14 (Resolved 2026-05-11). This story verifies that with `se_runner.py` present the import succeeds and `run_dq` runs inline, and that with `se_runner` removed the runner still re-raises ImportError (fail-closed).
+
+## Acceptance Criteria
+
+
+- [x] `se_runner.py` exists and exposes `run_dq(df, table, env, action_if_failed, dq_rules_dir)` [LLD §2.3]
+
+- [x] `run_dq` calls `WrappedDataFrameWriter(...).with_expectations(...)` with `se.enable.error.table=true` and `se.enable.stats.table=true` [LLD §8.2, §8.3]
+
+- [x] `run_dq` maps `env=DEV→dq_env=DEV`, `STAGING→QA`, `PROD→PROD` [LLD §2.3, §5.4]
+
+- [x] `ingestion_runner.py` contains exactly one `try / except ImportError` around the `se_runner` import that logs at ERROR (`se_runner not available — fail-closed; deployment is broken: <error>`) and re-raises — and does NOT contain any `WARNING`-level soft-degradation branch [LLD §8.6]
+
+- [x] With `se_runner` removed from the module path, ingestion fails closed: unit test asserts ImportError propagates out of `ingestion_runner.py` [LLD §8.6, §13 Decision 14]
+
+- [x] `reconciliation.py` iterates each Bronze table's per-table MANAGED stats table `unity.bronze.synthea_<table>_stats` and matches on `meta_dq_run_id == run_id`, failing-closed when the aggregate count = 0 [LLD §8.6.1, §5.5]
+
+- [ ] SE STATS and ERROR tables are written as **per-table MANAGED Unity Catalog tables** by a 3-part FQN — `unity.<schema>.<table>_stats` and `unity.<schema>.<table>_error` — derived from the FQN `target_table` (`stats_table=f"{se_target_table}_stats"`; SE derives `_error` as `f"{target_table}_error"`). Both writers are MANAGED (`format("delta")` with **NO** `.option("path", ...)`); SE creates them via `saveAsTable` on first run as `catalogManaged` tables in the schema `storage_root` (set by `scripts/uc_init.py`) — SE-owned, NOT pre-created by the `ddl/migrations/*.sql` migrations. `se_runner.py` must **NOT** write either to a single shared `bronze_se_stats` / `bronze_se_error` name (use the per-table FQN `unity.bronze.synthea_<table>_stats` / `_error` instead), and must **NOT** write either to a path-based `warehouse/{env}/_se/<table>/{stats,errors}` location. Valid on **UC 0.5.0** + delta-spark 4.1 coordinated commits — the earlier path-based `.option("path", ...)` design (which assumed `UCSingleCatalog` rejects `saveAsTable`-create) is **withdrawn**: that was a misdiagnosis of an empty-namespace `fullTableNameForApi` defect on bare names (AIOOBE on a length-0 namespace under spark-submit), NOT an RTAS refusal; the FQN `target_table` avoids it [LLD §2.3 (v1.20), §8.2, §8.3, §13 Decision 12 (corrected 2026-06-20)]
+
+
+## Technical Notes
+
+- **Upstream references**: LLD §2.3 (v1.20), §5.4, §5.5, §8.2, §8.3, §8.6, §8.6.1, §13 Decision 12 (corrected 2026-06-20), §13 Decision 14, §13 Decision 15
+- **Implementation hints**: Use `spark-expectations>=2.10`. Address the SE STATS and ERROR tables as per-table MANAGED Unity Catalog tables by 3-part FQN — pass `stats_table=f"{se_target_table}_stats"` (→ `unity.<schema>.<table>_stats`); SE derives `_error` as `f"{target_table}_error"` (→ `unity.<schema>.<table>_error`). Both are MANAGED `format("delta")` writers with **NO** `.option("path", ...)`; SE creates them via `saveAsTable` as `catalogManaged` tables in the schema `storage_root` (set by `scripts/uc_init.py`) on first run. Do **NOT** resolve them to filesystem paths, do **NOT** use a shared `bronze_se_stats` name, and do **NOT** register them with `CREATE TABLE ... USING DELTA LOCATION`. Valid on **UC 0.5.0** — the earlier path-based `.option("path", ...)` workaround is withdrawn (it misdiagnosed an empty-namespace `fullTableNameForApi` defect on bare names as an RTAS refusal; the FQN `target_table` avoids the AIOOBE). The diagnostic `try/except ImportError` block in `ingestion_runner.py` (STORY-01-009) MUST stay in place; verify it logs at ERROR and re-raises — no `WARNING`-level branch.
+
+## Estimation Support
+
+| Artifact | Sections Covered |
+|----------|-----------------|
+
+| LLD | §2.3, §5.4, §5.5, §8.2-§8.6.1, §13 Decision 14 |
+
+| DQS | §2-4 SE rules |
+
+
+## Testing
+
+| Coverage | What | How |
+|----------|------|-----|
+
+| Unit | se_runner contract + dq_env mapping | pytest patient_360/tests/utils/test_se_runner_unit.py |
+
+| Unit | ingestion_runner without soft-import fails-closed on missing SE | pytest patient_360/tests/bronze/test_ingestion_runner_failclosed_unit.py |
+
+| Integration | SE run-evidence reconciliation query passes for populated stats | pytest -m integration patient_360/tests/utils/test_reconciliation_integration.py |
+
+
+
+## Verification
+
+```yaml
+AC1:
+  - file_exists: "patient_360/src/patient_360/utils/se_runner.py"
+  - grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "def run_dq"}
+AC2:
+  - grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "with_expectations"}
+  - grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "enable.error.table"}
+AC3:
+  - grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "STAGING.*QA|dq_env"}
+AC4:
+  - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "except ImportError"}
+  - grep: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "se_runner not available"}
+  - grep_absent: {file: "patient_360/src/patient_360/bronze/ingestion_runner.py", pattern: "WARNING.*se_runner"}
+AC5:
+  - pytest: {node: "patient_360/tests/bronze/test_ingestion_runner_failclosed_unit.py"}
+AC6:
+  - file_exists: "patient_360/src/patient_360/utils/reconciliation.py"
+  - grep: {file: "patient_360/src/patient_360/utils/reconciliation.py", pattern: "_stats|meta_dq_run_id"}
+AC7:
+  - grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "stats_table\\s*=\\s*f?['\"]?\\{?[a-zA-Z_]*target_table\\}?_stats"}
+  - grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "unity\\.(bronze|silver|gold)"}
+  - grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "_stats"}
+  - grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "_error"}
+  - forbidden_grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "['\"]bronze_se_stats['\"]", reason: "SE stats/error are per-table MANAGED UC tables unity.<schema>.<table>_stats|_error by 3-part FQN — a single shared bronze_se_stats name collides on per-table schema (LLD §2.3 v1.20, §13 Decision 12 corrected 2026-06-20)"}
+  - forbidden_grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "_se/\\{?table", reason: "path-based warehouse/{env}/_se/<table>/{stats,errors} was a UC-0.4.0 workaround — retired; on UC 0.5.0 SE audit tables are MANAGED UC tables by FQN (LLD §2.3 v1.20, §13 Decision 12 corrected 2026-06-20)"}
+  - forbidden_grep: {file: "patient_360/src/patient_360/utils/se_runner.py", pattern: "\\.option\\(\\s*['\"]path['\"]", reason: "MANAGED SE audit-table writers must NOT pass .option('path', ...) — they are catalog-managed by FQN (LLD §2.3 v1.20, §13 Decision 12 corrected 2026-06-20)"}
+```
+
+
+## How to Test (User)
+
+### Prerequisites
+
+
+- STORY-01-002 done — cross-layer utilities (config, logging) in place
+
+- STORY-01-006 done — local stack up and SE smoke green
+
+
+### Steps
+
+
+1. `cd patient_360 && uv run pytest tests/utils/test_se_runner_unit.py tests/bronze/test_ingestion_runner_failclosed_unit.py -v`
+
+2. `uv run pytest -m integration tests/utils/test_reconciliation_integration.py -v`
+
+3. `grep -E 'except ImportError|se_runner not available' src/patient_360/bronze/ingestion_runner.py` — confirms diagnostic try/except is in place
+
+4. `grep -E 'WARNING.*se_runner' src/patient_360/bronze/ingestion_runner.py && echo 'FAIL: soft-degradation branch present' || echo 'fail-closed contract: OK'`
+
+
+### Expected outcome
+
+
+- All unit and integration tests pass
+
+- Step 3 prints both `except ImportError` and `se_runner not available` lines
+
+- Step 4 prints `fail-closed contract: OK`
+
+
+## Documentation Updates
+
+
+- [x] Update patient_360/README.md § "Data Quality" with the fail-closed SE behavior and the SE run-evidence gate
+
+- [x] Update patient_360/docs/runbooks/bootstrap.md to document the single-state fail-closed import contract (no soft-degradation path; missing-SE is a deploy error)
+

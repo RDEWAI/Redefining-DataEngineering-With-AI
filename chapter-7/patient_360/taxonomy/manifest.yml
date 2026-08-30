@@ -1,0 +1,23 @@
+# Taxonomy — hierarchical (parent -> child) classification of ontology concepts.
+#
+# Taxonomy is ontology inheritance: a parent concept and child concepts that inherit its
+# attributes and add their own. It lets an AI agent filter by CLASSIFICATION first, then drill
+# into a specific concept — and it enforces consistent granularity so lower-grain (drug) and
+# higher-grain (patient) data are only joined through adjacent levels.
+#
+# Trees are auto-discovered from taxonomy/*.yml (excluding this manifest).
+name: patient_360_taxonomy
+version: "1.0"
+domain: healthcare
+description: >-
+  Classification hierarchies for the Patient 360 ontology: the Medication tree (Prescription vs
+  OTC, and the ingredient granularity ladder) and the Encounter-class tree (acute vs ambulatory).
+purpose:
+  - "Classify-then-drill: reason about the category before the specific entity."
+  - "Granularity control: every relation connects adjacent levels at the same grain."
+  - "Drift mitigation: new child concepts inherit the parent without retraining (consumed via RAG)."
+governance:
+  owner: "Patient 360 Knowledge Engineering (centralized)"
+  watchouts:
+    - "Avoid duplicate/competing classifications across teams — one tree per concept."
+    - "Do not mix aggregated and detail grains without an intervening level (inconsistent granularity)."

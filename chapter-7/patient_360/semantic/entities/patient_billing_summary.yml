@@ -1,0 +1,101 @@
+# Semantic entity: unity.gold.patient_billing_summary
+# Physical contract: contracts/patient_billing_summary.yml
+# sample_values / present_in_data reflect the LIVE Gold data (300 rows).
+name: patient_billing_summary
+table: unity.gold.patient_billing_summary
+grain: "one row per encounter (claims left-joined; claim fan-out possible)"
+primary_key: encounter_id
+description: >-
+  Encounter-grain financials: encounter cost fields plus (when present) claim and payer
+  attributes. This is the ONLY Gold table that carries cost columns (DRD 5.5 isolation).
+synonyms: [billing, claims, cost, costs, financials, charges, revenue]
+sensitive_columns: [first_name, last_name]
+
+dimensions:
+  - name: encounter_id
+    column: encounter_id
+    type: string
+    description: "Encounter UUID (natural key); joins to patient_clinical_history."
+  - name: patient_id
+    column: patient_id
+    type: string
+    description: "Patient UUID; joins to patient_summary."
+  - name: encounter_class
+    column: encounter_class
+    type: string
+    description: "Encounter class."
+    synonyms: [visit type]
+    sample_values: [OUTPATIENT, EMERGENCY, WELLNESS]
+  - name: provider_name
+    column: provider_name
+    type: string
+    description: "Provider name for the encounter."
+    synonyms: [doctor, physician, provider]
+  - name: service_date
+    column: service_date
+    type: date
+    description: "Claim service date (from the claim; null when there is no claim)."
+    present_in_data: false
+    notes: ["Null in the current load (no claim rows joined)."]
+  - name: claim_status
+    column: claim_status
+    type: string
+    description: "Primary claim status."
+    present_in_data: false
+    notes: ["Null for every row in the current load."]
+  - name: primary_payer_name
+    column: primary_payer_name
+    type: string
+    description: "Primary payer/insurer name."
+    synonyms: [insurer, payer, insurance]
+    present_in_data: false
+    notes: ["Null for every row in the current load — payer analytics return nothing."]
+  - name: secondary_payer_name
+    column: secondary_payer_name
+    type: string
+    description: "Secondary payer/insurer name."
+    present_in_data: false
+    notes: ["Null for every row in the current load."]
+
+measures:
+  - name: encounter_count
+    agg: count_distinct
+    expr: encounter_id
+    description: "Number of distinct encounters (use DISTINCT to avoid claim fan-out double counting)."
+  - name: total_claim_cost
+    agg: sum
+    expr: total_claim_cost
+    description: "Total claim cost. Per-row observed 79.26..1453.84."
+    synonyms: [total cost, total charges, total spend]
+  - name: total_base_encounter_cost
+    agg: sum
+    expr: base_encounter_cost
+    description: "Total base encounter cost. Per-row observed 51.23..498.97."
+  - name: total_payer_coverage
+    agg: sum
+    expr: payer_coverage
+    description: "Total amount covered by payers. Per-row observed 17.95..436.85."
+    synonyms: [insurance paid, covered amount]
+  - name: total_visit_cost
+    agg: sum
+    expr: total_visit_cost
+    description: "Total visit cost (base + procedures + medications, computed in Silver)."
+  - name: avg_claim_cost
+    agg: avg
+    expr: total_claim_cost
+    description: "Average claim cost per encounter."
+  - name: total_outstanding
+    agg: sum
+    expr: outstanding_amount
+    description: "Total outstanding = primary + secondary + patient responsibility buckets."
+    synonyms: [outstanding, unpaid, balance due]
+    present_in_data: false
+    notes: ["outstanding_amount is 0 for every row in the current load."]
+
+notes:
+  - "Full-overwrite current snapshot; no ds partition."
+  - "outstanding_amount SUMS three buckets (primary + secondary + patient), not just patient."
+  - "Grain is per encounter but claims are LEFT-joined on appointment_id = encounter_id; multiple
+     claims per encounter can fan out rows. For encounter-level counts use COUNT(DISTINCT encounter_id)."
+  - "In the current load only the cost fields carry values; claim_id, payer names, claim_status,
+     service_date and outstanding_amount are all null/zero."

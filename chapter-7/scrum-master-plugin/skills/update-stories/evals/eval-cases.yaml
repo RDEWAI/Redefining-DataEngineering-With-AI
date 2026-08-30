@@ -1,0 +1,45 @@
+skill: update-stories
+version: "1.0"
+cases:
+  - id: TC-001
+    name: "Version increment on update"
+    description: "Updated backlog must have incremented version number"
+    inputs:
+      existing: "outputs/stories/v1"
+      changes: "Updated LLD with new DAG tasks"
+    expected:
+      - type: content_contains
+        patterns: ["1.1"]
+    success_criteria: "Version incremented from 1.0 to 1.1"
+
+  - id: TC-002
+    name: "Change log entry added"
+    description: "Version History section must have a new entry"
+    inputs:
+      existing: "outputs/stories/v1"
+      changes: "New stories added"
+    expected:
+      - type: content_contains
+        patterns: ["Version History"]
+    success_criteria: "Change log entry documents what was updated"
+
+  - id: TC-003
+    name: "Existing stories preserved"
+    description: "Unchanged stories must not be modified"
+    inputs:
+      existing: "outputs/stories/v1"
+      changes: "Add one new story to EPIC-03"
+    expected:
+      - type: content_preserved
+        files: ["EPIC-01/STORY-01-001-*.md"]
+    success_criteria: "Unaffected stories remain unchanged"
+
+  - id: TC-004
+    name: "Validation passes after update"
+    description: "Updated backlog must pass validation"
+    inputs:
+      existing: "outputs/stories/v1"
+    expected:
+      - type: validation_pass
+        description: "validate-stories reports 0 CRITICAL issues"
+    success_criteria: "No critical validation issues after update"

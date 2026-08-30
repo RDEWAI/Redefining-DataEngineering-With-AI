@@ -1,0 +1,38 @@
+# {{cookiecutter.project_name}} Airflow image (LLD §6.1 local_executor_mode = in-airflow-local[*]).
+# Bakes JDK 17 + PySpark 4.1.1 + Delta + Spark Expectations into the worker
+# image so SparkSubmitOperator can run with `--master local[2]` (no sidecar
+# Spark cluster). Versions match the pins in inputs/code/v1/LIBRARIES.md.
+FROM apache/airflow:3.2.1-python3.11
+
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends openjdk-17-jre-headless procps \
+ && rm -rf /var/lib/apt/lists/*
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
+
+USER airflow
+# spark-expectations>=2.10.0 is MANDATORY — earlier versions don't support
+# the YAML rule format our DQ generator emits (see LIBRARIES.md note).
+RUN pip install --no-cache-dir \
+        "apache-airflow-providers-apache-spark==6.0.1" \
+        "pyspark==4.1.1" \
+        "delta-spark==4.3.0" \
+        "spark-expectations>=2.10.0" \
+        "pyyaml" \
+        "duckdb"
+
+# Build-time Ivy/Maven JAR pre-resolution (LLD §6.1). Warm /home/airflow/.ivy2
+# with the three Spark JAR coordinates so runtime `spark-submit --packages`
+# resolves OFFLINE from a populated cache. Without this, the Bronze TaskGroup's
+# parallel SparkSubmit tasks (max_active_tasks STAGING=8 / PROD=16 per §4.1)
+# resolve the same coordinates into a COLD ~/.ivy2 concurrently and corrupt
+# each other ("unresolved dependency ... not found / download failed").
+# Keep this coordinate list IN LOCKSTEP with the §6.1 pins,
+# inputs/code/v1/LIBRARIES.md, and DEFAULT_PACKAGES in
+# src/{{cookiecutter.project_name}}/bronze/spark_submit_wrapper.py.
+RUN printf 'print("ivy warmup complete")\n' > /tmp/ivy_warmup.py \
+ && spark-submit \
+        --packages "io.delta:delta-spark_2.13:4.3.0,io.unitycatalog:unitycatalog-spark_4.1_2.13:0.5.0,io.openlineage:openlineage-spark_2.13:1.50.0" \
+        --master "local[1]" \
+        /tmp/ivy_warmup.py \
+ && rm -f /tmp/ivy_warmup.py

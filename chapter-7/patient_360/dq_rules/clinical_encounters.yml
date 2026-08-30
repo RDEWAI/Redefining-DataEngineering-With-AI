@@ -1,0 +1,195 @@
+product_id: patient-360
+dq_env:
+  DEV:
+    table_name: unity.silver.clinical_encounters
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 0
+    priority: medium
+  QA:
+    table_name: unity.silver.clinical_encounters
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    priority: medium
+  PROD:
+    table_name: unity.silver.clinical_encounters
+    action_if_failed: fail
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    priority: high
+rules:
+- rule: DQ_FLD_060
+  rule_type: row_dq
+  column_name: encounter_id
+  expectation: encounter_id IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on encounter_id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_061
+  rule_type: row_dq
+  column_name: patient_id
+  expectation: patient_id IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on patient_id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_062
+  rule_type: row_dq
+  column_name: encounter_class
+  expectation: encounter_class IS NULL OR encounter_class IN ('AMBULATORY','INPATIENT','EMERGENCY','OUTPATIENT','WELLNESS','URGENTCARE','HOME','HOSPICE','SNF','VIRTUAL','UNMAPPED')
+  action_if_failed: ignore
+  tag: field_validation
+  description: ENUM on encounter_class
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_FLD_063
+  rule_type: row_dq
+  column_name: start_date
+  expectation: CAST(start_date AS DATE) >= '1900-01-01' AND CAST(start_date AS DATE) <= CURRENT_DATE
+  action_if_failed: fail
+  tag: field_validation
+  description: RANGE on start_date
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_064
+  rule_type: row_dq
+  column_name: base_encounter_cost
+  expectation: base_encounter_cost IS NOT NULL
+  action_if_failed: ignore
+  tag: field_validation
+  description: NOT NULL on base_encounter_cost
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_FLD_065
+  rule_type: row_dq
+  column_name: base_encounter_cost
+  expectation: base_encounter_cost >= 0
+  action_if_failed: ignore
+  tag: field_validation
+  description: RANGE on base_encounter_cost
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium
+- rule: DQ_REF_001
+  rule_type: query_dq
+  column_name: ''
+  expectation: (SELECT COUNT(*) FROM clinical_encounters_view c LEFT JOIN clinical_patients p ON c.patient_id = p.patient_id WHERE p.patient_id IS NULL) = 0
+  action_if_failed: ignore
+  tag: referential_integrity
+  description: 'FK check: clinical_encounters.patient_id -> clinical_patients.patient_id'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: true
+  priority: high
+- rule: DQ_REF_002
+  rule_type: query_dq
+  column_name: ''
+  expectation: (SELECT COUNT(*) FROM clinical_encounters_view c LEFT JOIN reference_organizations p ON c.organization_id = p.organization_id WHERE p.organization_id IS NULL) = 0
+  action_if_failed: ignore
+  tag: referential_integrity
+  description: 'FK check: clinical_encounters.organization_id -> reference_organizations.organization_id'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: true
+  priority: high
+- rule: DQ_REF_003
+  rule_type: query_dq
+  column_name: ''
+  expectation: (SELECT COUNT(*) FROM clinical_encounters_view c LEFT JOIN reference_providers p ON c.provider_id = p.provider_id WHERE p.provider_id IS NULL) = 0
+  action_if_failed: ignore
+  tag: referential_integrity
+  description: 'FK check: clinical_encounters.provider_id -> reference_providers.provider_id'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: true
+  priority: high
+- rule: DQ_STA_015
+  rule_type: agg_dq
+  column_name: ''
+  expectation: count(*) > 333721 and count(*) < 347342
+  action_if_failed: ignore
+  tag: statistical_distribution
+  description: 'Statistical check: Row Count baseline=340,532'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: true
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_STA_024
+  rule_type: agg_dq
+  column_name: ''
+  expectation: count(*) > 0
+  action_if_failed: ignore
+  tag: statistical_distribution
+  description: 'Statistical check: reason_code baseline=36.5%'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: true
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: medium

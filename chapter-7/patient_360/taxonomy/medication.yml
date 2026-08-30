@@ -1,0 +1,64 @@
+# Taxonomy: Medication  (ontology inheritance for the Medication entity)
+name: MedicationTaxonomy
+root: Medication
+entity: Medication                      # parent ontology entity (ontology/entities/medication.yml)
+classification_basis: "regulatory / dispensing class"
+description: >-
+  Medication is the parent concept; PrescriptionMedication and OTCMedication are child concepts
+  that inherit Medication's attributes (code, name, dosage, route) and add their own. Classify a
+  drug into a child first, then apply child-specific attributes.
+
+# Inheritance tree. `inherits` = attributes carried down from the parent; `adds` = new attributes.
+nodes:
+  - concept: Medication
+    parent: null
+    level: 0
+    maps_to: unity.gold.patient_billing_summary
+    definition: "Any therapeutic drug prescribed for or taken by a patient."
+    attributes: [hasCode, hasName, hasDosage, hasRoute]
+
+  - concept: PrescriptionMedication
+    parent: Medication
+    level: 1
+    criteria: "Requires a prescriber's order (an rxNumber / prescription exists)."
+    inherits: [hasCode, hasName, hasDosage, hasRoute]
+    adds:
+      - name: hasRxNumber
+        datatype: string
+        identifier: true
+        meaning: "Prescription order number."
+      - name: hasPrescriber
+        datatype: string
+        meaning: "Ordering provider."
+      - name: hasRefills
+        datatype: int
+        meaning: "Authorised refills remaining."
+    synonyms: [prescription drug, Rx, prescribed medication]
+
+  - concept: OTCMedication
+    parent: Medication
+    level: 1
+    criteria: "Available without a prescription (over-the-counter)."
+    inherits: [hasCode, hasName, hasDosage, hasRoute]
+    adds:
+      - name: hasUpc
+        datatype: string
+        identifier: true
+        meaning: "Retail UPC/barcode."
+      - name: hasBrand
+        datatype: string
+        meaning: "Consumer brand name."
+      - name: hasRetailer
+        datatype: string
+        meaning: "Point of sale / retailer."
+    synonyms: [over-the-counter, OTC, non-prescription]
+
+# Granularity ladder (the acetaminophen example): keeps a patient-level query from pulling
+# drug-detail grain directly. Reason down one adjacent level at a time.
+granularity_ladder:
+  - "Patient  -> hasPrescription -> Prescription"
+  - "Prescription -> prescribes -> Drug          (e.g. Tylenol, Ibuprofen)"
+  - "Drug -> contains -> ActiveIngredient         (e.g. acetaminophen, ibuprofen)"
+usage_note: >-
+  For 'which patients take a drug containing acetaminophen', filter at the ActiveIngredient level
+  and join UP to Patient — return patient-grain rows, not the drug detail.

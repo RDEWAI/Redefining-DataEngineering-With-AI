@@ -1,0 +1,95 @@
+table: reference_organizations
+layer: silver
+domain: reference
+schema:
+- name: organization_id
+  type: string
+  nullable: false
+  description: "Organization UUID \u2014 natural key"
+- name: organization_name
+  type: string
+  nullable: true
+  description: "Organization name \u2014 SCD Type 2 tracked"
+- name: address
+  type: string
+  nullable: true
+  description: "Street address \u2014 SCD Type 2 tracked"
+- name: city
+  type: string
+  nullable: true
+  description: City
+- name: state
+  type: string
+  nullable: true
+  description: State abbreviation
+- name: zip
+  type: string
+  nullable: true
+  description: ZIP code
+- name: lat
+  type: decimal(9,6)
+  nullable: true
+  description: "Latitude \u2014 cast from DOUBLE"
+- name: lon
+  type: decimal(9,6)
+  nullable: true
+  description: "Longitude \u2014 cast from DOUBLE"
+- name: phone
+  type: string
+  nullable: true
+  description: Phone number
+- name: revenue
+  type: decimal(14,2)
+  nullable: true
+  description: "Annual revenue \u2014 cast from DOUBLE [STM v3]"
+- name: utilization
+  type: integer
+  nullable: true
+  description: Utilization count
+- name: effective_from
+  type: date
+  nullable: false
+  description: "SCD2 \u2014 row version start date"
+- name: effective_to
+  type: date
+  nullable: false
+  description: "SCD2 \u2014 row version end date (9999-12-31 for current version)"
+- name: is_current
+  type: boolean
+  nullable: false
+  description: "SCD2 \u2014 TRUE for the active version"
+- name: _record_hash
+  type: string
+  nullable: false
+  description: "SHA-256 hash of SCD2-tracked columns \u2014 change detection"
+- name: _ingested_at
+  type: timestamp
+  nullable: false
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: string
+  nullable: false
+  description: Pipeline run identifier
+owner: Patient 360 Data Engineering
+dms_section: "DMS \xA73.11 reference_organizations"
+primary_key:
+- organization_id
+- effective_from
+partition_by: none
+write_strategy: Delta MERGE INTO on organization_id (SCD Type 2)
+ddl_path: ddl/migrations/20260620_211_reference_organizations.sql
+dq_path: dq_rules/reference_organizations.yml
+description: "Reference data for healthcare facilities with SCD Type 2 history tracking.\
+  \ Synthea organizations source carries no PHI columns; the projection selects only\
+  \ DMS \xA73.11 columns so no non-DMS column can leak (NFR-6)."
+tags:
+- silver
+- reference
+- scd2
+- patient_360
+scd2:
+  natural_keys:
+  - organization_id
+  hash_columns:
+  - organization_name
+  - address

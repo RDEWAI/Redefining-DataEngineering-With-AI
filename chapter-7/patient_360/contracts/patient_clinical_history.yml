@@ -1,0 +1,87 @@
+table: patient_clinical_history
+layer: gold
+db_schema: gold
+domain: analytics
+dms_section: "DMS \xA74"
+ddl_path: ddl/migrations/20260620_302_patient_clinical_history.sql
+dq_path: dq_rules/patient_clinical_history.yml
+owner: Patient 360 Data Engineering
+description: "Gold consumer table patient_clinical_history; column contract per DMS\
+  \ \xA74 (one row per encounter per patient; current SCD2 dimension versions only)."
+tags:
+- gold
+- analytics
+- patient_360
+schema:
+- name: encounter_id
+  type: string
+  nullable: false
+- name: patient_id
+  type: string
+  nullable: false
+- name: first_name
+  type: string
+  nullable: false
+- name: last_name
+  type: string
+  nullable: false
+- name: birth_date
+  type: date
+  nullable: false
+- name: encounter_class
+  type: string
+  nullable: true
+- name: encounter_description
+  type: string
+  nullable: true
+- name: start_date
+  type: timestamp
+  nullable: false
+- name: stop_date
+  type: timestamp
+  nullable: true
+- name: encounter_duration_hours
+  type: decimal(10,2)
+  nullable: true
+- name: los_days
+  type: int
+  nullable: true
+- name: is_30_day_readmission
+  type: boolean
+  nullable: false
+- name: provider_id
+  type: string
+  nullable: true
+- name: provider_name
+  type: string
+  nullable: true
+- name: organization_id
+  type: string
+  nullable: true
+- name: organization_name
+  type: string
+  nullable: true
+- name: reason_description
+  type: string
+  nullable: true
+- name: condition_count
+  type: int
+  nullable: false
+- name: procedure_count
+  type: int
+  nullable: false
+- name: medication_count
+  type: int
+  nullable: false
+- name: observation_count
+  type: int
+  nullable: false
+- name: immunization_count
+  type: int
+  nullable: false
+- name: active_careplan_count
+  type: int
+  nullable: false
+- name: _ingested_at
+  type: timestamp
+  nullable: false

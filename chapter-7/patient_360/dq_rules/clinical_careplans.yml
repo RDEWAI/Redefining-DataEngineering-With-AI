@@ -1,0 +1,90 @@
+product_id: patient-360
+dq_env:
+  DEV:
+    table_name: unity.silver.clinical_careplans
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 0
+    priority: medium
+  QA:
+    table_name: unity.silver.clinical_careplans
+    action_if_failed: ignore
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    priority: medium
+  PROD:
+    table_name: unity.silver.clinical_careplans
+    action_if_failed: fail
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2
+    priority: high
+rules:
+- rule: DQ_FLD_091
+  rule_type: row_dq
+  column_name: careplan_id
+  expectation: careplan_id IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on careplan_id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_FLD_092
+  rule_type: row_dq
+  column_name: patient_id
+  expectation: patient_id IS NOT NULL
+  action_if_failed: fail
+  tag: field_validation
+  description: NOT NULL on patient_id
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: false
+  priority: high
+- rule: DQ_REF_015
+  rule_type: query_dq
+  column_name: ''
+  expectation: (SELECT COUNT(*) FROM clinical_careplans_view c LEFT JOIN clinical_patients p ON c.patient_id = p.patient_id WHERE p.patient_id IS NULL) = 0
+  action_if_failed: ignore
+  tag: referential_integrity
+  description: 'FK check: clinical_careplans.patient_id -> clinical_patients.patient_id'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: true
+  priority: high
+- rule: DQ_REF_016
+  rule_type: query_dq
+  column_name: ''
+  expectation: (SELECT COUNT(*) FROM clinical_careplans_view c LEFT JOIN clinical_encounters p ON c.encounter_id = p.encounter_id WHERE p.encounter_id IS NULL) = 0
+  action_if_failed: ignore
+  tag: referential_integrity
+  description: 'FK check: clinical_careplans.encounter_id -> clinical_encounters.encounter_id'
+  enable_for_source_dq_validation: false
+  enable_for_target_dq_validation: true
+  is_active: true
+  enable_error_drop_alert: false
+  error_drop_threshold: 2
+  query_dq_delimiter: '@'
+  enable_querydq_custom_output: true
+  priority: high

@@ -1,0 +1,102 @@
+table: patient_summary
+layer: gold
+db_schema: gold
+domain: analytics
+dms_section: "DMS \xA74"
+ddl_path: ddl/migrations/20260620_303_patient_summary.sql
+dq_path: dq_rules/patient_summary.yml
+owner: Patient 360 Data Engineering
+description: "Gold consumer table patient_summary; column contract per DMS \xA74\
+  \ (one row per patient, current SCD2 version only)."
+tags:
+- gold
+- analytics
+- patient_360
+schema:
+- name: patient_id
+  type: string
+  nullable: false
+- name: first_name
+  type: string
+  nullable: false
+- name: middle_name
+  type: string
+  nullable: true
+- name: last_name
+  type: string
+  nullable: false
+- name: prefix
+  type: string
+  nullable: true
+- name: suffix
+  type: string
+  nullable: true
+- name: birth_date
+  type: date
+  nullable: false
+- name: death_date
+  type: date
+  nullable: true
+- name: patient_status
+  type: string
+  nullable: false
+- name: calculated_age
+  type: int
+  nullable: true
+- name: gender
+  type: string
+  nullable: true
+- name: race
+  type: string
+  nullable: true
+- name: ethnicity
+  type: string
+  nullable: true
+- name: marital_status
+  type: string
+  nullable: true
+- name: address
+  type: string
+  nullable: true
+- name: city
+  type: string
+  nullable: true
+- name: state
+  type: string
+  nullable: true
+- name: zip
+  type: string
+  nullable: true
+- name: active_condition_count
+  type: int
+  nullable: false
+- name: active_medication_count
+  type: int
+  nullable: false
+- name: has_allergy
+  type: boolean
+  nullable: false
+- name: allergies
+  type: array<struct<description:string,severity:string>>
+  nullable: true
+- name: conditions
+  type: array<struct<snomed_code:string,description:string,onset_date:date>>
+  nullable: true
+- name: medications
+  type: array<struct<rxnorm_code:string,description:string,status:string>>
+  nullable: true
+- name: recent_encounter_date
+  type: date
+  nullable: true
+- name: recent_encounter_class
+  type: string
+  nullable: true
+- name: encounter_count
+  type: int
+  nullable: false
+- name: has_30day_readmission_history
+  type: boolean
+  nullable: false
+- name: _ingested_at
+  type: timestamp
+  nullable: false

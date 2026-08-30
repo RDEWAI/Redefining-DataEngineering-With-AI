@@ -1,0 +1,67 @@
+# Ontology entity: Encounter  (noun / class)
+name: Encounter
+kind: class
+maps_to: unity.gold.patient_clinical_history      # grain: one row per encounter
+synonyms: [visit, appointment, clinical event]
+semantic_connectivity:
+  definition: "A single interaction between a patient and the healthcare system."
+  business_context: >-
+    The clinical event grain. Carries denormalized patient/provider/organization names plus
+    per-encounter roll-up counts (conditions, medications, etc.). Cost lives on the sibling
+    billing entity at the same encounter grain.
+  intent: "Answer 'what happened / how long / how many visits' questions."
+
+attributes:
+  - name: hasEncounterId
+    maps_to: patient_clinical_history.encounter_id
+    datatype: string
+    identifier: true
+    meaning: "Encounter natural key (UUID); joins to billing at the same grain."
+  - name: hasEncounterClass
+    maps_to: patient_clinical_history.encounter_class
+    datatype: string
+    allowed_values: [OUTPATIENT, EMERGENCY, WELLNESS]     # taxonomy root — see taxonomy/encounter.yml
+    meaning: "Class/type of encounter (also feeds the Encounter taxonomy)."
+  - name: hasStartDate
+    maps_to: patient_clinical_history.start_date
+    datatype: timestamp
+    meaning: "When the encounter started."
+  - name: hasLengthOfStay
+    maps_to: patient_clinical_history.los_days
+    datatype: int
+    meaning: "Length of stay in days (source quirk: observed -5..6)."
+
+relations:
+  - predicate: recordedForPatient
+    target: Patient
+    inverse: undergoes
+    cardinality: many_to_one
+    maps_to: "patient_clinical_history.patient_id -> patient_summary.patient_id"
+    meaning: "Each encounter belongs to exactly one patient."
+  - predicate: conductedByProvider
+    target: Provider
+    inverse: conducts
+    cardinality: many_to_one
+    maps_to: "patient_clinical_history.provider_name"
+    meaning: "Each encounter is conducted by exactly one provider."
+  - predicate: prescribes
+    target: Medication
+    cardinality: one_to_many
+    maps_to: "encounter medication roll-up (medication_count on the encounter)"
+    meaning: "An encounter may prescribe zero or more medications."
+  - predicate: incursCost
+    target: Encounter                                    # cost is a sibling at the same grain
+    cardinality: one_to_one
+    maps_to: "patient_billing_summary.encounter_id -> patient_clinical_history.encounter_id"
+    meaning: "Billing/cost shares the encounter grain (join on encounter_id)."
+
+constraints:
+  - id: EN-PK
+    kind: key
+    rule: "encounter_id is unique and not null (primary key)."
+  - id: EN-PATIENT-REQ
+    kind: referential
+    rule: "patient_id is mandatory — an encounter cannot exist without a patient (ENC-HAS-PATIENT)."
+  - id: EN-BILL-11
+    kind: cardinality
+    rule: "Encounter to billing is 1:1 on encounter_id (cost columns live ONLY on billing)."

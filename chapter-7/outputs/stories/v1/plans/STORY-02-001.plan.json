@@ -1,0 +1,181 @@
+{
+  "story_id": "STORY-02-001",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/outputs/stories/v1/EPIC-02-bronze-ingestion/STORY-02-001-bronze-ingestion-runner.md",
+  "epic_id": "EPIC-02",
+  "plan_version": 3,
+  "status": "implemented",
+  "generated_at": "2026-05-11T22:53:55.747015+00:00",
+  "summary": "2 task(s) across ['ingestion', 'scaffold'] \u2014 7 AC(s).",
+  "classifier": {
+    "kind": "ingestion",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-02-001",
+    "paths": [
+      "ingestion_runner.py",
+      "contracts/*.yml",
+      "tests/bronze/test_ingestion_runner_unit.py"
+    ],
+    "by_skill": {
+      "scaffold": [
+        "contracts/*.yml"
+      ],
+      "ingestion": [
+        "tests/bronze/test_ingestion_runner_unit.py",
+        "ingestion_runner.py"
+      ]
+    },
+    "dispatch_order": [
+      "scaffold",
+      "ingestion"
+    ],
+    "unmatched": [
+      "ingestion_runner.py"
+    ],
+    "fallback_kind": "ingestion"
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "update-scaffold",
+      "kind": "scaffold",
+      "mode": "update",
+      "paths": [
+        "contracts/*.yml"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "started_at": "2026-05-11T22:54:20.582297+00:00",
+      "finished_at": "2026-05-11T22:55:28.295542+00:00",
+      "artifacts": [],
+      "files_created": 0,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-scaffold",
+      "validator_status": "pending",
+      "notes": "No-op: contracts/*.yml already present; update-scaffold ROUTE-OUT (paths owned by ingestion)",
+      "handbook_validator": "skipped"
+    },
+    {
+      "id": "T2",
+      "skill": "update-ingestion",
+      "kind": "ingestion",
+      "mode": "update",
+      "paths": [
+        "tests/bronze/test_ingestion_runner_unit.py",
+        "ingestion_runner.py"
+      ],
+      "depends_on": [
+        "T1"
+      ],
+      "status": "done",
+      "started_at": "2026-05-11T22:55:38.060418+00:00",
+      "finished_at": "2026-05-11T22:57:09.490505+00:00",
+      "artifacts": [],
+      "files_created": 0,
+      "files_updated": 0,
+      "critical_findings": [],
+      "validator": "validate-ingestion",
+      "validator_status": "pass",
+      "notes": "No-op: runner + tests already meet all ACs; 17/17 unit tests pass",
+      "handbook_validator": "pass-out-of-scope",
+      "handbook_validator_note": "Project-wide validator FAIL but failures all belong to STORY-02-002/02-003 deliverables not yet dispatched. Logged as learning."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "`ingestion_runner.py` exposes `--config-path` and `--ds` args [LLD \u00a72.3]",
+      "line": 37,
+      "task_ids": [
+        "T2"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "Schema enforcement uses `StructType` from `contracts/{table}.yml` (no inference) [LLD \u00a72.3]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "Runner adds `ds` (DateType\u2192string), `_ingested_at` (TimestampType), `_source_batch_id` (StringType) before write [LLD \u00a72.3]",
+      "line": 41,
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 4,
+      "text": "Bronze write uses `saveAsTable('unity.bronze.{table}')` with `replaceWhere ds = '{ds}'`; no path-based writes [LLD \u00a713 Decision 15]",
+      "line": 43,
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 5,
+      "text": "Runner calls `se_runner.run_dq(...)` inline per LLD \u00a75.1 with `action_if_failed` resolved from per-table YAML [LLD \u00a75.1, \u00a75.4]",
+      "line": 45,
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 6,
+      "text": "Unit tests at `tests/bronze/test_ingestion_runner_unit.py` cover argparse, schema enforcement, and metadata-column additions [LLD \u00a72.4]",
+      "line": 47,
+      "task_ids": [
+        "T2"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 7,
+      "text": "UC catalog name, schema name, and UC service URI are sourced from the `catalog_bronze_catalog_name` / `catalog_bronze_schema` config keys and the `UC_URI` env var (LLD \u00a77.1) \u2014 no hardcoded `unity.bronze` literals; the `{catalog}.{schema}.{table}` triple is composed from config [LLD \u00a77.1, \u00a713 Decision 15]",
+      "line": 49,
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

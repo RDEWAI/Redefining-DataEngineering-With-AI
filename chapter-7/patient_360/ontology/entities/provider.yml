@@ -1,0 +1,44 @@
+# Ontology entity: Provider  (noun / class)
+name: Provider
+kind: class
+maps_to: unity.gold.patient_clinical_history      # denormalized onto the encounter grain
+synonyms: [doctor, physician, clinician, attending]
+semantic_connectivity:
+  definition: "A clinician who delivers care during an encounter."
+  business_context: >-
+    Providers are denormalized onto the encounter (provider_name) rather than a standalone Gold
+    dimension. High cardinality (~261 distinct names in the current load).
+  intent: "Answer 'by whom' questions and attribute encounters/cost to a clinician."
+
+attributes:
+  - name: hasProviderName
+    maps_to: patient_clinical_history.provider_name
+    datatype: string
+    meaning: "Attending provider name for the encounter."
+  - name: worksAtOrganization
+    maps_to: patient_clinical_history.organization_name
+    datatype: string
+    meaning: "Facility/organization where the encounter took place (~252 distinct)."
+
+relations:
+  - predicate: conducts
+    target: Encounter
+    inverse: conductedByProvider
+    cardinality: one_to_many
+    maps_to: "patient_clinical_history.provider_name (denormalized on the encounter row)"
+    meaning: "A single provider conducts many encounters (1:N grain)."
+  - predicate: treats
+    target: Patient
+    cardinality: many_to_many
+    maps_to: "via Encounter (provider -> encounter -> patient)"
+    meaning: "A provider treats many patients; a patient may see many providers."
+
+constraints:
+  - id: PR-ENC-CARD
+    kind: cardinality
+    rule: "A provider conducts 0..* encounters; each encounter is conducted by exactly 1 provider."
+  - id: PR-DENORM
+    kind: modeling
+    rule: >-
+      Provider is denormalized (name string), not a keyed dimension — count distinct provider_name
+      for provider-level analytics; there is no provider_id in Gold.

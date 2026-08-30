@@ -267,6 +267,8 @@ node_modules/
 # https://github.com/unitycatalog/unitycatalog at the pinned UC_UI_REF.
 # Never commit — it's third-party source, ~10s of MB, and reproducible.
 chapter-5/patient_360/_infra/docker/uc-source/
+chapter-6/patient_360/_infra/docker/uc-source/
+chapter-7/patient_360/_infra/docker/uc-source/
 patient_360/_infra/docker/uc-source/
 
 # Generated local warehouse (Delta files + _delta_log) and Derby metastore —

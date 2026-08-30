@@ -1,0 +1,71 @@
+# Ontology entity: Patient  (noun / class)
+name: Patient
+kind: class
+maps_to: unity.gold.patient_summary          # physical grounding (grain: one row per patient)
+synonyms: [member, individual, person]
+semantic_connectivity:
+  definition: "A person who receives healthcare services from the organization."
+  business_context: >-
+    The subject of the Patient 360 view. All clinical and financial facts hang off the Patient
+    via patient_id. Demographics are current (SCD2 current version only).
+  intent: >-
+    Answer 'who' questions (counts, demographics, cohort filters) and anchor joins to encounters
+    and medications.
+
+# Attributes = descriptors (adjectives). Data-standpoint metadata = the physical column.
+attributes:
+  - name: hasPatientId
+    maps_to: patient_summary.patient_id
+    datatype: string
+    identifier: true
+    meaning: "Stable natural key for the patient (UUID)."
+  - name: hasName
+    maps_to: [patient_summary.first_name, patient_summary.last_name]
+    datatype: string
+    phi: true
+    meaning: "Given/family name. PHI — do not expose in aggregate answers."
+  - name: hasBirthDate
+    maps_to: patient_summary.birth_date
+    datatype: date
+    meaning: "Date of birth; drives calculated_age."
+  - name: hasStatus
+    maps_to: patient_summary.patient_status
+    datatype: string
+    allowed_values: [ALIVE, DECEASED]
+    meaning: "Living status of the patient."
+  - name: hasGender
+    maps_to: patient_summary.gender
+    datatype: string
+    allowed_values: [MALE, FEMALE]
+    meaning: "Administrative gender."
+  - name: hasMaritalStatus
+    maps_to: patient_summary.marital_status
+    datatype: string
+    allowed_values: [M, S, D, W]
+    meaning: "Single-letter code: M=Married, S=Single, D=Divorced, W=Widowed (null=unknown)."
+
+# Relations = verbs connecting this entity to others. Data-standpoint metadata = foreign key.
+relations:
+  - predicate: undergoes
+    target: Encounter
+    inverse: recordedForPatient
+    cardinality: one_to_many
+    maps_to: "patient_clinical_history.patient_id -> patient_summary.patient_id"
+    meaning: "A patient undergoes zero or more encounters over time."
+  - predicate: takes
+    target: Medication
+    cardinality: many_to_many
+    maps_to: "via encounter medications (conceptual; medications[] active-only on patient_summary)"
+    meaning: "A patient takes zero or more active medications."
+
+# Constraints = grammar rules for reading the links (keys, cardinality, ranges).
+constraints:
+  - id: PT-PK
+    kind: key
+    rule: "patient_id is unique and not null (primary key)."
+  - id: PT-ENC-CARD
+    kind: cardinality
+    rule: "A patient may have 0..* encounters; each encounter belongs to exactly 1 patient."
+  - id: PT-AGE-RANGE
+    kind: range
+    rule: "calculated_age is a non-negative integer (observed 1..112)."

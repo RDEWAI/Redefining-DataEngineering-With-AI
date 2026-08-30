@@ -1,0 +1,15 @@
+[
+  {
+    "signature": "EMERGENCY:1743",
+    "encounter_class": "EMERGENCY",
+    "group": "Acute",
+    "classification": "artifact",
+    "rationale": "Human feedback and EncounterClassTaxonomy indicate EMERGENCY (Acute) is an expected high-cost baseline; fanout_ratio=1.0 shows no claim inflation.",
+    "recommended_action": "Suppress the alert for EMERGENCY encounters and document as a known baseline cost class.",
+    "knowledge_used": [
+      "taxonomy: Acute",
+      "data_contract: claim fan-out",
+      "human_feedback"
+    ]
+  }
+]

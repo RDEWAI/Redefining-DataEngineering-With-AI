@@ -1,0 +1,39 @@
+# Data contract: unity.gold.patient_summary  (ODCS-inspired)
+kind: DataContract
+id: patient_summary
+version: 1.0.0
+status: active
+table: unity.gold.patient_summary
+domain: analytics
+owner: "Patient 360 Data Engineering"
+schema_ref: contracts/patient_summary.yml        # physical column contract (source of truth for schema)
+ontology_ref: ontology/entities/patient.yml
+semantic_ref: semantic/entities/patient_summary.yml
+
+description: >-
+  One row per patient (current SCD2 version): demographics plus pre-aggregated clinical roll-ups.
+  Primary consumer surface for patient-cohort and demographic questions.
+
+guarantees:
+  grain: "one row per patient (current SCD2 version only)"
+  primary_key: patient_id                # unique, not null
+  uniqueness: "patient_id is unique"
+  phi_columns: [first_name, middle_name, last_name, prefix, suffix, address, zip]
+
+sla:
+  update_frequency: "Rebuilt each gold_build pipeline run (no fixed clock schedule in dev)."
+  freshness: "Full-overwrite current snapshot — always reflects the latest completed run."
+  latency: "Available immediately after gold_build completes (no post-processing delay)."
+  availability: "Best-effort on the local dev stack; production target 99.5%."
+  retention: "Current snapshot only — no history retained in Gold (history lives in Silver SCD2)."
+  timing_caveats:
+    - "No `ds` partition; there is no as-of date filter — do not add one."
+
+consumers:
+  - "Patient 360 dashboard"
+  - "NL-to-SQL analytics agent (AI Analytics Query)"
+
+changelog:
+  - version: 1.0.0
+    change: "Initial contract."
+    breaking: false

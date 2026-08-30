@@ -1,0 +1,45 @@
+# Ontology — machine-readable map of the Patient 360 business domain.
+#
+# Where the semantic model (semantic/) says what the columns MEAN for SQL, the ontology says
+# how the business CONCEPTS relate: entities (nouns/classes), attributes (adjectives/columns),
+# relations (verbs/foreign-keys), and constraints (grammar/keys+cardinality). It gives the AI a
+# shared vocabulary and a logical structure so reasoning over the domain is deterministic.
+#
+# Entities are auto-discovered from ontology/entities/*.yml. Taxonomy (inheritance) lives in
+# taxonomy/. This metadata is consumed by AI via RAG — see `make rag-build` / `make rag-context`.
+name: patient_360_ontology
+version: "1.0"
+domain: healthcare
+description: >-
+  Ontology for the Patient 360 domain: Patient, Provider, Encounter and Medication concepts,
+  their attributes, the relations between them (with cardinality), and the constraints that
+  govern how those relations must be read. Grounded to the physical unity.gold.* tables so the
+  AI can move from concept to query without guessing.
+
+# Entities: auto-loaded from ontology/entities/*.yml
+# Relations are declared on the source entity (predicate + target + cardinality).
+# Cross-entity constraints that are not owned by a single entity are listed here.
+global_constraints:
+  - id: ENC-HAS-PATIENT
+    kind: referential
+    rule: "Every Encounter must be linked to exactly one Patient (patient_id is mandatory)."
+  - id: ENC-HAS-PROVIDER
+    kind: referential
+    rule: "Every Encounter is conducted by exactly one Provider."
+  - id: BILL-HAS-ENCOUNTER
+    kind: referential
+    rule: "Every billing/claim row must reference an existing Encounter (encounter grain)."
+  - id: PRESCRIPTION-IN-ENCOUNTER
+    kind: referential
+    rule: >-
+      Every prescription recorded in an Encounter must be traceable to the Patient of that
+      Encounter (no orphan medication without a patient).
+
+# Governance guardrails from knowledge-engineering practice (keep the ontology concise).
+governance:
+  owner: "Patient 360 Knowledge Engineering (centralized)"
+  scope: "Medication management + clinical encounters for the Patient 360 use case."
+  notes:
+    - "Model key concepts only; do not capture every possible attribute (avoid over-modeling)."
+    - "One canonical definition per concept — no duplicate/competing concepts across teams."
+    - "Relations connect adjacent granularity levels only (see taxonomy/ for the level hierarchy)."

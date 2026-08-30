@@ -1,0 +1,44 @@
+# Data contract: unity.gold.patient_billing_summary  (ODCS-inspired)
+kind: DataContract
+id: patient_billing_summary
+version: 1.0.0
+status: active
+table: unity.gold.patient_billing_summary
+domain: finance
+owner: "Patient 360 Data Engineering"
+schema_ref: contracts/patient_billing_summary.yml
+ontology_ref: ontology/entities/medication.yml
+semantic_ref: semantic/entities/patient_billing_summary.yml
+
+description: >-
+  Encounter-grain financials — the ONLY Gold table that carries cost columns (DRD 5.5 isolation).
+  Claims are left-joined, so multiple claims per encounter can fan out rows.
+
+guarantees:
+  grain: "one row per encounter (claims left-joined; claim fan-out possible)"
+  primary_key: encounter_id
+  foreign_keys:
+    - "patient_id -> patient_summary.patient_id"
+    - "encounter_id -> patient_clinical_history.encounter_id (1:1)"
+  cost_isolation: "total_claim_cost / base_encounter_cost / total_visit_cost exist ONLY here."
+  counting_rule: "Use COUNT(DISTINCT encounter_id) to avoid claim fan-out double counting."
+
+sla:
+  update_frequency: "Rebuilt each gold_build run."
+  freshness: "Full-overwrite current snapshot."
+  latency: "Available immediately after gold_build completes."
+  availability: "Best-effort on the local dev stack; production target 99.5%."
+  retention: "Current snapshot only."
+  timing_caveats:
+    - >-
+      In the current load only cost fields carry values; claim_id, payer names, claim_status,
+      service_date and outstanding_amount are null/zero — payer analytics return nothing.
+
+consumers:
+  - "Patient 360 dashboard (cost KPIs)"
+  - "NL-to-SQL analytics agent (AI Analytics Query)"
+
+changelog:
+  - version: 1.0.0
+    change: "Initial contract."
+    breaking: false

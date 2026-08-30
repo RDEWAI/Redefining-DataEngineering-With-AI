@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1350 1010" font-family="Arial, Helvetica, sans-serif">
+<defs>
+  <marker id="arw" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="9" markerHeight="9" orient="auto">
+    <path d="M1,1 L11,6 L1,11 z" fill="#444444"/></marker>
+  <marker id="tri" viewBox="0 0 20 20" refX="16" refY="10" markerWidth="13" markerHeight="13" orient="auto">
+    <path d="M2,3 L18,10 L2,17 Z" fill="#ffffff" stroke="#3A3A85" stroke-width="2"/></marker>
+</defs>
+<rect x="0" y="0" width="1350" height="1010" fill="#ffffff"/>
+<rect x="80.0" y="93.0" width="300" height="234" rx="14" fill="#F7E8F2" stroke="#A85A94" stroke-width="2"/>
+<text x="230" y="119.0" text-anchor="middle" font-size="20" font-weight="700" fill="#4A1038">Provider</text>
+<line x1="94.0" y1="131.0" x2="366.0" y2="131.0" stroke="#A85A94" stroke-width="1" stroke-opacity="0.5"/>
+<text x="230" y="153.0" text-anchor="middle" font-size="14" fill="#4A1038" fill-opacity="0.9">providerId <tspan font-style="italic" fill-opacity="0.7">{key}</tspan></text>
+<text x="230" y="175.0" text-anchor="middle" font-size="14" fill="#4A1038" fill-opacity="0.9">name</text>
+<text x="230" y="197.0" text-anchor="middle" font-size="14" fill="#4A1038" fill-opacity="0.9">specialty</text>
+<text x="230" y="219.0" text-anchor="middle" font-size="14" fill="#4A1038" fill-opacity="0.9">npi</text>
+<line x1="94.0" y1="229.0" x2="366.0" y2="229.0" stroke="#A85A94" stroke-width="1" stroke-opacity="0.5"/>
+<text x="230" y="248.0" text-anchor="middle" font-size="12" font-style="italic" fill="#4A1038" fill-opacity="0.7">Facts / Dimensions</text>
+<text x="96.0" y="269.0" font-size="12.5" font-family="monospace" fill="#4A1038" fill-opacity="0.9">dim_provider</text>
+<text x="96.0" y="289.0" font-size="12.5" font-family="monospace" fill="#4A1038" fill-opacity="0.9">silver.providers</text>
+<text x="96.0" y="309.0" font-size="12.5" font-family="monospace" fill="#4A1038" fill-opacity="0.9">ref.provider_npi</text>
+<rect x="80.0" y="503.0" width="300" height="234" rx="14" fill="#E6EEF7" stroke="#4A72A8" stroke-width="2"/>
+<text x="230" y="529.0" text-anchor="middle" font-size="20" font-weight="700" fill="#16314A">Patient</text>
+<line x1="94.0" y1="541.0" x2="366.0" y2="541.0" stroke="#4A72A8" stroke-width="1" stroke-opacity="0.5"/>
+<text x="230" y="563.0" text-anchor="middle" font-size="14" fill="#16314A" fill-opacity="0.9">patientId <tspan font-style="italic" fill-opacity="0.7">{key}</tspan></text>
+<text x="230" y="585.0" text-anchor="middle" font-size="14" fill="#16314A" fill-opacity="0.9">name</text>
+<text x="230" y="607.0" text-anchor="middle" font-size="14" fill="#16314A" fill-opacity="0.9">birthDate</text>
+<text x="230" y="629.0" text-anchor="middle" font-size="14" fill="#16314A" fill-opacity="0.9">gender</text>
+<line x1="94.0" y1="639.0" x2="366.0" y2="639.0" stroke="#4A72A8" stroke-width="1" stroke-opacity="0.5"/>
+<text x="230" y="658.0" text-anchor="middle" font-size="12" font-style="italic" fill="#16314A" fill-opacity="0.7">Facts / Dimensions</text>
+<text x="96.0" y="679.0" font-size="12.5" font-family="monospace" fill="#16314A" fill-opacity="0.9">dim_patient</text>
+<text x="96.0" y="699.0" font-size="12.5" font-family="monospace" fill="#16314A" fill-opacity="0.9">silver.patients</text>
+<text x="96.0" y="719.0" font-size="12.5" font-family="monospace" fill="#16314A" fill-opacity="0.9">gold.patient_360</text>
+<rect x="530.0" y="93.0" width="300" height="234" rx="14" fill="#EDF7E8" stroke="#5F8F45" stroke-width="2"/>
+<text x="680" y="119.0" text-anchor="middle" font-size="20" font-weight="700" fill="#213812">Encounter</text>
+<line x1="544.0" y1="131.0" x2="816.0" y2="131.0" stroke="#5F8F45" stroke-width="1" stroke-opacity="0.5"/>
+<text x="680" y="153.0" text-anchor="middle" font-size="14" fill="#213812" fill-opacity="0.9">encounterId <tspan font-style="italic" fill-opacity="0.7">{key}</tspan></text>
+<text x="680" y="175.0" text-anchor="middle" font-size="14" fill="#213812" fill-opacity="0.9">startDate</text>
+<text x="680" y="197.0" text-anchor="middle" font-size="14" fill="#213812" fill-opacity="0.9">type</text>
+<text x="680" y="219.0" text-anchor="middle" font-size="14" fill="#213812" fill-opacity="0.9">provider</text>
+<line x1="544.0" y1="229.0" x2="816.0" y2="229.0" stroke="#5F8F45" stroke-width="1" stroke-opacity="0.5"/>
+<text x="680" y="248.0" text-anchor="middle" font-size="12" font-style="italic" fill="#213812" fill-opacity="0.7">Facts / Dimensions</text>
+<text x="546.0" y="269.0" font-size="12.5" font-family="monospace" fill="#213812" fill-opacity="0.9">fact_encounter</text>
+<text x="546.0" y="289.0" font-size="12.5" font-family="monospace" fill="#213812" fill-opacity="0.9">silver.encounters</text>
+<text x="546.0" y="309.0" font-size="12.5" font-family="monospace" fill="#213812" fill-opacity="0.9">gold.encounter_summary</text>
+<rect x="530.0" y="503.0" width="300" height="234" rx="14" fill="#F7EFE0" stroke="#B08A40" stroke-width="2"/>
+<text x="680" y="529.0" text-anchor="middle" font-size="20" font-weight="700" fill="#4A3810">Medication</text>
+<line x1="544.0" y1="541.0" x2="816.0" y2="541.0" stroke="#B08A40" stroke-width="1" stroke-opacity="0.5"/>
+<text x="680" y="563.0" text-anchor="middle" font-size="14" fill="#4A3810" fill-opacity="0.9">code <tspan font-style="italic" fill-opacity="0.7">{key}</tspan></text>
+<text x="680" y="585.0" text-anchor="middle" font-size="14" fill="#4A3810" fill-opacity="0.9">name</text>
+<text x="680" y="607.0" text-anchor="middle" font-size="14" fill="#4A3810" fill-opacity="0.9">dosage</text>
+<text x="680" y="629.0" text-anchor="middle" font-size="14" fill="#4A3810" fill-opacity="0.9">route</text>
+<line x1="544.0" y1="639.0" x2="816.0" y2="639.0" stroke="#B08A40" stroke-width="1" stroke-opacity="0.5"/>
+<text x="680" y="658.0" text-anchor="middle" font-size="12" font-style="italic" fill="#4A3810" fill-opacity="0.7">Facts / Dimensions</text>
+<text x="546.0" y="679.0" font-size="12.5" font-family="monospace" fill="#4A3810" fill-opacity="0.9">dim_medication</text>
+<text x="546.0" y="699.0" font-size="12.5" font-family="monospace" fill="#4A3810" fill-opacity="0.9">fact_medication_order</text>
+<text x="546.0" y="719.0" font-size="12.5" font-family="monospace" fill="#4A3810" fill-opacity="0.9">silver.medications</text>
+<rect x="980.0" y="404.0" width="300" height="192" rx="14" fill="#F7EFE0" stroke="#B08A40" stroke-width="2"/>
+<text x="1130" y="430.0" text-anchor="middle" font-size="20" font-weight="700" fill="#4A3810">PrescriptionMedication</text>
+<line x1="994.0" y1="442.0" x2="1266.0" y2="442.0" stroke="#B08A40" stroke-width="1" stroke-opacity="0.5"/>
+<text x="1130" y="464.0" text-anchor="middle" font-size="14" fill="#4A3810" fill-opacity="0.9">rxNumber <tspan font-style="italic" fill-opacity="0.7">{key}</tspan></text>
+<text x="1130" y="486.0" text-anchor="middle" font-size="14" fill="#4A3810" fill-opacity="0.9">prescriber</text>
+<text x="1130" y="508.0" text-anchor="middle" font-size="14" fill="#4A3810" fill-opacity="0.9">refills</text>
+<line x1="994.0" y1="518.0" x2="1266.0" y2="518.0" stroke="#B08A40" stroke-width="1" stroke-opacity="0.5"/>
+<text x="1130" y="537.0" text-anchor="middle" font-size="12" font-style="italic" fill="#4A3810" fill-opacity="0.7">Facts / Dimensions</text>
+<text x="996.0" y="558.0" font-size="12.5" font-family="monospace" fill="#4A3810" fill-opacity="0.9">fact_prescription</text>
+<text x="996.0" y="578.0" font-size="12.5" font-family="monospace" fill="#4A3810" fill-opacity="0.9">silver.prescriptions</text>
+<rect x="980.0" y="684.0" width="300" height="172" rx="14" fill="#F7EFE0" stroke="#B08A40" stroke-width="2"/>
+<text x="1130" y="710.0" text-anchor="middle" font-size="20" font-weight="700" fill="#4A3810">OTCMedication</text>
+<line x1="994.0" y1="722.0" x2="1266.0" y2="722.0" stroke="#B08A40" stroke-width="1" stroke-opacity="0.5"/>
+<text x="1130" y="744.0" text-anchor="middle" font-size="14" fill="#4A3810" fill-opacity="0.9">upc <tspan font-style="italic" fill-opacity="0.7">{key}</tspan></text>
+<text x="1130" y="766.0" text-anchor="middle" font-size="14" fill="#4A3810" fill-opacity="0.9">brand</text>
+<text x="1130" y="788.0" text-anchor="middle" font-size="14" fill="#4A3810" fill-opacity="0.9">retailer</text>
+<line x1="994.0" y1="798.0" x2="1266.0" y2="798.0" stroke="#B08A40" stroke-width="1" stroke-opacity="0.5"/>
+<text x="1130" y="817.0" text-anchor="middle" font-size="12" font-style="italic" fill="#4A3810" fill-opacity="0.7">Facts / Dimensions</text>
+<text x="996.0" y="838.0" font-size="12.5" font-family="monospace" fill="#4A3810" fill-opacity="0.9">dim_otc_product</text>
+<path d="M 982.0 528 L 832.0 588" fill="none" stroke="#3A3A85" stroke-width="2" marker-end="url(#tri)"/>
+<rect x="867.0" y="542.0" width="80" height="30" rx="7" fill="#EDEDF7" stroke="#3A3A85" stroke-width="1.5"/>
+<text x="907.0" y="563.0" text-anchor="middle" font-size="15" font-weight="700" fill="#3A3A85">is-a</text>
+<path d="M 982.0 720 L 832.0 652" fill="none" stroke="#3A3A85" stroke-width="2" marker-end="url(#tri)"/>
+<rect x="867.0" y="670.0" width="80" height="30" rx="7" fill="#EDEDF7" stroke="#3A3A85" stroke-width="1.5"/>
+<text x="907.0" y="691.0" text-anchor="middle" font-size="15" font-weight="700" fill="#3A3A85">is-a</text>
+<path d="M 230 323.0 L 230 507.0" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#arw)"/>
+<rect x="196.2" y="400.0" width="67.6" height="26" rx="6" fill="#ffffff" stroke="#444444" stroke-width="1"/>
+<text x="230.0" y="418.0" text-anchor="middle" font-size="15" font-style="italic" fill="#444444">treats</text>
+<rect x="254.8" y="332.0" width="18.4" height="22" rx="4" fill="#ffffff" fill-opacity="0.95"/>
+<text x="264" y="348.0" text-anchor="middle" font-size="14" font-weight="700" fill="#7A4FB0">1</text>
+<rect x="248.2" y="474.0" width="43.6" height="22" rx="4" fill="#ffffff" fill-opacity="0.95"/>
+<text x="270" y="490.0" text-anchor="middle" font-size="14" font-weight="700" fill="#7A4FB0">0..*</text>
+<path d="M 376.0 210 L 534.0 210" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#arw)"/>
+<rect x="412.6" y="195.0" width="84.8" height="26" rx="6" fill="#ffffff" stroke="#444444" stroke-width="1"/>
+<text x="455.0" y="213.0" text-anchor="middle" font-size="15" font-style="italic" fill="#444444">conducts</text>
+<rect x="396.8" y="185" width="18.4" height="22" rx="4" fill="#ffffff" fill-opacity="0.95"/>
+<text x="406.0" y="201" text-anchor="middle" font-size="14" font-weight="700" fill="#7A4FB0">1</text>
+<rect x="476.2" y="185" width="43.6" height="22" rx="4" fill="#ffffff" fill-opacity="0.95"/>
+<text x="498.0" y="201" text-anchor="middle" font-size="14" font-weight="700" fill="#7A4FB0">0..*</text>
+<path d="M 376.0 560 L 534.0 300" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#arw)"/>
+<rect x="395.4" y="415.0" width="119.19999999999999" height="26" rx="6" fill="#ffffff" stroke="#444444" stroke-width="1"/>
+<text x="455.0" y="433.0" text-anchor="middle" font-size="15" font-style="italic" fill="#444444">hasEncounter</text>
+<rect x="396.8" y="535" width="18.4" height="22" rx="4" fill="#ffffff" fill-opacity="0.95"/>
+<text x="406.0" y="551" text-anchor="middle" font-size="14" font-weight="700" fill="#7A4FB0">1</text>
+<rect x="474.2" y="301" width="43.6" height="22" rx="4" fill="#ffffff" fill-opacity="0.95"/>
+<text x="496.0" y="317" text-anchor="middle" font-size="14" font-weight="700" fill="#7A4FB0">1..*</text>
+<path d="M 376.0 640 L 534.0 640" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#arw)"/>
+<rect x="425.5" y="625.0" width="59.0" height="26" rx="6" fill="#ffffff" stroke="#444444" stroke-width="1"/>
+<text x="455.0" y="643.0" text-anchor="middle" font-size="15" font-style="italic" fill="#444444">takes</text>
+<rect x="396.8" y="615" width="18.4" height="22" rx="4" fill="#ffffff" fill-opacity="0.95"/>
+<text x="406.0" y="631" text-anchor="middle" font-size="14" font-weight="700" fill="#7A4FB0">1</text>
+<rect x="474.2" y="615" width="43.6" height="22" rx="4" fill="#ffffff" fill-opacity="0.95"/>
+<text x="496.0" y="631" text-anchor="middle" font-size="14" font-weight="700" fill="#7A4FB0">0..*</text>
+<path d="M 680 323.0 L 680 507.0" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#arw)"/>
+<rect x="629.0" y="400.0" width="102.0" height="26" rx="6" fill="#ffffff" stroke="#444444" stroke-width="1"/>
+<text x="680.0" y="418.0" text-anchor="middle" font-size="15" font-style="italic" fill="#444444">prescribes</text>
+<rect x="704.8" y="332.0" width="18.4" height="22" rx="4" fill="#ffffff" fill-opacity="0.95"/>
+<text x="714" y="348.0" text-anchor="middle" font-size="14" font-weight="700" fill="#7A4FB0">1</text>
+<rect x="698.2" y="474.0" width="43.6" height="22" rx="4" fill="#ffffff" fill-opacity="0.95"/>
+<text x="720" y="490.0" text-anchor="middle" font-size="14" font-weight="700" fill="#7A4FB0">0..*</text>
+<rect x="60" y="800" width="760" height="195" rx="10" fill="#F5F3FA" stroke="#7A4FB0" stroke-width="1.5"/>
+<text x="78" y="830" font-size="17" font-weight="700" fill="#3A1A5A">Constraints</text>
+<text x="78" y="860" font-size="14.5" fill="#3A1A5A">•  PrescriptionMedication  and  OTCMedication  are subclasses of  Medication   (is-a)</text>
+<text x="78" y="887" font-size="14.5" fill="#3A1A5A">•  Patient  must have  ≥ 1  Encounter</text>
+<text x="78" y="914" font-size="14.5" fill="#3A1A5A">•  Encounter  belongsTo  exactly 1  Patient   and   conductedBy  exactly 1  Provider</text>
+<text x="78" y="941" font-size="14.5" fill="#3A1A5A">•  prescribes  →  range only  Medication</text>
+<text x="78" y="968" font-size="14.5" fill="#3A1A5A">•  Unique keys:  patientId, providerId, encounterId, code</text>
+</svg>

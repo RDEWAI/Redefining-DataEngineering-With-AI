@@ -1,0 +1,400 @@
+# Illustrative Gold reconciliation runner — modeled on the Bronze
+# reconciliation runner (bronze/reconciliation.py) but carries the Gold
+# CONTENT: silver-vs-gold row-count reconciliation + patient/allergy
+# completeness. Generic placeholders: {project}.
+#
+# Rendered by /developer-plugin:create-gold (reconciliation phase) into
+# `{project}/src/{project}/gold/reconciliation.py`. It powers the
+# `reconciliation_gold` task (LLD §4.2 / §5.5) wired downstream of the
+# `gold_build` TaskGroup as a SparkSubmitOperator via the
+# `run_gold_recon.py` shim (rendered from run_layer_entrypoint.py.j2:
+# task_type=gold_recon, runner_module={project}.gold.reconciliation,
+# entry_function=main, argv_spec=[--ds, --meta-dq-run-id]).
+#
+# CONTRACT: same `main(args)` runner contract + fail-closed exit as
+# bronze/reconciliation.py. `reconciliation_gold` asks the layer-terminal
+# question "did Gold land the right rows?" and blocks consumer access on
+# breach (LLD §5.5: PagerDuty p360-critical + Clinical Ops Director for
+# allergy failures).
+#
+# WHAT IT CHECKS (LLD §5.5 reconciliation_gold row; DQS §4 statistical
+# baselines + DQS §5 reconciliation rules — verify against those docs, never
+# invent a rule):
+#   1. Silver-vs-Gold row-count reconciliation within tolerance, one rule per
+#      Gold table (DQS §5 DQ-REC-003 / DQ-REC-005; DQS §4 DQ-STA-017/018/019):
+#        - patient_summary          vs clinical_patients(is_current=TRUE)  ±0.1%  (DQ-REC-003)
+#        - patient_clinical_history vs clinical_encounters                 ±0.1%  (DQ-REC-005)
+#        - patient_billing_summary  vs clinical_encounters                 ±5%    (DQ-STA-019 encounter grain)
+#   2. Patient completeness (NFR-4 / DQ-FLD-106 / DQ-REC-010): patient_summary
+#      row count == count of current clinical_patients == EXPECTED_PATIENT_COUNT
+#      (5,767), and COUNT(*) == COUNT(DISTINCT patient_id) (one row per patient).
+#   3. Allergy completeness (DQ-FLD-138): every patient_summary row is
+#      cross-field consistent — has_allergy=TRUE ⇔ non-empty allergies array.
+#      Zero violating rows or fail closed.
+#
+# CRITICAL: schema names. LLD §5.3 / stories / DDL target `unity.silver.*`
+# and `unity.gold.*`. The DQS `unity.clinical` / `unity.analytics` schema
+# names are STALE (create-gold Phase 1 schema-name reconciliation) — use
+# `unity.silver` / `unity.gold`. Gold is a full-overwrite current-snapshot
+# rebuild (no `ds` partition), so ds-partitioned Silver FACT sources ARE
+# scoped to the latest `ds` (source_latest_ds=True — mirrors the Gold
+# builders' _read_fact_current read); SCD2 dims filter is_current=TRUE.
+
+from __future__ import annotations
+
+import argparse
+import logging
+import os
+import sys
+from dataclasses import dataclass
+from typing import Any
+
+from pyspark.sql import functions as F
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Constants (LLD §5.5 reconciliation_gold; DQS §4 / §5)
+# ---------------------------------------------------------------------------
+LAYER = "gold"
+
+# UC catalog + layer schemas. Overridable via env vars so the warehouse name
+# is never hardcoded (mirrors se_runner / bronze reconciliation).
+CATALOG_ENV = "SE_UC_CATALOG"
+_DEFAULT_CATALOG = "unity"
+SILVER_SCHEMA = "silver"
+GOLD_SCHEMA = "gold"
+
+# Runtime env flag (DEV | STAGING | PROD). Retained for log/error context.
+ENV_ENV = "PATIENT360_ENV"
+DEFAULT_ENV = "DEV"
+
+# NFR-4 / DQS §4 DQ-STA-017 / DQ-STA-014 verified baseline: the pipeline serves
+# all current patients. patient_summary is one current row per patient.
+EXPECTED_PATIENT_COUNT = 5767
+# DQ-STA-017 patient-critical statistical tolerance (±2%). The grain equality
+# (gold == silver current) is asserted EXACTLY; this band only guards the
+# absolute NFR-4 baseline against synthetic-dataset drift.
+PATIENT_COUNT_TOLERANCE = 0.02
+
+
+class GoldReconciliationError(RuntimeError):
+    """Raised when a Gold reconciliation gate fails closed.
+
+    Mirrors bronze ``SEEvidenceMissingError`` — the Airflow task fails-closed
+    and PagerDuty ``p360-critical`` is alerted (LLD §5.5); allergy failures
+    additionally escalate to the Clinical Ops Director (DQS §1).
+    """
+
+
+# ---------------------------------------------------------------------------
+# Silver-vs-Gold row-count reconciliation (DQS §5 DQ-REC-* / DQS §4 DQ-STA-*)
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class RowCountRule:
+    """One Silver→Gold row-count reconciliation (DQS §5 / §4).
+
+    ``source`` / ``target`` are bare table names (qualified to
+    ``unity.silver.<source>`` / ``unity.gold.<target>``). ``source_filter``
+    restricts the Silver source (e.g. ``is_current = TRUE`` for SCD2 dims);
+    ``tolerance`` is a fraction (0.0 = exact match).
+
+    For a ds-partitioned Silver FACT reconciled against a full-overwrite Gold
+    current-snapshot, set ``source_latest_ds=True`` so the source count is
+    scoped to the latest ``ds`` (matches the Gold builder's
+    ``_read_fact_current`` read); SCD2 dims use ``source_filter="is_current =
+    TRUE"`` instead.
+    """
+
+    rule_id: str
+    source: str
+    target: str
+    tolerance: float = 0.0
+    source_filter: str | None = None
+    source_latest_ds: bool = False
+    target_filter: str | None = None
+
+
+@dataclass(frozen=True)
+class ReconResult:
+    rule_id: str
+    passed: bool
+    detail: str
+
+
+def _silver_fqn(table: str) -> str:
+    catalog = os.environ.get(CATALOG_ENV, _DEFAULT_CATALOG)
+    return table if "." in table else f"{catalog}.{SILVER_SCHEMA}.{table}"
+
+
+def _gold_fqn(table: str) -> str:
+    catalog = os.environ.get(CATALOG_ENV, _DEFAULT_CATALOG)
+    return table if "." in table else f"{catalog}.{GOLD_SCHEMA}.{table}"
+
+
+def _count(spark: Any, fqn: str, where: str | None = None, latest_ds: bool = False) -> int:
+    df = spark.table(fqn)
+    if latest_ds:
+        m = df.agg(F.max(F.col("ds"))).first()[0]
+        df = df.where(F.col("ds") == F.lit(m))
+    if where:
+        df = df.where(where)
+    return int(df.count())
+
+
+def check_row_count(spark: Any, rule: RowCountRule) -> ReconResult:
+    """Silver→Gold row-count reconciliation within ``rule.tolerance``.
+
+    An empty Silver source only reconciles against an empty Gold target
+    (fail-closed: Gold never fabricates rows the Silver source lacks).
+    """
+    src = _count(
+        spark, _silver_fqn(rule.source), rule.source_filter, latest_ds=rule.source_latest_ds
+    )
+    tgt = _count(spark, _gold_fqn(rule.target), rule.target_filter)
+    if src == 0:
+        passed = tgt == 0
+    else:
+        passed = abs(tgt - src) <= rule.tolerance * src
+    return ReconResult(
+        rule.rule_id,
+        passed,
+        f"silver.{rule.source}={src} vs gold.{rule.target}={tgt} (tol={rule.tolerance:.4%})",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Patient completeness (NFR-4 / DQ-FLD-106 / DQ-REC-010)
+# ---------------------------------------------------------------------------
+def check_patient_completeness(
+    spark: Any,
+    *,
+    gold_table: str = "patient_summary",
+    silver_table: str = "clinical_patients",
+    expected: int = EXPECTED_PATIENT_COUNT,
+    tolerance: float = PATIENT_COUNT_TOLERANCE,
+) -> ReconResult:
+    """patient_summary completeness assertion.
+
+    Three sub-assertions, all must hold (LLD §5.5 patient completeness):
+      * grain equality — gold count == count of current clinical_patients
+        (one Gold row per current patient; DQ-REC-003 exact-grain form).
+      * grain uniqueness — COUNT(*) == COUNT(DISTINCT patient_id)
+        (DQ-FLD-106 / DQ-REC-010; no duplicate/lost patients).
+      * baseline — |gold count - EXPECTED_PATIENT_COUNT| within ``tolerance``
+        (NFR-4 = 5,767; DQS §4 DQ-STA-017 ±2%).
+    """
+    gold_fqn = _gold_fqn(gold_table)
+    gold_count = _count(spark, gold_fqn)
+    silver_current = _count(spark, _silver_fqn(silver_table), "is_current = TRUE")
+    distinct_patients = int(spark.table(gold_fqn).select("patient_id").distinct().count())
+
+    grain_equal = gold_count == silver_current
+    grain_unique = gold_count == distinct_patients
+    baseline_ok = abs(gold_count - expected) <= tolerance * expected
+    passed = grain_equal and grain_unique and baseline_ok
+    return ReconResult(
+        "PATIENT-COMPLETENESS",
+        passed,
+        (
+            f"gold.{gold_table}={gold_count} silver.{silver_table}(current)={silver_current} "
+            f"distinct_patient_id={distinct_patients} expected={expected} "
+            f"(grain_equal={grain_equal} grain_unique={grain_unique} baseline_ok={baseline_ok})"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Allergy completeness (DQ-FLD-138 cross-field consistency)
+# ---------------------------------------------------------------------------
+# DQS §3 DQ-FLD-138: (has_allergy = TRUE AND allergies IS NOT NULL AND
+# LEN(allergies) > 0) OR (has_allergy = FALSE AND (allergies IS NULL OR
+# LEN(allergies) = 0)). The VIOLATION is the negation — count it and require 0.
+_ALLERGY_VIOLATION_PREDICATE = (
+    "(has_allergy = TRUE AND (allergies IS NULL OR size(allergies) = 0)) "
+    "OR (has_allergy = FALSE AND allergies IS NOT NULL AND size(allergies) > 0)"
+)
+
+
+def check_allergy_completeness(
+    spark: Any,
+    *,
+    gold_table: str = "patient_summary",
+) -> ReconResult:
+    """DQ-FLD-138 — has_allergy flag must be consistent with the allergies array.
+
+    Counts rows that violate the cross-field consistency rule; requires 0.
+    A non-zero count is safety-critical (allergy display) and fails closed
+    with Clinical Ops Director escalation (DQS §1).
+    """
+    gold_fqn = _gold_fqn(gold_table)
+    sql = f"SELECT count(*) AS n FROM {gold_fqn} WHERE {_ALLERGY_VIOLATION_PREDICATE}"
+    violations = int(spark.sql(sql).collect()[0]["n"])
+    return ReconResult(
+        "DQ-FLD-138",
+        violations == 0,
+        f"gold.{gold_table} has_allergy/allergies cross-field violations: {violations}",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Default Gold rule set (DQS §4 / §5 — verify against those docs)
+# ---------------------------------------------------------------------------
+def gold_row_count_rules() -> list[RowCountRule]:
+    """Silver→Gold row-count rules (DQS §5 DQ-REC-003/005 + §4 DQ-STA-019).
+
+    patient_billing_summary has no explicit DQ-REC Silver→Gold row-count rule
+    (DQ-REC-009 is an aggregate SUM); its row-count reconciliation is derived
+    from the encounter grain (LLD §5.4 / STM Silver-to-Gold: one row per
+    encounter) at the DQS §4 DQ-STA-019 ±5% tolerance.
+    """
+    return [
+        RowCountRule(
+            "DQ-REC-003",
+            source="clinical_patients",
+            target="patient_summary",
+            tolerance=0.001,
+            source_filter="is_current = TRUE",
+        ),
+        RowCountRule(
+            "DQ-REC-005",
+            source="clinical_encounters",
+            target="patient_clinical_history",
+            tolerance=0.001,
+            source_latest_ds=True,
+        ),
+        RowCountRule(
+            "DQ-STA-019",
+            source="clinical_encounters",
+            target="patient_billing_summary",
+            tolerance=0.05,
+            source_latest_ds=True,
+        ),
+    ]
+
+
+def run_reconciliation(
+    spark: Any,
+    *,
+    ds: str,
+    meta_dq_run_id: str,
+    env: str | None = None,
+    row_count_rules: list[RowCountRule] | None = None,
+) -> list[ReconResult]:
+    """Run every Gold reconciliation check; raise on any failure (fail-closed).
+
+    A single failing check aborts the layer so downstream consumers never see
+    un-reconciled Gold data (LLD §5.5 — block consumer access on failure).
+    ``ds`` / ``meta_dq_run_id`` are carried into logs + the failure marker for
+    traceability. Gold is a full-overwrite current-snapshot, so ds-partitioned
+    Silver FACT sources ARE scoped to the latest ``ds`` (mirroring the Gold
+    builders' ``_read_fact_current`` read); SCD2 dims filter ``is_current``.
+    """
+    resolved_env = env or os.environ.get(ENV_ENV, DEFAULT_ENV)
+    rules = row_count_rules if row_count_rules is not None else gold_row_count_rules()
+
+    results: list[ReconResult] = [check_row_count(spark, r) for r in rules]
+    results.append(check_patient_completeness(spark))
+    results.append(check_allergy_completeness(spark))
+
+    for r in results:
+        level = logging.INFO if r.passed else logging.ERROR
+        logger.log(
+            level,
+            "  reconciliation_gold %s %s — %s",
+            r.rule_id,
+            "PASS" if r.passed else "FAIL",
+            r.detail,
+        )
+
+    failed = [r for r in results if not r.passed]
+    if failed:
+        ids = ", ".join(r.rule_id for r in failed)
+        raise GoldReconciliationError(
+            f"GOLD_RECON_FAILED_FOR_DS={ds} meta_dq_run_id={meta_dq_run_id} "
+            f"layer={LAYER} env={resolved_env} — {len(failed)} Gold "
+            f"reconciliation check(s) failed: {ids}"
+        )
+    logger.info(
+        "GOLD-RECON OK: %d checks passed for ds=%s meta_dq_run_id=%s (layer=%s env=%s)",
+        len(results),
+        ds,
+        meta_dq_run_id,
+        LAYER,
+        resolved_env,
+    )
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Airflow entry point (called by run_gold_recon.py shim)
+# ---------------------------------------------------------------------------
+def run_reconciliation_gold(
+    *,
+    ds: str,
+    ts_nodash: str,
+    uc_uri: str | None = None,
+    **_: Any,
+) -> int:
+    """Build a SparkSession and run the Gold reconciliation gate.
+
+    Mirrors bronze ``run_reconciliation_bronze``: local import keeps this
+    module importable in DAG-parse / unit-test contexts where pyspark is
+    absent. Returns the number of checks run (all passed — any failure raises).
+    """
+    from {project}.utils.delta_helpers import build_spark_session
+
+    spark = build_spark_session(app_name="reconciliation_gold", uc_uri=uc_uri)
+    try:
+        results = run_reconciliation(spark, ds=ds, meta_dq_run_id=ts_nodash)
+        return len(results)
+    finally:
+        spark.stop()
+
+
+# ---------------------------------------------------------------------------
+# spark-submit entry (used by run_gold_recon.py wrapper)
+# ---------------------------------------------------------------------------
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Gold reconciliation — silver-vs-gold + completeness (LLD §5.5)")
+    p.add_argument("--ds", required=True, help="Logical date YYYY-MM-DD")
+    p.add_argument(
+        "--meta-dq-run-id",
+        required=True,
+        help="Airflow run id (typically {{ ts_nodash }})",
+    )
+    return p.parse_args(argv)
+
+
+def main(args: argparse.Namespace | None = None) -> int:
+    if args is None:
+        args = parse_args()
+    run_reconciliation_gold(ds=args.ds, ts_nodash=args.meta_dq_run_id)
+    return 0
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    sys.exit(main(parse_args()))
+
+
+__all__ = [
+    "LAYER",
+    "EXPECTED_PATIENT_COUNT",
+    "PATIENT_COUNT_TOLERANCE",
+    "GoldReconciliationError",
+    "RowCountRule",
+    "ReconResult",
+    "check_row_count",
+    "check_patient_completeness",
+    "check_allergy_completeness",
+    "gold_row_count_rules",
+    "run_reconciliation",
+    "run_reconciliation_gold",
+    "main",
+    "parse_args",
+]

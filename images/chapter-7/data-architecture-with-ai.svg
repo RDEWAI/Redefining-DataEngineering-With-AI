@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 2700" font-family="Arial, Helvetica, sans-serif">
+<defs>
+  <marker id="arrow" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M1,1 L11,6 L1,11 z" fill="#333333"/></marker>
+  <marker id="arrowP" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M1,1 L11,6 L1,11 z" fill="#7A4FB0"/></marker>
+</defs>
+<rect x="0" y="0" width="1440" height="2700" fill="#ffffff"/>
+<rect x="300" y="40" width="920" height="205" rx="6" fill="#ffffff" stroke="#333333" stroke-width="1.5" stroke-dasharray="7 5"/>
+<rect x="300" y="300" width="920" height="900" rx="6" fill="#ffffff" stroke="#333333" stroke-width="1.5" stroke-dasharray="7 5"/>
+<rect x="300" y="1260" width="920" height="760" rx="6" fill="#ffffff" stroke="#333333" stroke-width="1.5" stroke-dasharray="7 5"/>
+<rect x="300" y="2080" width="920" height="200" rx="6" fill="#ffffff" stroke="#333333" stroke-width="1.5" stroke-dasharray="7 5"/>
+<rect x="300" y="2340" width="920" height="300" rx="6" fill="#F8F4FC" stroke="#7A4FB0" stroke-width="1.5" stroke-dasharray="7 5"/>
+<rect x="1261.0" y="115.0" width="108" height="250" rx="8" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.5"/>
+<text x="1315" y="234.33333333333334" text-anchor="middle" font-size="22" fill="#3A1A5A" font-weight="700">Coding</text>
+<text x="1315" y="260.33333333333337" text-anchor="middle" font-size="22" fill="#3A1A5A" font-weight="700">Agent</text>
+<rect x="1261.0" y="390.0" width="108" height="770" rx="8" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.5"/>
+<text x="1315" y="769.3333333333334" text-anchor="middle" font-size="22" fill="#3A1A5A" font-weight="700">Coding</text>
+<text x="1315" y="795.3333333333334" text-anchor="middle" font-size="22" fill="#3A1A5A" font-weight="700">Agent</text>
+<rect x="1261.0" y="1300.0" width="108" height="680" rx="8" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.5"/>
+<text x="1315" y="1634.3333333333333" text-anchor="middle" font-size="22" fill="#3A1A5A" font-weight="700">Coding</text>
+<text x="1315" y="1660.3333333333333" text-anchor="middle" font-size="22" fill="#3A1A5A" font-weight="700">Agent</text>
+<rect x="1261.0" y="2210.0" width="108" height="230" rx="8" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.5"/>
+<text x="1315" y="2319.3333333333335" text-anchor="middle" font-size="22" fill="#3A1A5A" font-weight="700">MCP</text>
+<text x="1315" y="2345.3333333333335" text-anchor="middle" font-size="22" fill="#3A1A5A" font-weight="700">RAG</text>
+<rect x="375.0" y="103.0" width="210" height="78" rx="2" fill="#ffffff" stroke="#333333" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="480" y="149.33333333333334" text-anchor="middle" font-size="22" fill="#111111" font-weight="700">File Systems</text>
+<rect x="655.0" y="103.0" width="210" height="78" rx="2" fill="#ffffff" stroke="#333333" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="760" y="149.33333333333334" text-anchor="middle" font-size="22" fill="#111111" font-weight="700">Big Data Systems</text>
+<rect x="935.0" y="103.0" width="210" height="78" rx="2" fill="#ffffff" stroke="#333333" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="1040" y="149.33333333333334" text-anchor="middle" font-size="22" fill="#111111" font-weight="700">Operational Apps</text>
+<rect x="650.0" y="349.0" width="220" height="66" rx="10" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<text x="760" y="389.3333333333333" text-anchor="middle" font-size="22" fill="#222222" font-weight="400">Data Extraction</text>
+<path d="M 550,532.0 L 550,600.0 A 76,14 0 0 0 702,600.0 L 702,532.0 A 76,14 0 0 0 550,532.0 Z" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<ellipse cx="626" cy="532.0" rx="76" ry="14" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<text x="626" y="574.0" text-anchor="middle" font-size="21" fill="#222222">Staging Area</text>
+<path d="M 806,532.0 L 806,600.0 A 76,14 0 0 0 958,600.0 L 958,532.0 A 76,14 0 0 0 806,532.0 Z" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<ellipse cx="882" cy="532.0" rx="76" ry="14" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<text x="882" y="574.0" text-anchor="middle" font-size="21" fill="#222222">History Area</text>
+<rect x="650.0" y="709.0" width="220" height="66" rx="10" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<text x="760" y="749.3333333333334" text-anchor="middle" font-size="22" fill="#222222" font-weight="400">Data Processing</text>
+<path d="M 550,912.0 L 550,980.0 A 76,14 0 0 0 702,980.0 L 702,912.0 A 76,14 0 0 0 550,912.0 Z" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<ellipse cx="626" cy="912.0" rx="76" ry="14" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<text x="626" y="941.5" text-anchor="middle" font-size="21" fill="#222222">Data</text>
+<text x="626" y="966.5" text-anchor="middle" font-size="21" fill="#222222">Warehouse</text>
+<path d="M 806,912.0 L 806,980.0 A 76,14 0 0 0 958,980.0 L 958,912.0 A 76,14 0 0 0 806,912.0 Z" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<ellipse cx="882" cy="912.0" rx="76" ry="14" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<text x="882" y="941.5" text-anchor="middle" font-size="21" fill="#222222">Data</text>
+<text x="882" y="966.5" text-anchor="middle" font-size="21" fill="#222222">Lakehouse</text>
+<rect x="650.0" y="1309.0" width="220" height="66" rx="10" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<text x="760" y="1349.3333333333333" text-anchor="middle" font-size="22" fill="#222222" font-weight="400">Data Serving</text>
+<path d="M 484,1500.0 L 484,1568.0 A 76,14 0 0 0 636,1568.0 L 636,1500.0 A 76,14 0 0 0 484,1500.0 Z" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<ellipse cx="560" cy="1500.0" rx="76" ry="14" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<text x="560" y="1529.5" text-anchor="middle" font-size="21" fill="#222222">Analytical</text>
+<text x="560" y="1554.5" text-anchor="middle" font-size="21" fill="#222222">Datamart</text>
+<path d="M 684,1500.0 L 684,1568.0 A 76,14 0 0 0 836,1568.0 L 836,1500.0 A 76,14 0 0 0 684,1500.0 Z" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<ellipse cx="760" cy="1500.0" rx="76" ry="14" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<text x="760" y="1529.5" text-anchor="middle" font-size="21" fill="#222222">Wide-</text>
+<text x="760" y="1554.5" text-anchor="middle" font-size="21" fill="#222222">Column</text>
+<path d="M 884,1500.0 L 884,1568.0 A 76,14 0 0 0 1036,1568.0 L 1036,1500.0 A 76,14 0 0 0 884,1500.0 Z" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<ellipse cx="960" cy="1500.0" rx="76" ry="14" fill="#ffffff" stroke="#333333" stroke-width="1.5"/>
+<text x="960" y="1529.5" text-anchor="middle" font-size="21" fill="#222222">Graph</text>
+<text x="960" y="1554.5" text-anchor="middle" font-size="21" fill="#222222">Database</text>
+<rect x="440.0" y="1707.0" width="640" height="150" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="760" y="1789.3333333333333" text-anchor="middle" font-size="22" fill="#222222" font-weight="400"> </text>
+<text x="760" y="1742" text-anchor="middle" font-size="22" font-weight="700" fill="#111111">Consumption Layer</text>
+<text x="660" y="1802" text-anchor="middle" font-size="20" fill="#222222">BI</text>
+<text x="860" y="1802" text-anchor="middle" font-size="20" fill="#222222">Apps</text>
+<rect x="341.0" y="2138.0" width="202" height="84" rx="8" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.5"/>
+<text x="442" y="2186.6666666666665" text-anchor="middle" font-size="20" fill="#3A1A5A" font-weight="700">Semantics</text>
+<rect x="565.0" y="2138.0" width="202" height="84" rx="8" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.5"/>
+<text x="666" y="2186.6666666666665" text-anchor="middle" font-size="20" fill="#3A1A5A" font-weight="700">Ontology</text>
+<rect x="789.0" y="2138.0" width="202" height="84" rx="8" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.5"/>
+<text x="890" y="2186.6666666666665" text-anchor="middle" font-size="20" fill="#3A1A5A" font-weight="700">Taxonomy</text>
+<rect x="1013.0" y="2138.0" width="202" height="84" rx="8" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.5"/>
+<text x="1114" y="2186.0" text-anchor="middle" font-size="18" fill="#3A1A5A" font-weight="700">Data Contracts</text>
+<rect x="380.0" y="2440.0" width="300" height="100" rx="10" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.5"/>
+<text x="530" y="2496.3333333333335" text-anchor="middle" font-size="19" fill="#3A1A5A" font-weight="700">AI Analytics Query</text>
+<rect x="760.0" y="2415.0" width="390" height="150" rx="4" fill="#EEE6F7" stroke="#7A4FB0" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="955" y="2497.3333333333335" text-anchor="middle" font-size="22" fill="#222222" font-weight="400"> </text>
+<text x="955" y="2453" text-anchor="middle" font-size="22" font-weight="700" fill="#3A1A5A">AI Workflows</text>
+<text x="838" y="2513" text-anchor="middle" font-size="18" fill="#3A1A5A">Agents</text>
+<text x="955" y="2513" text-anchor="middle" font-size="18" fill="#3A1A5A">Automations</text>
+<text x="1078" y="2513" text-anchor="middle" font-size="18" fill="#3A1A5A">Actions</text>
+<path d="M 480 181 C 480 280, 700 300, 745 352" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 760 181 L 760 349" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 1040 181 C 1040 280, 820 300, 775 352" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 705 415 C 660 460, 636 480, 630 515" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 815 415 C 860 460, 878 480, 880 515" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 630 617 C 636 660, 700 690, 720 712" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 880 617 C 876 660, 820 690, 800 712" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 705 775 C 660 830, 636 860, 630 895" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 815 775 C 860 830, 878 860, 880 895" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 626 995 C 626 1180, 700 1250, 722 1312" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 882 995 C 882 1180, 820 1250, 798 1312" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 705 1375 C 620 1430, 580 1450, 566 1485" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 760 1375 L 760 1485" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 815 1375 C 900 1430, 940 1450, 954 1485" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 560 1583 C 560 1650, 660 1680, 700 1706" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 760 1583 L 760 1706" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 960 1583 C 960 1650, 860 1680, 820 1706" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M 700 1857 C 610 2020, 470 2080, 448 2136" fill="none" stroke="#7A4FB0" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 745 1857 C 700 2020, 668 2080, 666 2136" fill="none" stroke="#7A4FB0" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 775 1857 C 830 2020, 888 2080, 890 2136" fill="none" stroke="#7A4FB0" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 820 1857 C 970 2020, 1092 2080, 1114 2136" fill="none" stroke="#7A4FB0" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 442 2224 L 442 2360" fill="none" stroke="#7A4FB0" stroke-width="2"/>
+<path d="M 666 2224 L 666 2360" fill="none" stroke="#7A4FB0" stroke-width="2"/>
+<path d="M 890 2224 L 890 2360" fill="none" stroke="#7A4FB0" stroke-width="2"/>
+<path d="M 1114 2224 L 1114 2360" fill="none" stroke="#7A4FB0" stroke-width="2"/>
+<path d="M 442 2360 L 1114 2360" fill="none" stroke="#7A4FB0" stroke-width="2"/>
+<path d="M 530 2360 L 530 2438" fill="none" stroke="#7A4FB0" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 955 2360 L 955 2413" fill="none" stroke="#7A4FB0" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 762 2565 H 55 V 142 H 297" fill="none" stroke="#7A4FB0" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="4 5"/>
+</svg>

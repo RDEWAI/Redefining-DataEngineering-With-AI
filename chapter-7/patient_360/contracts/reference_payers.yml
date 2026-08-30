@@ -1,0 +1,112 @@
+table: reference_payers
+layer: silver
+domain: reference
+schema:
+- name: payer_id
+  type: string
+  nullable: false
+  description: "Payer UUID \u2014 natural key"
+- name: payer_name
+  type: string
+  nullable: true
+  description: "Payer name \u2014 SCD Type 2 tracked"
+- name: ownership
+  type: string
+  nullable: true
+  description: "Ownership type (Government, Private) \u2014 SCD Type 2 tracked"
+- name: address
+  type: string
+  nullable: true
+  description: Street address
+- name: city
+  type: string
+  nullable: true
+  description: City
+- name: state
+  type: string
+  nullable: true
+  description: State where headquartered
+- name: zip
+  type: string
+  nullable: true
+  description: ZIP code
+- name: phone
+  type: string
+  nullable: true
+  description: Phone number
+- name: amount_covered
+  type: decimal(14,2)
+  nullable: true
+  description: "Total amount covered \u2014 cast from DOUBLE (STM v3 width)"
+- name: amount_uncovered
+  type: decimal(14,2)
+  nullable: true
+  description: "Total amount uncovered \u2014 cast from DOUBLE (STM v3 width)"
+- name: revenue
+  type: decimal(12,2)
+  nullable: true
+  description: "Total revenue \u2014 cast from DOUBLE"
+- name: covered_encounters
+  type: integer
+  nullable: true
+  description: Count of covered encounters
+- name: uncovered_encounters
+  type: integer
+  nullable: true
+  description: Count of uncovered encounters
+- name: unique_customers
+  type: integer
+  nullable: true
+  description: Unique customer count
+- name: member_months
+  type: integer
+  nullable: true
+  description: Total member months
+- name: effective_from
+  type: date
+  nullable: false
+  description: "SCD2 \u2014 row version start date"
+- name: effective_to
+  type: date
+  nullable: false
+  description: "SCD2 \u2014 row version end date (9999-12-31 for current version)"
+- name: is_current
+  type: boolean
+  nullable: false
+  description: "SCD2 \u2014 TRUE for the active version"
+- name: _record_hash
+  type: string
+  nullable: false
+  description: "SHA-256 hash of SCD2-tracked columns \u2014 change detection"
+- name: _ingested_at
+  type: timestamp
+  nullable: false
+  description: Pipeline ingestion timestamp
+- name: _source_batch_id
+  type: string
+  nullable: false
+  description: Pipeline run identifier
+owner: Patient 360 Data Engineering
+dms_section: "DMS \xA73.13 reference_payers"
+primary_key:
+- payer_id
+- effective_from
+partition_by: none
+write_strategy: Delta MERGE INTO on payer_id (SCD Type 2)
+ddl_path: ddl/migrations/20260620_212_reference_payers.sql
+dq_path: dq_rules/reference_payers.yml
+description: "Reference data for insurance payers with SCD Type 2 history tracking.\
+  \ Plan and coverage changes (payer_name, ownership) are tracked for billing accuracy.\
+  \ Synthea payers source carries no PHI columns; the projection selects only DMS\
+  \ \xA73.13 columns so no non-DMS column can leak (NFR-6)."
+tags:
+- silver
+- reference
+- scd2
+- patient_360
+scd2:
+  natural_keys:
+  - payer_id
+  hash_columns:
+  - payer_name
+  - ownership

@@ -1,0 +1,69 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial', 'lineColor': '#333333'}}}%%
+flowchart TD
+    subgraph sources[" "]
+        direction LR
+        FS["<b>File Systems</b>"]
+        BDS["<b>Big Data Systems</b>"]
+        OA["<b>Operational Apps</b>"]
+    end
+
+    subgraph storage[" "]
+        CA1["Coding<br/>Agent"]
+        EXT("Data Extraction")
+        STG[("Staging Area")]
+        DL[("History Area")]
+        CA2["Coding<br/>Agent"]
+        PROC("Data Processing")
+        DW[("Data<br/>Warehouse")]
+        DLH[("Data<br/>Lakehouse")]
+    end
+
+    subgraph serving[" "]
+        DPS("Data Serving")
+        ADM[("Analytical<br/>Datamart")]
+        WC[("Wide-<br/>Column")]
+        GDB[("Graph<br/>Database")]
+        CONS["<b>Consumption Layer</b><br/><br/>BI&nbsp;&nbsp;&nbsp;&nbsp;AI/ML&nbsp;&nbsp;&nbsp;&nbsp;Apps&nbsp;&nbsp;&nbsp;&nbsp;AI Analytics Query"]
+    end
+
+    subgraph aiflow[" "]
+        AIW["<b>AI Workflows</b><br/><br/>Agents&nbsp;&nbsp;&nbsp;&nbsp;Automations&nbsp;&nbsp;&nbsp;&nbsp;Actions"]
+    end
+
+    FS --> EXT
+    BDS --> EXT
+    OA --> EXT
+    CA1 <-.-> EXT
+    EXT --> STG & DL
+    STG & DL --> PROC
+    CA2 <-.-> PROC
+    PROC --> DW & DLH
+    DW --> DPS
+    DLH --> DPS
+    DPS --> ADM & WC & GDB
+    ADM & WC & GDB --> CONS
+    CONS --> AIW
+    AIW -. "AI write-back" .-> FS
+    AIW -.-> BDS
+
+    classDef dashed fill:#ffffff,stroke:#333333,stroke-width:1.5px,stroke-dasharray:6 4;
+    classDef proc fill:#ffffff,stroke:#333333,stroke-width:1.5px;
+    classDef store fill:#ffffff,stroke:#333333,stroke-width:1.5px;
+    classDef ai fill:#EEE6F7,stroke:#7A4FB0,stroke-width:1.5px,color:#3A1A5A;
+    classDef aidash fill:#EEE6F7,stroke:#7A4FB0,stroke-width:1.5px,color:#3A1A5A,stroke-dasharray:6 4;
+
+    class FS,BDS,OA,CONS dashed;
+    class EXT,PROC,DPS proc;
+    class STG,DL,DW,DLH,ADM,WC,GDB store;
+    class CA1,CA2 ai;
+    class AIW aidash;
+
+    style sources fill:#ffffff,stroke:#333333,stroke-width:1.5px,stroke-dasharray:6 4;
+    style storage fill:#ffffff,stroke:#333333,stroke-width:1.5px,stroke-dasharray:6 4;
+    style serving fill:#ffffff,stroke:#333333,stroke-width:1.5px,stroke-dasharray:6 4;
+    style aiflow fill:#F7F2FB,stroke:#7A4FB0,stroke-width:1.5px,stroke-dasharray:6 4;
+
+    linkStyle 3 stroke:#7A4FB0,stroke-width:2px;
+    linkStyle 6 stroke:#7A4FB0,stroke-width:2px;
+    linkStyle 18 stroke:#7A4FB0,stroke-width:2px;
+    linkStyle 19 stroke:#7A4FB0,stroke-width:2px;

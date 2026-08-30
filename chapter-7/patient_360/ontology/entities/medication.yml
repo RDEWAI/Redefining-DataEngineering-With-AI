@@ -1,0 +1,59 @@
+# Ontology entity: Medication  (noun / class)  — PARENT of a taxonomy (see taxonomy/medication.yml)
+name: Medication
+kind: class
+maps_to: unity.gold.patient_billing_summary        # medications referenced at encounter/billing grain
+synonyms: [drug, therapy, prescription drug]
+semantic_connectivity:
+  definition: "A therapeutic substance administered to or prescribed for a patient."
+  business_context: >-
+    Medication is a parent concept. Its taxonomy splits into PrescriptionMedication and
+    OTCMedication (see taxonomy/). In the current Gold load medications are sparse (active
+    medications[] is empty on patient_summary), so prefer condition/encounter questions.
+  intent: "Answer 'what is the patient taking / prescribed' questions and drive drug cohorts."
+  reasoning_note: >-
+    A generic-labelled drug can be reasoned about via its taxonomy (subclass -> physiologic
+    effect) instead of hallucinating — the child concepts carry the extra attributes.
+
+attributes:
+  - name: hasCode
+    maps_to: patient_billing_summary.code
+    datatype: string
+    identifier: true
+    meaning: "Medication/drug code (natural key at this grain)."
+  - name: hasName
+    maps_to: patient_billing_summary.name
+    datatype: string
+    meaning: "Medication display name."
+  - name: hasDosage
+    maps_to: "medication.dosage (silver-derived; see taxonomy children)"
+    datatype: string
+    meaning: "Prescribed dose."
+  - name: hasRoute
+    maps_to: "medication.route"
+    datatype: string
+    meaning: "Route of administration (oral, injectable, ...)."
+
+relations:
+  - predicate: prescribedInEncounter
+    target: Encounter
+    inverse: prescribes
+    cardinality: many_to_one
+    maps_to: "encounter medication roll-up"
+    meaning: "A medication instance is prescribed within one encounter."
+  - predicate: takenByPatient
+    target: Patient
+    inverse: takes
+    cardinality: many_to_one
+    meaning: "A medication is taken by a patient (via the encounter/prescription)."
+
+constraints:
+  - id: MED-PARENT
+    kind: taxonomy
+    rule: >-
+      Medication is abstract-ish: concrete instances are classified as PrescriptionMedication or
+      OTCMedication (taxonomy/medication.yml). Filter on the classification first, then attributes.
+  - id: MED-GRAIN
+    kind: modeling
+    rule: >-
+      Do not mix patient-grain and drug-grain data without an explicit relation — join Patient ->
+      Encounter -> Medication rather than pulling drug detail directly onto a patient count.

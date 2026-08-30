@@ -1,0 +1,23 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    T(("Transaction"))
+    P(("&nbsp;&nbsp;Process&nbsp;&nbsp;"))
+    S(("&nbsp;&nbsp;&nbsp;Serve&nbsp;&nbsp;&nbsp;"))
+    A(("&nbsp;AI Action&nbsp;"))
+
+    T -->|"event"| P
+    P -->|"cleanse · model"| S
+    S -->|"insight"| A
+    A -.->|"write-back · closes the loop"| T
+
+    classDef txn fill:#E8E8F4,stroke:#6A6AB0,color:#1A1A4A,stroke-width:3px;
+    classDef proc fill:#F7EFE0,stroke:#B08A40,color:#4A3810,stroke-width:3px;
+    classDef serve fill:#EDF7E8,stroke:#7AA85A,color:#2A4A10,stroke-width:3px;
+    classDef ai fill:#F7E8F2,stroke:#A85A94,color:#4A1038,stroke-width:3px;
+
+    class T txn;
+    class P proc;
+    class S serve;
+    class A ai;
+
+    linkStyle 3 stroke:#A85A94,stroke-width:2px;

@@ -1,0 +1,154 @@
+# Reference pattern — Gold consumer-table builder.
+#
+# This is a TEMPLATE, not a finished module. `create-gold` renders one
+# builder per LLD §5.3 Gold task, filling the <angle-bracket> placeholders
+# from the upstream artifacts (never inventing joins, columns, or rules):
+#
+#   <gold_table>       LLD §5.3 Output  (e.g. patient_summary)
+#   <builder_module>   LLD §5.3 Module Path  (src/patient_360/gold/build_<...>.py)
+#   OUTPUT_COLUMNS     DMS §4 columns:  block for this table (exact order)
+#   silver reads       LLD §5.3 Inputs column
+#   joins/aggregations STM Tab:Silver-to-Gold (<gold_table>) — preserve row order
+#   DQ range           DQS §2 Gold rules for this table
+#
+# Runtime-stack invariants this pattern encodes (do NOT deviate):
+#   * Write = FULL OVERWRITE via insertInto into the pre-created EXTERNAL
+#     Delta table (LLD §3.3, Decision 15). The DataFrameWriter table-create
+#     APIs are rejected by UCSingleCatalog — insert-only; never create the
+#     table at runtime and never write by path.
+#     IMPORTANT: keep the rendered builder's comments free of the literal
+#     writer-method names and of `.save(...warehouse...)` — the stories'
+#     forbidden_grep is a plain regex over the whole file and matches those
+#     tokens even inside comments. Describe the prohibition in words instead.
+#   * SCD2 dims are read current-state: filter is_current == True and join on
+#     the NATURAL key (patient_id / provider_id / organization_id / payer_id).
+#     There is no surrogate FK in this pipeline.
+#   * Plain Silver FACTS are ds-partitioned, append-only (LLD §7): re-running
+#     ingestion lands another full copy of every natural key under a new ds.
+#     Read facts current-state via _read_fact_current (latest ds partition only)
+#     so per-key COUNT/SUM aggregations are not double-counted across ds. This is
+#     the fact analogue of the dims' is_current filter and is what keeps the Gold
+#     grain contract green (DQS DQ-FLD-143: COUNT(*) = COUNT(DISTINCT <grain>)).
+#     NEVER read a Silver fact with a bare spark.table(...) in a Gold builder.
+#   * Gold NEVER performs SCD2 — never import or call the SCD2 helper.
+#   * run_dq(...) gates BEFORE the write and returns a SINGLE validated
+#     DataFrame (keyword-only, single-DF return — not a tuple).
+#   * Target FQN is `unity.gold.<table>` (LLD / DDL / stories are
+#     authoritative; the DMS/DQS `analytics` schema name is stale).
+#   * A `ds`/build-stamp column is added ONLY when DMS §4 lists one for this
+#     table. OUTPUT_COLUMNS + insertInto are positional against the DMS §4
+#     schema, so an extra `ds` breaks the insert arity. Most consumer tables
+#     (e.g. patient_summary) have NO `ds` column — omit it there.
+
+"""Gold builder: <silver inputs> -> unity.gold.<gold_table>.
+
+LLD: §5.3 <build_<gold_table>_gold>
+STM: Tab:Silver-to-Gold (<gold_table>)
+DMS: §4 <gold_table> schema
+DQS: <DQ-FLD-NNN> .. <DQ-FLD-MMM>
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from pyspark.sql import functions as F
+
+try:
+    from patient_360.utils import se_runner
+except ImportError as exc:  # pragma: no cover - import-contract guard
+    import logging
+
+    logging.getLogger(__name__).critical("se_runner import failed in build_<gold_table>: %s", exc)
+    raise
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from pyspark.sql import DataFrame, SparkSession
+
+TABLE = "<gold_table>"
+SCHEMA = "gold"
+
+# LLD §5.3 empty-input behavior for every Gold table = Fail task
+# ("consumer table must have data"). Unlike Silver (write_empty), Gold
+# raises when a required Silver input is empty.
+EMPTY_INPUT_BEHAVIOR = "fail"
+ACTION_IF_FAILED = "fail"
+
+# DMS §4 ordered columns for <gold_table> — the exact projection written to
+# unity.gold.<gold_table>. Keep DMS §4 order; the insertInto is positional.
+OUTPUT_COLUMNS = [
+    # "<col_1>", "<col_2>", ...  (from DMS §4 columns: block)
+]
+
+
+def _read_current(spark: SparkSession, table: str) -> DataFrame:
+    """Read a current-state SCD2 silver dimension (LLD §6.2 join strategy)."""
+    return spark.table(f"unity.silver.{table}").filter(F.col("is_current") == True)  # noqa: E712
+
+
+def _read_fact_current(spark: SparkSession, table: str) -> DataFrame:
+    """Read the current snapshot of a ds-partitioned Silver fact.
+
+    Silver facts are append-only per ds (LLD §7); re-running ingestion lands a
+    fresh full copy of every natural key under a new ds. The Gold current-state
+    read keeps only the latest ds partition (the newest complete load) so per-key
+    COUNT/SUM aggregations stay at grain and do not double-count across ds
+    (DQS DQ-FLD-143). Fact analogue of _read_current's is_current filter for dims.
+    An empty fact yields max(ds) = None -> empty result, which the caller's
+    empty-input = Fail guard then surfaces (LLD §5.3).
+    """
+    fact = spark.table(f"unity.silver.{table}")
+    latest_ds = fact.select(F.max(F.col("ds"))).first()[0]
+    return fact.filter(F.col("ds") == F.lit(latest_ds))
+
+
+def build(spark: SparkSession, env: str, ds: str) -> DataFrame:
+    # 1. Read Silver inputs (LLD §5.3 Inputs). SCD2 dims via _read_current on the
+    #    natural key; ds-partitioned facts via _read_fact_current (latest ds only,
+    #    so cross-ds re-ingestion never double-counts). Broadcast the small dims
+    #    per LLD §6.2 (patients ~5.7K, payers ~10) where the STM join calls for it.
+    patients = _read_current(spark, "clinical_patients")  # example dim read
+    encounters = _read_fact_current(spark, "clinical_encounters")  # example fact read
+    # ... one read per LLD §5.3 Input for this Gold table
+
+    # LLD §5.3 empty-input = Fail: a required Silver input with no rows halts
+    # the task (do NOT write an empty consumer table).
+    if patients.head(1) == []:
+        raise ValueError(
+            f"Gold {TABLE}: required Silver input is empty (LLD §5.3 empty-input = Fail task)."
+        )
+
+    # 2. Apply STM Tab:Silver-to-Gold joins + aggregations, IN STM ROW ORDER.
+    #    Pre-aggregate each Silver fact to one row per natural key, then LEFT
+    #    JOIN onto the current-state dim (STM's `GROUP BY patient_id` grain).
+    #    ARRAY<STRUCT> denormalization via F.collect_list(F.struct(...)) where
+    #    DMS §4 declares an array column; struct field names MUST match DMS.
+    gold_df = (
+        patients.join(encounters, on="patient_id", how="left")
+        # ... per STM Silver-to-Gold rows
+        # .groupBy(...).agg(...)
+    )
+    #    Add a `ds`/build-stamp column HERE only if DMS §4 lists one for this
+    #    table (positional insert — an extra column breaks arity). Omit it when
+    #    the DMS schema has no `ds` (e.g. patient_summary). `ds` remains a
+    #    build stamp, never a partition key.
+
+    # 3. DQ gate BEFORE write (LLD §5.4). Single validated DataFrame back;
+    #    action resolves per env inside run_dq (DEV/QA=ignore, PROD=fail).
+    validated_df = se_runner.run_dq(
+        df=gold_df,
+        table=TABLE,
+        env=env,
+        action_if_failed=ACTION_IF_FAILED,
+        dq_rules_dir=None,  # convention discovery -> dq_rules/<gold_table>.yml
+    )
+
+    # 4. FULL OVERWRITE into the pre-created EXTERNAL Delta table. Positional
+    #    insert against DMS §4 column order; insert-only, no partitioning.
+    target_table = f"unity.{SCHEMA}.{TABLE}"
+    validated_df.select(*OUTPUT_COLUMNS).write.mode("overwrite").insertInto(target_table)
+
+    return validated_df
+
+
+__all__ = ["build", "TABLE", "SCHEMA", "OUTPUT_COLUMNS"]

@@ -1,0 +1,13 @@
+# DQ contract pointer for clinical_patients (Silver SCD2 dimension).
+# Patient-critical table — tighter thresholds (DQS §1 Hybrid threshold
+# decision; clinical_patients feeds the Clinical Dashboard 1-hour SLA
+# [DRD §4.4]).
+table: clinical_patients
+layer: silver
+dq_rules_path: ../../dq_rules/clinical_patients.yml
+
+# Severity thresholds for reconciliation tasks (LLD §5.5).
+thresholds:
+  completeness_min: 0.99
+  validity_min: 0.995
+  freshness_max_hours: 1

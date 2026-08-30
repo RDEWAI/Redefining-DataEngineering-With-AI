@@ -1,0 +1,110 @@
+{
+  "story_id": "STORY-02-008",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/outputs/stories/v1/EPIC-02-bronze-ingestion/STORY-02-008-bronze-integration-test.md",
+  "epic_id": "EPIC-02",
+  "plan_version": 1,
+  "status": "failed",
+  "generated_at": "2026-05-12T03:08:01.182587+00:00",
+  "summary": "1 task(s) across ['integration-test'] \u2014 5 AC(s).",
+  "classifier": {
+    "kind": "integration-test",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-02-008",
+    "paths": [],
+    "by_skill": {},
+    "dispatch_order": [],
+    "unmatched": [],
+    "fallback_kind": "integration-test"
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "create-integration-test",
+      "kind": "integration-test",
+      "mode": "create",
+      "paths": [],
+      "depends_on": [],
+      "status": "failed",
+      "started_at": "2026-05-12T03:11:04.171388+00:00",
+      "finished_at": "2026-05-12T03:11:24.781049+00:00",
+      "artifacts": [],
+      "files_created": 0,
+      "files_updated": 0,
+      "critical_findings": [
+        "Dispatch blocked: create-integration-test / create-deploy-validation skill folders exist on disk but the Skill tool reports them as unknown \u2014 plugin reinstall (or marketplace refresh) required before they can be invoked."
+      ],
+      "validator": "validate-integration-test",
+      "validator_status": "pending",
+      "notes": "behavioural story \u2014 no path tokens; sub-skill handles AC scope"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "Airflow DAG `patient360_hourly_v1` triggers and Bronze TaskGroup completes successfully on local Airflow [LLD \u00a74.2]",
+      "line": 37,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "13 Bronze Delta tables visible in Unity Catalog OSS local at `unity.bronze.synthea_*` after the DAG run [LLD \u00a713 Decision 15]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "Each Bronze table has `ds`, `_ingested_at`, `_source_batch_id` metadata columns populated [LLD \u00a72.3]",
+      "line": 41,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 4,
+      "text": "`bronze_se_stats` has \u22651 row whose `meta_dq_run_id` matches the run; `reconciliation_bronze` succeeds (SE run-evidence) [LLD \u00a78.6.1]",
+      "line": 43,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 5,
+      "text": "`dq_pass_rate` reported in Marquez run facets / Grafana dashboard for the run [LLD \u00a78.6.1, \u00a710.2]",
+      "line": 45,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

@@ -1,0 +1,21 @@
+# Generated Unity Catalog OSS Delta warehouse — local runtime data, never commit
+uc-warehouse/
+
+# Skill/editor backup files
+*.bak
+
+# Local skill-arg scratch files
+.skill-arg
+
+# UC-from-source build clone (third-party unitycatalog repo, ~52M, has own .git)
+# Leading **/ so it also matches the nested patient_360/_infra/docker/ path.
+**/_infra/docker/uc-source/
+
+# UC OSS generated auth token — local runtime secret, never commit
+**/token.txt
+
+# Local-only working/process docs (kept on disk, not tracked)
+SESSION-HANDOFF.md
+story-error-table-that-wouldnt-write.md
+UC-0.5.0-UPGRADE-RUNBOOK.md
+developer-plugin/LLD-DEVIATIONS.md

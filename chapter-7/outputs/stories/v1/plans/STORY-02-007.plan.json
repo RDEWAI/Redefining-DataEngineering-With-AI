@@ -1,0 +1,106 @@
+{
+  "story_id": "STORY-02-007",
+  "story_file": "/Users/pvemuri/book/Redefining-DataEngineering-With-AI/chapter-5/outputs/stories/v1/EPIC-02-bronze-ingestion/STORY-02-007-bronze-perf-tuning.md",
+  "epic_id": "EPIC-02",
+  "plan_version": 1,
+  "status": "implemented",
+  "generated_at": "2026-05-11T22:53:56.009125+00:00",
+  "summary": "1 task(s) across ['pipeline'] \u2014 4 AC(s).",
+  "classifier": {
+    "kind": "ingestion",
+    "confidence": "high"
+  },
+  "deliverables": {
+    "story_id": "STORY-02-007",
+    "paths": [
+      "_infra/cd/config/*.yaml"
+    ],
+    "by_skill": {
+      "pipeline": [
+        "_infra/cd/config/*.yaml"
+      ]
+    },
+    "dispatch_order": [
+      "pipeline"
+    ],
+    "unmatched": [],
+    "fallback_kind": null
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "skill": "update-pipeline",
+      "kind": "pipeline",
+      "mode": "update",
+      "paths": [
+        "_infra/cd/config/*.yaml"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "started_at": "2026-05-11T23:21:05.917056+00:00",
+      "finished_at": "2026-05-11T23:24:33.091223+00:00",
+      "artifacts": [],
+      "files_created": 1,
+      "files_updated": 5,
+      "critical_findings": [],
+      "validator": "validate-pipeline",
+      "validator_status": "pass",
+      "notes": ""
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "index": 1,
+      "text": "`compute.spark_shuffle_partitions` set per env (8/16/32) in `_infra/cd/config/{env}.yaml` per LLD \u00a76.3 [LLD \u00a76.3]",
+      "line": 37,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 2,
+      "text": "`synthea_observations` write produces ~8 output partitions per `ds` per LLD \u00a76.5 [LLD \u00a76.5]",
+      "line": 39,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 3,
+      "text": "`replaceWhere` prune verified by `EXPLAIN EXTENDED` showing partition filter pushdown [LLD \u00a73.3, \u00a74.5]",
+      "line": 41,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    },
+    {
+      "index": 4,
+      "text": "Benchmark: ingest_observations completes in < 5 min on DEV (1 executor, 2g) per LLD \u00a74.4 [LLD \u00a74.4]",
+      "line": 43,
+      "task_ids": [
+        "T1"
+      ],
+      "validation": {
+        "status": "pending",
+        "evidence": ""
+      }
+    }
+  ],
+  "completion": {
+    "status": "pending",
+    "completed_at": null,
+    "blocking_reasons": []
+  }
+}

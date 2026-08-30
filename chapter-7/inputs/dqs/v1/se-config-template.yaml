@@ -1,0 +1,83 @@
+# Spark-Expectations Configuration Template
+# Patient 360 Pipeline
+# Version: 2.0
+# REQUIRES: spark-expectations >= 2.10.0
+#   The YAML rule loader (`spark_expectations.rules.load_rules_from_yaml`) and
+#   `WrappedDataFrameWriter` were added in v2.10.0
+#   (https://github.com/Nike-Inc/spark-expectations/releases/tag/v2.10.0).
+#   Earlier 2.x releases (e.g. 2.6.0) do not have this module — pinning below
+#   2.10 raises `ModuleNotFoundError` at import time. The chapter-5
+#   `LIBRARIES.md` catalogue and `validate-dag SE-IMPORTS-001` enforce this floor.
+#
+# Usage (works on SE >= 2.10):
+#   from spark_expectations.rules import load_rules_from_yaml
+#   rules_df = load_rules_from_yaml("se-rules-dim-patient.yaml", spark, options={"dq_env": "PROD"})
+#
+# The dq_env section defines per-environment defaults for all SE rules.
+# When SE loads this YAML, it selects ONE environment via options={"dq_env": "<env>"}
+# and merges those defaults into every rule. Per-rule fields override env defaults.
+#
+# Defaults cascade: COLUMN_DEFAULTS → dq_env[env] → per-rule override
+
+product_id: patient-360
+
+# table_name is ENV-AGNOSTIC on this stack. All envs (DEV/QA/PROD) run against
+# ONE local Unity Catalog OSS metastore (LLD §1), so the SE target/stats/error
+# tables live under `unity.<layer>` in every env — there is no dev_/qa_
+# physical-DB prefix. Only per-env POLICY varies (action_if_failed / thresholds /
+# priority). Never env-prefix the name: a value like `dev_analytics.<t>` both
+# fails the SE rule-filter AND makes SE try to create `<t>_stats`/`<t>_error`
+# under a catalog.schema that does not exist in UC.
+dq_env:
+  DEV:
+    table_name: "{schema}.{table}"
+    action_if_failed: ignore        # permissive in dev — log but don't block
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: false
+    error_drop_threshold: 0          # integer % — alert on any drop
+    priority: medium
+  QA:
+    table_name: "{schema}.{table}"
+    action_if_failed: ignore         # NOT drop — drop is only valid for row_dq
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 5
+    priority: medium
+  PROD:
+    table_name: "{schema}.{table}"
+    action_if_failed: fail           # strictest — halt pipeline on failures
+    enable_for_source_dq_validation: true
+    enable_for_target_dq_validation: true
+    is_active: true
+    enable_error_drop_alert: true
+    error_drop_threshold: 2          # integer % — alert if >2% dropped
+    priority: high
+
+rules: []
+
+# ---------------------------------------------------------------------------
+# Generator metadata (NOT part of SE output)
+# Used by generate_se_rules.py to resolve schema names per Medallion layer.
+# This section is stripped before generating per-table SE YAML files.
+# ---------------------------------------------------------------------------
+_generator:
+  layer_schemas:
+    # Authoritative runtime schemas: all Medallion layers live under the single
+    # local Unity Catalog OSS `unity` catalog (LLD §1 / ddl/migrations/*.sql).
+    bronze: unity.bronze
+    silver: unity.silver
+    gold: unity.gold
+    source: synthea
+    # Stale-alias resolution: the DQS still addresses reconciliation TARGETS by
+    # their documented-stale 3-part FQNs (`unity.analytics.*`, `unity.clinical.*`,
+    # `unity.raw.*`). After `_canonicalize_table` strips the leading `unity.`,
+    # the middle segment (analytics/clinical/raw) is resolved here to the same
+    # `unity.<layer>` key as the field-rule group, so recon rules MERGE into the
+    # correct per-table file instead of splitting into a stale `analytics.*` file.
+    raw: unity.bronze
+    clinical: unity.silver
+    analytics: unity.gold
