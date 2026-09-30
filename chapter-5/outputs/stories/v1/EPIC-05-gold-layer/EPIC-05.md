@@ -4,8 +4,8 @@
 |-------|-------|
 | **LLD Section** | §5.3 |
 | **Epic Scope** | layer |
-| **Stories** | 5 |
-| **Total Points** | 22 |
+| **Stories** | 6 |
+| **Total Points** | 25 |
 | **Sprints** | 8 |
 | **Status** | Draft |
 
@@ -56,9 +56,11 @@ Build the 3 denormalized Gold consumer tables (`patient_summary`, `patient_clini
 
 | STORY-05-003 | Implement build_patient_billing_summary_gold | build | 5 | 8 | STORY-05-001 |
 
+| STORY-05-006 | Wire the gold_build TaskGroup + reconciliation_gold into patient360_hourly_v1 | build | 3 | 8 | STORY-04-010, STORY-05-001, STORY-05-002, STORY-05-003 |
+
 | STORY-05-004 | Performance: cache shared Silver inputs + broadcast small dims for Gold builds | performance-optimization | 2 | 8 | STORY-05-001, STORY-05-002, STORY-05-003 |
 
-| STORY-05-005 | Local integration test: trigger Gold tasks against Unity Catalog OSS local | integration-test | 5 | 8 | STORY-05-004 |
+| STORY-05-005 | Local integration test: trigger Gold tasks against Unity Catalog OSS local | integration-test | 5 | 8 | STORY-05-004, STORY-05-006 |
 
 
 
