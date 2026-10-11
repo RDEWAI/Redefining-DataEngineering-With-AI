@@ -1,4 +1,4 @@
-.PHONY: help dev-setup install-plugins uninstall-marketplaces test test-unit validate-ingestion validate-silver validate-gold lint format clean
+.PHONY: help dev-setup install-plugins uninstall-marketplaces test test-unit validate-ingestion validate-silver validate-gold lint format clean eval-dev-trigger eval-dev-validators eval-dev-generator eval-dev
 
 help: ##@ Show available commands
 	@echo "Chapter 7: Gold Layer — Agent Chain (BA -> ... -> Developer)"
@@ -72,3 +72,18 @@ clean: ##@ Remove generated files and caches
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	@echo "Cleaned."
+
+# ---- developer-plugin evals (claude plugin eval) ----
+EVAL_COMMON = --trust-plugin --no-publish --judge-model claude-haiku-4-5
+
+eval-dev-trigger: ##@ Eval: skill routing only (cheap, no Bash sandbox)
+	claude plugin eval ./developer-plugin $(EVAL_COMMON) --tag trigger --runs 1 --ablation none
+
+eval-dev-validators: ##@ Eval: validate-* skills on a scaffolded fixture
+	claude plugin eval ./developer-plugin $(EVAL_COMMON) --tag validator --scaffold --allow-tools Bash
+
+eval-dev-generator: ##@ Eval: create-dag end-to-end (expensive, cost-capped)
+	claude plugin eval ./developer-plugin $(EVAL_COMMON) --tag generator --scaffold --allow-tools Bash Write Edit --max-cost-usd 10
+
+eval-dev: ##@ Eval: full developer-plugin suite, CI shape
+	claude plugin eval ./developer-plugin $(EVAL_COMMON) --scaffold --allow-tools Bash Write Edit --threshold 0.8 --json evals-result.json

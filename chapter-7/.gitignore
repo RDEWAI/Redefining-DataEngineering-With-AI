@@ -19,3 +19,7 @@ SESSION-HANDOFF.md
 story-error-table-that-wouldnt-write.md
 UC-0.5.0-UPGRADE-RUNBOOK.md
 developer-plugin/LLD-DEVIATIONS.md
+
+# claude plugin eval run outputs
+**/evals/results/
+evals-result.json
