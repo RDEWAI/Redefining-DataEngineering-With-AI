@@ -1,0 +1,111 @@
+{
+  "alert_id": "ALERT-20261014T153012Z-reconciliation_bronze",
+  "collected_at": "2026-10-14T15:31:02+00:00",
+  "offline": false,
+  "tables": [
+    "unity.bronze.synthea_allergies",
+    "unity.bronze.synthea_careplans",
+    "unity.bronze.synthea_claims",
+    "unity.bronze.synthea_conditions",
+    "unity.bronze.synthea_encounters",
+    "unity.bronze.synthea_immunizations",
+    "unity.bronze.synthea_medications",
+    "unity.bronze.synthea_observations",
+    "unity.bronze.synthea_organizations",
+    "unity.bronze.synthea_patients",
+    "unity.bronze.synthea_payers",
+    "unity.bronze.synthea_procedures",
+    "unity.bronze.synthea_providers"
+  ],
+  "surfaces": {
+    "config_snapshot": {
+      "status": "ok",
+      "file": "config_snapshot/"
+    },
+    "airflow_dagrun": {
+      "status": "ok",
+      "file": "airflow_dagrun.json"
+    },
+    "airflow_taskinstances": {
+      "status": "ok",
+      "file": "airflow_taskinstances.json",
+      "state_counts": {
+        "success": 13,
+        "failed": 1,
+        "upstream_failed": 17
+      }
+    },
+    "airflow_task_log": {
+      "status": "ok",
+      "file": "airflow_task_log_try3.log",
+      "files": [
+        "airflow_task_log_try3.log",
+        "airflow_task_log_try2.log"
+      ],
+      "try_number": 3
+    },
+    "docker_ps": {
+      "status": "ok",
+      "file": "docker_ps.json"
+    },
+    "docker_logs_airflow": {
+      "status": "ok",
+      "file": "docker_logs_airflow.log",
+      "lines": 212
+    },
+    "docker_logs_unity-catalog": {
+      "status": "ok",
+      "file": "docker_logs_unity-catalog.log",
+      "lines": 88
+    },
+    "docker_logs_spark-thrift-server": {
+      "status": "ok",
+      "file": "docker_logs_spark-thrift-server.log",
+      "lines": 40
+    },
+    "docker_logs_marquez": {
+      "status": "unavailable",
+      "reason": "no log lines in window"
+    },
+    "uc_health": {
+      "status": "ok",
+      "file": "uc_health.json",
+      "tables_checked": 13,
+      "tables_missing": []
+    },
+    "se_stats": {
+      "status": "ok",
+      "file": "se_stats.json",
+      "tables": 13,
+      "tables_with_rows": [
+        "unity.bronze.synthea_allergies",
+        "unity.bronze.synthea_careplans",
+        "unity.bronze.synthea_claims",
+        "unity.bronze.synthea_conditions",
+        "unity.bronze.synthea_encounters",
+        "unity.bronze.synthea_immunizations",
+        "unity.bronze.synthea_medications",
+        "unity.bronze.synthea_observations",
+        "unity.bronze.synthea_organizations",
+        "unity.bronze.synthea_patients",
+        "unity.bronze.synthea_payers",
+        "unity.bronze.synthea_procedures",
+        "unity.bronze.synthea_providers"
+      ]
+    },
+    "se_errors": {
+      "status": "ok",
+      "file": "se_errors.json",
+      "tables": 13
+    },
+    "delta_history": {
+      "status": "ok",
+      "file": "delta_history.json",
+      "tables": 13
+    },
+    "marquez_runs": {
+      "status": "unavailable",
+      "reason": "no jobs in Marquez namespace patient_360 (OpenLineage transport not configured)"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "sre-plugin",
+  "version": "1.0.0",
+  "description": "SRE Agent for root-cause analysis of production data-pipeline failures: ingests an alert, collects read-only evidence from Airflow, Spark Expectations, Unity Catalog, Delta history and container logs, and writes an evidence-cited RCA report with remediation routed to the owning developer skill",
+  "author": {
+    "name": "RDEWAI"
+  },
+  "keywords": ["sre", "rca", "root-cause", "incident", "debug", "triage", "on-call", "airflow", "spark-expectations", "unity-catalog", "delta", "observability"]
+}

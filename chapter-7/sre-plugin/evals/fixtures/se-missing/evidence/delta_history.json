@@ -1,0 +1,340 @@
+{
+  "unity.bronze.synthea_allergies": {
+    "history": [
+      {
+        "version": "42",
+        "timestamp": "2026-10-14 15:04:12",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\",\"partitionBy\":\"[\\\"ds\\\"]\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      },
+      {
+        "version": "41",
+        "timestamp": "2026-10-13 15:03:40",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      }
+    ],
+    "partitions": [
+      {
+        "partition": "ds=2026-10-13"
+      },
+      {
+        "partition": "ds=2026-10-14"
+      }
+    ]
+  },
+  "unity.bronze.synthea_careplans": {
+    "history": [
+      {
+        "version": "42",
+        "timestamp": "2026-10-14 15:04:12",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\",\"partitionBy\":\"[\\\"ds\\\"]\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      },
+      {
+        "version": "41",
+        "timestamp": "2026-10-13 15:03:40",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      }
+    ],
+    "partitions": [
+      {
+        "partition": "ds=2026-10-13"
+      },
+      {
+        "partition": "ds=2026-10-14"
+      }
+    ]
+  },
+  "unity.bronze.synthea_claims": {
+    "history": [
+      {
+        "version": "42",
+        "timestamp": "2026-10-14 15:04:12",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\",\"partitionBy\":\"[\\\"ds\\\"]\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      },
+      {
+        "version": "41",
+        "timestamp": "2026-10-13 15:03:40",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      }
+    ],
+    "partitions": [
+      {
+        "partition": "ds=2026-10-13"
+      },
+      {
+        "partition": "ds=2026-10-14"
+      }
+    ]
+  },
+  "unity.bronze.synthea_conditions": {
+    "history": [
+      {
+        "version": "42",
+        "timestamp": "2026-10-14 15:04:12",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\",\"partitionBy\":\"[\\\"ds\\\"]\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      },
+      {
+        "version": "41",
+        "timestamp": "2026-10-13 15:03:40",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      }
+    ],
+    "partitions": [
+      {
+        "partition": "ds=2026-10-13"
+      },
+      {
+        "partition": "ds=2026-10-14"
+      }
+    ]
+  },
+  "unity.bronze.synthea_encounters": {
+    "history": [
+      {
+        "version": "42",
+        "timestamp": "2026-10-14 15:04:12",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\",\"partitionBy\":\"[\\\"ds\\\"]\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      },
+      {
+        "version": "41",
+        "timestamp": "2026-10-13 15:03:40",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      }
+    ],
+    "partitions": [
+      {
+        "partition": "ds=2026-10-13"
+      },
+      {
+        "partition": "ds=2026-10-14"
+      }
+    ]
+  },
+  "unity.bronze.synthea_immunizations": {
+    "history": [
+      {
+        "version": "42",
+        "timestamp": "2026-10-14 15:04:12",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\",\"partitionBy\":\"[\\\"ds\\\"]\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      },
+      {
+        "version": "41",
+        "timestamp": "2026-10-13 15:03:40",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      }
+    ],
+    "partitions": [
+      {
+        "partition": "ds=2026-10-13"
+      },
+      {
+        "partition": "ds=2026-10-14"
+      }
+    ]
+  },
+  "unity.bronze.synthea_medications": {
+    "history": [
+      {
+        "version": "42",
+        "timestamp": "2026-10-14 15:04:12",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\",\"partitionBy\":\"[\\\"ds\\\"]\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      },
+      {
+        "version": "41",
+        "timestamp": "2026-10-13 15:03:40",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      }
+    ],
+    "partitions": [
+      {
+        "partition": "ds=2026-10-13"
+      },
+      {
+        "partition": "ds=2026-10-14"
+      }
+    ]
+  },
+  "unity.bronze.synthea_observations": {
+    "history": [
+      {
+        "version": "42",
+        "timestamp": "2026-10-14 15:04:12",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\",\"partitionBy\":\"[\\\"ds\\\"]\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      },
+      {
+        "version": "41",
+        "timestamp": "2026-10-13 15:03:40",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      }
+    ],
+    "partitions": [
+      {
+        "partition": "ds=2026-10-13"
+      },
+      {
+        "partition": "ds=2026-10-14"
+      }
+    ]
+  },
+  "unity.bronze.synthea_organizations": {
+    "history": [
+      {
+        "version": "42",
+        "timestamp": "2026-10-14 15:04:12",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\",\"partitionBy\":\"[\\\"ds\\\"]\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      },
+      {
+        "version": "41",
+        "timestamp": "2026-10-13 15:03:40",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      }
+    ],
+    "partitions": [
+      {
+        "partition": "ds=2026-10-13"
+      },
+      {
+        "partition": "ds=2026-10-14"
+      }
+    ]
+  },
+  "unity.bronze.synthea_patients": {
+    "history": [
+      {
+        "version": "42",
+        "timestamp": "2026-10-14 15:04:12",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\",\"partitionBy\":\"[\\\"ds\\\"]\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      },
+      {
+        "version": "41",
+        "timestamp": "2026-10-13 15:03:40",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      }
+    ],
+    "partitions": [
+      {
+        "partition": "ds=2026-10-13"
+      },
+      {
+        "partition": "ds=2026-10-14"
+      }
+    ]
+  },
+  "unity.bronze.synthea_payers": {
+    "history": [
+      {
+        "version": "42",
+        "timestamp": "2026-10-14 15:04:12",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\",\"partitionBy\":\"[\\\"ds\\\"]\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      },
+      {
+        "version": "41",
+        "timestamp": "2026-10-13 15:03:40",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      }
+    ],
+    "partitions": [
+      {
+        "partition": "ds=2026-10-13"
+      },
+      {
+        "partition": "ds=2026-10-14"
+      }
+    ]
+  },
+  "unity.bronze.synthea_procedures": {
+    "history": [
+      {
+        "version": "42",
+        "timestamp": "2026-10-14 15:04:12",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\",\"partitionBy\":\"[\\\"ds\\\"]\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      },
+      {
+        "version": "41",
+        "timestamp": "2026-10-13 15:03:40",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      }
+    ],
+    "partitions": [
+      {
+        "partition": "ds=2026-10-13"
+      },
+      {
+        "partition": "ds=2026-10-14"
+      }
+    ]
+  },
+  "unity.bronze.synthea_providers": {
+    "history": [
+      {
+        "version": "42",
+        "timestamp": "2026-10-14 15:04:12",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\",\"partitionBy\":\"[\\\"ds\\\"]\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      },
+      {
+        "version": "41",
+        "timestamp": "2026-10-13 15:03:40",
+        "operation": "WRITE",
+        "operationParameters": "{\"mode\":\"Overwrite\"}",
+        "operationMetrics": "{\"numOutputRows\":\"41200\",\"numFiles\":\"2\"}"
+      }
+    ],
+    "partitions": [
+      {
+        "partition": "ds=2026-10-13"
+      },
+      {
+        "partition": "ds=2026-10-14"
+      }
+    ]
+  }
+}

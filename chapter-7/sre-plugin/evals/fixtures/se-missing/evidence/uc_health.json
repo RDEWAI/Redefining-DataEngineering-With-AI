@@ -1,0 +1,76 @@
+{
+  "catalogs": {
+    "catalogs": [
+      {
+        "name": "unity"
+      }
+    ]
+  },
+  "schemas": {
+    "schemas": [
+      {
+        "name": "bronze"
+      },
+      {
+        "name": "silver"
+      },
+      {
+        "name": "gold"
+      }
+    ]
+  },
+  "tables": {
+    "unity.bronze.synthea_allergies": {
+      "name": "synthea_allergies",
+      "table_type": "EXTERNAL"
+    },
+    "unity.bronze.synthea_careplans": {
+      "name": "synthea_careplans",
+      "table_type": "EXTERNAL"
+    },
+    "unity.bronze.synthea_claims": {
+      "name": "synthea_claims",
+      "table_type": "EXTERNAL"
+    },
+    "unity.bronze.synthea_conditions": {
+      "name": "synthea_conditions",
+      "table_type": "EXTERNAL"
+    },
+    "unity.bronze.synthea_encounters": {
+      "name": "synthea_encounters",
+      "table_type": "EXTERNAL"
+    },
+    "unity.bronze.synthea_immunizations": {
+      "name": "synthea_immunizations",
+      "table_type": "EXTERNAL"
+    },
+    "unity.bronze.synthea_medications": {
+      "name": "synthea_medications",
+      "table_type": "EXTERNAL"
+    },
+    "unity.bronze.synthea_observations": {
+      "name": "synthea_observations",
+      "table_type": "EXTERNAL"
+    },
+    "unity.bronze.synthea_organizations": {
+      "name": "synthea_organizations",
+      "table_type": "EXTERNAL"
+    },
+    "unity.bronze.synthea_patients": {
+      "name": "synthea_patients",
+      "table_type": "EXTERNAL"
+    },
+    "unity.bronze.synthea_payers": {
+      "name": "synthea_payers",
+      "table_type": "EXTERNAL"
+    },
+    "unity.bronze.synthea_procedures": {
+      "name": "synthea_procedures",
+      "table_type": "EXTERNAL"
+    },
+    "unity.bronze.synthea_providers": {
+      "name": "synthea_providers",
+      "table_type": "EXTERNAL"
+    }
+  }
+}

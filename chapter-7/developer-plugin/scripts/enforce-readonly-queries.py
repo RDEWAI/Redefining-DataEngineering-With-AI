@@ -26,9 +26,13 @@ DESTRUCTIVE_PATTERNS = [
 
 
 def _deny(message: str) -> None:
+    # Claude Code only honours the decision when hookEventName is present;
+    # permissionDecisionReason is what the agent sees, systemMessage the user.
     output = {
         "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
+            "permissionDecisionReason": message,
         },
         "systemMessage": message,
     }

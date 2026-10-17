@@ -4,7 +4,7 @@
     "name": "RDEWAI"
   },
   "metadata": {
-    "description": "Chapter 7 plugins — the full agent chain carried forward from chapter-6, focused on completing the Gold consumer layer of the Patient 360 Medallion pipeline: upstream artifact plugins (BA, Architect, Data Modeler, Mapping Analyst, DQ Engineer, Technical Lead) plus downstream story-decomposition (Scrum Master) and code-generation (Developer) plugins."
+    "description": "Chapter 7 plugins \u2014 the full agent chain carried forward from chapter-6, focused on completing the Gold consumer layer of the Patient 360 Medallion pipeline: upstream artifact plugins (BA, Architect, Data Modeler, Mapping Analyst, DQ Engineer, Technical Lead) plus downstream story-decomposition (Scrum Master) and code-generation (Developer) plugins, plus an SRE plugin (rca) for day-2 operations."
   },
   "plugins": [
     {
@@ -46,6 +46,11 @@
       "name": "developer-plugin",
       "source": "./developer-plugin",
       "description": "Developer Agent for generating, updating, and validating Airflow DAGs, CI/CD pipelines, and the Bronze config-driven ingestion framework"
+    },
+    {
+      "name": "sre-plugin",
+      "source": "./sre-plugin",
+      "description": "SRE Agent for alert-driven root-cause analysis of pipeline failures: read-only evidence collection from Airflow, Spark Expectations, Unity Catalog, Delta and container logs, with an evidence-cited RCA report routed to the owning developer skill"
     }
   ]
 }

@@ -1,0 +1,17 @@
+{
+  "description": "SRE plugin hooks: the RCA agent is read-only. PreToolUse blocks any shell command that would mutate the pipeline, its data, or the running stack.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/enforce-readonly-queries.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

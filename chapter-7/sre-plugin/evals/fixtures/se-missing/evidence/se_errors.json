@@ -1,0 +1,15 @@
+{
+  "unity.bronze.synthea_allergies": [],
+  "unity.bronze.synthea_careplans": [],
+  "unity.bronze.synthea_claims": [],
+  "unity.bronze.synthea_conditions": [],
+  "unity.bronze.synthea_encounters": [],
+  "unity.bronze.synthea_immunizations": [],
+  "unity.bronze.synthea_medications": [],
+  "unity.bronze.synthea_observations": [],
+  "unity.bronze.synthea_organizations": [],
+  "unity.bronze.synthea_patients": [],
+  "unity.bronze.synthea_payers": [],
+  "unity.bronze.synthea_procedures": [],
+  "unity.bronze.synthea_providers": []
+}
