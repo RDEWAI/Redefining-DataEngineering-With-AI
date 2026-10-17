@@ -1,0 +1,25 @@
+{
+  "event": {
+    "id": "01BRB6ZP4M6T8ZG4X6BP63ZB9P",
+    "event_type": "incident.triggered",
+    "resource_type": "incident",
+    "occurred_at": "2026-10-15T14:05:07.000Z",
+    "agent": {"id": "PLH1HKV", "type": "service_reference", "summary": "Patient 360 pipeline"},
+    "client": null,
+    "data": {
+      "id": "PGR0VU2",
+      "type": "incident",
+      "self": "https://api.pagerduty.com/incidents/PGR0VU2",
+      "html_url": "https://acme.pagerduty.com/incidents/PGR0VU2",
+      "number": 2,
+      "status": "triggered",
+      "incident_key": "patient360_hourly_v1/scheduled__2026-10-15T14:00:00+00:00",
+      "created_at": "2026-10-15T14:05:07Z",
+      "title": "patient360_hourly_v1/reconciliation_bronze failed for ds=2026-10-15: SE_RUN_MISSING_FOR_DS=2026-10-15",
+      "service": {"id": "PLH1HKV", "type": "service_reference", "summary": "p360-critical"},
+      "urgency": "high",
+      "priority": null,
+      "escalation_policy": {"id": "PF9KMXH", "type": "escalation_policy_reference", "summary": "Data platform on-call"}
+    }
+  }
+}

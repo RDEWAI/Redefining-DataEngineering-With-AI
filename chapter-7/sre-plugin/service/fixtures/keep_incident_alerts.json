@@ -1,0 +1,27 @@
+{
+  "items": [
+    {
+      "id": "ALERT-20261015T140000Z-reconciliation_bronze",
+      "name": "patient360_hourly_v1/reconciliation_bronze failed for ds=2026-10-15: SE_RUN_MISSING_FOR_DS=2026-10-15",
+      "status": "firing",
+      "severity": "critical",
+      "source": ["airflow"],
+      "service": "patient360_hourly_v1",
+      "environment": "DEV",
+      "fingerprint": "patient360_hourly_v1/scheduled__2026-10-15T14:00:00+00:00",
+      "lastReceived": "2026-10-15T14:05:00Z",
+      "description": "AirflowException: spark-submit exited 1\nSE_RUN_MISSING_FOR_DS=2026-10-15 layer=bronze env=DEV",
+      "labels": {
+        "dag_id": "patient360_hourly_v1",
+        "run_id": "scheduled__2026-10-15T14:00:00+00:00",
+        "task_id": "reconciliation_bronze",
+        "ds": "2026-10-15",
+        "try_number": "3",
+        "env": "DEV",
+        "alert_id": "ALERT-20261015T140000Z-reconciliation_bronze"
+      },
+      "incident": "1fab5929-947b-40e9-bca7-a6c0227d2786"
+    }
+  ],
+  "count": 1
+}

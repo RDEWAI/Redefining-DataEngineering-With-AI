@@ -82,12 +82,12 @@ uc-ui-source: ## Vendor the real Unity Catalog UI source from upstream (idempote
 	  echo "UC UI source already vendored at $(UC_UI_DIR) — skipping."; \
 	fi
 
-dev-up: uc-ui-source ## Bring up the full local stack: docker + UC catalog/schemas + DDL pre-create + spark smoke
+dev-up: uc-ui-source keep-workflows ## Bring up the full local stack: docker + UC catalog/schemas + DDL pre-create + spark smoke
 	# `--wait` blocks until every healthcheck-bearing service (incl.
 	# spark-thrift-server) is healthy; the one-shot `ddl-apply` service is
 	# started separately by `make ddl-apply` after the thrift server is up.
 	$(DOCKER_COMPOSE) up -d --build --wait \
-		unity-catalog unity-catalog-ui marquez-db marquez airflow otel-collector spark-thrift-server
+		unity-catalog unity-catalog-ui marquez-db marquez keep-backend keep-frontend airflow otel-collector spark-thrift-server
 	@$(MAKE) wait-for-uc
 	@$(MAKE) uc-init
 	@$(MAKE) wait-for-thrift
@@ -149,3 +149,21 @@ seed-source-data: ## STUB — projects must implement against their source syste
 	@echo "  See your runtime-bootstrap story (STORY-01-NNN) for the expected" >&2
 	@echo "  source layout and row counts." >&2
 	@exit 1
+
+# ---------------------------------------------------------------------------
+# Alerting loop (Keep + rca-runner). See sre-plugin/service/README.md.
+# ---------------------------------------------------------------------------
+KEEP_WF_DIR := _infra/docker/observability/keep/workflows
+RCA_WEBHOOK_URL ?= http://host.docker.internal:8090/webhook/keep
+RCA_WEBHOOK_TOKEN ?= dev-token
+
+keep-workflows: ## Render Keep workflow YAML from .tmpl (Keep cannot template env vars; values from _infra/docker/.env or make vars)
+	@set -a; [ -f _infra/docker/.env ] && . ./_infra/docker/.env; set +a; \
+	for t in $(KEEP_WF_DIR)/*.yaml.tmpl; do \
+	  out=$${t%.tmpl}; RCA_WEBHOOK_URL="$${RCA_WEBHOOK_URL:-$(RCA_WEBHOOK_URL)}" RCA_WEBHOOK_TOKEN="$${RCA_WEBHOOK_TOKEN:-$(RCA_WEBHOOK_TOKEN)}" \
+	  python3 -c 'import os,sys; print(os.path.expandvars(open(sys.argv[1]).read()), end="")' "$$t" > "$$out"; echo "rendered $$out"; done
+
+keep-ui: ## Open the Keep incidents UI
+	open http://localhost:3010/incidents
+
+.PHONY: keep-workflows keep-ui

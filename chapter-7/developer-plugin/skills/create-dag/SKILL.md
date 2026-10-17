@@ -147,6 +147,13 @@ Use `AskUserQuestion` to confirm:
   memory literal; never read memory off §4.2 (its integers are
   retries/timeouts). DEV `2g` OS-OOM-kills spark-submit (`Error code is: -9`)
   on the 8 GB co-resident compose stack — DEV must be `1g`.
+- **CRITICAL — failure alerting (DAG-ALERT-001, LLD §8.5/§8.7):** import
+  `on_task_failure` from `<project>.utils.alerting` and set
+  `DEFAULT_ARGS["on_failure_callback"] = on_task_failure`. It opens an incident
+  (Keep in DEV, PagerDuty in PROD) that triggers `/sre-plugin:rca`. The
+  validator (`DAG-ALERT-001`) rejects a DAG whose `default_args` lacks it. Never
+  write a DAG-local callback or page from the DAG file; the sink owns delivery.
+  See the `airflow-dag-pattern.md` "Failure alerting" bullet.
 
 ### Phase 3b: Generate per-task entry wrappers (MANDATORY)
 

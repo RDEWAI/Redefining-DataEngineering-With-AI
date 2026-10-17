@@ -1,0 +1,28 @@
+# Keep workflow: new incident -> notify the rca-runner webhook (sre-plugin/service).
+# Rendered to rca-on-incident.yaml by `make keep-workflows` (envsubst from .env):
+# Keep 0.54 does not template `{{ env.* }}` inside workflow YAML (verified 2026-10-15),
+# so the URL and token must be literals. Trigger `incident/created` fires for
+# incidents created through POST /incidents (utils/alerting.KeepSink).
+workflow:
+  id: rca-on-incident
+  name: Run RCA on new incident
+  description: POST the new incident to the rca-runner, which runs /sre-plugin:rca and comments the result back.
+  triggers:
+    - type: incident
+      events:
+        - created
+  steps:
+    - name: notify-rca-runner
+      provider:
+        type: http
+        with:
+          url: "${RCA_WEBHOOK_URL}"
+          method: POST
+          headers:
+            Content-Type: application/json
+            X-RCA-Token: "${RCA_WEBHOOK_TOKEN}"
+          body:
+            provider: keep
+            incident_id: "{{ incident.id }}"
+            incident_name: "{{ incident.user_generated_name }}"
+            incident: "{{ incident }}"

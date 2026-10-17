@@ -118,6 +118,11 @@ Use `AskUserQuestion` to confirm scope if the diff is ambiguous.
   never source memory from LLD §4.2 (its integers are retries/timeouts,
   not memory). DEV must be `1g` — a `2g` driver OS-OOM-kills spark-submit
   (`Error code is: -9`) on the 8 GB co-resident compose stack.
+- **Failure alerting (DAG-ALERT-001)** — `DEFAULT_ARGS` MUST carry
+  `"on_failure_callback": on_task_failure` imported from
+  `<project>.utils.alerting` (LLD §8.5/§8.7; `airflow-dag-pattern.md`
+  "Failure alerting"). Add it if missing; never replace it with a DAG-local
+  callback. The validator rejects a DAG without it.
 
 ### Phase 3: Validate
 Invoke `/developer-plugin:validate-dag` on the updated file.

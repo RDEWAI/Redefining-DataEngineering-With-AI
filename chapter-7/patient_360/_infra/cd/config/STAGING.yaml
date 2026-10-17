@@ -76,6 +76,13 @@ monitoring:
   alerting_pagerduty_enabled: false
   # Allergy elevated path
   alerting_allergy_escalation: true
+  # Incident sink for task failures (utils/alerting.py, DAG-ALERT-001): keep | pagerduty | file | none.
+  # ALERT_SINK env overrides. Secrets (KEEP_API_KEY, PAGERDUTY_ROUTING_KEY) come from env only.
+  alerting_sink: "keep"
+  # Keep API as seen from the airflow container (DEV compose service)
+  alerting_keep_api_url: "http://keep-backend:8080"
+  # Keep UI for incident links
+  alerting_keep_ui_url: "http://localhost:3010"
   # OTel collector endpoint
   monitoring_opentelemetry_endpoint: "http://localhost:4317"
   # Marquez API endpoint
