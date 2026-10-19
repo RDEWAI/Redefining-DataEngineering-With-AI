@@ -61,3 +61,16 @@ def test_multiple_statements_rejected() -> None:
 def test_foreign_qualified_table_rejected() -> None:
     with pytest.raises(GuardError):
         guard_sql("SELECT * FROM unity.silver.clinical_encounters", allowed_tables=_ALLOWED)
+
+
+def test_per_part_backtick_quoted_table_allowed() -> None:
+    sql = (
+        "SELECT * FROM `unity`.`gold`.`patient_summary` s "
+        "JOIN `unity`.`gold`.`patient_clinical_history` h ON s.patient_id = h.patient_id"
+    )
+    assert guard_sql(sql, allowed_tables=_ALLOWED).startswith(sql)
+
+
+def test_per_part_backtick_quoted_foreign_table_rejected() -> None:
+    with pytest.raises(GuardError, match="outside the model"):
+        guard_sql("SELECT * FROM `unity`.`silver`.`clinical_encounters`", allowed_tables=_ALLOWED)
