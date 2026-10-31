@@ -1,0 +1,43 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial', 'lineColor': '#333333'}}}%%
+flowchart LR
+    SIG["<b>Signal</b><br/>Failed eval, failed run,<br/>PR comment, or defect"]
+
+    subgraph inputs["<b>Inputs: Evidence</b>"]
+        I1["Request and scope<br/><i>story, acceptance criteria, allowed files</i>"]
+        I2["Approved artifacts<br/><i>DRD, LLD, mapping, DQS revisions</i>"]
+        I3["What was produced<br/><i>code and full diff</i>"]
+        I4["Run trace<br/><i>skill chosen, tools, validators run</i>"]
+        I5["Test and CI results<br/><i>unit tests, validators, DQ checks</i>"]
+        I6["Versions<br/><i>model, skill, plugin</i>"]
+    end
+
+    subgraph rca["<b>Root Cause Analysis</b>"]
+        AG["Investigation Agent<br/><i>gathers evidence, drafts findings</i>"]
+        HU["Human Reviewer<br/><i>confirms cause and owner</i>"]
+        AG --> HU
+    end
+
+    subgraph outputs["<b>Outputs</b>"]
+        O1["Cause and owner<br/><i>AI, artifact, platform, or test owner</i>"]
+        O2["Skill fix<br/><i>enters the measured learning loop</i>"]
+        O3["Artifact correction<br/><i>fix LLD or mapping, rerun agent</i>"]
+        O4["New eval fixture<br/><i>reproduces the failure</i>"]
+        O5["Learning entry<br/><i>shared with other engineers</i>"]
+    end
+
+    SIG --> I1 & I2 & I3 & I4 & I5 & I6 --> AG
+    HU --> O1 & O2 & O3 & O4 & O5
+
+    classDef plain fill:#ffffff,stroke:#333333,stroke-width:1.5px;
+    classDef dashed fill:#ffffff,stroke:#333333,stroke-width:1.5px,stroke-dasharray:6 4;
+    classDef ai fill:#EEE6F7,stroke:#7A4FB0,stroke-width:1.5px,color:#3A1A5A;
+    classDef key fill:#ffffff,stroke:#333333,stroke-width:3px;
+
+    class SIG dashed;
+    class I1,I2,I3,I4,I5,I6,HU,O1,O3,O4,O5 plain;
+    class AG ai;
+    class O2 key;
+
+    style inputs fill:#ffffff,stroke:#333333,stroke-width:1.5px,stroke-dasharray:6 4;
+    style rca fill:#F7F2FB,stroke:#7A4FB0,stroke-width:1.5px,stroke-dasharray:6 4;
+    style outputs fill:#ffffff,stroke:#333333,stroke-width:1.5px,stroke-dasharray:6 4;
