@@ -63,7 +63,7 @@ dimensions:
   - name: calculated_age
     column: calculated_age
     type: int
-    description: "Age in years as of the current date. Observed range 1-112."
+    description: "Age in years as of the current date. Observed range 1-111."
     synonyms: [age, how old]
   - name: birth_date
     column: birth_date

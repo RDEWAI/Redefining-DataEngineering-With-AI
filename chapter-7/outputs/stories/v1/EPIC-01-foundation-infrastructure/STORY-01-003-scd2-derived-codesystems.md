@@ -29,12 +29,12 @@ As a data engineer, I want have a generic SCD2 merge function and reusable deriv
 
 ## Description
 
-Implement `src/patient_360/utils/scd2.py` (`apply_scd2(df, natural_keys, hash_columns, effective_date)` using SHA-256 hash comparison + Delta MERGE INTO per DMS §6 / LLD §5.2), `derived_fields.py` (DRD §5.2 derived fields like `age_at_visit`, `bmi_category`), and `code_systems.py` (HL7 / SNOMED / LOINC mapping per STM Tab:Code Systems). Each module has unit tests with synthetic DataFrames.
+Implement `src/patient_360/utils/scd2.py` (`apply_scd2(df, target_table, natural_keys, hash_columns, effective_date, refresh_columns=None) -> dict[str, int]` using SHA-256 hash comparison + Delta MERGE INTO per LLD §2.3 / §5.2 and DMS §6), `derived_fields.py` (DRD §5.2 derived fields like `age_at_visit`, `bmi_category`), and `code_systems.py` (HL7 / SNOMED / LOINC mapping per STM Tab:Code Systems). Each module has unit tests with synthetic DataFrames.
 
 ## Acceptance Criteria
 
 
-- [x] `scd2.py::apply_scd2` performs SHA-256 hash-based MERGE INTO closing existing row and inserting new version [LLD §5.2, DMS §6]
+- [x] `scd2.py::apply_scd2` performs SHA-256 hash-based MERGE INTO with these cases per key: backfill skip (current `effective_from > effective_date`, no write); same-day change overwrites the current version in place; earlier-day change closes the current version (`effective_to = effective_date - 1`) and inserts a new one; new key inserts; unchanged hash makes no write, then optional `refresh_columns` in-place refresh. Change detection compares against a hash recomputed from stored values and rehashes stale stored `_record_hash` values in place. Returns `rows_inserted`, `rows_closed`, `rows_unchanged`, `rows_overwritten`, `rows_skipped_backfill`, `rows_rehashed` (+ `rows_refreshed` when `refresh_columns` is passed) [LLD §2.3 Decisions 17-20, §5.2; DMS §6]
 
 - [x] `derived_fields.py` implements `age_at_visit`, `bmi_category`, and other DRD §5.2 fields [DRD §5.2]
 
@@ -45,17 +45,17 @@ Implement `src/patient_360/utils/scd2.py` (`apply_scd2(df, natural_keys, hash_co
 
 ## Technical Notes
 
-- **Upstream references**: DMS §6, LLD §5.2, DRD §5.2, STM Tab:Code Systems
-- **Implementation hints**: SCD2 MERGE pattern: matched-with-changed-hash closes existing (`is_current=False`, `effective_to=current_date-1`) then inserts new row; matched-with-same-hash is no-op.
+- **Upstream references**: DMS §6 (v1.6), LLD §2.3 (v1.28, §13 Decisions 17-20), LLD §5.2, DRD §5.2, STM Tab:Code Systems
+- **Implementation hints**: Per LLD §2.3, decide the backfill skip first: a key whose current version has `effective_from > effective_date` gets no write and one WARNING with the skipped-key count (Decision 19). Compare the incoming hash with a hash recomputed from the stored hash columns, and rewrite stale stored `_record_hash` values in place with no new version (Decision 20). Changed hash with current `effective_from = effective_date` overwrites the current version in place (Decision 18). Changed hash with an earlier `effective_from` closes the current version (`is_current=False`, `effective_to=effective_date-1`) and inserts a new one. Unchanged hash makes no write, then refreshes `refresh_columns` in place on the current version when passed (Decision 17).
 
 ## Estimation Support
 
 | Artifact | Sections Covered |
 |----------|-----------------|
 
-| DMS | §6 SCD2 |
+| DMS | §6 SCD2 (v1.6) |
 
-| LLD | §5.2 Silver Tasks |
+| LLD | §2.3 apply_scd2 contract, §5.2 Silver Tasks |
 
 | STM | Tab:Code Systems |
 
@@ -65,7 +65,7 @@ Implement `src/patient_360/utils/scd2.py` (`apply_scd2(df, natural_keys, hash_co
 | Coverage | What | How |
 |----------|------|-----|
 
-| Unit | scd2 merge edge cases (insert/update/no-change) | pytest patient_360/tests/utils/test_scd2_unit.py |
+| Unit | scd2 merge cases (backfill skip/same-day overwrite/close+insert/insert/no-change/refresh/rehash) | pytest patient_360/tests/utils/test_scd2_unit.py |
 
 | Unit | derived fields + code system lookups | pytest patient_360/tests/utils/test_derived_fields_unit.py patient_360/tests/utils/test_code_systems_unit.py |
 
@@ -103,7 +103,7 @@ AC4:
 ### Expected outcome
 
 
-- All SCD2 tests pass (insert, match-with-change, match-no-change scenarios)
+- All SCD2 tests pass (backfill skip, same-day overwrite, earlier-day close + insert, new-key insert, unchanged no-op, in-place refresh, stale-hash rehash)
 
 
 ## Documentation Updates

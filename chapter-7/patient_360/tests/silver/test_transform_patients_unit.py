@@ -187,7 +187,7 @@ class TestCleanse:
             assert forbidden not in out.columns
 
     def test_stm_transformations(self, spark):
-        out = transform_patients._cleanse(_bronze_df(spark, [_bronze_row()]))
+        out = transform_patients._cleanse(_bronze_df(spark, [_bronze_row()]), as_of="2026-11-04")
         r = out.collect()[0]
         assert r["patient_id"] == "p-001"  # TRIM(Id)
         assert r["first_name"] == "John"  # INITCAP(TRIM(FIRST))
@@ -196,18 +196,74 @@ class TestCleanse:
         assert r["race"] == "WHITE"  # UPPER(TRIM(RACE))
         assert r["address"] == "UNKNOWN"  # DEFAULT on NULL address
         assert r["patient_status"] == "ALIVE"  # death_date IS NULL
-        assert r["calculated_age"] == 36  # 2026 - 1990
+        assert r["calculated_age"] == 36  # birthday already occurred in 2026
 
-    def test_deceased_status_and_age_to_deathdate(self, spark):
+    def test_deceased_status_and_age_not_capped_at_deathdate(self, spark):
         row = _bronze_row(DEATHDATE=dt.date(2020, 1, 1))
-        out = transform_patients._cleanse(_bronze_df(spark, [row]))
+        out = transform_patients._cleanse(_bronze_df(spark, [row]), as_of="2026-11-04")
         r = out.collect()[0]
         assert r["patient_status"] == "DECEASED"
-        assert r["calculated_age"] == 30  # 2020 - 1990
+        assert r["calculated_age"] == 36  # DMS §3: not capped at death_date
 
     def test_unknown_gender_maps_to_unknown(self, spark):
         out = transform_patients._cleanse(_bronze_df(spark, [_bronze_row(GENDER="X")]))
         assert out.collect()[0]["gender"] == "UNKNOWN"
+
+
+# --------------------------------------------------------------------------
+# calculated_age — STM v3.2 / DMS v1.4 §3, at fixed as-of dates
+# --------------------------------------------------------------------------
+class TestCalculatedAge:
+    @pytest.mark.parametrize(
+        ("birth_date", "as_of", "expected"),
+        [
+            # Reported case: the calendar-year difference gave 36.
+            (dt.date(1990, 12, 31), "2026-11-04", 35),
+            # Birth month later, same month with day later / equal / earlier.
+            (dt.date(1990, 12, 1), "2026-11-04", 35),
+            (dt.date(1990, 11, 5), "2026-11-04", 35),
+            (dt.date(1990, 11, 4), "2026-11-04", 36),
+            (dt.date(1990, 11, 3), "2026-11-04", 36),
+            # Birth month earlier.
+            (dt.date(1990, 1, 1), "2026-11-04", 36),
+            # Born on the as-of date, and one day before the first birthday.
+            (dt.date(2026, 11, 4), "2026-11-04", 0),
+            (dt.date(2025, 11, 5), "2026-11-04", 0),
+            # 29 February occurs on 1 March in non-leap years.
+            (dt.date(2000, 2, 29), "2025-02-28", 24),
+            (dt.date(2000, 2, 29), "2025-03-01", 25),
+            # 29 February occurs on 29 February in leap years.
+            (dt.date(2000, 2, 29), "2024-02-28", 23),
+            (dt.date(2000, 2, 29), "2024-02-29", 24),
+        ],
+    )
+    def test_whole_years_with_birthday_adjustment(self, spark, birth_date, as_of, expected):
+        row = _bronze_row(BIRTHDATE=birth_date)
+        out = transform_patients._cleanse(_bronze_df(spark, [row]), as_of=as_of)
+        assert out.collect()[0]["calculated_age"] == expected
+
+    def test_null_birth_date_gives_null(self, spark):
+        row = _bronze_row(BIRTHDATE=None)
+        out = transform_patients._cleanse(_bronze_df(spark, [row]), as_of="2026-11-04")
+        assert out.collect()[0]["calculated_age"] is None
+
+    def test_deathdate_does_not_change_age(self, spark):
+        alive = _bronze_row(BIRTHDATE=dt.date(1990, 12, 31))
+        dead = _bronze_row(BIRTHDATE=dt.date(1990, 12, 31), DEATHDATE=dt.date(2000, 1, 1))
+        out = transform_patients._cleanse(_bronze_df(spark, [alive, dead]), as_of="2026-11-04")
+        assert [r["calculated_age"] for r in out.collect()] == [35, 35]
+
+    def test_column_type_is_integer(self, spark):
+        out = transform_patients._cleanse(_bronze_df(spark, [_bronze_row()]), as_of="2026-11-04")
+        assert out.schema["calculated_age"].dataType.typeName() == "integer"
+
+    def test_default_as_of_is_current_date(self, spark):
+        """Compares two computed ages, so no expected value depends on today."""
+        bronze = _bronze_df(spark, [_bronze_row(BIRTHDATE=dt.date(1990, 12, 31))])
+        today = spark.sql("SELECT CAST(current_date() AS STRING) AS d").collect()[0]["d"]
+        default = transform_patients._cleanse(bronze).collect()[0]["calculated_age"]
+        pinned = transform_patients._cleanse(bronze, as_of=today).collect()[0]["calculated_age"]
+        assert default == pinned
 
 
 # --------------------------------------------------------------------------
@@ -255,10 +311,33 @@ class TestTransformWiring:
             "healthcare_expenses",
             "healthcare_coverage",
             "income",
+            "death_date",
+            "patient_status",
         ]
         assert sk["target_table"] == "unity.silver.clinical_patients"
         assert sk["target_table"].count(".") == 2  # 3-part UC FQN, not a path
         assert sk["effective_date"] == "2026-06-01"
+
+        # LLD v1.28 §5.2 / DMS v1.6 §6 — refresh-in-place columns, outside the hash.
+        assert sk["refresh_columns"] == [
+            "birth_date",
+            "prefix",
+            "middle_name",
+            "suffix",
+            "race",
+            "ethnicity",
+            "gender",
+            "birth_place",
+            "lat",
+            "lon",
+            "calculated_age",
+        ]
+        assert not set(sk["refresh_columns"]) & set(sk["hash_columns"])
+        # DMS v1.6 §6: every column that is not a natural key, SCD2 metadata, or
+        # lineage is in exactly one of the hash list or the refresh list.
+        lineage = {"_ingested_at", "_source_batch_id"}
+        business = _EXPECTED_SILVER_COLS - set(sk["natural_keys"]) - lineage
+        assert set(sk["hash_columns"]) | set(sk["refresh_columns"]) == business
 
         # transform returns the validated (pre-merge) frame for assertions.
         assert set(out.columns) == _EXPECTED_SILVER_COLS

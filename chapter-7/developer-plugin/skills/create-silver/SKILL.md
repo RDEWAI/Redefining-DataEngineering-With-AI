@@ -167,7 +167,7 @@ Ownership.
 
 2. **LLD §2.3 — SCD2 utility contract** — confirm the signature for
    `src/patient_360/utils/scd2.py::apply_scd2(df, target_table, natural_keys,
-   hash_columns, effective_date)` (the `target_table` parameter is a named UC
+   hash_columns, effective_date, refresh_columns=None)` (the `target_table` parameter is a named UC
    table FQN `unity.silver.<dim>`; see Phase 2).
 
 3. **DMS §3 (Silver Schemas)** — for each Silver table, extract the column
@@ -178,7 +178,12 @@ Ownership.
    `reference_payers` (illustrative; always re-read from the artifacts). For
    each SCD2 table also extract the **hash (Type-2 tracked) column list** from
    the DMS §6 "Dimension Attribute SCD Types" table (the columns marked SCD
-   Type 2 for that dimension).
+   Type 2 for that dimension, in the order DMS §6 lists them), and the
+   **refresh-in-place column list** (the columns DMS §6 marks "Refreshed in
+   place", including Type 1 columns implemented by that refresh). Every column
+   that is not a natural key, SCD2 metadata, or lineage (`_ingested_at`,
+   `_source_batch_id`) must be in exactly one of the two lists; if DMS §6
+   leaves a column in neither, HALT and route to `data-modeler-plugin:update-dms`.
 
 4. **STM Bronze-to-Silver sheet** — for each Silver table, extract the
    transformation rules: column renames, casts, derived fields, code-system
@@ -230,6 +235,7 @@ def apply_scd2(
     natural_keys: list[str],
     hash_columns: list[str],
     effective_date,
+    refresh_columns: list[str] | None = None,
 ) -> dict[str, int]:
     """Generic named-table SCD Type 2 merge.
 
@@ -242,13 +248,18 @@ def apply_scd2(
     Caller is responsible for running DQ checks BEFORE invoking this
     function — the SCD2 helper trusts every row it receives.
 
-    Returns: {"rows_inserted": int, "rows_closed": int, "rows_unchanged": int}
+    Returns: {"rows_inserted", "rows_closed", "rows_unchanged",
+              "rows_overwritten", "rows_skipped_backfill", "rows_rehashed"}
+             plus "rows_refreshed" only when refresh_columns is non-empty.
     """
 ```
 
 Implementation requirements (GROUND TRUTH — DMS §3 + DMS §6 + LLD §5.2 notes):
 
 - `spark = df.sparkSession` (derived internally; NOT a parameter).
+- `refresh_columns` follows the LLD §2.3 in-place refresh contract (Decision 17).
+  Columns outside the hash change only through this step on unchanged-hash rows;
+  without it, they keep the value from first insert.
 - `target_table` is a **named UC table FQN** `unity.silver.<table>`, resolved
   via `DeltaTable.forName(spark, target_table)` — NEVER `DeltaTable.forPath`
   and NEVER a filesystem path. The table is **pre-created** by Liquibase
@@ -264,16 +275,44 @@ Implementation requirements (GROUND TRUTH — DMS §3 + DMS §6 + LLD §5.2 note
   `sha2(concat_ws("|", *[F.coalesce(F.trim(F.col(c).cast("string")), F.lit("")) for c in hash_columns]), 256)`
   — single-pipe delimiter, COALESCE/TRIM-normalized, so it matches the STM
   `SHA256(CONCAT_WS('|', COALESCE(TRIM(...),''), ...))` expressions exactly.
-- Resolve the target with `DeltaTable.forName(spark, target_table)` and run a
-  Delta MERGE against the named UC table `unity.silver.<table>` keyed on the
-  natural key(s) with:
-  - `WHEN MATCHED AND target.is_current = TRUE AND target._record_hash <> source._record_hash`
-    → set `target.is_current = FALSE`,
-    `target.effective_to = (new effective_from) - 1 day` (the close date is one
-    day before the incoming `effective_from`), then insert the new version.
-  - `WHEN NOT MATCHED` → insert with `effective_from = <effective_date param>`,
+  Cast each incoming hash column to the target column's type before hashing,
+  so a type difference (e.g. DOUBLE vs DECIMAL) never looks like a change.
+- **Compare against a recomputed target hash (LLD §2.3, Decision 20).** Recompute
+  the hash from each target row's stored hash columns with the same function
+  and the current `hash_columns`; never compare against the stored
+  `_record_hash`. Rewrite any stale stored `_record_hash` in place in its own
+  MERGE (no new version, no commit when nothing is stale), counted in
+  `rows_rehashed`. This keeps a hash-list change from versioning every row.
+- Resolve the target with `DeltaTable.forName(spark, target_table)`. Decide
+  each incoming key's case BEFORE any write, using the current version's
+  `effective_from` against `effective_date`. Every row counts in exactly one of
+  `rows_skipped_backfill`, `rows_overwritten`, `rows_closed`, `rows_unchanged`,
+  or (new keys) `rows_inserted`:
+  - **(s) Backfill (Decision 19):** current `effective_from > effective_date` →
+    write nothing for that key (no close, insert, overwrite, refresh, or
+    rehash); log one WARNING with table, date and count, never key values.
+  - **(a) Same-day change (Decision 18):** hash differs and current
+    `effective_from = effective_date` → update the current version in place
+    with every incoming column except natural keys, `effective_from`,
+    `effective_to`, `is_current` (`_record_hash` IS updated); no insert.
+  - **(b) Earlier-day change:** hash differs and current
+    `effective_from < effective_date` → set `is_current = FALSE`,
+    `effective_to = effective_date - 1 day`, then insert the new version.
+  - **(c) New key** → insert with `effective_from = <effective_date param>`,
     `effective_to = DATE '9999-12-31'` (open-end sentinel, NOT NULL),
     `is_current = TRUE`, `_record_hash = <computed>`.
+  - **(d) Unchanged hash** → no write in the versioning step.
+  - Run (a) and (b) as one MERGE with the same-day clause first (Delta applies
+    the first matching clause), then the anti-join insert for (b) and (c).
+- **Refresh in place (Decision 17)** runs last, only when `refresh_columns` is
+  passed: reduce the source to one row per key (latest `_ingested_at`), update
+  only current versions whose value differs (null-safe), skip backfill keys,
+  do not count overwritten rows, and add no commit when nothing differs.
+  Validate `refresh_columns` before any write (not a key, hash, or SCD2
+  metadata column; present in source and target; source has `_ingested_at`).
+- Invariants the tests must check after every call: at most one version per
+  (natural key, `effective_from`); `effective_to >= effective_from`; exactly
+  one `is_current = TRUE` row per natural key.
 - **First run** (the pre-created `unity.silver.<table>` is empty): the same
   MERGE runs against the empty table — every source row falls through the
   `WHEN NOT MATCHED` branch and is inserted (all rows
@@ -283,14 +322,24 @@ Implementation requirements (GROUND TRUTH — DMS §3 + DMS §6 + LLD §5.2 note
 - No surrogate-key generation at all (no key to generate). NEVER use
   `monotonically_increasing_id()` (non-deterministic) — kept as a determinism
   guard, see IL-006.
-- Return `{"rows_inserted": int, "rows_closed": int, "rows_unchanged": int}`
-  (e.g. by reading `DESCRIBE HISTORY` for the last operation); the caller emits
-  these via OpenTelemetry per LLD §5.4.
+- Return `{"rows_inserted", "rows_closed", "rows_unchanged",
+  "rows_overwritten", "rows_skipped_backfill", "rows_rehashed"}` (all always
+  present) plus `rows_refreshed` only when `refresh_columns` is non-empty; the
+  caller emits these via OpenTelemetry per LLD §5.4.
 
 Emit a unit test stub at `tests/silver/test_scd2_unit.py` covering:
 - New record (no match) → insert path
-- Changed record (match + hash differs) → close + insert path
+- Changed record on a later day (match + hash differs) → close + insert path
 - Unchanged record (match + hash equal) → no-op path
+- Two changes to one key on the same `effective_date` → one version, second
+  call returns `rows_overwritten = 1`, `rows_closed = 0`, `rows_inserted = 0`
+- Backfill (`effective_date` earlier than current `effective_from`) → nothing
+  written, `rows_skipped_backfill` counted, WARNING logged
+- Hash-list change with unchanged stored values → zero new versions,
+  `rows_rehashed` equals the stale rows; a second run adds no commit
+- Refresh in place → unchanged-hash row updated, no new version, closed
+  versions untouched; omitting `refresh_columns` is a no-op
+- The three invariants above after every call
 - DQ contract: the helper MUST NOT call `run_dq` — assert that the test's
   mock for `run_dq` is never invoked from within `apply_scd2`
 
@@ -364,8 +413,12 @@ def transform(spark: SparkSession, env: str, ds: str) -> DataFrame:
             natural_keys=[<natural_keys>],
             hash_columns=[<hash_columns_from_dms_section_6>],
             effective_date=ds,
+            # Only when DMS §6 lists refresh-in-place columns for this dim;
+            # omit the argument otherwise.
+            refresh_columns=[<refresh_columns_from_dms_section_6>],
         )
-        # metrics: {"rows_inserted": int, "rows_closed": int, "rows_unchanged": int}
+        # metrics: rows_inserted, rows_closed, rows_unchanged, rows_overwritten,
+        # rows_skipped_backfill, rows_rehashed (+ rows_refreshed when passed)
         # caller emits via OpenTelemetry per LLD §5.4 step 8
 
     # Cleansed facts: insertInto the pre-created named UC table (no path/save/

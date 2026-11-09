@@ -101,8 +101,9 @@ schema:
 - name: calculated_age
   type: integer
   nullable: true
-  description: "Patient age \u2014 DATEDIFF(year, birth_date, COALESCE(death_date,\
-    \ current_date))"
+  description: "Patient age in whole years from birth_date to current_date, minus\
+    \ 1 if the birthday has not yet occurred this year; not capped at death_date \u2014\
+    \ refreshed in place on the current version, outside _record_hash"
 - name: patient_status
   type: string
   nullable: false
@@ -165,3 +166,5 @@ scd2:
   - healthcare_expenses
   - healthcare_coverage
   - income
+  - death_date
+  - patient_status
