@@ -19,3 +19,22 @@ SESSION-HANDOFF.md
 story-error-table-that-wouldnt-write.md
 UC-0.5.0-UPGRADE-RUNBOOK.md
 developer-plugin/LLD-DEVIATIONS.md
+
+# claude plugin eval run outputs
+**/evals/results/
+evals-result.json
+
+# sre-plugin: eval results and RCA evidence bundles (logs can be large); the eval fixture bundle is tracked
+outputs/rca/*/*/evidence/
+**/_infra/docker/observability/keep/state/
+
+# Per-incident runtime artifacts of the alert loop (the eval fixture and skills/rca/examples stay tracked)
+outputs/rca/v1/ALERT-*/
+inputs/alerts/v1/ALERT-*.json
+
+# rca-runner journal
+outputs/rca/v1/runs.jsonl
+
+# Local compose secrets and the rendered Keep workflow (rendered by `make keep-workflows` from the tracked .tmpl)
+**/_infra/docker/.env
+**/_infra/docker/observability/keep/workflows/*.yaml

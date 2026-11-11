@@ -134,11 +134,12 @@ def find_upstream_root(start: Path) -> Path | None:
 
     In the consolidated workspace every upstream artifact (lld, dms, stm, dqs)
     lives under the workspace's own ``outputs/`` directory, so the root is the
-    nearest ancestor that has one.
+    nearest ancestor that has one. Require ``outputs/lld`` so an unrelated
+    ``outputs/`` folder inside the project (e.g. workflow output) is skipped.
     """
     here = start.resolve()
     for cand in (here, *here.parents):
-        if (cand / "outputs").is_dir():
+        if (cand / "outputs" / "lld").is_dir():
             return cand
     return None
 

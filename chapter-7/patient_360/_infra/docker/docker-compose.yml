@@ -128,6 +128,10 @@ services:
         # healthcheck can succeed. The collector's health_check extension on
         # :13133 is reachable from the host for manual verification.
         condition: service_started
+      keep-backend:
+        # Alert sink. service_started only: the failure callback tolerates an
+        # unreachable sink (logs and returns), so Keep must never block Airflow.
+        condition: service_started
     ports:
       - "8081:8080"
     environment:
@@ -160,6 +164,13 @@ services:
       # the spark-thrift-server.
       PATIENT360_WAREHOUSE_ROOT: /tmp/uc-warehouse
       UC_URI: http://unity-catalog:8080
+      # Failure alerting (utils/alerting.py, DAG-ALERT-001): task failure -> incident.
+      # keep (DEV default) | pagerduty | file | none; overrides monitoring.alerting_sink.
+      ALERT_SINK: ${ALERT_SINK:-keep}
+      KEEP_API_URL: http://keep-backend:8080
+      KEEP_UI_URL: http://localhost:3010
+      KEEP_API_KEY: ${KEEP_API_KEY:-keep-dev-key}
+      PAGERDUTY_ROUTING_KEY: ${PAGERDUTY_ROUTING_KEY:-}
     volumes:
       - ../../airflow/dags:/opt/airflow/dags
       - ../../airflow/jobs:/opt/airflow/jobs
@@ -273,6 +284,60 @@ services:
     # collector from the host via `curl localhost:13133/` (health_check extension
     # enabled in observability/otel-config.yaml). Airflow's depends_on for this
     # service MUST use `condition: service_started`, NOT `service_healthy`.
+
+  # ---------------------------------------------------------------------------
+  # Keep (open source incident platform) — DEV stand-in for PagerDuty.
+  # utils/alerting.KeepSink posts alert -> incident; the provisioned workflow
+  # observability/keep/workflows/rca-on-incident.yaml POSTs each new incident to
+  # the rca-runner (sre-plugin/service), which runs /sre-plugin:rca and comments
+  # the result back. Ports 8085/3010 avoid UC (8080/3000). Pinned 0.54.3
+  # (arm64 + amd64 images; verified 2026-10-15).
+  # ---------------------------------------------------------------------------
+  keep-backend:
+    image: us-central1-docker.pkg.dev/keephq/keep/keep-api:0.54.3
+    container_name: "patient_360-keep"
+    ports:
+      - "8085:8080"
+    environment:
+      PORT: "8080"
+      AUTH_TYPE: NOAUTH
+      KEEP_DEFAULT_API_KEYS: "rca-runner:${KEEP_API_KEY:-keep-dev-key}"
+      DATABASE_CONNECTION_STRING: "sqlite:////state/db.sqlite3?check_same_thread=False"
+      SECRET_MANAGER_TYPE: FILE
+      SECRET_MANAGER_DIRECTORY: /state
+      PUSHER_DISABLED: "true"
+      KEEP_WORKFLOWS_DIRECTORY: /workflows
+      POSTHOG_DISABLED: "true"
+      SENTRY_DISABLED: "true"
+    volumes:
+      # Bind mount, not a named volume: keep-api runs unprivileged and a root-owned
+      # named volume makes sqlite fail with "unable to open database file".
+      - ./observability/keep/state:/state
+      # Rendered by `make keep-workflows` from the .tmpl (Keep cannot template env vars).
+      - ./observability/keep/workflows:/workflows:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/healthcheck', timeout=5).status==200 else 1)\" || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  keep-frontend:
+    image: us-central1-docker.pkg.dev/keephq/keep/keep-ui:0.54.3
+    container_name: "patient_360-keep-ui"
+    depends_on:
+      - keep-backend
+    ports:
+      - "3010:3000"
+    environment:
+      AUTH_TYPE: NOAUTH
+      API_URL: http://keep-backend:8080
+      NEXT_PUBLIC_API_URL: http://localhost:8085
+      NEXTAUTH_URL: http://localhost:3010
+      NEXTAUTH_SECRET: patient360-dev-secret
+      PUSHER_DISABLED: "true"
+      POSTHOG_DISABLED: "true"
 
 volumes:
   uc-data:

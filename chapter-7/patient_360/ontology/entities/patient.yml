@@ -68,4 +68,4 @@ constraints:
     rule: "A patient may have 0..* encounters; each encounter belongs to exactly 1 patient."
   - id: PT-AGE-RANGE
     kind: range
-    rule: "calculated_age is a non-negative integer (observed 1..112)."
+    rule: "calculated_age is a non-negative integer (observed 1..111)."

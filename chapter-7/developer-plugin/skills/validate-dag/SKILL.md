@@ -105,6 +105,9 @@ CRITICAL rules — fail-the-build:
   Bronze writes MUST use `insertInto("unity.bronze.<table>")` into the
   Liquibase-pre-created EXTERNAL Delta table (LLD v1.13 UC write pattern);
   never `saveAsTable`.
+- **DAG-ALERT-001** — `default_args` has no `on_failure_callback`
+  (`on_task_failure` from `<project>.utils.alerting`). Without it a task failure
+  opens no incident and `/sre-plugin:rca` is never triggered (LLD §8.5/§8.7).
 
 The script skips pure-comment lines and lines containing negative-keyword
 markers (`NEVER`, `don't`, `pitfall`, …) so anti-pattern documentation is
@@ -125,7 +128,6 @@ allowed.
 
 ### INFO (good to know)
 - Task count above 50 (consider splitting)
-- No `on_failure_callback` set
 
 ## Output Format
 

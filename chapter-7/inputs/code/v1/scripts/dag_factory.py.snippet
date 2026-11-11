@@ -5,6 +5,7 @@ import os
 from datetime import datetime, timedelta
 from airflow.decorators import dag, task_group
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+from {project}.utils.alerting import on_task_failure  # DAG-ALERT-001
 
 # Env-driven config locations. These MUST be set by the cookiecutter
 # docker-compose.yml — never hardcode `airflow/configs` (relative) or
@@ -18,6 +19,8 @@ DEFAULT_ARGS = {
     "retry_delay": timedelta(minutes=5),
     "sla": timedelta(minutes=30),
     "depends_on_past": False,
+    # DAG-ALERT-001: task failure (after retries) -> incident -> /sre-plugin:rca.
+    "on_failure_callback": on_task_failure,
 }
 
 

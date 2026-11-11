@@ -158,7 +158,8 @@ def transform(spark: SparkSession, env: str, ds: str) -> DataFrame:
         hash_columns=HASH_COLUMNS,
         effective_date=ds,
     )
-    # metrics: {"rows_inserted", "rows_closed", "rows_unchanged"} — caller
+    # metrics: {"rows_inserted", "rows_closed", "rows_unchanged",
+    # "rows_overwritten", "rows_skipped_backfill", "rows_rehashed"} — caller
     # emits via OpenTelemetry per LLD §5.4 step 8.
     import logging
 

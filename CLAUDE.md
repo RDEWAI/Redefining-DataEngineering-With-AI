@@ -44,6 +44,18 @@ make test           # Run all tests
 - **Dependencies**: jinja2, pyyaml, openpyxl (for STM Excel workbook generation)
 - **Tests**: `cd chapter-4 && uv run pytest tests/ -v`
 
+## Chapter 7: SRE Plugin (alert-driven RCA)
+
+- **Plugin**: `chapter-7/sre-plugin/` — one skill, `rca` (read-only; never edits code, restarts services, clears tasks, or mutates data)
+- **Invoke**: `/sre-plugin:rca latest | <dag_id>/<task_id> | <ALERT-*.json> | --text "<error>"`
+- **Inputs**: `chapter-7/inputs/alerts/v1/` (optional ALERT-*.json; contract in its README)
+- **Outputs**: `chapter-7/outputs/rca/v1/<alert_id>/` — `alert.json`, `evidence/` bundle (+ `manifest.json`), `RCA-<date>-<alert_id>.md`
+- **Scripts**: `skills/rca/scripts/find_alert.py` (intake + LLD §8.5 classification), `collect_evidence.py` (Airflow REST, docker logs, UC, SE stats/error via beeline, Delta history, Marquez, config snapshot), `check_report.py` (self-check: evidence-cited verdicts, valid owner skill, no `meta_dq_run_date = ds` filtering)
+- **Automated loop**: DAG `on_failure_callback` (`patient_360/src/patient_360/utils/alerting.py`, rule DAG-ALERT-001) → incident in Keep (DEV compose, `:3010`/`:8085`) or PagerDuty → webhook → `sre-plugin/service/rca_runner.py` (`make rca-runner`) runs the skill headless and comments the result on the incident; `make rca-runner-smoke` for a dry run
+- **Hook**: `hooks/hooks.json` PreToolUse denylist for container lifecycle, Airflow clears/triggers, non-GET API calls, mutating SQL
+- **Tests / evals**: `cd chapter-7 && uv run pytest sre-plugin -v`; `make eval-sre-trigger`, `make eval-sre-rca` (offline fixture under `sre-plugin/evals/fixtures/se-missing/`)
+- **Rule**: a root cause is `CONFIRMED` only with an `evidence/<file>` citation; otherwise `INDETERMINATE` with the missing evidence named. Remediation is proposed, routed via `DELIVERABLE-OWNERS.yaml` to `/developer-plugin:update-*`, never applied by the SRE agent.
+
 ## Interactive Testing with TMUX
 
 When testing interactive commands (assistants, REPLs, semantic search, etc.), use the tmux MCP tools

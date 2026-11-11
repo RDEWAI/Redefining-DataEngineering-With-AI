@@ -15,7 +15,7 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
         types_or: [python, pyi]
         files: ^(chapter-2|chapter-3|chapter-4|chapter-5|chapter-7)/
-        exclude: ^chapter-\d+/(inputs|outputs)/.*/templates/
+        exclude: ^chapter-\d+/(inputs|outputs)/.*/templates/|/evals/fixtures/
 
       # Ruff formatting (check code format, don't auto-fix in pre-commit)
       - id: ruff-format
@@ -23,7 +23,7 @@ repos:
         args: [--check]
         types_or: [python, pyi]
         files: ^(chapter-2|chapter-3|chapter-4|chapter-5|chapter-7)/
-        exclude: ^chapter-\d+/(inputs|outputs)/.*/templates/
+        exclude: ^chapter-\d+/(inputs|outputs)/.*/templates/|/evals/fixtures/
 
   # Mypy - static type checking
   - repo: https://github.com/pre-commit/mirrors-mypy

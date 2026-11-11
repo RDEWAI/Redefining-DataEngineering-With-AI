@@ -38,7 +38,7 @@ Implement `src/patient_360/silver/transform_patients.py` per LLD §5.2 / DMS §6
 
 - [ ] PHI columns dropped at Silver boundary per DMS §3 / NFR-6 [DMS §3, LLD §5.2]
 
-- [ ] `apply_scd2(...)` invoked with natural keys + hash columns from DMS §6 [DMS §6, LLD §5.2]
+- [ ] `apply_scd2(...)` invoked with natural keys + hash columns + `refresh_columns` from DMS §6 [DMS §6, LLD §2.3, §5.2]
 
 - [ ] Inline SE called with rules from `dq_rules/clinical_patients.yml`; `action_if_failed: fail` per LLD §5.4 [LLD §5.2, §5.4; DQS §2]
 
@@ -47,7 +47,7 @@ Implement `src/patient_360/silver/transform_patients.py` per LLD §5.2 / DMS §6
 
 ## Technical Notes
 
-- **Upstream references**: LLD §5.2, §5.4, §13 Decisions 12 & 15 (re-adopted 2026-06-18 — UC runtime catalog); DMS §3, §6; STM Tab:Bronze-to-Silver
+- **Upstream references**: LLD §2.3 (v1.28 `apply_scd2` contract, §13 Decisions 17-20), §5.2, §5.4, §13 Decisions 12 & 15 (re-adopted 2026-06-18 — UC runtime catalog); DMS §3, §6 (v1.6); STM Tab:Bronze-to-Silver
 - **Implementation hints**: Reuse `apply_scd2` from `utils/scd2.py` (STORY-01-003); it `MERGE INTO`s the named `unity.silver.clinical_patients` table via `DeltaTable.forName(spark, "unity.silver.clinical_patients")`. The table is pre-created by the `ddl/migrations/*.sql` migrations (`make ddl-apply`, beeline against the Spark Thrift Server); SCD2 dims have no `ds` partition per LLD §3.3.
 
 ## Estimation Support
@@ -110,7 +110,7 @@ AC5:
 ### Expected outcome
 
 
-- All SCD2 unit tests pass (hash-change closes existing row + inserts new)
+- All SCD2 unit tests pass (backfill skip writes nothing; same-day hash change overwrites the current version in place; earlier-day hash change closes the current row (`effective_to = effective_date - 1`) and inserts a new one; new key inserts; unchanged hash makes no write, then refreshes `refresh_columns` in place; stale stored hashes are rehashed in place)
 
 
 ## Documentation Updates

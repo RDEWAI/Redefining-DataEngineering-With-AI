@@ -1,0 +1,128 @@
+# RCA: {{ alert.alert_id }}
+
+| Field | Value |
+|-------|-------|
+| **Status** | Draft |
+| **Author** | SRE Agent (sre-plugin:rca) |
+| **Date** | {{ today }} |
+| **Environment** | {{ alert.env }} |
+| **Result** | {{ "CONFIRMED" if root_cause.confirmed else "INDETERMINATE" }} |
+| **Owner skill** | {{ remediation.owner_skill or "none (operator action only)" }} |
+
+## 1. Alert Summary
+
+| Field | Value |
+|-------|-------|
+| Alert id | `{{ alert.alert_id }}` |
+| Fired at (UTC) | {{ alert.fired_at }} |
+| Source | {{ alert.source }} |
+| Condition (LLD §8.5) | {{ alert.condition }} |
+| Failure class | {{ alert.failure_class }} |
+| Severity / channel | {{ alert.severity }} / {{ alert.channel }} |
+| DAG / run / task | `{{ alert.dag_id }}` / `{{ alert.run_id }}` / `{{ alert.task_id }}` (try {{ alert.try_number }}) |
+| Data partition `ds` | {{ alert.ds }} |
+{% if alert.incident_id %}| Incident | {{ alert.incident_provider }} `{{ alert.incident_id }}`{% if alert.incident_url %} — {{ alert.incident_url }}{% endif %} |
+{% endif %}| Message | `{{ alert.message | truncate(300) }}` |
+
+## 2. Timeline
+
+All times UTC, taken from `evidence/airflow_dagrun.json` and `evidence/airflow_taskinstances.json`.
+
+| Time | Event | Evidence |
+|------|-------|----------|
+{% for e in timeline -%}
+| {{ e.time }} | {{ e.event }} | `evidence/{{ e.evidence }}` |
+{% endfor %}
+
+## 3. Evidence Collected
+
+From `evidence/manifest.json` (collected {{ manifest.collected_at }}{{ ", offline mode" if manifest.offline }}).
+
+| Surface | Status | File / reason |
+|---------|--------|---------------|
+{% for name, s in manifest.surfaces.items() -%}
+| {{ name }} | {{ s.status }} | {{ s.file if s.status == "ok" else s.reason }} |
+{% endfor %}
+
+Tables in scope: {% for t in manifest.tables %}`{{ t }}`{{ ", " if not loop.last }}{% endfor %}
+
+## 4. Hypotheses
+
+Every row is confirmed or refuted by a specific evidence file. "RULED OUT" rows name the refuting evidence.
+
+| # | Hypothesis | Failure class | Evidence that would confirm | Verdict | Evidence cited |
+|---|------------|---------------|-----------------------------|---------|----------------|
+{% for h in hypotheses -%}
+| H{{ loop.index }} | {{ h.text }} | {{ h.failure_class }} | {{ h.would_confirm }} | {{ h.verdict }} | `evidence/{{ h.evidence }}`{{ (" line " ~ h.line) if h.line }} |
+{% endfor %}
+
+## 5. Root Cause
+
+**{{ "CONFIRMED" if root_cause.confirmed else "INDETERMINATE" }}** — {{ root_cause.statement }}
+
+{% if root_cause.confirmed -%}
+Mechanism: {{ root_cause.mechanism }}
+
+Evidence: {% for e in root_cause.evidence %}`evidence/{{ e }}`{{ ", " if not loop.last }}{% endfor %}
+{% else -%}
+Missing evidence that would decide between the open hypotheses:
+{% for m in root_cause.missing_evidence -%}
+- {{ m }}
+{% endfor %}
+{% endif %}
+
+## 6. Blast Radius
+
+- Downstream tasks affected: {{ blast.downstream_tasks | join(", ") or "none" }} (`evidence/airflow_taskinstances.json`)
+- Partition `ds={{ alert.ds }}` state: {{ blast.partition_state }} (`evidence/delta_history.json`)
+- Tables affected: {% for t in blast.tables %}`{{ t }}`{{ ", " if not loop.last }}{% endfor %}
+- Consumer impact: {{ blast.consumer_impact }}
+
+## 7. Remediation
+
+The SRE agent performs none of these; they are proposals for the operator and the owning developer skill.
+
+### Immediate recovery (operator)
+{% for step in remediation.recovery -%}
+{{ loop.index }}. {{ step }}
+{% endfor %}
+
+### Permanent fix (owner: {{ remediation.owner_skill or "none" }})
+{{ remediation.permanent_fix }}
+
+{% if remediation.owner_command -%}
+```
+{{ remediation.owner_command }}
+```
+{% else -%}
+No code change required.
+{% endif %}
+
+### Prevention
+{% for p in remediation.prevention -%}
+- {{ p }}
+{% endfor %}
+
+## 8. Severity & Escalation
+
+| | Fired | LLD §8.5 expects | Match |
+|---|---|---|---|
+| Severity | {{ alert.severity }} | {{ expected.severity }} | {{ "yes" if alert.severity == expected.severity else "NO" }} |
+| Channel | {{ alert.channel }} | {{ expected.channel }} | {{ "yes" if expected.channel.split()[0] in alert.channel else "NO" }} |
+| Response time | — | {{ expected.response_time }} | — |
+
+Escalation path (LLD §8.7): {{ escalation }}
+
+## 9. References
+
+- LLD: `{{ refs.lld }}` §8.1 / §8.5 / §8.7 / §9.4
+{% for p in refs.patterns -%}
+- Checked against `{{ p }}`
+{% endfor %}
+- Alert: `alert.json` · Evidence: `evidence/manifest.json`
+
+## Version History
+
+| Version | Date | Author | Change |
+|---------|------|--------|--------|
+| 1.0 | {{ today }} | SRE Agent | Initial RCA |

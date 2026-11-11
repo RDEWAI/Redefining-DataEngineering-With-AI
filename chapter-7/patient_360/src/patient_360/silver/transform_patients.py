@@ -2,10 +2,14 @@
 
 LLD: §5.2 transform_patients_silver (Silver writes target the pre-created
      named UC table `unity.silver.clinical_patients` — §13 Decision 12), §5.4
-     (inline SE BEFORE write).
+     (inline SE BEFORE write). v1.26 §2.3 + §13 Decision 17 (`calculated_age`
+     refreshed in place). v1.28 §2.3 + §5.2 (14-column hash list, 11-column
+     refresh list; Decisions 19 and 20 in apply_scd2).
 STM: Tab:Bronze-to-Silver (patients) — every rename/cast/derive below cites
-     the source column it implements.
-DMS: §3 clinical_patients schema; §6 SCD Type 2 strategy + hash columns.
+     the source column it implements. v3.2 for `calculated_age`; v3.3 for the
+     hash / refresh-in-place column split.
+DMS: §3 clinical_patients schema; §6 SCD Type 2 strategy + hash columns. v1.4
+     for `calculated_age`; v1.6 for the hash / refresh-in-place column split.
 DQS: DQ-FLD-046 .. DQ-FLD-059, DQ-FLD-102 .. DQ-FLD-104 (clinical_patients).
 
 PHI columns SSN / DRIVERS / PASSPORT are dropped at this Silver boundary
@@ -35,7 +39,7 @@ from patient_360.utils.pipeline_config import load_config
 from patient_360.utils.scd2 import apply_scd2
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from pyspark.sql import DataFrame, SparkSession
+    from pyspark.sql import Column, DataFrame, SparkSession
 
 # Identity / scope ----------------------------------------------------------
 TABLE = "clinical_patients"
@@ -61,6 +65,25 @@ HASH_COLUMNS = [
     "healthcare_expenses",
     "healthcare_coverage",
     "income",
+    "death_date",
+    "patient_status",
+]
+
+# DMS v1.6 §6 / LLD §5.2 — refresh-in-place columns: outside the hash, copied
+# onto the current version with no new version. race / ethnicity / gender are
+# SCD Type 1, and calculated_age changes with the date, not the record.
+REFRESH_COLUMNS = [
+    "birth_date",
+    "prefix",
+    "middle_name",
+    "suffix",
+    "race",
+    "ethnicity",
+    "gender",
+    "birth_place",
+    "lat",
+    "lon",
+    "calculated_age",
 ]
 
 # LLD §5.2 "DQ Check" — patients are required; SE failures fail the task.
@@ -70,12 +93,30 @@ ACTION_IF_FAILED = "fail"
 _UNKNOWN = "UNKNOWN"
 
 
-def _cleanse(bronze_df: DataFrame) -> DataFrame:
+def _calculated_age(birth_date: Column, as_of: Column) -> Column:
+    """Whole years from ``birth_date`` to ``as_of`` (STM v3.2, DMS v1.4 §3).
+
+    NULL if ``birth_date`` is NULL. A 29 February birth date occurs on 1 March
+    in non-leap years, because 28 February is still before the birthday.
+    """
+    birthday_not_yet_occurred = (F.month(as_of) < F.month(birth_date)) | (
+        (F.month(as_of) == F.month(birth_date)) & (F.dayofmonth(as_of) < F.dayofmonth(birth_date))
+    )
+    return (
+        F.year(as_of) - F.year(birth_date) - F.when(birthday_not_yet_occurred, 1).otherwise(0)
+    ).cast("int")
+
+
+def _cleanse(bronze_df: DataFrame, as_of: str | None = None) -> DataFrame:
     """Apply the STM Bronze-to-Silver transformations in source-row order.
 
     PHI (SSN, DRIVERS, PASSPORT) and non-clinical FIPS are dropped simply by
     not selecting them. Every output column is from DMS §3 clinical_patients.
+
+    ``as_of`` (``YYYY-MM-DD``) fixes the age date for tests. The pipeline omits
+    it, so age uses CURRENT_DATE as the STM requires, not ``ds``.
     """
+    age_as_of = F.current_date() if as_of is None else F.to_date(F.lit(as_of))
     return bronze_df.select(
         # STM: TRIM(Id) — PK natural key
         F.trim(F.col("Id")).alias("patient_id"),
@@ -128,15 +169,9 @@ def _cleanse(bronze_df: DataFrame) -> DataFrame:
         F.col("HEALTHCARE_COVERAGE").cast("decimal(12,2)").alias("healthcare_coverage"),
         # STM: CAST(INCOME AS INTEGER) — SCD2 tracked
         F.col("INCOME").cast("int").alias("income"),
-        # STM: DATEDIFF('year', BIRTHDATE, COALESCE(DEATHDATE, CURRENT_DATE))
-        F.when(F.col("BIRTHDATE").isNull(), F.lit(None).cast("int"))
-        .otherwise(
-            (
-                F.year(F.coalesce(F.col("DEATHDATE").cast("date"), F.current_date()))
-                - F.year(F.col("BIRTHDATE").cast("date"))
-            ).cast("int")
-        )
-        .alias("calculated_age"),
+        # STM: YEAR(CURRENT_DATE) - YEAR(BIRTHDATE) - CASE WHEN birthday not yet
+        # occurred THEN 1 ELSE 0 END. Not capped at DEATHDATE.
+        _calculated_age(F.col("BIRTHDATE").cast("date"), age_as_of).alias("calculated_age"),
         # STM: CASE WHEN DEATHDATE IS NULL THEN 'ALIVE' ELSE 'DECEASED' END
         F.when(F.col("DEATHDATE").isNull(), F.lit("ALIVE"))
         .otherwise(F.lit("DECEASED"))
@@ -192,9 +227,11 @@ def transform(spark: SparkSession, env: str, ds: str) -> DataFrame:
         natural_keys=NATURAL_KEYS,
         hash_columns=HASH_COLUMNS,
         effective_date=ds,
+        refresh_columns=REFRESH_COLUMNS,
     )
-    # metrics: {"rows_inserted", "rows_closed", "rows_unchanged"} — caller
-    # emits via OpenTelemetry per LLD §5.4 step 8.
+    # metrics: {"rows_inserted", "rows_closed", "rows_unchanged",
+    # "rows_overwritten", "rows_skipped_backfill", "rows_rehashed",
+    # "rows_refreshed"} — caller emits via OpenTelemetry per LLD §5.4 step 8.
     import logging
 
     logging.getLogger(__name__).info("scd2 merge %s metrics=%s", TABLE, metrics)
@@ -202,4 +239,4 @@ def transform(spark: SparkSession, env: str, ds: str) -> DataFrame:
     return validated_df
 
 
-__all__ = ["transform", "TABLE", "DOMAIN", "NATURAL_KEYS", "HASH_COLUMNS"]
+__all__ = ["transform", "TABLE", "DOMAIN", "NATURAL_KEYS", "HASH_COLUMNS", "REFRESH_COLUMNS"]

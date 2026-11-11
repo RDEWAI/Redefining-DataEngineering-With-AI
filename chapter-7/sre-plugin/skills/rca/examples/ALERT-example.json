@@ -1,0 +1,17 @@
+{
+  "alert_id": "ALERT-20261014T153012Z-reconciliation_bronze",
+  "fired_at": "2026-10-14T15:30:12+00:00",
+  "env": "DEV",
+  "condition": "Pipeline task failure after all retries",
+  "failure_class": "SE run-evidence gate (§8.6 / Decision 16)",
+  "severity": "CRITICAL",
+  "channel": "PagerDuty p360-critical",
+  "response_time": "15 min",
+  "source": "airflow",
+  "dag_id": "patient360_hourly_v1",
+  "run_id": "scheduled__2026-10-14T15:00:00+00:00",
+  "task_id": "reconciliation_bronze",
+  "try_number": 3,
+  "ds": "2026-10-14",
+  "message": "SE_RUN_MISSING_FOR_DS=2026-10-14 meta_dq_run_id=20261014T150000 layer=bronze env=DEV"
+}

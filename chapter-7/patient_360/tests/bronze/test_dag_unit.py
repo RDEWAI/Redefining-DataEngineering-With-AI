@@ -194,3 +194,14 @@ def test_reconciliation_downstream_of_bronze(dag_module):
         "reconciliation_bronze must be downstream of all 13 Bronze "
         f"ingestion tasks (LLD §4.3); upstream={sorted(upstream_ids)}"
     )
+
+
+def test_every_task_has_failure_alerting_callback(dag_module):
+    """DAG-ALERT-001: default_args wires utils.alerting.on_task_failure on every task."""
+    from patient_360.utils import alerting
+
+    dag = dag_module.dag_instance
+    assert dag.default_args.get("on_failure_callback") is alerting.on_task_failure
+    missing = [t.task_id for t in dag.tasks
+               if alerting.on_task_failure not in (t.on_failure_callback if isinstance(t.on_failure_callback, (list, tuple)) else [t.on_failure_callback])]
+    assert missing == [], f"tasks without the failure callback: {missing}"

@@ -1,0 +1,197 @@
+{
+  "unity.bronze.synthea_allergies": [
+    {
+      "product_id": "patient_360",
+      "table_name": "unity.bronze.synthea_allergies",
+      "meta_dq_run_id": "product_1_e2a1b0",
+      "meta_dq_run_date": "2026-10-13",
+      "meta_dq_run_datetime": "2026-10-13 15:03:41.112",
+      "input_count": "41200",
+      "error_count": "0",
+      "output_count": "41200",
+      "row_dq_status": "Passed",
+      "agg_dq_status": "Skipped",
+      "query_dq_status": "Skipped"
+    }
+  ],
+  "unity.bronze.synthea_careplans": [
+    {
+      "product_id": "patient_360",
+      "table_name": "unity.bronze.synthea_careplans",
+      "meta_dq_run_id": "product_1_e2a1b0",
+      "meta_dq_run_date": "2026-10-13",
+      "meta_dq_run_datetime": "2026-10-13 15:03:41.112",
+      "input_count": "41200",
+      "error_count": "0",
+      "output_count": "41200",
+      "row_dq_status": "Passed",
+      "agg_dq_status": "Skipped",
+      "query_dq_status": "Skipped"
+    }
+  ],
+  "unity.bronze.synthea_claims": [
+    {
+      "product_id": "patient_360",
+      "table_name": "unity.bronze.synthea_claims",
+      "meta_dq_run_id": "product_1_e2a1b0",
+      "meta_dq_run_date": "2026-10-13",
+      "meta_dq_run_datetime": "2026-10-13 15:03:41.112",
+      "input_count": "41200",
+      "error_count": "0",
+      "output_count": "41200",
+      "row_dq_status": "Passed",
+      "agg_dq_status": "Skipped",
+      "query_dq_status": "Skipped"
+    }
+  ],
+  "unity.bronze.synthea_conditions": [
+    {
+      "product_id": "patient_360",
+      "table_name": "unity.bronze.synthea_conditions",
+      "meta_dq_run_id": "product_1_e2a1b0",
+      "meta_dq_run_date": "2026-10-13",
+      "meta_dq_run_datetime": "2026-10-13 15:03:41.112",
+      "input_count": "41200",
+      "error_count": "0",
+      "output_count": "41200",
+      "row_dq_status": "Passed",
+      "agg_dq_status": "Skipped",
+      "query_dq_status": "Skipped"
+    }
+  ],
+  "unity.bronze.synthea_encounters": [
+    {
+      "product_id": "patient_360",
+      "table_name": "unity.bronze.synthea_encounters",
+      "meta_dq_run_id": "product_1_e2a1b0",
+      "meta_dq_run_date": "2026-10-13",
+      "meta_dq_run_datetime": "2026-10-13 15:03:41.112",
+      "input_count": "41200",
+      "error_count": "0",
+      "output_count": "41200",
+      "row_dq_status": "Passed",
+      "agg_dq_status": "Skipped",
+      "query_dq_status": "Skipped"
+    }
+  ],
+  "unity.bronze.synthea_immunizations": [
+    {
+      "product_id": "patient_360",
+      "table_name": "unity.bronze.synthea_immunizations",
+      "meta_dq_run_id": "product_1_e2a1b0",
+      "meta_dq_run_date": "2026-10-13",
+      "meta_dq_run_datetime": "2026-10-13 15:03:41.112",
+      "input_count": "41200",
+      "error_count": "0",
+      "output_count": "41200",
+      "row_dq_status": "Passed",
+      "agg_dq_status": "Skipped",
+      "query_dq_status": "Skipped"
+    }
+  ],
+  "unity.bronze.synthea_medications": [
+    {
+      "product_id": "patient_360",
+      "table_name": "unity.bronze.synthea_medications",
+      "meta_dq_run_id": "product_1_e2a1b0",
+      "meta_dq_run_date": "2026-10-13",
+      "meta_dq_run_datetime": "2026-10-13 15:03:41.112",
+      "input_count": "41200",
+      "error_count": "0",
+      "output_count": "41200",
+      "row_dq_status": "Passed",
+      "agg_dq_status": "Skipped",
+      "query_dq_status": "Skipped"
+    }
+  ],
+  "unity.bronze.synthea_observations": [
+    {
+      "product_id": "patient_360",
+      "table_name": "unity.bronze.synthea_observations",
+      "meta_dq_run_id": "product_1_e2a1b0",
+      "meta_dq_run_date": "2026-10-13",
+      "meta_dq_run_datetime": "2026-10-13 15:03:41.112",
+      "input_count": "41200",
+      "error_count": "0",
+      "output_count": "41200",
+      "row_dq_status": "Passed",
+      "agg_dq_status": "Skipped",
+      "query_dq_status": "Skipped"
+    }
+  ],
+  "unity.bronze.synthea_organizations": [
+    {
+      "product_id": "patient_360",
+      "table_name": "unity.bronze.synthea_organizations",
+      "meta_dq_run_id": "product_1_e2a1b0",
+      "meta_dq_run_date": "2026-10-13",
+      "meta_dq_run_datetime": "2026-10-13 15:03:41.112",
+      "input_count": "41200",
+      "error_count": "0",
+      "output_count": "41200",
+      "row_dq_status": "Passed",
+      "agg_dq_status": "Skipped",
+      "query_dq_status": "Skipped"
+    }
+  ],
+  "unity.bronze.synthea_patients": [
+    {
+      "product_id": "patient_360",
+      "table_name": "unity.bronze.synthea_patients",
+      "meta_dq_run_id": "product_1_e2a1b0",
+      "meta_dq_run_date": "2026-10-13",
+      "meta_dq_run_datetime": "2026-10-13 15:03:41.112",
+      "input_count": "5767",
+      "error_count": "0",
+      "output_count": "5767",
+      "row_dq_status": "Passed",
+      "agg_dq_status": "Skipped",
+      "query_dq_status": "Skipped"
+    }
+  ],
+  "unity.bronze.synthea_payers": [
+    {
+      "product_id": "patient_360",
+      "table_name": "unity.bronze.synthea_payers",
+      "meta_dq_run_id": "product_1_e2a1b0",
+      "meta_dq_run_date": "2026-10-13",
+      "meta_dq_run_datetime": "2026-10-13 15:03:41.112",
+      "input_count": "41200",
+      "error_count": "0",
+      "output_count": "41200",
+      "row_dq_status": "Passed",
+      "agg_dq_status": "Skipped",
+      "query_dq_status": "Skipped"
+    }
+  ],
+  "unity.bronze.synthea_procedures": [
+    {
+      "product_id": "patient_360",
+      "table_name": "unity.bronze.synthea_procedures",
+      "meta_dq_run_id": "product_1_e2a1b0",
+      "meta_dq_run_date": "2026-10-13",
+      "meta_dq_run_datetime": "2026-10-13 15:03:41.112",
+      "input_count": "41200",
+      "error_count": "0",
+      "output_count": "41200",
+      "row_dq_status": "Passed",
+      "agg_dq_status": "Skipped",
+      "query_dq_status": "Skipped"
+    }
+  ],
+  "unity.bronze.synthea_providers": [
+    {
+      "product_id": "patient_360",
+      "table_name": "unity.bronze.synthea_providers",
+      "meta_dq_run_id": "product_1_e2a1b0",
+      "meta_dq_run_date": "2026-10-13",
+      "meta_dq_run_datetime": "2026-10-13 15:03:41.112",
+      "input_count": "41200",
+      "error_count": "0",
+      "output_count": "41200",
+      "row_dq_status": "Passed",
+      "agg_dq_status": "Skipped",
+      "query_dq_status": "Skipped"
+    }
+  ]
+}

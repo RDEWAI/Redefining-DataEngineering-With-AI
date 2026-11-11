@@ -1,0 +1,32 @@
+{
+  "alerts": [
+    {
+      "id": "Q1P3AHC3KZZE8A",
+      "type": "alert",
+      "status": "triggered",
+      "alert_key": "patient360_hourly_v1/scheduled__2026-10-15T14:00:00+00:00",
+      "severity": "critical",
+      "summary": "patient360_hourly_v1/reconciliation_bronze failed for ds=2026-10-15: SE_RUN_MISSING_FOR_DS=2026-10-15",
+      "body": {
+        "type": "alert_body",
+        "contexts": [],
+        "details": {
+          "alert_id": "ALERT-20261015T140000Z-reconciliation_bronze",
+          "fired_at": "2026-10-15T14:05:00Z",
+          "env": "PROD",
+          "source": "airflow",
+          "dag_id": "patient360_hourly_v1",
+          "run_id": "scheduled__2026-10-15T14:00:00+00:00",
+          "task_id": "reconciliation_bronze",
+          "try_number": 3,
+          "ds": "2026-10-15",
+          "message": "AirflowException: spark-submit exited 1\nSE_RUN_MISSING_FOR_DS=2026-10-15 layer=bronze env=PROD"
+        }
+      }
+    }
+  ],
+  "limit": 25,
+  "offset": 0,
+  "more": false,
+  "total": null
+}

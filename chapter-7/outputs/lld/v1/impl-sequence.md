@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Derived From** | LLD-2026-06-20-patient-360.md |
-| **Generated** | 2026-06-22 |
+| **Derived From** | LLD-2026-11-04-patient-360.md |
+| **Generated** | 2026-11-08 |
 | **Generator** | generate_impl_sequence.py |
 
 ---
@@ -82,6 +82,8 @@ Requirements mapped to build phases (from LLD §12):
 | FR-3: Billing summary (isolated) | DRD §5.5 | `build_billing_summary_gold` task; Gold `patient_billing_summary` table (separate from clinical) | §5.3 |
 | FR-4: Ingest 13 Phase 1 tables | DRD §2.2 | 13 Bronze ingestion tasks running in parallel | §5.1 |
 | FR-5: Track demographic changes (SCD2) | DRD §1.2 | `transform_patients_silver` with SCD Type 2 via Delta MERGE INTO | §5.2 |
+| `calculated_age` is correct as of the latest Silver run | DRD-2026-04-03 §5.2 via DMS §6 | `transform_patients_silver` with `apply_scd2(refresh_columns=REFRESH_COLUMNS)`, which includes `calculated_age` | §2.3, §5.2 |
+| A death creates a new version; Type 1 `race`/`ethnicity`/`gender` overwrite the current version | DRD §1.2, governance §6 via DMS v1.6 §6 | `transform_patients_silver` `HASH_COLUMNS` (14) and `REFRESH_COLUMNS` (11); `apply_scd2` recomputed-hash comparison and backfill skip | §2.3, §5.2 |
 | FR-6: Derived fields | DRD §5.2 | `src/patient_360/utils/derived_fields.py` in Silver tasks | §2.1 |
 | FR-7: Referential integrity | DRD §3.3 | `dq_gate_silver` with FK checks from DQS §3 | §5.4 |
 | FR-8: Allergy never suppressed | DRD §5.4 | Gold DQ assertion DQ-FLD-138 (cross-field), allergy elevated alerting | §5.3, §8.5 |

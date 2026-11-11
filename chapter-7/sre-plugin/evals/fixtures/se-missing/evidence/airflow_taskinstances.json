@@ -1,0 +1,316 @@
+{
+  "dag_id": "patient360_hourly_v1",
+  "run_id": "scheduled__2026-10-14T15:00:00+00:00",
+  "task_instances": [
+    {
+      "task_id": "bronze_ingestion.ingest_allergies",
+      "state": "success",
+      "try_number": 1,
+      "start_date": "2026-10-14T15:00:10+00:00",
+      "end_date": "2026-10-14T15:01:40+00:00",
+      "duration": 90.0,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "bronze_ingestion.ingest_careplans",
+      "state": "success",
+      "try_number": 1,
+      "start_date": "2026-10-14T15:00:10+00:00",
+      "end_date": "2026-10-14T15:01:40+00:00",
+      "duration": 90.0,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "bronze_ingestion.ingest_claims",
+      "state": "success",
+      "try_number": 1,
+      "start_date": "2026-10-14T15:00:10+00:00",
+      "end_date": "2026-10-14T15:01:40+00:00",
+      "duration": 90.0,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "bronze_ingestion.ingest_conditions",
+      "state": "success",
+      "try_number": 1,
+      "start_date": "2026-10-14T15:01:10+00:00",
+      "end_date": "2026-10-14T15:02:40+00:00",
+      "duration": 90.0,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "bronze_ingestion.ingest_encounters",
+      "state": "success",
+      "try_number": 1,
+      "start_date": "2026-10-14T15:01:10+00:00",
+      "end_date": "2026-10-14T15:02:40+00:00",
+      "duration": 90.0,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "bronze_ingestion.ingest_immunizations",
+      "state": "success",
+      "try_number": 1,
+      "start_date": "2026-10-14T15:01:10+00:00",
+      "end_date": "2026-10-14T15:02:40+00:00",
+      "duration": 90.0,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "bronze_ingestion.ingest_medications",
+      "state": "success",
+      "try_number": 1,
+      "start_date": "2026-10-14T15:02:10+00:00",
+      "end_date": "2026-10-14T15:03:40+00:00",
+      "duration": 90.0,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "bronze_ingestion.ingest_observations",
+      "state": "success",
+      "try_number": 1,
+      "start_date": "2026-10-14T15:02:10+00:00",
+      "end_date": "2026-10-14T15:03:40+00:00",
+      "duration": 90.0,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "bronze_ingestion.ingest_organizations",
+      "state": "success",
+      "try_number": 1,
+      "start_date": "2026-10-14T15:02:10+00:00",
+      "end_date": "2026-10-14T15:03:40+00:00",
+      "duration": 90.0,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "bronze_ingestion.ingest_patients",
+      "state": "success",
+      "try_number": 1,
+      "start_date": "2026-10-14T15:03:10+00:00",
+      "end_date": "2026-10-14T15:04:40+00:00",
+      "duration": 90.0,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "bronze_ingestion.ingest_payers",
+      "state": "success",
+      "try_number": 1,
+      "start_date": "2026-10-14T15:03:10+00:00",
+      "end_date": "2026-10-14T15:04:40+00:00",
+      "duration": 90.0,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "bronze_ingestion.ingest_procedures",
+      "state": "success",
+      "try_number": 1,
+      "start_date": "2026-10-14T15:03:10+00:00",
+      "end_date": "2026-10-14T15:04:40+00:00",
+      "duration": 90.0,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "bronze_ingestion.ingest_providers",
+      "state": "success",
+      "try_number": 1,
+      "start_date": "2026-10-14T15:04:10+00:00",
+      "end_date": "2026-10-14T15:05:40+00:00",
+      "duration": 90.0,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "reconciliation_bronze",
+      "state": "failed",
+      "try_number": 3,
+      "start_date": "2026-10-14T15:12:00+00:00",
+      "end_date": "2026-10-14T15:30:12+00:00",
+      "duration": 61.2,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "silver_dimensions.transform_patients_silver",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "silver_dimensions.transform_organizations_silver",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "silver_dimensions.transform_providers_silver",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "silver_dimensions.transform_payers_silver",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "silver_facts.transform_encounters_silver",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "silver_facts.transform_conditions_silver",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "silver_facts.transform_medications_silver",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "silver_facts.transform_observations_silver",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "silver_facts.transform_allergies_silver",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "silver_facts.transform_immunizations_silver",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "silver_facts.transform_procedures_silver",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "silver_facts.transform_claims_silver",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "silver_facts.transform_careplans_silver",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "gold_build.build_patient_summary_gold",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "gold_build.build_clinical_history_gold",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "gold_build.build_billing_summary_gold",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    },
+    {
+      "task_id": "reconciliation_gold",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "start_date": null,
+      "end_date": "2026-10-14T15:30:13+00:00",
+      "duration": null,
+      "operator": "SparkSubmitOperator",
+      "max_tries": 2
+    }
+  ]
+}

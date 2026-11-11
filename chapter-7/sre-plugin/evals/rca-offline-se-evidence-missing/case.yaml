@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: rca-offline-se-evidence-missing
+tags: [rca]
+runs: 1
+context:
+  scaffold_script: scaffold.sh
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill]
+  append_system_prompt: "This session is non-interactive and AskUserQuestion is unavailable. The stack (Airflow, docker, Unity Catalog) is NOT reachable from this sandbox: pass --offline to collect_evidence.py and work from the evidence bundle that is already present under outputs/rca/v1/<alert_id>/evidence/. The uv binary panics in this sandbox, so wherever a skill says `uv run python`, run `.venv/bin/python` from the workspace root instead. Do not try to install packages; there is no network."

@@ -1,0 +1,1 @@
+Run /developer-plugin:create-dag for STORY-02-006 against the approved LLD in outputs/lld/v1. Write the DAG under patient_360/airflow/dags/ and finish with the validator and AC self-checks the skill requires.

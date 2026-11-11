@@ -29,6 +29,16 @@ factory so 20 tables don't mean 20 copy-paste DAG files.
   - `catchup=False` — backfills are explicit via
     `airflow dags backfill`.
   - `depends_on_past=False` unless downstream semantics need it.
+- **Failure alerting (DAG-ALERT-001, LLD §8.5/§8.7)** — every DAG sets
+  `DEFAULT_ARGS["on_failure_callback"] = on_task_failure` imported from
+  `{project}.utils.alerting`. Airflow calls it once per task after the last
+  retry; it builds the alert (`inputs/alerts/v1/README.md` contract: dag_id,
+  run_id, task_id, try_number, ds, env, message = exception + LLD §8.5 log
+  markers), opens an incident through the sink selected by `ALERT_SINK` /
+  `monitoring.alerting_sink` (keep | pagerduty | file | none) and never
+  raises. The incident then triggers `/sre-plugin:rca` via the rca-runner
+  webhook. `validate-dag` fails a DAG file whose `default_args` lacks the
+  callback. Do NOT classify or page from the DAG; the sink owns delivery.
 - **Pass `ds` via op_args/conf**, not env vars — Airflow's templating
   (`{{ ds }}`) expands at execute time and flows into `run_local.py`.
 - **No business logic in DAG files** — DAG is pure orchestration; all
@@ -105,11 +115,14 @@ from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOpe
 CONFIGS_DIR = os.environ.get("AIRFLOW_CONFIGS_DIR", "/opt/airflow/configs")
 BRONZE_RUNNER = os.environ.get("BRONZE_RUNNER_APP", "/opt/airflow/jobs/run_bronze_ingestion.py")
 
+from {project}.utils.alerting import on_task_failure  # DAG-ALERT-001
+
 DEFAULT_ARGS = {
     "owner": "{project}",
     "retries": 2,
     "retry_delay": timedelta(minutes=5),
     "sla": timedelta(minutes=30),
+    "on_failure_callback": on_task_failure,  # DAG-ALERT-001: task failure -> incident -> RCA
 }
 
 @dag(

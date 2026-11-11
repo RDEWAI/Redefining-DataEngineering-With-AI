@@ -92,6 +92,12 @@ PATH_BASED_DELTA_WRITE = re.compile(
 # Bronze-runner detection: any path containing /bronze/ — Silver/Gold may
 # legitimately use path-based writes for ad-hoc dumps.
 IS_BRONZE_PATH = re.compile(r"(?:^|/)src/.+/bronze/.+\.py$")
+# DAG-ALERT-001: DAG files (not factories/jobs) must wire the failure callback.
+IS_DAG_FILE = re.compile(r"/airflow/dags/[^/]+\.py$")
+ON_FAILURE_CALLBACK = re.compile(
+    r"[\"\']on_failure_callback[\"\']\s*:\s*on_task_failure|on_failure_callback\s*=\s*on_task_failure"
+)
+
 
 
 def _is_anti_pattern_comment(line: str) -> bool:
@@ -202,6 +208,33 @@ def check_file(path: Path) -> list[Finding]:
                     ),
                 )
             )
+
+    is_dag_file = IS_DAG_FILE.search(str(path).replace("\\", "/"))
+    if is_dag_file and "default_args" in text and not ON_FAILURE_CALLBACK.search(text):
+        findings.append(
+            Finding(
+                level=Level.CRITICAL,
+                rule="DAG-ALERT-001",
+                file=str(path),
+                line=next(
+                    (
+                        i
+                        for i, ln in enumerate(text.splitlines(), 1)
+                        if "DEFAULT_ARGS" in ln or "default_args" in ln
+                    ),
+                    1,
+                ),
+                message=(
+                    "default_args has no on_failure_callback — a task failure opens no "
+                    "incident and /sre-plugin:rca is never triggered (LLD §8.5/§8.7)."
+                ),
+                suggestion=(
+                    'from <project>.utils.alerting import on_task_failure; add '
+                    '"on_failure_callback": on_task_failure to DEFAULT_ARGS '
+                    "(airflow-dag-pattern.md \"Failure alerting\")."
+                ),
+            )
+        )
 
     return findings
 

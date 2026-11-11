@@ -37,7 +37,9 @@ def extract_sql(text: str) -> str:
 
 
 def _referenced_tables(sql: str) -> list[str]:
-    return [t.strip('`"').lower() for t in _FROM_JOIN_RE.findall(sql)]
+    # Strip every quote, not only the outer ones: Spark SQL quotes each name part
+    # (`unity`.`gold`.`t`), and the allow-list holds the bare dotted name.
+    return [t.replace("`", "").replace('"', "").lower() for t in _FROM_JOIN_RE.findall(sql)]
 
 
 def guard_sql(sql: str, *, allowed_tables: set[str], max_limit: int = 1000) -> str:

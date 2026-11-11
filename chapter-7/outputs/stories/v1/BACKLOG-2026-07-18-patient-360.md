@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | 3.4 |
+| **Version** | 3.5 |
 | **Created** | 2026-05-09 |
-| **Last Modified** | 2026-07-18 |
+| **Last Modified** | 2026-11-08 |
 | **Author** | Scrum Master Agent |
 | **Status** | Approved |
 | **LLD Reference** | LLD-2026-06-20-patient-360.md (v1.24) |
@@ -394,4 +394,6 @@ graph TD
 | 3.3 | 2026-07-14 | Scrum Master Agent | Status changed to Approved |
 | 3.4 | 2026-07-18 | Scrum Master Agent | STORY-05-005 (Gold integration-test) Verification YAML + Testing table + How-to-Test test paths resynced from the flat `tests/integration/test_gold_uc.py` / `tests/integration/test_gold_dq_evidence.py` layout to the layer-scoped `tests/integration/gold/test_gold_uc.py` / `tests/integration/gold/test_gold_se_evidence.py` files actually emitted by `developer-plugin:create-integration-test` (direct analog of the v1.6 Bronze STORY-02-008 fix). Also renamed the DQ-evidence file reference `test_gold_dq_evidence.py` → `test_gold_se_evidence.py`. AC semantics unchanged — pytest node names (`test_dag_runs`, `test_3_gold_tables_in_uc`, `test_patient_summary_count_5767`, `test_allergy_completeness`), row counts (5,767), table names, and rule ids (DQ-FLD-106/-138) all preserved. No story added/removed, no point changes. Scenario B: new filename `BACKLOG-2026-07-18-patient-360.md`, prior file archived to `BACKLOG-2026-07-14-patient-360.md.bak`. Status reset to `Updated - Pending Review`. Re-approval to follow. |
 | 3.4 | 2026-07-18 | Scrum Master Agent | Status changed to Approved |
+| 3.5 | 2026-11-08 | Scrum Master Agent | **Re-synced SCD2 story text with the approved LLD v1.28 (`LLD-2026-11-04-patient-360.md`) §2.3 `apply_scd2` contract (§13 Decisions 17 refresh in place, 18 same-day overwrite, 19 backfill skip, 20 recomputed-hash compare) and DMS v1.6 §6.** **STORY-01-003** (EPIC-01): Description signature → `apply_scd2(df, target_table, natural_keys, hash_columns, effective_date, refresh_columns=None) -> dict[str, int]`; AC1 text replaced "closing existing row and inserting new version" with the current cases (backfill skip when current `effective_from > effective_date`; same-day change overwrites the current version in place; earlier-day change closes with `effective_to = effective_date - 1` and inserts; new key inserts; unchanged hash no write, then optional `refresh_columns` in-place refresh; compare against a hash recomputed from stored values and rehash stale stored hashes in place; metrics `rows_inserted`, `rows_closed`, `rows_unchanged`, `rows_overwritten`, `rows_skipped_backfill`, `rows_rehashed` + `rows_refreshed`); implementation hint, Testing row, expected outcome, upstream refs and Estimation rows synced. **STORY-03-001** (EPIC-03, `clinical_patients`): AC3 now says `apply_scd2(...)` is invoked with natural keys + hash columns + `refresh_columns` from DMS §6; the How-to-Test expected outcome line "hash-change closes existing row + inserts new" now lists the cases above; upstream refs synced. AC checkbox states, story Status, Verification blocks, points, dependencies and sprints unchanged. No other story changed. In-place edit per user file-handling instruction (no new dated file). Status reset to `Updated - Pending Review`. |
+| 3.5 | 2026-11-08 | Scrum Master Agent | Status changed to Approved |
 

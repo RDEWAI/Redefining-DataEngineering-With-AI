@@ -1,0 +1,42 @@
+[
+  {
+    "Service": "airflow",
+    "State": "running",
+    "Health": "healthy"
+  },
+  {
+    "Service": "unity-catalog",
+    "State": "running",
+    "Health": "healthy"
+  },
+  {
+    "Service": "unity-catalog-ui",
+    "State": "running",
+    "Health": ""
+  },
+  {
+    "Service": "marquez",
+    "State": "running",
+    "Health": ""
+  },
+  {
+    "Service": "marquez-db",
+    "State": "running",
+    "Health": ""
+  },
+  {
+    "Service": "spark-thrift-server",
+    "State": "running",
+    "Health": ""
+  },
+  {
+    "Service": "otel-collector",
+    "State": "running",
+    "Health": ""
+  },
+  {
+    "Service": "ddl-apply",
+    "State": "exited",
+    "Health": ""
+  }
+]
