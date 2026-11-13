@@ -2,6 +2,29 @@
 
 Add project-specific instructions for Claude Code here.
 
+## Design First Approach (DFA)
+
+- Do not modify the code if it doesn't align with the artifacts in the `inputs/` and `outputs/` folders.
+- Strictly stick to the Design First Approach (DFA). If there is a conflict between the design artifacts and the approach needed to solve an issue, update the relevant artifacts (LLD, STM, etc.) first using the matching update skills in the plugins, rather than updating the code directly.
+- Always use the artifacts in the `inputs/` and `outputs/` folders as the authoritative source of truth. No deviations are allowed.
+- The main agent never edits artifacts or generated code directly. Every change goes through the owning plugin skill, invoked with the Skill tool (not by hand-following its SKILL.md).
+- Route each change to its owner, then run the matching `approve-*` skill before moving downstream:
+
+  | Change | Skill |
+  |---|---|
+  | Business requirements | `ba-plugin:update-drd` |
+  | Architecture | `architect-plugin:update-hld` |
+  | Schema, SCD, column rules | `data-modeler-plugin:update-dms` |
+  | Source-to-target mappings | `mapping-analyst-plugin:update-stm` |
+  | Data quality rules | `dq-engineer-plugin:update-dqs` |
+  | Implementation design | `technical-lead-plugin:update-lld` |
+  | Stories and acceptance criteria | `scrum-master-plugin:update-stories` |
+  | Code | `developer-plugin:update-scaffold`, `update-ingestion`, `update-silver`, `update-gold`, `update-dag`, `update-pipeline` |
+
+- If generated code is wrong, fix the artifact or the generator's SKILL.md and re-run the skill. Do not patch the output.
+- The only files the main agent may edit by hand are skill definitions: `SKILL.md` files and skill scripts.
+- If no skill covers a change, stop and tell the user. Do not fall back to a direct edit.
+
 ## Active Technologies
 - Python 3.10-3.12 (aligned with existing project) (003-chapter2-ai-engineering)
 - DuckDB at `chapter-2/data/duckdb/chapter2.db` with `library` schema (003-chapter2-ai-engineering)
